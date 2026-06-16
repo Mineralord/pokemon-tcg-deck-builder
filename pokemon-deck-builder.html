@@ -158,7 +158,9 @@
       <button class="btn-build" onclick="proxGenerarPDF()" data-i18n="px_gen">🖨️ Generar PDF</button>
     </div>
     <div class="prox-search-bar">
-      <input type="text" id="prox-search" data-i18n-ph="px_search_ph" placeholder="Buscar cualquier carta del juego…" oninput="proxOnSearchInput(this.value)">
+      <input type="search" id="prox-search" data-i18n-ph="px_search_ph" placeholder="Buscar cualquier carta del juego…" autocomplete="off" autocapitalize="off" oninput="proxOnSearchInput(this.value)">
+      <select id="prox-f-type" onchange="proxSetFiltro('type',this.value)"></select>
+      <select id="prox-f-set" onchange="proxSetFiltro('setId',this.value)"></select>
       <span id="prox-search-status" class="prox-search-status"></span>
     </div>
     <div class="cards-grid prox-results" id="prox-search-grid"></div>

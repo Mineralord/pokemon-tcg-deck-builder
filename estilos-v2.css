@@ -125,6 +125,8 @@ header{ flex-wrap:wrap; row-gap:8px; }
 .prox-search-bar{ display:flex; gap:10px; align-items:center; margin:6px 0 12px; flex-wrap:wrap; }
 .prox-search-bar input{ flex:1; min-width:220px; background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 12px; font:500 14px 'Inter'; }
 .prox-search-bar input:focus{ outline:none; border-color:#FACC15; }
+.prox-search-bar select{ background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 8px; font:500 13px 'Inter'; max-width:160px; }
+.prox-search-bar select:focus{ outline:none; border-color:#FACC15; }
 .prox-search-status{ color:#aab2c2; font:600 13px 'Inter'; }
 .prox-results{ grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); margin-bottom:14px; }
 .prox-res{ background:rgba(22,27,39,.5); border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; }

@@ -44,13 +44,32 @@ function proxRemove(i){ proxImgs.splice(i, 1); renderProxies(); }
 function proxVaciar(){ proxImgs = []; renderProxies(); }
 
 // ---- Buscar cualquier carta (en vivo) y añadirla ----
-let proxFiltros = { name: '', orderBy: 'name' };
+let proxFiltros = { name: '', type: '', setId: '', orderBy: 'name' };
 let proxPage = 1, proxResultados = {}, proxReq = 0, _proxTimer = null;
 
 function proxOnSearchInput(val){
   proxFiltros.name = val;
   clearTimeout(_proxTimer);
   _proxTimer = setTimeout(() => proxBuscar(true), 350);
+}
+function proxSetFiltro(campo, val){ proxFiltros[campo] = val; proxBuscar(true); }
+// Rellena los desplegables de tipo y set (este último desde la lista de sets ya cargada)
+function proxLlenarFiltros(){
+  const tSel = document.getElementById('prox-f-type');
+  if(tSel && !tSel.dataset.filled){
+    const tipos = ['Fire','Water','Lightning','Grass','Psychic','Fighting','Darkness','Metal','Fairy','Dragon','Colorless'];
+    const trT = (typeof trType === 'function') ? trType : (x => x);
+    tSel.innerHTML = `<option value="">${esc(T('f_type'))}</option>` + tipos.map(t => `<option value="${t}">${esc(trT(t))}</option>`).join('');
+    tSel.dataset.filled = '1';
+  }
+  const sSel = document.getElementById('prox-f-set');
+  if(sSel){
+    const sets = (typeof _setsList !== 'undefined' && _setsList) ? _setsList : [];
+    const cur = sSel.value;
+    sSel.innerHTML = `<option value="">${esc(T('f_set'))}</option>` + sets.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    sSel.value = cur;
+    if(!sets.length && typeof cargarSets === 'function'){ cargarSets().then(() => proxLlenarFiltros()).catch(() => {}); }
+  }
 }
 async function proxBuscar(reset){
   if(typeof apiBuscar !== 'function') return;
