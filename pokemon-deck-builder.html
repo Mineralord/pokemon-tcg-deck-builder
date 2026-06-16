@@ -171,5 +171,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sync.js"></script>
+
+<!-- Service Worker: caché de la app + imágenes (carga rápida y offline parcial) -->
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){});
+    });
+  }
+</script>
 </body>
 </html>
