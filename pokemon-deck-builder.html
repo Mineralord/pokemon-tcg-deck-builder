@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokémon TCG — Deck Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<link rel="stylesheet" href="estilos-v2.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-ball">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="17" stroke="#FACC15" stroke-width="1.5"/>
+        <path d="M1 18h34" stroke="#FACC15" stroke-width="1.5"/>
+        <path d="M18 1C9.163 1 2 8.163 2 17h32C34 8.163 26.837 1 18 1z" fill="#EF4444" opacity="0.6"/>
+        <circle cx="18" cy="18" r="5" fill="#0A0D14" stroke="#FACC15" stroke-width="1.5"/>
+        <circle cx="18" cy="18" r="2.5" fill="#FACC15"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <span class="logo-title">TCG Deck Builder</span>
+      <span class="logo-sub" data-i18n="app_sub">Pokémon Card Manager</span>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="stat-pill"><span data-i18n="stat_inv">Inventario</span> <strong id="stat-total">0</strong> <span data-i18n="stat_cards">cartas</span></div>
+    <div class="stat-pill"><span data-i18n="stat_decks">Mazos guardados</span> <strong id="stat-decks">0</strong></div>
+    <button id="sync-btn" class="stat-pill" style="cursor:pointer;border:none;font:inherit;color:inherit">☁️ Sincronizar</button>
+    <button id="lang-toggle" class="stat-pill" data-i18n-aria="aria_lang" style="cursor:pointer;border:none;font:inherit;color:inherit" onclick="toggleLang()">🌐 EN</button>
+  </div>
+</header>
+
+<!-- NAV DE VISTAS -->
+<nav class="topnav">
+  <button class="nav-btn active" id="nav-coleccion" data-i18n="nav_col" onclick="showView('coleccion')">🗂️ Colección</button>
+  <button class="nav-btn" id="nav-explorar" data-i18n="nav_exp" onclick="showView('explorar')">🔎 Explorar cartas</button>
+  <button class="nav-btn" id="nav-construir" data-i18n="nav_build" onclick="showView('construir')">⚔️ Construir mazo</button>
+  <button class="nav-btn" id="nav-legalidad" data-i18n="nav_legal" onclick="showView('legalidad')">✅ Legalidad</button>
+  <button class="nav-btn" id="nav-mazos" data-i18n="nav_saved" onclick="showView('mazos')">💾 Mazos</button>
+</nav>
+
+<main class="views">
+
+  <!-- ===================== VISTA: COLECCIÓN ===================== -->
+  <section class="view active" id="view-coleccion">
+    <div class="view-toolbar">
+      <button class="tb-btn" data-i18n="btn_quick_load" onclick="loadMyInventory()">⚡ Cargar mi inventario confirmado</button>
+      <button class="tb-btn" data-i18n="btn_import_toggle" onclick="toggleImport()">📋 Importar lista</button>
+      <button class="tb-btn" data-i18n="btn_export" onclick="exportarColeccion()">⬇️ Exportar</button>
+      <button class="tb-btn" data-i18n="btn_import_file" onclick="document.getElementById('import-file').click()">⬆️ Importar archivo</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importarColeccionFile(this)">
+    </div>
+    <div class="import-area" id="import-area">
+      <div class="import-hint" data-i18n-html="import_hint">
+        Pega tu lista en <strong>cualquiera</strong> de estos formatos:<br>
+        • <strong>Coma:</strong> <code>Rapidash, Pokemon-Fire, 7</code><br>
+        • <strong>Dos puntos:</strong> <code>Rapidash: 7</code>
+      </div>
+      <textarea class="import-textarea" id="import-text" data-i18n-ph="import_ph" placeholder="Pega aquí tu lista de cartas..."></textarea>
+      <button class="btn-import" data-i18n="import_do" onclick="importList()">Importar</button>
+    </div>
+    <div class="filtros" id="filtros-col"></div>
+    <div class="cards-grid" id="coleccion-grid"></div>
+  </section>
+
+  <!-- ===================== VISTA: EXPLORAR ===================== -->
+  <section class="view" id="view-explorar">
+    <div class="replace-banner" id="replace-banner" style="display:none"></div>
+    <div class="filtros" id="filtros-exp"></div>
+    <div class="exp-statusbar"><span id="exp-status" data-i18n="exp_hint">Busca y filtra entre todas las cartas del juego.</span></div>
+    <div class="cards-grid" id="explorador-grid"></div>
+    <div class="exp-more-wrap">
+      <button class="tb-btn" id="exp-more" style="display:none" data-i18n="exp_more" onclick="cargarMas()">Cargar más</button>
+    </div>
+  </section>
+
+  <!-- ===================== VISTA: CONSTRUIR ===================== -->
+  <section class="view" id="view-construir">
+    <div class="build-controls">
+      <div class="controls-title" data-i18n="controls_title">Generar prompt para la IA</div>
+      <div class="controls-row">
+        <div class="control-group">
+          <span class="control-label" data-i18n="c_deck_type">Tipo de mazo</span>
+          <select class="control-select" id="deck-type">
+            <option value="Fuego" data-i18n="d_fire">🔥 Fuego</option>
+            <option value="Agua" data-i18n="d_water">💧 Agua</option>
+            <option value="Eléctrico" data-i18n="d_lightning">⚡ Eléctrico</option>
+            <option value="Planta" data-i18n="d_grass">🌿 Planta</option>
+            <option value="Psíquico" data-i18n="d_psychic">🔮 Psíquico</option>
+            <option value="Oscuro" data-i18n="d_dark">🌑 Oscuro</option>
+            <option value="Lucha" data-i18n="d_fighting">👊 Lucha</option>
+            <option value="Incoloro" data-i18n="d_colorless">⭐ Incoloro</option>
+            <option value="el mejor posible" data-i18n="d_best">🏆 El mejor posible</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <span class="control-label" data-i18n="c_variants">Variantes</span>
+          <select class="control-select" id="num-variants">
+            <option value="3" data-i18n="v3">3 variantes</option>
+            <option value="4" data-i18n="v4">4 variantes</option>
+            <option value="5" selected data-i18n="v5">5 variantes</option>
+          </select>
+        </div>
+        <button class="btn-build" id="gen-btn" data-i18n="btn_generate" onclick="generarMazos()">⚡ Generar mazos</button>
+        <button class="btn-build" id="build-btn" data-i18n="btn_prompt" onclick="generateAIPrompt()" style="background:transparent;border:1px solid rgba(255,255,255,.2);color:#cfd6e4">📋 Prompt para IA</button>
+      </div>
+    </div>
+    <div class="decks-output" id="decks-output">
+      <div class="empty-state">
+        <div class="empty-icon">🎴</div>
+        <div class="empty-title" data-i18n="build_empty_title">Genera tu prompt</div>
+        <div class="empty-desc" data-i18n="build_empty_desc">Elige el tipo de mazo y presiona "Generar prompt para la IA".</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VISTA: LEGALIDAD ===================== -->
+  <section class="view" id="view-legalidad">
+    <div class="legal-panel" id="legal-panel">
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title" data-i18n="legal_empty_title">Inventario vacío</div>
+        <div class="empty-desc" data-i18n="legal_empty_desc">Agrega cartas para ver el análisis de legalidad.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VISTA: MAZOS ===================== -->
+  <section class="view" id="view-mazos">
+    <div class="saved-grid" id="saved-grid">
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-icon">💾</div>
+        <div class="empty-title" data-i18n="saved_empty_title">Sin mazos guardados</div>
+        <div class="empty-desc" data-i18n="saved_empty_desc">Construye mazos con la IA y guárdalos aquí.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Deck</div>
+      <button class="modal-close" data-i18n-aria="aria_close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- Datos: colección curada (offline) + capa en vivo (todas las cartas) -->
+<script src="cartas-db.js"></script>
+<script src="cartas-api.js"></script>
+<script src="energias.js"></script>
+<script src="idiomas.js"></script>
+<script src="app.js"></script>
+<script src="generador.js"></script>
+
+<!-- Sincronización en la nube (Firebase). Si no configuras firebase-config.js, se ignora. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="sync.js"></script>
+</body>
+</html>

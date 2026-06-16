@@ -1,0 +1,12 @@
+# Archivos temporales / de prueba
+_*.js
+revisar.txt
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
+
+# Firebase CLI
+.firebase/
+firebase-debug.log
+firestore-debug.log
