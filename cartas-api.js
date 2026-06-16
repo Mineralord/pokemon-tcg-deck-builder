@@ -72,6 +72,11 @@ function _qset(f, page, val){
 }
 
 // ---------- Respaldo: TCGdex (si pokemontcg falla) ----------
+// Nombres de tipo que usa TCGdex en español (para filtrar por tipo en modo ES)
+const TCGDEX_TIPO_ES = {
+  Fire:'Fuego', Water:'Agua', Lightning:'Rayo', Grass:'Planta', Psychic:'Psíquico',
+  Fighting:'Lucha', Darkness:'Oscura', Metal:'Metálica', Fairy:'Hada', Dragon:'Dragón', Colorless:'Incolora'
+};
 function tcgdexToView(c){
   return {
     id: c.id, nombre: c.name, supertipo: '', fase: '', tipos: [], ps: null,
@@ -87,7 +92,7 @@ async function tcgdexBuscar(f, page, lang){
   page = page || 1; lang = lang || 'en';
   const params = new URLSearchParams();
   if (f.name && f.name.trim()) params.set('name', f.name.trim());
-  if (f.type) params.set('types', f.type);
+  if (f.type){ params.set('types', (lang === 'es' && TCGDEX_TIPO_ES[f.type]) ? TCGDEX_TIPO_ES[f.type] : f.type); }
   params.set('pagination:page', String(page));
   params.set('pagination:itemsPerPage', String(PAGE_SIZE));
   const res = await fetch('https://api.tcgdex.net/v2/' + lang + '/cards?' + params.toString());
