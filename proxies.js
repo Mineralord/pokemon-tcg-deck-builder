@@ -82,11 +82,20 @@ function cargarJsPDF(){
   if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
   if(_jspdfPromise) return _jspdfPromise;
   _jspdfPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
-    s.onload = () => (window.jspdf && window.jspdf.jsPDF) ? resolve(window.jspdf.jsPDF) : reject(new Error('jspdf'));
-    s.onerror = () => reject(new Error('jspdf'));
-    document.head.appendChild(s);
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+      'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+    ];
+    let i = 0;
+    function intentar(){
+      const s = document.createElement('script');
+      s.src = urls[i];
+      s.onload = () => (window.jspdf && window.jspdf.jsPDF) ? resolve(window.jspdf.jsPDF) : siguiente();
+      s.onerror = siguiente;
+      document.head.appendChild(s);
+    }
+    function siguiente(){ i++; if(i < urls.length) intentar(); else reject(new Error('jspdf')); }
+    intentar();
   });
   return _jspdfPromise;
 }
