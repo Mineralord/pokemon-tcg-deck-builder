@@ -189,7 +189,10 @@ function proxNormalize(src){
       try { resolve(cv.toDataURL('image/jpeg', 0.92)); } catch(e){ reject(e); }
     };
     img.onerror = () => reject(new Error('img'));
-    img.src = src;
+    // En URLs remotas añadimos un parámetro para forzar una petición CORS limpia
+    // (evita reutilizar una respuesta "opaca" cacheada por el Service Worker -> canvas "tainted").
+    const esRemota = /^https?:/i.test(src);
+    img.src = esRemota ? (src + (src.indexOf('?') >= 0 ? '&' : '?') + 'proxycb=1') : src;
   });
 }
 
@@ -204,17 +207,19 @@ async function proxGenerarPDF(){
   const doc = new JsPDF({ unit: 'mm', format: size, orientation: 'portrait' });
   const lista = [];
   proxImgs.forEach(e => { for(let k = 0; k < (e.copies || 1); k++) lista.push(e.src); });
-  let fallos = 0;
+  let colocadas = 0, fallos = 0;
   for(let i = 0; i < lista.length; i++){
-    const idx = i % L.perPage;
-    if(i > 0 && idx === 0) doc.addPage();
-    const col = idx % L.cols, row = Math.floor(idx / L.cols);
-    const x = L.marginX + col * L.cardW, y = L.marginY + row * L.cardH;
     let data;
     try { data = await proxNormalize(lista[i]); } catch(e){ fallos++; continue; }
+    const idx = colocadas % L.perPage;
+    if(colocadas > 0 && idx === 0) doc.addPage();
+    const col = idx % L.cols, row = Math.floor(idx / L.cols);
+    const x = L.marginX + col * L.cardW, y = L.marginY + row * L.cardH;
     try { doc.addImage(data, 'JPEG', x, y, L.cardW, L.cardH); } catch(e){ fallos++; continue; }
     if(cut) proxCutMarks(doc, x, y, L.cardW, L.cardH);
+    colocadas++;
   }
+  if(!colocadas){ showToast(T('px_none'), 'error'); return; }
   doc.save('proxies.pdf');
   showToast(T('px_done') + (fallos ? (' (' + fallos + ' ' + T('px_failed') + ')') : ''), 'success');
 }
