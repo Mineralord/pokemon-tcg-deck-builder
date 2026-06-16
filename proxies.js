@@ -51,6 +51,8 @@ let proxPage = 1, proxResultados = {}, proxReq = 0, _proxTimer = null;
 function proxSetLang(l){
   proxLang = l;
   document.querySelectorAll('#prox-lang button').forEach(b => b.classList.toggle('active', b.getAttribute('data-l') === l));
+  proxFiltros.setId = '';        // los ids de set difieren entre ES (TCGdex) y EN (pokemontcg)
+  if(typeof proxLlenarSets === 'function') proxLlenarSets();
   proxBuscar(true);
 }
 
@@ -60,7 +62,7 @@ function proxOnSearchInput(val){
   _proxTimer = setTimeout(() => proxBuscar(true), 350);
 }
 function proxSetFiltro(campo, val){ proxFiltros[campo] = val; proxBuscar(true); }
-// Rellena los desplegables de tipo y set (este último desde la lista de sets ya cargada)
+// Rellena el desplegable de tipo (fijo) y el de set (según idioma)
 function proxLlenarFiltros(){
   const tSel = document.getElementById('prox-f-type');
   if(tSel && !tSel.dataset.filled){
@@ -69,13 +71,23 @@ function proxLlenarFiltros(){
     tSel.innerHTML = `<option value="">${esc(T('f_type'))}</option>` + tipos.map(t => `<option value="${t}">${esc(trT(t))}</option>`).join('');
     tSel.dataset.filled = '1';
   }
-  const sSel = document.getElementById('prox-f-set');
-  if(sSel){
+  proxLlenarSets();
+}
+// El set depende del idioma: ES usa los sets de TCGdex (ids que coinciden con su búsqueda); EN usa los de pokemontcg
+function proxLlenarSets(){
+  const sSel = document.getElementById('prox-f-set'); if(!sSel) return;
+  const pintar = (sets) => {
+    sSel.innerHTML = `<option value="">${esc(T('f_set'))}</option>` +
+      (sets || []).map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    sSel.value = proxFiltros.setId || '';
+  };
+  if(proxLang === 'es'){
+    pintar([]);
+    if(typeof cargarSetsTcgdex === 'function') cargarSetsTcgdex('es').then(pintar).catch(() => {});
+  } else {
     const sets = (typeof _setsList !== 'undefined' && _setsList) ? _setsList : [];
-    const cur = sSel.value;
-    sSel.innerHTML = `<option value="">${esc(T('f_set'))}</option>` + sets.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
-    sSel.value = cur;
-    if(!sets.length && typeof cargarSets === 'function'){ cargarSets().then(() => proxLlenarFiltros()).catch(() => {}); }
+    pintar(sets);
+    if(!sets.length && typeof cargarSets === 'function'){ cargarSets().then(() => proxLlenarSets()).catch(() => {}); }
   }
 }
 async function proxBuscar(reset){

@@ -93,6 +93,7 @@ async function tcgdexBuscar(f, page, lang){
   const params = new URLSearchParams();
   if (f.name && f.name.trim()) params.set('name', f.name.trim());
   if (f.type){ params.set('types', (lang === 'es' && TCGDEX_TIPO_ES[f.type]) ? TCGDEX_TIPO_ES[f.type] : f.type); }
+  if (f.setId) params.set('set', f.setId);
   params.set('pagination:page', String(page));
   params.set('pagination:itemsPerPage', String(PAGE_SIZE));
   const res = await fetch('https://api.tcgdex.net/v2/' + lang + '/cards?' + params.toString());
@@ -140,6 +141,17 @@ async function cargarSets(){
   const data = await res.json();
   _setsCache = (data.data || []).sort((a, b) => (b.releaseDate || '').localeCompare(a.releaseDate || ''));
   return _setsCache;
+}
+
+// Sets de TCGdex (ids que coinciden con su búsqueda), para el filtro de set en modo ES
+let _tcgdexSetsCache = {};
+async function cargarSetsTcgdex(lang){
+  lang = lang || 'es';
+  if (_tcgdexSetsCache[lang]) return _tcgdexSetsCache[lang];
+  const res = await fetch('https://api.tcgdex.net/v2/' + lang + '/sets');
+  const arr = await res.json();
+  _tcgdexSetsCache[lang] = (arr || []).map(s => ({ id: s.id, name: s.name })).reverse();
+  return _tcgdexSetsCache[lang];
 }
 
 // ---------- TCGdex: textos en español, en vivo ----------
