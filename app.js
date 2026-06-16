@@ -1055,6 +1055,11 @@ async function doExplorar(reset){
   const myReq = ++expReq;   // ficha de esta petición (para ignorar respuestas viejas)
   expLoading = true;
   const status = document.getElementById('exp-status');
+  // Pintado instantáneo desde caché mientras llega la red
+  if(reset && typeof apiCacheGet === 'function'){
+    const c = apiCacheGet(expFiltros, expPage);
+    if(c && c.cards.length){ c.cards.forEach(regCard); expCards = c.cards.slice(); expTotal = c.totalCount; renderExploradorGrid(); }
+  }
   if(status) status.textContent = T('exp_loading');
   try{
     const r = await apiBuscar(expFiltros, expPage);
@@ -1063,7 +1068,10 @@ async function doExplorar(reset){
     r.cards.forEach(regCard);
     expCards = reset ? r.cards.slice() : expCards.concat(r.cards);
     renderExploradorGrid();
-    if(status) status.textContent = `${expTotal} ${T('exp_results')}`;
+    let suf = '';
+    if(r.fromCache) suf = ' · ' + T('exp_cache');
+    else if(r.fuente === 'tcgdex') suf = ' · ' + T('exp_backup');
+    if(status) status.textContent = `${expTotal} ${T('exp_results')}${suf}`;
     const more = document.getElementById('exp-more');
     if(more) more.style.display = (expCards.length < expTotal) ? '' : 'none';
   }catch(e){

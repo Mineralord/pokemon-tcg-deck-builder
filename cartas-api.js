@@ -54,7 +54,51 @@ function apiCardToView(c){
   };
 }
 
-// Busca cartas en la API (con filtros y paginación)
+// ---------- Caché de búsquedas (localStorage, máx 50 consultas) ----------
+const QCACHE_KEY = 'ptcg_qcache';
+let _qcache = {};
+try { _qcache = JSON.parse(localStorage.getItem(QCACHE_KEY) || '{}'); } catch(e){ _qcache = {}; }
+function _qkey(f, page){ return JSON.stringify({ q: construirQuery(f), p: page || 1, o: f.orderBy || 'name' }); }
+function apiCacheGet(f, page){
+  const e = _qcache[_qkey(f, page)];
+  return e ? { cards: e.cards, totalCount: e.totalCount, page: e.page, pageSize: e.pageSize, fromCache: true } : null;
+}
+function _qset(f, page, val){
+  _qcache[_qkey(f, page)] = { cards: val.cards, totalCount: val.totalCount, page: val.page, pageSize: val.pageSize, ts: Date.now() };
+  const ks = Object.keys(_qcache);
+  if (ks.length > 50){ ks.sort((a,b)=>(_qcache[a].ts||0)-(_qcache[b].ts||0)).slice(0, ks.length-50).forEach(k=>delete _qcache[k]); }
+  try { localStorage.setItem(QCACHE_KEY, JSON.stringify(_qcache)); }
+  catch(e){ _qcache = {}; _qcache[_qkey(f,page)] = { cards: val.cards, totalCount: val.totalCount, page: val.page, pageSize: val.pageSize, ts: Date.now() }; try { localStorage.setItem(QCACHE_KEY, JSON.stringify(_qcache)); } catch(_){} }
+}
+
+// ---------- Respaldo: TCGdex (si pokemontcg falla) ----------
+function tcgdexToView(c){
+  return {
+    id: c.id, nombre: c.name, supertipo: '', fase: '', tipos: [], ps: null,
+    habilidades: [], ataques: [], debilidades: [], resistencias: [], costoRetirada: [],
+    rareza: null, ilustrador: null, numeroCarta: (c.localId != null ? String(c.localId) : null),
+    descripcionPokedex: null, marcaRegulacion: null, reglas: [],
+    imagenChica: c.image ? c.image + '/low.webp' : null,
+    imagenGrande: c.image ? c.image + '/high.webp' : null,
+    set: { id: null, nombre: '', serie: null }, pokedex: [], legalidad: {}, fuente: 'tcgdex'
+  };
+}
+async function tcgdexBuscar(f, page){
+  page = page || 1;
+  const params = new URLSearchParams();
+  if (f.name && f.name.trim()) params.set('name', f.name.trim());
+  if (f.type) params.set('types', f.type);
+  params.set('pagination:page', String(page));
+  params.set('pagination:itemsPerPage', String(PAGE_SIZE));
+  const res = await fetch('https://api.tcgdex.net/v2/en/cards?' + params.toString());
+  if (!res.ok) throw new Error('TCGdex ' + res.status);
+  const arr = await res.json();
+  const cards = (arr || []).map(tcgdexToView);
+  const total = cards.length >= PAGE_SIZE ? (page * PAGE_SIZE + 1) : ((page - 1) * PAGE_SIZE + cards.length);
+  return { cards, totalCount: total, page, pageSize: PAGE_SIZE, fuente: 'tcgdex' };
+}
+
+// Busca cartas: red (pokemontcg) → si falla, caché → si no, respaldo TCGdex
 async function apiBuscar(f, page){
   const q = construirQuery(f);
   const params = new URLSearchParams();
@@ -63,15 +107,24 @@ async function apiBuscar(f, page){
   params.set('pageSize', PAGE_SIZE);
   params.set('orderBy', f.orderBy || 'name');
   params.set('select', SELECT);
-  const res = await fetch(API + '/cards?' + params.toString(), { headers: apiHeaders() });
-  if (!res.ok) throw new Error('API ' + res.status);
-  const data = await res.json();
-  return {
-    cards: (data.data || []).map(apiCardToView),
-    totalCount: data.totalCount || 0,
-    page: data.page || 1,
-    pageSize: data.pageSize || PAGE_SIZE
-  };
+  try {
+    const res = await fetch(API + '/cards?' + params.toString(), { headers: apiHeaders() });
+    if (!res.ok) throw new Error('API ' + res.status);
+    const data = await res.json();
+    const out = {
+      cards: (data.data || []).map(apiCardToView),
+      totalCount: data.totalCount || 0,
+      page: data.page || 1,
+      pageSize: data.pageSize || PAGE_SIZE
+    };
+    _qset(f, page, out);
+    return out;
+  } catch(e){
+    const cached = apiCacheGet(f, page);
+    if (cached) return cached;                       // sin conexión: servir de caché
+    try { return await tcgdexBuscar(f, page); }      // respaldo: TCGdex
+    catch(e2){ throw e; }
+  }
 }
 
 // Lista de todos los sets (cacheada) para el desplegable de filtros
