@@ -31,6 +31,17 @@
   cursor:pointer; font:600 13px/1 'Inter',sans-serif; transition:all .15s;
 }
 .tb-btn:hover{ border-color:#FACC15; color:#fff; transform:translateY(-1px); }
+.tb-btn.tb-danger{ border-color:rgba(239,68,68,.4); color:#fca5a5; }
+.tb-btn.tb-danger:hover{ background:#EF4444; color:#fff; border-color:#EF4444; }
+
+/* Header siempre visible y adaptable (los controles de Sincronizar/idioma viven aquí) */
+header{ flex-wrap:wrap; row-gap:8px; }
+.header-stats{ display:flex !important; flex-wrap:wrap; gap:10px; align-items:center; }
+@media (max-width:640px){
+  header{ height:auto; padding:10px 12px; }
+  .header-stats{ width:100%; gap:8px; }
+  #sync-btn, #lang-toggle{ min-height:40px; }
+}
 
 /* ---------- Barra de filtros ---------- */
 .filtros{ margin-bottom:16px; }

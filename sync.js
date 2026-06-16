@@ -62,9 +62,29 @@
     if(!u) return;
     const ref = db.collection('colecciones').doc(uid);
     ref.get().then(function(snap){
-      // Primera vez: si la nube está vacía, sube lo que tengas en este dispositivo
-      if((!snap.exists || !snap.data()) && (inventory.length || savedDecks.length)){ window.syncPush(); }
-      // Escucha cambios en vivo (otros dispositivos)
+      const d = snap.exists ? snap.data() : null;
+      const nubeTiene = d && ((Array.isArray(d.inventory) && d.inventory.length) || (Array.isArray(d.savedDecks) && d.savedDecks.length));
+      if(!nubeTiene){
+        // Cuenta nueva / nube vacía: NO heredar lo que haya en este dispositivo
+        const localTiene = inventory.length || savedDecks.length;
+        let conservar = false;
+        if(localTiene && typeof confirm === 'function'){
+          const msg = (typeof T==='function' ? T('sync_keep') : '¿Conservar las {n} cartas de este dispositivo en tu cuenta? (Cancelar = empezar vacío)').replace('{n}', inventory.length);
+          conservar = confirm(msg);
+        }
+        if(conservar){
+          window.syncPush();               // subir lo local como su colección
+        } else {
+          inventory = []; savedDecks = [];
+          try { localStorage.setItem('ptcg_inventory','[]'); localStorage.setItem('ptcg_decks','[]'); } catch(e){}
+          if(typeof renderInventory === 'function') renderInventory();
+          if(typeof renderLegal === 'function') renderLegal();
+          if(typeof renderSaved === 'function') renderSaved();
+          if(typeof updateStats === 'function') updateStats();
+          window.syncPush();               // guardar vacío en su cuenta
+        }
+      }
+      // Escucha cambios en vivo (la nube manda a partir de aquí)
       unsub = ref.onSnapshot(function(s){
         const d = s.data(); if(!d) return;
         aplicandoNube = true;

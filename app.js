@@ -1104,6 +1104,14 @@ function renderExploradorGrid(){
 }
 
 // ===================== EXPORTAR / IMPORTAR COLECCIÓN =====================
+function vaciarColeccion(){
+  if(!inventory.length){ showToast(T('to_cleared'), 'success'); return; }
+  if(!confirm(T('cf_clear'))) return;
+  inventory = [];
+  save(); renderInventory(); renderLegal();
+  showToast(T('to_cleared'), 'success');
+}
+
 function exportarColeccion(){
   const blob = new Blob([JSON.stringify({version:1, inventory, savedDecks}, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
