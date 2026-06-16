@@ -83,18 +83,18 @@ function tcgdexToView(c){
     set: { id: null, nombre: '', serie: null }, pokedex: [], legalidad: {}, fuente: 'tcgdex'
   };
 }
-async function tcgdexBuscar(f, page){
-  page = page || 1;
+async function tcgdexBuscar(f, page, lang){
+  page = page || 1; lang = lang || 'en';
   const params = new URLSearchParams();
   if (f.name && f.name.trim()) params.set('name', f.name.trim());
   if (f.type) params.set('types', f.type);
   params.set('pagination:page', String(page));
   params.set('pagination:itemsPerPage', String(PAGE_SIZE));
-  const res = await fetch('https://api.tcgdex.net/v2/en/cards?' + params.toString());
+  const res = await fetch('https://api.tcgdex.net/v2/' + lang + '/cards?' + params.toString());
   if (!res.ok) throw new Error('TCGdex ' + res.status);
   const arr = await res.json();
-  const cards = (arr || []).map(tcgdexToView);
-  const total = cards.length >= PAGE_SIZE ? (page * PAGE_SIZE + 1) : ((page - 1) * PAGE_SIZE + cards.length);
+  const total = (arr || []).length >= PAGE_SIZE ? (page * PAGE_SIZE + 1) : ((page - 1) * PAGE_SIZE + (arr || []).length);
+  const cards = (arr || []).filter(c => c && c.image).map(tcgdexToView);  // solo con imagen (imprimible)
   return { cards, totalCount: total, page, pageSize: PAGE_SIZE, fuente: 'tcgdex' };
 }
 

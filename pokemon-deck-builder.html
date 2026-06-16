@@ -159,6 +159,10 @@
     </div>
     <div class="prox-search-bar">
       <input type="search" id="prox-search" data-i18n-ph="px_search_ph" placeholder="Buscar cualquier carta del juego…" autocomplete="off" autocapitalize="off" oninput="proxOnSearchInput(this.value)">
+      <div class="prox-lang" id="prox-lang" title="Idioma de las cartas">
+        <button type="button" data-l="es" class="active" onclick="proxSetLang('es')">ES</button>
+        <button type="button" data-l="en" onclick="proxSetLang('en')">EN</button>
+      </div>
       <select id="prox-f-type" onchange="proxSetFiltro('type',this.value)"></select>
       <select id="prox-f-set" onchange="proxSetFiltro('setId',this.value)"></select>
       <span id="prox-search-status" class="prox-search-status"></span>

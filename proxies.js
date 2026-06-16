@@ -45,7 +45,14 @@ function proxVaciar(){ proxImgs = []; renderProxies(); }
 
 // ---- Buscar cualquier carta (en vivo) y añadirla ----
 let proxFiltros = { name: '', type: '', setId: '', orderBy: 'name' };
+let proxLang = 'es';   // idioma de las imágenes a imprimir: 'es' (TCGdex) | 'en' (pokemontcg)
 let proxPage = 1, proxResultados = {}, proxReq = 0, _proxTimer = null;
+
+function proxSetLang(l){
+  proxLang = l;
+  document.querySelectorAll('#prox-lang button').forEach(b => b.classList.toggle('active', b.getAttribute('data-l') === l));
+  proxBuscar(true);
+}
 
 function proxOnSearchInput(val){
   proxFiltros.name = val;
@@ -84,7 +91,9 @@ async function proxBuscar(reset){
   const myReq = ++proxReq;
   if(status) status.textContent = T('px_searching');
   try{
-    const r = await apiBuscar(proxFiltros, proxPage);
+    const r = (proxLang === 'es' && typeof tcgdexBuscar === 'function')
+      ? await tcgdexBuscar(proxFiltros, proxPage, 'es')
+      : await apiBuscar(proxFiltros, proxPage);
     if(myReq !== proxReq) return;
     r.cards.forEach(c => { if(c && c.id) proxResultados[c.id] = c; });
     renderProxSearch();
