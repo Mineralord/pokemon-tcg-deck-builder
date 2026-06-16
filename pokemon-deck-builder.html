@@ -157,6 +157,12 @@
       <label class="px-opt"><input type="checkbox" id="prox-cut" checked> <span data-i18n="px_cut">Líneas de corte</span></label>
       <button class="btn-build" onclick="proxGenerarPDF()" data-i18n="px_gen">🖨️ Generar PDF</button>
     </div>
+    <div class="prox-search-bar">
+      <input type="text" id="prox-search" data-i18n-ph="px_search_ph" placeholder="Buscar cualquier carta del juego…" oninput="proxOnSearchInput(this.value)">
+      <span id="prox-search-status" class="prox-search-status"></span>
+    </div>
+    <div class="cards-grid prox-results" id="prox-search-grid"></div>
+    <div class="exp-more-wrap"><button class="tb-btn" id="prox-search-more" style="display:none" data-i18n="px_more" onclick="proxMasResultados()">Cargar más</button></div>
     <div class="prox-drop" id="prox-drop" data-i18n="px_drop">Arrastra aquí tus imágenes (o usa "Subir imágenes")</div>
     <div class="prox-note" data-i18n="px_note">Imprime al 100% / tamaño real (NO "ajustar a página"). Cada carta 6,3 × 8,8 cm · 9 por hoja. Total: <strong id="prox-total">0</strong></div>
     <div class="cards-grid" id="prox-grid"></div>

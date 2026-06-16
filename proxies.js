@@ -43,6 +43,61 @@ function proxCopies(i, d){ if(proxImgs[i]){ proxImgs[i].copies = Math.max(1, (pr
 function proxRemove(i){ proxImgs.splice(i, 1); renderProxies(); }
 function proxVaciar(){ proxImgs = []; renderProxies(); }
 
+// ---- Buscar cualquier carta (en vivo) y añadirla ----
+let proxFiltros = { name: '', orderBy: 'name' };
+let proxPage = 1, proxResultados = {}, proxReq = 0, _proxTimer = null;
+
+function proxOnSearchInput(val){
+  proxFiltros.name = val;
+  clearTimeout(_proxTimer);
+  _proxTimer = setTimeout(() => proxBuscar(true), 350);
+}
+async function proxBuscar(reset){
+  if(typeof apiBuscar !== 'function') return;
+  if(reset){ proxPage = 1; proxResultados = {}; }
+  const grid = document.getElementById('prox-search-grid');
+  const status = document.getElementById('prox-search-status');
+  const more = document.getElementById('prox-search-more');
+  if(!proxFiltros.name || !proxFiltros.name.trim()){
+    if(grid) grid.innerHTML = ''; if(status) status.textContent = ''; if(more) more.style.display = 'none';
+    return;
+  }
+  const myReq = ++proxReq;
+  if(status) status.textContent = T('px_searching');
+  try{
+    const r = await apiBuscar(proxFiltros, proxPage);
+    if(myReq !== proxReq) return;
+    r.cards.forEach(c => { if(c && c.id) proxResultados[c.id] = c; });
+    renderProxSearch();
+    if(status) status.textContent = r.totalCount ? (r.totalCount + ' ' + T('px_search_results')) : T('px_no_results');
+    if(more) more.style.display = (Object.keys(proxResultados).length < r.totalCount) ? '' : 'none';
+  }catch(e){ if(myReq === proxReq && status) status.textContent = T('exp_error'); }
+}
+function proxMasResultados(){ proxPage++; proxBuscar(false); }
+function renderProxSearch(){
+  const grid = document.getElementById('prox-search-grid'); if(!grid) return;
+  const list = Object.keys(proxResultados).map(k => proxResultados[k]);
+  grid.innerHTML = list.map(v => {
+    const img = v.imagenChica || v.imagenGrande;
+    const idq = esc(String(v.id).replace(/'/g, "\\'"));
+    return `<div class="prox-res">
+      <div class="prox-res-img">
+        ${img ? `<img src="${esc(img)}" alt="${esc(v.nombre)}" loading="lazy">` : `<div class="noimg">${esc(v.nombre)}</div>`}
+        <button class="prox-res-add" aria-label="${esc(T('px_add'))}" title="${esc(T('px_add'))}" onclick="proxAddResult('${idq}')">＋</button>
+      </div>
+      <div class="prox-res-name" title="${esc(v.nombre)}">${esc(v.nombre)}</div>
+      <div class="prox-res-set">${esc((v.set && v.set.nombre) || '')}${v.numeroCarta ? (' · ' + esc(v.numeroCarta)) : ''}</div>
+    </div>`;
+  }).join('');
+}
+function proxAddResult(id){
+  const v = proxResultados[id]; if(!v) return;
+  const img = v.imagenGrande || v.imagenChica; if(!img){ showToast(T('px_empty'), 'error'); return; }
+  proxImgs.push({ src: img, copies: 1 });
+  renderProxies();
+  showToast((v.nombre || '') + ' +1', 'success');
+}
+
 function renderProxies(){
   const grid = document.getElementById('prox-grid'); if(!grid) return;
   const tot = document.getElementById('prox-total');
