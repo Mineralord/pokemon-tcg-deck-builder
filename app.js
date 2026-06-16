@@ -1106,7 +1106,8 @@ function renderExploradorGrid(){
 // ===================== EXPORTAR / IMPORTAR COLECCIÓN =====================
 function vaciarColeccion(){
   if(!inventory.length){ showToast(T('to_cleared'), 'success'); return; }
-  if(!confirm(T('cf_clear'))) return;
+  if(!confirm(T('cf_clear'))) return;        // 1ª confirmación
+  if(!confirm(T('cf_clear2').replace('{n}', inventory.length))) return;  // 2ª confirmación
   inventory = [];
   save(); renderInventory(); renderLegal();
   showToast(T('to_cleared'), 'success');

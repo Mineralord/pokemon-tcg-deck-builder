@@ -53,7 +53,6 @@
       <button class="tb-btn" data-i18n="btn_export" onclick="exportarColeccion()">⬇️ Exportar</button>
       <button class="tb-btn" data-i18n="btn_import_file" onclick="document.getElementById('import-file').click()">⬆️ Importar archivo</button>
       <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importarColeccionFile(this)">
-      <button class="tb-btn tb-danger" data-i18n="btn_clear" onclick="vaciarColeccion()">🗑️ Vaciar colección</button>
     </div>
     <div class="import-area" id="import-area">
       <div class="import-hint" data-i18n-html="import_hint">
@@ -66,6 +65,9 @@
     </div>
     <div class="filtros" id="filtros-col"></div>
     <div class="cards-grid" id="coleccion-grid"></div>
+    <div class="col-danger-zone">
+      <button class="link-danger" data-i18n="btn_clear" onclick="vaciarColeccion()">🗑️ Vaciar colección</button>
+    </div>
   </section>
 
   <!-- ===================== VISTA: EXPLORAR ===================== -->
