@@ -59,6 +59,7 @@
     if(unsub){ unsub(); unsub = null; }
     uid = u ? u.uid : null;
     pintarBoton();
+    if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(!!(u && u.email === 'pmmt99@gmail.com'));
     if(!u) return;
     const ref = db.collection('colecciones').doc(uid);
     ref.get().then(function(snap){

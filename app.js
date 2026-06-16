@@ -989,6 +989,7 @@ function showView(name){
   if(name==='legalidad') renderLegal();
   if(name==='mazos') renderSaved();
   if(name==='explorar' && !expCards.length) doExplorar(true);
+  if(name==='proxies' && typeof renderProxies==='function') renderProxies();
 }
 
 // ===================== BARRA DE FILTROS (compartida) =====================

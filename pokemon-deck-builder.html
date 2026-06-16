@@ -42,6 +42,7 @@
   <button class="nav-btn" id="nav-construir" data-i18n="nav_build" onclick="showView('construir')">⚔️ Construir mazo</button>
   <button class="nav-btn" id="nav-legalidad" data-i18n="nav_legal" onclick="showView('legalidad')">✅ Legalidad</button>
   <button class="nav-btn" id="nav-mazos" data-i18n="nav_saved" onclick="showView('mazos')">💾 Mazos</button>
+  <button class="nav-btn" id="nav-proxies" data-i18n="nav_proxies" style="display:none" onclick="showView('proxies')">🖨️ Proxies</button>
 </nav>
 
 <main class="views">
@@ -143,6 +144,24 @@
     </div>
   </section>
 
+  <!-- ===================== VISTA: PROXIES (solo dueño) ===================== -->
+  <section class="view" id="view-proxies">
+    <div class="prox-bar">
+      <button class="tb-btn" onclick="document.getElementById('prox-file').click()" data-i18n="px_upload">⬆️ Subir imágenes</button>
+      <input type="file" id="prox-file" accept="image/*" multiple style="display:none" onchange="proxAddFiles(this.files); this.value='';">
+      <button class="tb-btn" onclick="proxAddFromCollection()" data-i18n="px_from_col">➕ Añadir desde mi colección</button>
+      <span style="flex:1"></span>
+      <label class="px-opt"><span data-i18n="px_size">Hoja</span>
+        <select id="prox-size"><option value="letter">Carta</option><option value="a4">A4</option></select>
+      </label>
+      <label class="px-opt"><input type="checkbox" id="prox-cut" checked> <span data-i18n="px_cut">Líneas de corte</span></label>
+      <button class="btn-build" onclick="proxGenerarPDF()" data-i18n="px_gen">🖨️ Generar PDF</button>
+    </div>
+    <div class="prox-drop" id="prox-drop" data-i18n="px_drop">Arrastra aquí tus imágenes (o usa "Subir imágenes")</div>
+    <div class="prox-note" data-i18n="px_note">Imprime al 100% / tamaño real (NO "ajustar a página"). Cada carta 6,3 × 8,8 cm · 9 por hoja. Total: <strong id="prox-total">0</strong></div>
+    <div class="cards-grid" id="prox-grid"></div>
+  </section>
+
 </main>
 
 <!-- MODAL -->
@@ -166,6 +185,7 @@
 <script src="idiomas.js"></script>
 <script src="app.js"></script>
 <script src="generador.js"></script>
+<script src="proxies.js"></script>
 
 <!-- Sincronización en la nube (Firebase). Si no configuras firebase-config.js, se ignora. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
