@@ -217,8 +217,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   body{ padding-bottom:66px; }
   .f-toggle{ display:inline-block; margin-bottom:8px; background:#1b2233; color:#e8edf6;
              border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:10px 14px; font:600 13px 'Inter'; cursor:pointer; min-height:44px; }
-  .filtros .filtros-inner{ display:none; }
-  .filtros.open .filtros-inner{ display:flex; }
+  /* El campo de buscar (1er field) SIEMPRE visible; el resto se pliega tras "Filtros" */
+  .filtros .filtros-inner{ display:flex !important; }
+  .filtros:not(.open) .filtros-inner > .f-field:not(:first-child){ display:none; }
+  .filtros:not(.open) .filtros-inner > .f-reset{ display:none; }
+  .filtros .filtros-inner > .f-field:first-child{ flex:1 1 100%; }
   .tb-btn{ min-height:44px; }
   .deck-cards{ grid-template-columns:repeat(auto-fill, minmax(64px,1fr)); }
 }
