@@ -50,7 +50,20 @@
 
   window.loginGoogle = function(){
     const prov = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithRedirect(prov).catch(e => { console.error(e); if(typeof showToast==='function') showToast(texto('sync_err','Error'), 'error'); });
+    prov.setCustomParameters({ prompt: 'select_account' });
+    // Popup primero: funciona en dominios cruzados (GitHub Pages + *.firebaseapp.com)
+    // sin depender de cookies de terceros (que rompen signInWithRedirect en móvil/Safari/Chrome).
+    auth.signInWithPopup(prov).catch(function(e){
+      const code = e && e.code;
+      // Si el navegador bloquea o no soporta el popup, caemos a redirect.
+      if(code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user'){
+        if(code === 'auth/popup-closed-by-user') return; // el usuario cerró el popup, no es error
+        auth.signInWithRedirect(prov).catch(err => { console.error('[sync] redirect', err); if(typeof showToast==='function') showToast(texto('sync_err','Error'), 'error'); });
+        return;
+      }
+      console.error('[sync] popup', e);
+      if(typeof showToast==='function') showToast(texto('sync_err','Error'), 'error');
+    });
   };
   window.logoutSync = function(){ auth.signOut(); };
 
