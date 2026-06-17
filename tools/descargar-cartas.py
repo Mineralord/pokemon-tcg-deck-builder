@@ -10,9 +10,8 @@ Qué hace este script:
   - Busca CADA una de tus cartas con sus 25 campos completos
     (ataques, costos de energía, daño, debilidad, retirada,
      habilidad, ilustrador, rareza, pokédex, etc.).
-  - Genera dos archivos:
-       * cartas-db.js   -> el que tu app carga al abrirla
-       * cartas-db.json -> el mismo contenido, por si quieres revisarlo
+  - Genera el archivo que tu app carga al abrirla:
+       * data/cartas-db.js
   - Si alguna carta no la encuentra, la anota en "revisar.txt"
     para que la afinemos juntos (NO inventa datos).
 
@@ -21,6 +20,7 @@ Cómo usarlo: lee la "Guía paso a paso" que viene junto a este archivo.
 """
 
 import json
+import os
 import re
 import time
 import sys
@@ -426,21 +426,25 @@ def main():
         time.sleep(0.15)
     print(f"   {con_es} de {len(db)} cartas con datos en español")
 
-    # 4) Guardar archivos
+    # 4) Guardar archivos. Este script vive en tools/, así que escribimos en la
+    #    RAÍZ del proyecto (un nivel arriba), sin importar desde dónde se ejecute.
+    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.makedirs(os.path.join(raiz, "data"), exist_ok=True)
+    db_js = os.path.join(raiz, "data", "cartas-db.js")
+    revisar_txt = os.path.join(raiz, "revisar.txt")
+
     salida = {
         "generadoEl": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "totalCartas": len(db),
         "cartas": db,
     }
-    with open("cartas-db.json", "w", encoding="utf-8") as f:
-        json.dump(salida, f, ensure_ascii=False, indent=2)
-    with open("cartas-db.js", "w", encoding="utf-8") as f:
+    with open(db_js, "w", encoding="utf-8") as f:
         f.write("window.CARTAS_DB = ")
         json.dump(salida, f, ensure_ascii=False, indent=2)
         f.write(";")
 
     if faltantes or recuperadas:
-        with open("revisar.txt", "w", encoding="utf-8") as f:
+        with open(revisar_txt, "w", encoding="utf-8") as f:
             if recuperadas:
                 f.write("Cartas recuperadas desde OTRO set (Battle Academy 2024 y\n")
                 f.write("algunas reediciones NO están catalogadas en la API; se usó\n")
@@ -455,7 +459,7 @@ def main():
 
     # 5) Resumen
     print("\n" + "=" * 56)
-    print(f"✅ LISTO. {len(db)} cartas guardadas en cartas-db.js y cartas-db.json")
+    print(f"✅ LISTO. {len(db)} cartas guardadas en data/cartas-db.js")
     if recuperadas:
         print(f"ℹ️  {len(recuperadas)} cartas se recuperaron desde otro set (ver revisar.txt)")
     if faltantes:
@@ -463,8 +467,7 @@ def main():
     if not faltantes:
         print("🎉 Se encontraron TODAS tus cartas.")
     print("=" * 56)
-    print("\nSiguiente paso: envíale a Claude el archivo cartas-db.json")
-    print("para que conecte la app y muestre todos los datos.\n")
+    print("\nListo: la app ya carga data/cartas-db.js al abrirla.\n")
 
 
 if __name__ == "__main__":

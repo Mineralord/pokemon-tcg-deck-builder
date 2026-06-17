@@ -7,17 +7,18 @@
 //    (pasan directas a la red para no servir datos viejos).
 // =============================================================
 // Sube VER en cada deploy que cambie ficheros del shell para forzar limpieza de caché.
-const VER   = '7';
+const VER   = '8';
 const SHELL = 'ptcg-shell-v' + VER;
 const IMGS  = 'ptcg-img-v' + VER;
 const MAX_IMG = 600;
 
 const SHELL_FILES = [
-  './pokemon-deck-builder.html',
-  './estilos.css', './estilos-v2.css',
-  './cartas-db.js', './cartas-api.js', './energias.js',
-  './idiomas.js', './app.js', './generador.js',
-  './firebase-config.js', './sync.js',
+  './index.html',
+  './css/estilos.css',
+  './data/cartas-db.js',
+  './js/cartas-api.js', './js/energias.js', './js/idiomas.js',
+  './js/app.js', './js/generador.js', './js/proxies.js',
+  './js/firebase-config.js', './js/sync.js',
   './manifest.json', './assets/icon.svg',
   './assets/icon-192.png', './assets/icon-512.png'
 ];
@@ -59,7 +60,7 @@ async function networkFirst(req, cacheName){
     return res;
   }catch(e){
     const hit = await cache.match(req);
-    return hit || (await cache.match('./pokemon-deck-builder.html')) || Response.error();
+    return hit || (await cache.match('./index.html')) || Response.error();
   }
 }
 

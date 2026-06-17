@@ -10,13 +10,12 @@
       "firestore.rules",
       "**/.*",
       "**/node_modules/**",
-      "*.py",
-      "*.bat",
-      "cartas-db.json",
-      "revisar.txt"
+      "**/*.py",
+      "**/*.bat",
+      "tools/**"
     ],
     "rewrites": [
-      { "source": "**", "destination": "/pokemon-deck-builder.html" }
+      { "source": "**", "destination": "/index.html" }
     ]
   }
 }
