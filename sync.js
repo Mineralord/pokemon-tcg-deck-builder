@@ -1,10 +1,10 @@
 // =============================================================
 //  SINCRONIZACIÓN EN LA NUBE (Firebase Auth con Google + Firestore)
-//  - Inicio de sesión con Google.
-//  - La colección y los mazos se guardan en Firestore y se
-//    sincronizan en vivo entre todos tus dispositivos.
-//  - Si Firebase no está configurado, la app sigue funcionando
-//    igual (solo guarda en este dispositivo, como antes).
+//  - Inicio de sesión con Google por REDIRECT (fiable en móvil).
+//  - Sesión persistente: una vez dentro, queda permanente y todo
+//    se sincroniza solo entre dispositivos (sin botón de sincronizar).
+//  - Guardado inmediato + el listener en vivo NO pisa tus cambios.
+//  - Si Firebase no está configurado, la app funciona solo en local.
 // =============================================================
 (function(){
   const noConfig = (typeof firebase === 'undefined')
@@ -20,13 +20,18 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+  try { auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{}); } catch(e){}
   try { db.enablePersistence({ synchronizeTabs: true }).catch(()=>{}); } catch(e){}
+  // Procesa la vuelta del login por redirect (los errores se muestran)
+  auth.getRedirectResult().catch(e => { console.error('[sync] redirect', e); if(typeof showToast==='function') showToast((typeof T==='function'?T('sync_err'):'Error'), 'error'); });
 
-  let uid = null, unsub = null, aplicandoNube = false, pushTimer = null;
+  let uid = null, unsub = null, aplicandoNube = false, pushTimer = null, pushPendiente = false;
+
+  function texto(k, alt){ return (typeof T === 'function') ? T(k) : alt; }
 
   window.loginGoogle = function(){
-    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
-      .catch(e => { console.error(e); if(typeof showToast==='function') showToast((typeof T==='function'?T('sync_err'):'Error'), 'error'); });
+    const prov = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithRedirect(prov).catch(e => { console.error(e); if(typeof showToast==='function') showToast(texto('sync_err','Error'), 'error'); });
   };
   window.logoutSync = function(){ auth.signOut(); };
 
@@ -34,26 +39,55 @@
     const b = document.getElementById('sync-btn'); if(!b) return;
     if(uid){
       const u = auth.currentUser;
-      b.textContent = '👤 ' + ((u && (u.displayName || u.email)) || '') + ' · ' + (typeof T==='function'?T('sync_out'):'Salir');
-      b.onclick = window.logoutSync;
+      b.textContent = '👤 ' + ((u && (u.displayName || u.email)) || '');
+      b.title = texto('sync_out', 'Salir');
+      b.onclick = function(){ if(confirm(texto('sync_out','Salir') + '?')) window.logoutSync(); };
     } else {
-      b.textContent = '☁️ ' + (typeof T==='function'?T('sync_in'):'Sincronizar');
+      b.textContent = texto('sync_login', 'Entrar con Google');
+      b.title = '';
       b.onclick = window.loginGoogle;
     }
   }
-  // Repinta el botón al cambiar de idioma
-  window.syncRepaint = pintarBoton;
+  window.syncRepaint = pintarBoton;   // repinta al cambiar de idioma
 
-  // Sube la colección actual a la nube (con pequeño retardo para agrupar cambios)
+  // Sube la colección a la nube (agrupando ráfagas de cambios, pero sin perderlos)
+  function flushPush(){
+    clearTimeout(pushTimer); pushTimer = null;
+    if(!uid || !pushPendiente) return;
+    pushPendiente = false;
+    db.collection('colecciones').doc(uid).set({
+      inventory: inventory, savedDecks: savedDecks, updatedAt: Date.now()
+    }).catch(e => console.error('[sync] error al guardar', e));
+  }
   window.syncPush = function(){
     if(!uid || aplicandoNube) return;
+    pushPendiente = true;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(function(){
-      db.collection('colecciones').doc(uid).set({
-        inventory: inventory, savedDecks: savedDecks, updatedAt: Date.now()
-      }).catch(e => console.error('[sync] error al guardar', e));
-    }, 600);
+    pushTimer = setTimeout(flushPush, 300);
   };
+  // No perder cambios al cerrar/cambiar de app o pestaña
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') flushPush(); });
+  window.addEventListener('pagehide', flushPush);
+  window.addEventListener('beforeunload', flushPush);
+
+  function aplicarDoc(d){
+    if(!d) return;
+    aplicandoNube = true;
+    if(Array.isArray(d.inventory)){
+      inventory = d.inventory;
+      if(typeof asegurarId === 'function') inventory.forEach(asegurarId);
+    }
+    if(Array.isArray(d.savedDecks)) savedDecks = d.savedDecks;
+    try {
+      localStorage.setItem('ptcg_inventory', JSON.stringify(inventory));
+      localStorage.setItem('ptcg_decks', JSON.stringify(savedDecks));
+    } catch(e){}
+    if(typeof renderInventory === 'function') renderInventory();
+    if(typeof renderLegal === 'function') renderLegal();
+    if(typeof renderSaved === 'function') renderSaved();
+    if(typeof updateStats === 'function') updateStats();
+    aplicandoNube = false;
+  }
 
   auth.onAuthStateChanged(function(u){
     if(unsub){ unsub(); unsub = null; }
@@ -66,45 +100,30 @@
       const d = snap.exists ? snap.data() : null;
       const nubeTiene = d && ((Array.isArray(d.inventory) && d.inventory.length) || (Array.isArray(d.savedDecks) && d.savedDecks.length));
       if(!nubeTiene){
-        // Cuenta nueva / nube vacía: NO heredar lo que haya en este dispositivo
+        // Cuenta nueva / nube vacía: no heredar lo de este dispositivo sin preguntar
         const localTiene = inventory.length || savedDecks.length;
         let conservar = false;
         if(localTiene && typeof confirm === 'function'){
-          const msg = (typeof T==='function' ? T('sync_keep') : '¿Conservar las {n} cartas de este dispositivo en tu cuenta? (Cancelar = empezar vacío)').replace('{n}', inventory.length);
-          conservar = confirm(msg);
+          conservar = confirm(texto('sync_keep', '¿Conservar las {n} cartas de este dispositivo en tu cuenta? (Cancelar = empezar vacío)').replace('{n}', inventory.length));
         }
         if(conservar){
-          window.syncPush();               // subir lo local como su colección
+          pushPendiente = true; flushPush();           // subir lo local como su colección
         } else {
-          inventory = []; savedDecks = [];
+          aplicandoNube = true; inventory = []; savedDecks = [];
           try { localStorage.setItem('ptcg_inventory','[]'); localStorage.setItem('ptcg_decks','[]'); } catch(e){}
           if(typeof renderInventory === 'function') renderInventory();
           if(typeof renderLegal === 'function') renderLegal();
           if(typeof renderSaved === 'function') renderSaved();
           if(typeof updateStats === 'function') updateStats();
-          window.syncPush();               // guardar vacío en su cuenta
+          aplicandoNube = false;
+          pushPendiente = true; flushPush();           // guardar vacío en su cuenta
         }
       }
-      // Escucha cambios en vivo (la nube manda a partir de aquí)
+      // Cambios en vivo: aplicar SOLO lo confirmado por el servidor (ignorar ecos de nuestras escrituras)
       unsub = ref.onSnapshot(function(s){
-        const d = s.data(); if(!d) return;
-        aplicandoNube = true;
-        if(Array.isArray(d.inventory)){
-          inventory = d.inventory;
-          if(typeof asegurarId === 'function') inventory.forEach(asegurarId);
-        }
-        if(Array.isArray(d.savedDecks)) savedDecks = d.savedDecks;
-        try {
-          localStorage.setItem('ptcg_inventory', JSON.stringify(inventory));
-          localStorage.setItem('ptcg_decks', JSON.stringify(savedDecks));
-        } catch(e){}
-        if(typeof renderInventory === 'function') renderInventory();
-        if(typeof renderLegal === 'function') renderLegal();
-        if(typeof renderSaved === 'function') renderSaved();
-        if(typeof updateStats === 'function') updateStats();
-        aplicandoNube = false;
+        if(s.metadata && s.metadata.hasPendingWrites) return;
+        aplicarDoc(s.data());
       });
-    });
-    if(typeof showToast === 'function') showToast((typeof T==='function'?T('sync_ok'):'Sincronización activada'), 'success');
+    }).catch(e => console.error('[sync] get', e));
   });
 })();
