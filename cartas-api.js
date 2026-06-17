@@ -174,6 +174,26 @@ function tcgdexSetIdFor(pokeId){
   return pokeId;
 }
 
+// Lista de sets de TCGdex CON su serie (recorriendo cada serie). Para el desplegable de proxies en ES.
+let _tcgdexSetsSerieCache = {};
+async function cargarSetsSerieTcgdex(lang){
+  lang = lang || 'es';
+  if (_tcgdexSetsSerieCache[lang]) return _tcgdexSetsSerieCache[lang];
+  const series = await cargarSeriesTcgdex(lang);   // [{id, name}]
+  const detalles = await Promise.all(series.map(s =>
+    fetch('https://api.tcgdex.net/v2/' + lang + '/series/' + s.id).then(r => r.json()).catch(() => null)
+  ));
+  const out = [];
+  detalles.forEach((d, i) => {
+    if (!d) return;
+    const serieName = d.name || series[i].name;
+    (d.sets || []).forEach(st => out.push({ id: st.id, name: st.name, serie: serieName }));
+  });
+  out.reverse();   // recientes primero
+  _tcgdexSetsSerieCache[lang] = out;
+  return out;
+}
+
 // ---------- TCGdex: textos en español, en vivo ----------
 const TCGDEX = 'https://api.tcgdex.net/v2/es/cards';
 const TCGDEX_SETS = {

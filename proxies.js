@@ -76,14 +76,14 @@ function proxLlenarFiltros(){
 // El set depende del idioma: ES usa los sets de TCGdex (ids que coinciden con su búsqueda); EN usa los de pokemontcg
 function proxLlenarSets(){
   const sSel = document.getElementById('prox-f-set'); if(!sSel) return;
+  const opt = s => `<option value="${esc(s.id)}">${esc(s.name + (s.serie ? (' · ' + s.serie) : (s.series ? (' · ' + s.series) : '')))}</option>`;
   const pintar = (sets) => {
-    sSel.innerHTML = `<option value="">${esc(T('f_set'))}</option>` +
-      (sets || []).map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+    sSel.innerHTML = `<option value="">${esc(T('f_set'))}</option>` + (sets || []).map(opt).join('');
     sSel.value = proxFiltros.setId || '';
   };
   if(proxLang === 'es'){
     pintar([]);
-    if(typeof cargarSetsTcgdex === 'function') cargarSetsTcgdex('es').then(pintar).catch(() => {});
+    if(typeof cargarSetsSerieTcgdex === 'function') cargarSetsSerieTcgdex('es').then(pintar).catch(() => {});
   } else {
     const sets = (typeof _setsList !== 'undefined' && _setsList) ? _setsList : [];
     pintar(sets);
