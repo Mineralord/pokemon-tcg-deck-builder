@@ -353,6 +353,31 @@ let colFiltros = Object.assign({}, FILTROS_DEF);
 let expFiltros = Object.assign({}, FILTROS_DEF);
 let _setsList = [];
 
+// --- Localización de nombres de expansión en el desplegable (ES/EN) ---
+let _setNameEs = null, _serieEsByEn = null, _locLoading = false;
+function setLabel(s){
+  if(lang === 'es' && _setNameEs){
+    const tid = (typeof tcgdexSetIdFor === 'function') ? tcgdexSetIdFor(s.id) : s.id;
+    const nombre = _setNameEs[tid] || s.name;
+    const serie = (_serieEsByEn && _serieEsByEn[s.series]) || s.series;
+    return nombre + (serie ? (' · ' + serie) : '');
+  }
+  return s.name + (s.series ? (' · ' + s.series) : '');
+}
+function cargarLocalizacionSets(){
+  if(_setNameEs && _serieEsByEn) return;
+  if(_locLoading || typeof cargarSetsTcgdex !== 'function') return;
+  _locLoading = true;
+  Promise.all([cargarSetsTcgdex('es'), cargarSeriesTcgdex('en'), cargarSeriesTcgdex('es')]).then(function(r){
+    const esSets = r[0] || [], enSeries = r[1] || [], esSeries = r[2] || [];
+    _setNameEs = {}; esSets.forEach(s => { _setNameEs[s.id] = s.name; });
+    const idByEn = {}; enSeries.forEach(s => { idByEn[s.name] = s.id; });
+    const esById = {}; esSeries.forEach(s => { esById[s.id] = s.name; });
+    _serieEsByEn = {}; Object.keys(idByEn).forEach(en => { const sid = idByEn[en]; if(esById[sid]) _serieEsByEn[en] = esById[sid]; });
+    pintarFiltros();   // repinta el desplegable con los nombres en español
+  }).catch(function(){ _locLoading = false; });
+}
+
 // ¿Coincide una vista de carta con los filtros (para la colección, local)?
 function matchView(v, f){
   if(f.name){ if(normName(v.nombre).indexOf(normName(f.name)) < 0) return false; }
@@ -998,6 +1023,7 @@ function pintarFiltros(){
     const cont = document.getElementById(id);
     if(cont) cont.innerHTML = `<button class="f-toggle" aria-label="${esc(T('f_toggle'))}" onclick="toggleFiltros('${sc}')">🎛️ ${esc(T('f_toggle'))}</button>` + buildFilterBar(sc);
   });
+  if(lang === 'es') cargarLocalizacionSets();   // traduce los nombres de expansión al español
 }
 function toggleFiltros(scope){
   const cont = document.getElementById('filtros-' + scope);
@@ -1013,7 +1039,7 @@ function buildFilterBar(scope){
   const rarezas= [any].concat(['Common','Uncommon','Rare','Rare Holo','Double Rare','Ultra Rare','Illustration Rare','Special Illustration Rare','Hyper Rare','Promo','ACE SPEC Rare'].map(r=>({v:r,label:trRarity(r)})));
   const subs   = [any].concat(['Basic','Stage 1','Stage 2','ex','Supporter','Item','Stadium','Pokémon Tool','Special'].map(s=>({v:s,label:trPhase(s)})));
   const marcas = [any].concat(['D','E','F','G','H'].map(m=>({v:m,label:m})));
-  const sets   = [any].concat(_setsList.map(s=>({v:s.id,label:s.name + (s.series?(' · '+s.series):'')})));
+  const sets   = [any].concat(_setsList.map(s=>({v:s.id, label: setLabel(s)})));
   const ordenes= [
     {v:'name',label:T('ord_name')},{v:'-name',label:T('ord_name_desc')},
     {v:'hp',label:T('ord_hp')},{v:'-hp',label:T('ord_hp_desc')},
