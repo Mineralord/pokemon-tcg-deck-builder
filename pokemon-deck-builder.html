@@ -8,7 +8,27 @@
 <link rel="stylesheet" href="estilos.css">
 <link rel="stylesheet" href="estilos-v2.css">
 </head>
-<body>
+<body class="auth-checking">
+
+<!-- PANTALLA DE LOGIN (gate obligatorio) -->
+<div id="login-gate" class="login-gate">
+  <div class="login-card">
+    <div class="logo-ball login-ball">
+      <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="17" stroke="#FACC15" stroke-width="1.5"/>
+        <path d="M1 18h34" stroke="#FACC15" stroke-width="1.5"/>
+        <path d="M18 1C9.163 1 2 8.163 2 17h32C34 8.163 26.837 1 18 1z" fill="#EF4444" opacity="0.6"/>
+        <circle cx="18" cy="18" r="5" fill="#0A0D14" stroke="#FACC15" stroke-width="1.5"/>
+        <circle cx="18" cy="18" r="2.5" fill="#FACC15"/>
+      </svg>
+    </div>
+    <h1 class="login-title" data-i18n="login_title">Pokémon TCG Deck Builder</h1>
+    <p class="login-sub" data-i18n="login_sub">Inicia sesión para acceder a tu colección.</p>
+    <p class="login-checking" data-i18n="login_checking">Comprobando sesión…</p>
+    <button id="login-gate-btn" class="login-gate-btn" data-i18n="login_btn" onclick="loginGoogle()">🔑 Entrar con Google</button>
+    <p id="login-gate-msg" class="login-gate-msg"></p>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header>

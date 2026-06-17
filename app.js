@@ -1,6 +1,13 @@
 // ===================== STATE =====================
-let inventory = JSON.parse(localStorage.getItem('ptcg_inventory') || '[]');
-let savedDecks = JSON.parse(localStorage.getItem('ptcg_decks') || '[]');
+// La colección y los mazos se cargan por usuario (uid) tras iniciar sesión.
+// Arrancamos vacíos: el shell está oculto tras el gate de login y los datos
+// del usuario se cargan en sync.js (caché local por-uid + Firestore).
+let inventory = [];
+let savedDecks = [];
+
+// Claves de localStorage aisladas por usuario (definido por sync.js en window.__ptcgUid)
+function ptcgInvKey(){ return window.__ptcgUid ? ('inv_' + window.__ptcgUid) : null; }
+function ptcgDecksKey(){ return window.__ptcgUid ? ('decks_' + window.__ptcgUid) : null; }
 
 // ===================== BASE DE DATOS DE CARTAS (cartas-db.js) =====================
 const CARD_DB = {};
@@ -307,8 +314,11 @@ const TYPE_LABELS = {
 
 // ===================== SAVE / LOAD =====================
 function save() {
-  localStorage.setItem('ptcg_inventory', JSON.stringify(inventory));
-  localStorage.setItem('ptcg_decks', JSON.stringify(savedDecks));
+  const ik = ptcgInvKey(), dk = ptcgDecksKey();
+  if(ik && dk){                                     // solo persistimos con sesión iniciada
+    localStorage.setItem(ik, JSON.stringify(inventory));
+    localStorage.setItem(dk, JSON.stringify(savedDecks));
+  }
   updateStats();
   if (typeof syncPush === 'function') syncPush();   // sube a la nube si hay sesión
 }

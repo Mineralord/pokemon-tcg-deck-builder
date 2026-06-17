@@ -11,9 +11,20 @@
     || (typeof firebaseConfig === 'undefined')
     || !firebaseConfig.apiKey
     || /PEGA_/.test(firebaseConfig.apiKey);
+  // Estado visual del gate de login: 'checking' | 'out' | 'in'
+  function setAuthState(s){
+    document.body.classList.remove('auth-checking','auth-out','auth-in');
+    document.body.classList.add('auth-'+s);
+  }
+  function gateMsg(txt){
+    const m = document.getElementById('login-gate-msg'); if(m) m.textContent = txt || '';
+  }
+
   if(noConfig){
-    console.warn('[sync] Firebase no configurado: la app guarda solo en este dispositivo.');
-    const b = document.getElementById('sync-btn'); if(b) b.style.display = 'none';
+    // Con login obligatorio no podemos revelar la app sin Firebase: quedamos en el gate.
+    console.warn('[sync] Firebase no configurado: no se puede iniciar sesión.');
+    setAuthState('out');
+    gateMsg('Configuración de acceso no disponible.');
     return;
   }
 
@@ -27,7 +38,15 @@
 
   let uid = null, unsub = null, aplicandoNube = false, pushTimer = null, pushPendiente = false;
 
+  // Lista blanca de acceso (correos autorizados). Añade más correos aquí.
+  const ALLOWED = ['pmmt99@gmail.com'];
+  function permitido(u){ return !!u && ALLOWED.includes((u.email || '').toLowerCase()); }
+
   function texto(k, alt){ return (typeof T === 'function') ? T(k) : alt; }
+
+  // Claves de localStorage aisladas por usuario
+  function invKey(id){ return 'inv_' + id; }
+  function decksKey(id){ return 'decks_' + id; }
 
   window.loginGoogle = function(){
     const prov = new firebase.auth.GoogleAuthProvider();
@@ -79,8 +98,10 @@
     }
     if(Array.isArray(d.savedDecks)) savedDecks = d.savedDecks;
     try {
-      localStorage.setItem('ptcg_inventory', JSON.stringify(inventory));
-      localStorage.setItem('ptcg_decks', JSON.stringify(savedDecks));
+      if(uid){
+        localStorage.setItem(invKey(uid), JSON.stringify(inventory));
+        localStorage.setItem(decksKey(uid), JSON.stringify(savedDecks));
+      }
     } catch(e){}
     if(typeof renderInventory === 'function') renderInventory();
     if(typeof renderLegal === 'function') renderLegal();
@@ -89,37 +110,68 @@
     aplicandoNube = false;
   }
 
+  function renderAll(){
+    if(typeof renderInventory === 'function') renderInventory();
+    if(typeof renderLegal === 'function') renderLegal();
+    if(typeof renderSaved === 'function') renderSaved();
+    if(typeof updateStats === 'function') updateStats();
+  }
+
   auth.onAuthStateChanged(function(u){
     if(unsub){ unsub(); unsub = null; }
-    uid = u ? u.uid : null;
+
+    // Sin sesión: mostrar el gate y vaciar la pantalla (la caché por-uid se conserva).
+    if(!u){
+      uid = null; window.__ptcgUid = null;
+      inventory = []; savedDecks = [];
+      pintarBoton();
+      if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(false);
+      renderAll();
+      setAuthState('out');
+      return;
+    }
+
+    // Cuenta NO autorizada: denegar acceso y cerrar sesión.
+    if(!permitido(u)){
+      uid = null; window.__ptcgUid = null;
+      inventory = []; savedDecks = [];
+      renderAll();
+      gateMsg(texto('login_denied', 'Esa cuenta no tiene acceso.'));
+      setAuthState('out');
+      auth.signOut();
+      return;
+    }
+
+    // Cuenta autorizada: conceder acceso.
+    uid = u.uid; window.__ptcgUid = uid;
+    gateMsg('');
+    setAuthState('in');
     pintarBoton();
-    if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(!!(u && u.email === 'pmmt99@gmail.com'));
-    if(!u) return;
+    if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(u.email === 'pmmt99@gmail.com');
+
+    // Carga instantánea desde la caché local por-uid (offline / mientras llega la nube)
+    aplicandoNube = true;
+    try {
+      const ci = localStorage.getItem(invKey(uid));
+      const cd = localStorage.getItem(decksKey(uid));
+      inventory = ci ? JSON.parse(ci) : [];
+      savedDecks = cd ? JSON.parse(cd) : [];
+    } catch(e){ inventory = []; savedDecks = []; }
+    if(typeof asegurarId === 'function') inventory.forEach(asegurarId);
+    renderAll();
+    aplicandoNube = false;
+
     const ref = db.collection('colecciones').doc(uid);
     ref.get().then(function(snap){
       const d = snap.exists ? snap.data() : null;
       const nubeTiene = d && ((Array.isArray(d.inventory) && d.inventory.length) || (Array.isArray(d.savedDecks) && d.savedDecks.length));
-      if(!nubeTiene){
-        // Cuenta nueva / nube vacía: no heredar lo de este dispositivo sin preguntar
-        const localTiene = inventory.length || savedDecks.length;
-        let conservar = false;
-        if(localTiene && typeof confirm === 'function'){
-          conservar = confirm(texto('sync_keep', '¿Conservar las {n} cartas de este dispositivo en tu cuenta? (Cancelar = empezar vacío)').replace('{n}', inventory.length));
-        }
-        if(conservar){
-          pushPendiente = true; flushPush();           // subir lo local como su colección
-        } else {
-          aplicandoNube = true; inventory = []; savedDecks = [];
-          try { localStorage.setItem('ptcg_inventory','[]'); localStorage.setItem('ptcg_decks','[]'); } catch(e){}
-          if(typeof renderInventory === 'function') renderInventory();
-          if(typeof renderLegal === 'function') renderLegal();
-          if(typeof renderSaved === 'function') renderSaved();
-          if(typeof updateStats === 'function') updateStats();
-          aplicandoNube = false;
-          pushPendiente = true; flushPush();           // guardar vacío en su cuenta
-        }
+      if(nubeTiene){
+        aplicarDoc(d);
+      } else if(inventory.length || savedDecks.length){
+        // Nube vacía pero hay caché local de ESTE usuario: subirla como su colección.
+        pushPendiente = true; flushPush();
       }
-      // Cambios en vivo: aplicar SOLO lo confirmado por el servidor (ignorar ecos de nuestras escrituras)
+      // Cambios en vivo: aplicar SOLO lo confirmado por el servidor (ignorar ecos propios)
       unsub = ref.onSnapshot(function(s){
         if(s.metadata && s.metadata.hasPendingWrites) return;
         aplicarDoc(s.data());
