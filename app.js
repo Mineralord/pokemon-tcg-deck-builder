@@ -26,13 +26,42 @@ const cardRegistry = {};
 function regCard(v){ if(v && v.id) cardRegistry[v.id] = v; return v; }
 function jsq(s){ return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
-// Devuelve la "vista" (datos para mostrar) de una entrada del inventario
+// Devuelve la "vista" (datos para mostrar) de una entrada del inventario.
+// El inventario guardado solo lleva {id,name,type,qty}; la carta se rehidrata
+// desde: objeto en memoria -> base local (por nombre) -> caché por id -> API (async).
 function viewFromEntry(e){
   let d;
-  if (e.card) d = e.card;
-  else { d = getCardData(e.name); if (d && !d.id) d.id = e.id; }
+  if (e.card) d = e.card;                                   // en memoria (sesión actual)
+  if (!d){ d = getCardData(e.name); if (d && !d.id) d.id = e.id; }   // base local por nombre
+  if (!d && e.id && typeof cardCacheGet === 'function') d = cardCacheGet(e.id);   // caché por id
+  if (!d && e.id) rehidratarEntrada(e.id);                  // traer de la API en segundo plano
   if (!d) d = { id: e.id, nombre: e.name, tipos: [], ataques: [], habilidades: [] };
+  if (d && !d.id && e.id) d.id = e.id;
   return (typeof enriquecerEnergia === 'function') ? enriquecerEnergia(d) : d;
+}
+
+// Trae una carta por id desde la API (una vez por sesión) y re-renderiza al llegar.
+const _rehidratado = {};
+function rehidratarEntrada(id){
+  if(!id || _rehidratado[id] || typeof apiCardById !== 'function') return;
+  if(/^legacy:/.test(id)) return;                            // ids sin carta real en la API
+  _rehidratado[id] = true;
+  apiCardById(id).then(view => {
+    if(view){
+      regCard(view);
+      if(typeof renderInventory === 'function') renderInventory();
+      if(typeof renderLegal === 'function') renderLegal();
+    }
+  });
+}
+
+// Inventario "ligero" para guardar (sin el objeto card completo): evita el límite de 1 MB de Firestore.
+function slimInventory(){
+  return inventory.map(e => {
+    const o = { name: e.name, type: e.type, qty: e.qty };
+    if (e.id) o.id = e.id;
+    return o;
+  });
 }
 
 // Deriva el "type" interno (Pokemon-Fire, Trainer, Energy-Lightning…) desde la vista
@@ -316,7 +345,7 @@ const TYPE_LABELS = {
 function save() {
   const ik = ptcgInvKey(), dk = ptcgDecksKey();
   if(ik && dk){                                     // solo persistimos con sesión iniciada
-    localStorage.setItem(ik, JSON.stringify(inventory));
+    localStorage.setItem(ik, JSON.stringify(slimInventory()));  // sin el objeto card
     localStorage.setItem(dk, JSON.stringify(savedDecks));
   }
   updateStats();
@@ -845,14 +874,22 @@ function copyPromptAgain() {
   navigator.clipboard.writeText(text).then(() => showToast(T('to_prompt_recopied'), 'success'));
 }
 
+// Mazos generados actualmente en pantalla. Guardamos aquí los objetos para
+// referenciarlos por índice en los botones (evita inyectar JSON con apóstrofos
+// o comillas en los atributos onclick, que rompía Guardar/Copiar).
+let renderedDecks = [];
+let renderedDeckType = '';
+
 function renderDecks(decks, deckType) {
   const out = document.getElementById('decks-output');
+  renderedDecks = decks || [];
+  renderedDeckType = deckType;
   if (!decks || !decks.length) {
     out.innerHTML = `<div class="empty-state"><div class="empty-icon">😕</div><div class="empty-title">${T('no_decks_title')}</div><div class="empty-desc">${T('no_decks_desc')}</div></div>`;
     return;
   }
   let html = '';
-  decks.forEach(d => {
+  decks.forEach((d, deckIdx) => {
     const pokemonCount = (d.pokemon||[]).reduce((s,c)=>s+c.qty,0);
     const trainerCount = (d.trainers||[]).reduce((s,c)=>s+c.qty,0);
     const energyCount = (d.energies||[]).reduce((s,c)=>s+c.qty,0);
@@ -881,8 +918,8 @@ function renderDecks(decks, deckType) {
           </div>
         </div>
         <div class="deck-actions">
-          <button class="btn-copy" onclick="copyDeck(${JSON.stringify(deckText).replace(/'/g,'&apos;')})">${T('btn_copy')}</button>
-          <button class="btn-save-deck" onclick='saveDeck(${JSON.stringify(d)}, "${deckType}")'>${T('btn_save')}</button>
+          <button class="btn-copy" onclick="copyDeckByIndex(${deckIdx})">${T('btn_copy')}</button>
+          <button class="btn-save-deck" onclick="saveDeckByIndex(${deckIdx})">${T('btn_save')}</button>
         </div>
       </div>
       <div class="deck-body">
@@ -962,6 +999,17 @@ function copyDeck(text) {
   navigator.clipboard.writeText(text).then(() => showToast(T('to_deck_copied'), 'success'));
 }
 
+// Guarda/copia un mazo de los actualmente en pantalla por su índice. Evitamos
+// pasar el objeto serializado por el atributo HTML (apóstrofos/comillas lo rompían).
+function saveDeckByIndex(i) {
+  const deck = renderedDecks[i];
+  if (deck) saveDeck(deck, renderedDeckType);
+}
+function copyDeckByIndex(i) {
+  const deck = renderedDecks[i];
+  if (deck) copyDeck(formatDeckText(deck));
+}
+
 function saveDeck(deck, deckType) {
   const existing = savedDecks.findIndex(d => d.name === deck.name);
   if (existing >= 0) { savedDecks[existing] = {...deck, deckType, savedAt: Date.now()}; }
@@ -988,12 +1036,17 @@ function renderSaved() {
       <span class="saved-deck-type bg-${typeColor}">${T('saved_type')} ${esc(deckTypeLabel(d.deckType))}</span>
       <div class="saved-deck-preview">${preview}</div>
       <div class="saved-deck-actions">
-        <button class="btn-view" onclick='viewDeck(${JSON.stringify(d)})'>${T('btn_view')}</button>
+        <button class="btn-view" onclick="viewSavedDeck(${i})">${T('btn_view')}</button>
         <button class="btn-delete-deck" onclick="deleteDeck(${i})">${T('btn_delete')}</button>
       </div>
     </div>`;
   });
   grid.innerHTML = html;
+}
+
+function viewSavedDeck(i) {
+  const d = savedDecks[i];
+  if (d) viewDeck(d);
 }
 
 function viewDeck(d) {

@@ -80,20 +80,40 @@
       b.onclick = window.loginGoogle;
     }
   }
-  window.syncRepaint = pintarBoton;   // repinta al cambiar de idioma
+  // ---------- Indicador de estado de sincronización ----------
+  let _estado = '', _estadoTimer = null;
+  function setSyncStatus(estado){
+    _estado = estado;
+    const el = document.getElementById('sync-status'); if(!el) return;
+    clearTimeout(_estadoTimer);
+    const map = { saving:['⏳','sync_saving','Guardando…'], saved:['✅','sync_saved','Guardado'], offline:['⚠️','sync_offline','Sin conexión'] };
+    const m = map[estado];
+    if(!m){ el.style.display = 'none'; el.textContent = ''; return; }
+    el.className = 'stat-pill sync-status ' + estado;
+    el.textContent = m[0] + ' ' + texto(m[1], m[2]);
+    el.style.display = '';
+    if(estado === 'saved'){ _estadoTimer = setTimeout(function(){ const e2=document.getElementById('sync-status'); if(e2) e2.style.display='none'; }, 2000); }
+  }
+
+  function pintarTodo(){ pintarBoton(); if(uid && _estado) setSyncStatus(_estado); }
+  window.syncRepaint = pintarTodo;   // repinta botón + estado al cambiar de idioma
 
   // Sube la colección a la nube (agrupando ráfagas de cambios, pero sin perderlos)
   function flushPush(){
     clearTimeout(pushTimer); pushTimer = null;
     if(!uid || !pushPendiente) return;
     pushPendiente = false;
+    const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
+    setSyncStatus('saving');
     db.collection('colecciones').doc(uid).set({
-      inventory: inventory, savedDecks: savedDecks, updatedAt: Date.now()
-    }).catch(e => console.error('[sync] error al guardar', e));
+      inventory: invSlim, savedDecks: savedDecks, updatedAt: Date.now()
+    }).then(function(){ setSyncStatus('saved'); })
+      .catch(function(e){ console.error('[sync] error al guardar', e); setSyncStatus(navigator.onLine ? 'saved' : 'offline'); });
   }
   window.syncPush = function(){
     if(!uid || aplicandoNube) return;
     pushPendiente = true;
+    if(!navigator.onLine){ setSyncStatus('offline'); }
     clearTimeout(pushTimer);
     pushTimer = setTimeout(flushPush, 300);
   };
@@ -101,6 +121,9 @@
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') flushPush(); });
   window.addEventListener('pagehide', flushPush);
   window.addEventListener('beforeunload', flushPush);
+  // Estado de conexión: al volver online, reintentar; al perderla, avisar
+  window.addEventListener('offline', function(){ if(uid) setSyncStatus('offline'); });
+  window.addEventListener('online', function(){ if(uid){ pushPendiente = true; flushPush(); } });
 
   function aplicarDoc(d){
     if(!d) return;
@@ -112,7 +135,8 @@
     if(Array.isArray(d.savedDecks)) savedDecks = d.savedDecks;
     try {
       if(uid){
-        localStorage.setItem(invKey(uid), JSON.stringify(inventory));
+        const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
+        localStorage.setItem(invKey(uid), JSON.stringify(invSlim));
         localStorage.setItem(decksKey(uid), JSON.stringify(savedDecks));
       }
     } catch(e){}
@@ -138,6 +162,7 @@
       uid = null; window.__ptcgUid = null;
       inventory = []; savedDecks = [];
       pintarBoton();
+      setSyncStatus('');
       if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(false);
       renderAll();
       setAuthState('out');

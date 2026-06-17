@@ -1,9 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada usuario solo puede leer/escribir su propio documento de colección
+
+    // Lista blanca de cuentas autorizadas.
+    // IMPORTANTE: debe coincidir con ALLOWED en sync.js. Si añades usuarios,
+    // edita ambos sitios y vuelve a desplegar las reglas (firebase deploy --only firestore:rules).
+    function autorizado() {
+      return request.auth != null
+        && request.auth.token.email in ['pmmt99@gmail.com'];
+    }
+
+    // Validación de la forma del documento de colección (evita escrituras arbitrarias).
+    function docValido() {
+      return request.resource.data.keys().hasOnly(['inventory', 'savedDecks', 'updatedAt'])
+        && request.resource.data.inventory is list
+        && request.resource.data.savedDecks is list;
+    }
+
+    // Cada usuario autorizado solo accede a su propio documento de colección.
     match /colecciones/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if autorizado() && request.auth.uid == uid;
+      allow write: if autorizado() && request.auth.uid == uid && docValido();
     }
   }
 }

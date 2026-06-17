@@ -7,6 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilos.css">
 <link rel="stylesheet" href="estilos-v2.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0D14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TCG Decks">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
 </head>
 <body class="auth-checking">
 
@@ -50,6 +58,7 @@
   <div class="header-stats">
     <div class="stat-pill"><span data-i18n="stat_inv">Inventario</span> <strong id="stat-total">0</strong> <span data-i18n="stat_cards">cartas</span></div>
     <div class="stat-pill"><span data-i18n="stat_decks">Mazos guardados</span> <strong id="stat-decks">0</strong></div>
+    <span id="sync-status" class="stat-pill sync-status" style="display:none"></span>
     <button id="sync-btn" class="stat-pill" style="cursor:pointer;border:none;font:inherit;color:inherit">☁️ Sincronizar</button>
     <button id="lang-toggle" class="stat-pill" data-i18n-aria="aria_lang" style="cursor:pointer;border:none;font:inherit;color:inherit" onclick="toggleLang()">🌐 EN</button>
   </div>

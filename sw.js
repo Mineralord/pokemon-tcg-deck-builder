@@ -6,8 +6,10 @@
 //  - APIs (pokemontcg / tcgdex / Firebase / Google): SIN cachear
 //    (pasan directas a la red para no servir datos viejos).
 // =============================================================
-const SHELL = 'ptcg-shell-v1';
-const IMGS  = 'ptcg-img-v1';
+// Sube VER en cada deploy que cambie ficheros del shell para forzar limpieza de caché.
+const VER   = '2';
+const SHELL = 'ptcg-shell-v' + VER;
+const IMGS  = 'ptcg-img-v' + VER;
 const MAX_IMG = 600;
 
 const SHELL_FILES = [
@@ -15,7 +17,9 @@ const SHELL_FILES = [
   './estilos.css', './estilos-v2.css',
   './cartas-db.js', './cartas-api.js', './energias.js',
   './idiomas.js', './app.js', './generador.js',
-  './firebase-config.js', './sync.js'
+  './firebase-config.js', './sync.js',
+  './manifest.json', './assets/icon.svg',
+  './assets/icon-192.png', './assets/icon-512.png'
 ];
 
 const IMG_HOSTS = ['images.pokemontcg.io', 'images.scrydex.com', 'assets.tcgdex.net'];

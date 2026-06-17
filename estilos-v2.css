@@ -315,3 +315,9 @@ body.auth-out header, body.auth-out .topnav, body.auth-out .views{ display:none 
 
 /* Con sesión válida: ocultar el gate */
 body.auth-in #login-gate{ display:none; }
+
+/* ===================== INDICADOR DE ESTADO DE SINCRONIZACIÓN ===================== */
+.sync-status{ white-space:nowrap; transition:opacity .2s ease; }
+.sync-status.saving{ color:#cbd5e1; }
+.sync-status.saved{ color:#86efac; }
+.sync-status.offline{ color:#fca5a5; }

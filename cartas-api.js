@@ -133,6 +133,48 @@ async function apiBuscar(f, page){
   }
 }
 
+// ---------- Caché de cartas por id ----------
+// Permite rehidratar el inventario sin guardar el objeto completo de cada carta
+// (en Firestore/localStorage solo se guarda {id,name,type,qty}).
+const CARDCACHE_KEY = 'ptcg_cardcache';
+let _cardcache = {};
+try { _cardcache = JSON.parse(localStorage.getItem(CARDCACHE_KEY) || '{}'); } catch(e){ _cardcache = {}; }
+function cardCacheGet(id){ return (id && _cardcache[id]) ? _cardcache[id] : null; }
+function _cardCacheSet(id, view){
+  if(!id || !view) return;
+  _cardcache[id] = view;
+  const ks = Object.keys(_cardcache);
+  if(ks.length > 800){ ks.slice(0, ks.length - 800).forEach(k => delete _cardcache[k]); }
+  try { localStorage.setItem(CARDCACHE_KEY, JSON.stringify(_cardcache)); }
+  catch(e){ _cardcache = {}; _cardcache[id] = view; try { localStorage.setItem(CARDCACHE_KEY, JSON.stringify(_cardcache)); } catch(_){} }
+}
+
+// Rehidrata UNA carta por id: caché -> pokemontcg -> null. Cachea el resultado.
+const _cardInflight = {};
+async function apiCardById(id){
+  if(!id) return null;
+  const hit = cardCacheGet(id);
+  if(hit) return hit;
+  if(_cardInflight[id]) return _cardInflight[id];
+  const params = new URLSearchParams();
+  params.set('q', 'id:"' + id + '"');
+  params.set('select', SELECT);
+  const p = (async () => {
+    try {
+      const res = await fetch(API + '/cards?' + params.toString(), { headers: apiHeaders() });
+      if(!res.ok) throw new Error('API ' + res.status);
+      const data = await res.json();
+      const c = (data.data || [])[0];
+      const view = c ? apiCardToView(c) : null;
+      if(view) _cardCacheSet(id, view);
+      return view;
+    } catch(e){ return null; }
+    finally { delete _cardInflight[id]; }
+  })();
+  _cardInflight[id] = p;
+  return p;
+}
+
 // Lista de todos los sets (cacheada) para el desplegable de filtros
 let _setsCache = null;
 async function cargarSets(){
