@@ -195,26 +195,61 @@ function cargarJsPDF(){
   return _jspdfPromise;
 }
 
-// Normaliza cualquier imagen a JPEG dataURL (uniforma formatos y controla peso)
-function proxNormalize(src){
+// Añade un parámetro para forzar una petición CORS limpia (evita reutilizar una respuesta
+// "opaca" cacheada por el Service Worker -> canvas/fetch "tainted").
+function _proxCacheBust(src){
+  if(!/^https?:/i.test(src)) return src;
+  return src + (src.indexOf('?') >= 0 ? '&' : '?') + 'proxycb=1';
+}
+function _proxBlobADataURL(blob){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('read'));
+    r.readAsDataURL(blob);
+  });
+}
+function _proxFmt(dataURL){ return /^data:image\/jpe?g/i.test(dataURL) ? 'JPEG' : 'PNG'; }
+
+// Respaldo: rasteriza a PNG SIN PÉRDIDA a resolución natural completa (sin reescalar).
+function _proxCanvasPNG(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const maxH = 1000;
-      let w = img.naturalWidth, h = img.naturalHeight;
+      const w = img.naturalWidth, h = img.naturalHeight;
       if(!w || !h){ reject(new Error('size')); return; }
-      if(h > maxH){ w = Math.round(w * maxH / h); h = maxH; }
       const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
       cv.getContext('2d').drawImage(img, 0, 0, w, h);
-      try { resolve(cv.toDataURL('image/jpeg', 0.92)); } catch(e){ reject(e); }
+      try { resolve({ data: cv.toDataURL('image/png'), fmt: 'PNG' }); } catch(e){ reject(e); }
     };
     img.onerror = () => reject(new Error('img'));
-    // En URLs remotas añadimos un parámetro para forzar una petición CORS limpia
-    // (evita reutilizar una respuesta "opaca" cacheada por el Service Worker -> canvas "tainted").
-    const esRemota = /^https?:/i.test(src);
-    img.src = esRemota ? (src + (src.indexOf('?') >= 0 ? '&' : '?') + 'proxycb=1') : src;
+    img.src = _proxCacheBust(src);
   });
+}
+
+// Carga una imagen para el PDF a MÁXIMA CALIDAD: conserva los bytes originales (PNG/JPEG)
+// sin reescalar ni recomprimir; usa PNG sin pérdida como respaldo. Devuelve { data, fmt }.
+async function proxCargarImagen(src){
+  // Data URLs locales (imágenes subidas): si ya son PNG/JPEG, úsalas tal cual.
+  if(/^data:/i.test(src)){
+    if(/^data:image\/(png|jpe?g)/i.test(src)) return { data: src, fmt: _proxFmt(src) };
+    return _proxCanvasPNG(src);   // p.ej. data:image/webp -> PNG sin pérdida
+  }
+  // TCGdex sirve WebP en /high.webp; jsPDF no incrusta WebP -> pedir el PNG nativo.
+  let url = src.replace(/\/high\.webp(\b|$)/i, '/high.png');
+  try {
+    const res = await fetch(_proxCacheBust(url), { mode: 'cors', cache: 'reload' });
+    if(res && res.ok){
+      const blob = await res.blob();
+      if(/^image\/(png|jpe?g)$/i.test(blob.type)){
+        const data = await _proxBlobADataURL(blob);   // bytes originales, sin pérdida
+        return { data, fmt: _proxFmt(data) };
+      }
+    }
+  } catch(e){ /* cae al respaldo */ }
+  // Respaldo: rasterizar a PNG a resolución completa (sirve para WebP u otros formatos).
+  return _proxCanvasPNG(url);
 }
 
 async function proxGenerarPDF(){
@@ -230,13 +265,14 @@ async function proxGenerarPDF(){
   proxImgs.forEach(e => { for(let k = 0; k < (e.copies || 1); k++) lista.push(e.src); });
   let colocadas = 0, fallos = 0;
   for(let i = 0; i < lista.length; i++){
-    let data;
-    try { data = await proxNormalize(lista[i]); } catch(e){ fallos++; continue; }
+    let img;
+    try { img = await proxCargarImagen(lista[i]); } catch(e){ fallos++; continue; }
     const idx = colocadas % L.perPage;
     if(colocadas > 0 && idx === 0) doc.addPage();
     const col = idx % L.cols, row = Math.floor(idx / L.cols);
     const x = L.marginX + col * L.cardW, y = L.marginY + row * L.cardH;
-    try { doc.addImage(data, 'JPEG', x, y, L.cardW, L.cardH); } catch(e){ fallos++; continue; }
+    // 'SLOW' = PNG sin pérdida bien comprimido (se ignora para JPEG).
+    try { doc.addImage(img.data, img.fmt, x, y, L.cardW, L.cardH, undefined, 'SLOW'); } catch(e){ fallos++; continue; }
     if(cut) proxCutMarks(doc, x, y, L.cardW, L.cardH);
     colocadas++;
   }

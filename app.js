@@ -1028,13 +1028,13 @@ function renderSaved() {
   }
   let html = '';
   savedDecks.forEach((d, i) => {
-    const preview = formatDeckText(d);
+    const cards = [...(d.pokemon||[]), ...(d.trainers||[]), ...(d.energies||[])];
     const typeColor = {Fire:'fire',Fuego:'fire',Water:'water',Agua:'water',Lightning:'electric','Eléctrico':'electric',Grass:'grass',Planta:'grass',Psychic:'psychic','Psíquico':'psychic',Darkness:'dark',Oscuro:'dark'}[d.deckType] || 'colorless';
     html += `
     <div class="saved-deck-card">
       <div class="saved-deck-name">${d.name}</div>
       <span class="saved-deck-type bg-${typeColor}">${T('saved_type')} ${esc(deckTypeLabel(d.deckType))}</span>
-      <div class="saved-deck-preview">${preview}</div>
+      <div class="deck-cards saved-deck-cards">${cards.map(deckMini).join('')}</div>
       <div class="saved-deck-actions">
         <button class="btn-view" onclick="viewSavedDeck(${i})">${T('btn_view')}</button>
         <button class="btn-delete-deck" onclick="deleteDeck(${i})">${T('btn_delete')}</button>
@@ -1049,9 +1049,21 @@ function viewSavedDeck(i) {
   if (d) viewDeck(d);
 }
 
+// Secciones de un mazo con imágenes de carta (reutiliza deckMini, como el generador)
+function deckSectionsHTML(d) {
+  const sec = (title, arr) => {
+    const a = arr || [];
+    if (!a.length) return '';
+    const n = a.reduce((s,c)=>s+c.qty,0);
+    return `<div class="deck-section"><div class="deck-section-title">${title} (${n})</div>`
+      + `<div class="deck-cards">${a.map(deckMini).join('')}</div></div>`;
+  };
+  return sec(T('sec_pokemon'), d.pokemon) + sec(T('sec_trainers'), d.trainers) + sec(T('sec_energies'), d.energies);
+}
+
 function viewDeck(d) {
   document.getElementById('modal-title').textContent = d.name;
-  document.getElementById('modal-body').textContent = formatDeckText(d);
+  document.getElementById('modal-body').innerHTML = deckSectionsHTML(d);
   document.getElementById('modal-overlay').classList.add('open');
 }
 
