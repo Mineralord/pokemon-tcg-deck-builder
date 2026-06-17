@@ -3,7 +3,7 @@ let lang = localStorage.getItem('ptcg_lang') || 'es';
 
 const I18N = {
   es: {
-    app_sub:'Gestor de cartas Pokémon', stat_inv:'Inventario', stat_cards:'cartas', stat_decks:'Mazos guardados',
+    app_sub:'Gestor de cartas Pokémon', stat_inv:'Inventario', stat_cards:'cartas', stat_decks:'Mazos guardados', stat_decks_short:'guardados',
     inventory:'Inventario', search_ph:'Buscar carta...', f_name:'Nombre de la carta', f_name_ph:'Ej: Rapidash',
     f_qty:'Cantidad', f_type:'Tipo', btn_add:'+ Agregar', btn_quick_load:'⚡ Cargar mi inventario confirmado',
     btn_import_toggle:'📋 Importar lista de cartas', import_do:'Importar', import_ph:'Pega aquí tu tabla o lista de cartas...',
@@ -68,7 +68,7 @@ const I18N = {
     btn_generate:'⚡ Generar mazos', btn_prompt:'📋 Prompt para IA', gen_none:'No hay atacantes de ese tipo en tu colección.',
   },
   en: {
-    app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks',
+    app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks', stat_decks_short:'saved',
     inventory:'Inventory', search_ph:'Search card...', f_name:'Card name', f_name_ph:'E.g. Rapidash',
     f_qty:'Quantity', f_type:'Type', btn_add:'+ Add', btn_quick_load:'⚡ Load my confirmed inventory',
     btn_import_toggle:'📋 Import card list', import_do:'Import', import_ph:'Paste your table or card list here...',

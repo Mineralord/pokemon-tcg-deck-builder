@@ -896,7 +896,8 @@ header{ flex-wrap:wrap; row-gap:8px; }
   border-radius:14px; padding:12px 14px;
 }
 .f-field{ display:flex; flex-direction:column; gap:4px; }
-.f-field label{ font:600 11px/1 'Inter',sans-serif; color:#8a93a6; text-transform:uppercase; letter-spacing:.4px; }
+.f-field{ cursor:pointer; }
+.f-field > span{ font:600 11px/1 'Inter',sans-serif; color:#8a93a6; text-transform:uppercase; letter-spacing:.4px; }
 .filtros input, .filtros select{
   background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14);
   border-radius:8px; padding:7px 9px; font:500 13px/1 'Inter',sans-serif; min-width:120px;
@@ -1169,3 +1170,49 @@ body.auth-in #login-gate{ display:none; }
 .sync-status.saving{ color:#cbd5e1; }
 .sync-status.saved{ color:#86efac; }
 .sync-status.offline{ color:#fca5a5; }
+
+/* =============================================================
+   PARTE A — FUNDACIONES UX (accesibilidad / táctil / movimiento)
+   Cambios estructurales de experiencia, independientes del color.
+   ============================================================= */
+
+/* Objetivos táctiles ≥44px SOLO en dispositivos de puntero grueso (táctil).
+   En escritorio (puntero fino) se conservan compactos. */
+@media (pointer:coarse){
+  .cardtile-bar button,
+  .prox-tile-bar button,
+  .qty-stepper button,
+  .tile-act,
+  .prox-res-add,
+  .prox-lang button{ min-width:44px; min-height:44px; }
+  .cardtile-bar button{ font-size:18px; }
+}
+
+/* Cabecera de vista: jerarquía clara (título + contexto) en cada pantalla. */
+.view-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:12px; flex-wrap:wrap; margin:0 0 14px;
+  padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,.07);
+}
+.view-title{
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px;
+  letter-spacing:1px; text-transform:uppercase; color:var(--text-primary); line-height:1;
+}
+.view-count{ font:600 13px/1 'Inter',sans-serif; color:var(--text-secondary); white-space:nowrap; }
+.view-count strong{ font-family:'JetBrains Mono',monospace; color:var(--electric); }
+
+/* Jerarquía de botones: secundario = contorno (vs primario relleno). */
+.btn-build.btn-secondary{ background:transparent; border:1px solid rgba(255,255,255,.2); color:#cfd6e4; box-shadow:none; }
+.btn-build.btn-secondary:hover{ border-color:var(--electric); color:#fff; box-shadow:none; transform:translateY(-1px); }
+@media (max-width:640px){
+  .view-title{ font-size:18px; }
+}
+
+/* Respeto a "reducir movimiento": quita el shimmer en bucle y cualquier
+   animación de entrada; conserva transiciones de color/opacidad (comprensión). */
+@media (prefers-reduced-motion:reduce){
+  .cardtile-img, .deck-mini{ animation:none !important; background:#0b0e15 !important; }
+  .view.active{ animation:none !important; }
+  .login-ball, .pokeball-spin{ animation:none !important; }
+  html{ scroll-behavior:auto !important; }
+}

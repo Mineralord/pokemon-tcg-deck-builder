@@ -356,6 +356,10 @@ function updateStats() {
   const total = inventory.reduce((s, c) => s + c.qty, 0);
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-decks').textContent = savedDecks.length;
+  const colCount = document.getElementById('col-count');
+  if (colCount) colCount.textContent = total;
+  const savedCount = document.getElementById('saved-count');
+  if (savedCount) savedCount.textContent = savedDecks.length;
 }
 
 // ===================== INVENTORY =====================
@@ -1121,17 +1125,17 @@ function buildFilterBar(scope){
     {v:'number',label:T('ord_number')},{v:'-set.releaseDate',label:T('ord_recent')}
   ];
   return `<div class="filtros-inner">
-    <div class="f-field" style="flex:1"><label>${T('f_search')}</label><input class="f-text" value="${esc(f.name)}" placeholder="${esc(T('f_search'))}" oninput="setFiltro('${scope}','name',this.value)"></div>
-    <div class="f-field"><label>${T('f_type')}</label>${sel('type',tipos)}</div>
-    <div class="f-field"><label>${T('f_supertype')}</label>${sel('supertype',supers)}</div>
-    <div class="f-field"><label>${T('f_rarity')}</label>${sel('rarity',rarezas)}</div>
-    <div class="f-field"><label>${T('f_subtype')}</label>${sel('subtype',subs)}</div>
-    <div class="f-field"><label>${T('f_set')}</label>${sel('setId',sets)}</div>
-    <div class="f-field"><label>${T('f_hp_min')}</label><input class="f-hp" type="number" value="${esc(f.hpMin)}" oninput="setFiltro('${scope}','hpMin',this.value)"></div>
-    <div class="f-field"><label>${T('f_hp_max')}</label><input class="f-hp" type="number" value="${esc(f.hpMax)}" oninput="setFiltro('${scope}','hpMax',this.value)"></div>
-    <div class="f-field"><label>${T('f_regmark')}</label>${sel('regMark',marcas)}</div>
-    <div class="f-field"><label>${T('f_pokedex')}</label><input class="f-hp" type="number" value="${esc(f.pokedex)}" oninput="setFiltro('${scope}','pokedex',this.value)"></div>
-    <div class="f-field"><label>${T('f_order')}</label>${sel('orderBy',ordenes)}</div>
+    <label class="f-field" style="flex:1"><span>${T('f_search')}</span><input class="f-text" value="${esc(f.name)}" placeholder="${esc(T('f_search'))}" oninput="setFiltro('${scope}','name',this.value)"></label>
+    <label class="f-field"><span>${T('f_type')}</span>${sel('type',tipos)}</label>
+    <label class="f-field"><span>${T('f_supertype')}</span>${sel('supertype',supers)}</label>
+    <label class="f-field"><span>${T('f_rarity')}</span>${sel('rarity',rarezas)}</label>
+    <label class="f-field"><span>${T('f_subtype')}</span>${sel('subtype',subs)}</label>
+    <label class="f-field"><span>${T('f_set')}</span>${sel('setId',sets)}</label>
+    <label class="f-field"><span>${T('f_hp_min')}</span><input class="f-hp" type="number" value="${esc(f.hpMin)}" oninput="setFiltro('${scope}','hpMin',this.value)"></label>
+    <label class="f-field"><span>${T('f_hp_max')}</span><input class="f-hp" type="number" value="${esc(f.hpMax)}" oninput="setFiltro('${scope}','hpMax',this.value)"></label>
+    <label class="f-field"><span>${T('f_regmark')}</span>${sel('regMark',marcas)}</label>
+    <label class="f-field"><span>${T('f_pokedex')}</span><input class="f-hp" type="number" value="${esc(f.pokedex)}" oninput="setFiltro('${scope}','pokedex',this.value)"></label>
+    <label class="f-field"><span>${T('f_order')}</span>${sel('orderBy',ordenes)}</label>
     <button class="f-reset" onclick="resetFiltros('${scope}')">${T('f_reset')}</button>
   </div>`;
 }

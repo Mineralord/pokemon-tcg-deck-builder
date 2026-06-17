@@ -6,6 +6,10 @@ revisar.txt
 __pycache__/
 *.pyc
 
+# Skills de diseño de terceros (motores; el contexto de diseño sí se versiona)
+.claude/skills/
+.agents/
+
 # Sistema operativo
 Thumbs.db
 .DS_Store

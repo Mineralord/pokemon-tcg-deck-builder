@@ -77,6 +77,10 @@
 
   <!-- ===================== VISTA: COLECCIÓN ===================== -->
   <section class="view active" id="view-coleccion">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_col">🗂️ Colección</h2>
+      <span class="view-count"><strong id="col-count">0</strong> <span data-i18n="stat_cards">cartas</span></span>
+    </div>
     <div class="view-toolbar">
       <button class="tb-btn" data-i18n="btn_import_toggle" onclick="toggleImport()">📋 Importar lista</button>
       <button class="tb-btn" data-i18n="btn_export" onclick="exportarColeccion()">⬇️ Exportar</button>
@@ -89,7 +93,7 @@
         • <strong>Coma:</strong> <code>Rapidash, Pokemon-Fire, 7</code><br>
         • <strong>Dos puntos:</strong> <code>Rapidash: 7</code>
       </div>
-      <textarea class="import-textarea" id="import-text" data-i18n-ph="import_ph" placeholder="Pega aquí tu lista de cartas..."></textarea>
+      <textarea class="import-textarea" id="import-text" data-i18n-ph="import_ph" data-i18n-aria="import_ph" aria-label="Pega aquí tu lista de cartas" placeholder="Pega aquí tu lista de cartas..."></textarea>
       <button class="btn-import" data-i18n="import_do" onclick="importList()">Importar</button>
     </div>
     <div class="filtros" id="filtros-col"></div>
@@ -101,6 +105,9 @@
 
   <!-- ===================== VISTA: EXPLORAR ===================== -->
   <section class="view" id="view-explorar">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_exp">🔎 Explorar cartas</h2>
+    </div>
     <div class="replace-banner" id="replace-banner" style="display:none"></div>
     <div class="filtros" id="filtros-exp"></div>
     <div class="exp-statusbar"><span id="exp-status" data-i18n="exp_hint">Busca y filtra entre todas las cartas del juego.</span></div>
@@ -112,6 +119,9 @@
 
   <!-- ===================== VISTA: CONSTRUIR ===================== -->
   <section class="view" id="view-construir">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_build">⚔️ Construir mazo</h2>
+    </div>
     <div class="build-controls">
       <div class="controls-title" data-i18n="controls_title">Generar prompt para la IA</div>
       <div class="controls-row">
@@ -143,7 +153,7 @@
           </select>
         </div>
         <button class="btn-build" id="gen-btn" data-i18n="btn_generate" onclick="generarMazos()">⚡ Generar mazos</button>
-        <button class="btn-build" id="build-btn" data-i18n="btn_prompt" onclick="generateAIPrompt()" style="background:transparent;border:1px solid rgba(255,255,255,.2);color:#cfd6e4">📋 Prompt para IA</button>
+        <button class="btn-build btn-secondary" id="build-btn" data-i18n="btn_prompt" onclick="generateAIPrompt()">📋 Prompt para IA</button>
       </div>
     </div>
     <div class="decks-output" id="decks-output">
@@ -157,6 +167,9 @@
 
   <!-- ===================== VISTA: LEGALIDAD ===================== -->
   <section class="view" id="view-legalidad">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_legal">✅ Legalidad</h2>
+    </div>
     <div class="legal-panel" id="legal-panel">
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
@@ -168,6 +181,10 @@
 
   <!-- ===================== VISTA: MAZOS ===================== -->
   <section class="view" id="view-mazos">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_saved">💾 Mazos</h2>
+      <span class="view-count"><strong id="saved-count">0</strong> <span data-i18n="stat_decks_short">guardados</span></span>
+    </div>
     <div class="saved-grid" id="saved-grid">
       <div class="empty-state" style="grid-column:1/-1">
         <div class="empty-icon">💾</div>
@@ -179,6 +196,9 @@
 
   <!-- ===================== VISTA: PROXIES (solo dueño) ===================== -->
   <section class="view" id="view-proxies">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_proxies">🖨️ Proxies</h2>
+    </div>
     <div class="prox-bar">
       <button class="tb-btn" onclick="document.getElementById('prox-file').click()" data-i18n="px_upload">⬆️ Subir imágenes</button>
       <input type="file" id="prox-file" accept="image/*" multiple style="display:none" onchange="proxAddFiles(this.files); this.value='';">
@@ -191,13 +211,13 @@
       <button class="btn-build" onclick="proxGenerarPDF()" data-i18n="px_gen">🖨️ Generar PDF</button>
     </div>
     <div class="prox-search-bar">
-      <input type="search" id="prox-search" data-i18n-ph="px_search_ph" placeholder="Buscar cualquier carta del juego…" autocomplete="off" autocapitalize="off" oninput="proxOnSearchInput(this.value)">
-      <div class="prox-lang" id="prox-lang" title="Idioma de las cartas">
-        <button type="button" data-l="es" class="active" onclick="proxSetLang('es')">ES</button>
-        <button type="button" data-l="en" onclick="proxSetLang('en')">EN</button>
+      <input type="search" id="prox-search" data-i18n-ph="px_search_ph" data-i18n-aria="px_search_ph" aria-label="Buscar cualquier carta del juego" placeholder="Buscar cualquier carta del juego…" autocomplete="off" autocapitalize="off" oninput="proxOnSearchInput(this.value)">
+      <div class="prox-lang" id="prox-lang" role="group" aria-label="Idioma de las cartas" title="Idioma de las cartas">
+        <button type="button" data-l="es" class="active" aria-label="Español" onclick="proxSetLang('es')">ES</button>
+        <button type="button" data-l="en" aria-label="English" onclick="proxSetLang('en')">EN</button>
       </div>
-      <select id="prox-f-type" onchange="proxSetFiltro('type',this.value)"></select>
-      <select id="prox-f-set" onchange="proxSetFiltro('setId',this.value)"></select>
+      <select id="prox-f-type" data-i18n-aria="f_type" aria-label="Tipo" onchange="proxSetFiltro('type',this.value)"></select>
+      <select id="prox-f-set" data-i18n-aria="f_set" aria-label="Set" onchange="proxSetFiltro('setId',this.value)"></select>
       <span id="prox-search-status" class="prox-search-status"></span>
     </div>
     <div class="cards-grid prox-results" id="prox-search-grid"></div>
