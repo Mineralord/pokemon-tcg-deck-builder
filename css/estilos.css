@@ -1,58 +1,84 @@
   :root {
-    --bg-void: #0A0D14;
-    --bg-base: #0F1117;
-    --bg-surface: #161B27;
-    --bg-elevated: #1E2535;
-    --bg-card: #232B3E;
-    --electric: #FACC15;
-    --electric-dim: #CA9A0A;
-    --electric-glow: rgba(250,204,21,0.15);
-    --pokered: #EF4444;
-    --pokered-dim: #B91C1C;
+    /* ===== Identidad NEÓN GAMING (morado/rosa, fondo cyberpunk) ===== */
+    --bg-void: #0A0A18;
+    --bg-base: #0F0F23;
+    --bg-surface: #16162E;
+    --bg-elevated: #1E1E3A;
+    --bg-card: #232347;
+
+    /* Acento primario neón. --electric se conserva como alias del acento para
+       que todos los usos existentes adopten el morado automáticamente. */
+    --accent: #7C3AED;
+    --accent-2: #A78BFA;
+    --action: #F43F5E;
+    --action-2: #FB7185;
+    --electric: #A78BFA;        /* texto/bordes acento (legible sobre oscuro) */
+    --electric-dim: #7C3AED;    /* relleno/hover */
+    --electric-glow: rgba(124,58,237,0.22);
+
+    --pokered: #F43F5E;
+    --pokered-dim: #BE123C;
     --pokeblue: #3B82F6;
-    --pokeblue-dim: #1D4ED8;
+    --pokeblue-dim: #2563EB;
+
+    /* Colores por tipo Pokémon (acentos secundarios) */
     --grass: #22C55E;
-    --psychic: #A855F7;
-    --water: #06B6D4;
-    --fire: #F97316;
+    --psychic: #C084FC;
+    --water: #22D3EE;
+    --fire: #FB923C;
     --dark-type: #8B5CF6;
+
     --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --text-muted: #475569;
-    --border: rgba(255,255,255,0.07);
-    --border-bright: rgba(250,204,21,0.3);
+    --text-secondary: #A9B2C7;
+    --text-muted: #8A93A6;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(124,58,237,0.45);
     --legal: #22C55E;
-    --illegal: #EF4444;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --illegal: #F43F5E;
+    --radius: 14px;
+    --radius-sm: 9px;
+
+    /* Glow + easing (reglas Emil: curvas propias, no defaults) */
+    --glow-accent: 0 0 22px rgba(124,58,237,0.45);
+    --glow-action: 0 0 22px rgba(244,63,94,0.40);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Inter', sans-serif;
-    background: var(--bg-void);
+    font-family: 'Chakra Petch', 'Chakra Petch', sans-serif;
+    background:
+      radial-gradient(1100px 700px at 12% -10%, rgba(124,58,237,0.16), transparent 60%),
+      radial-gradient(1000px 700px at 100% 110%, rgba(244,63,94,0.12), transparent 60%),
+      var(--bg-void);
+    background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
   }
 
-  /* AMBIENT BACKGROUND */
+  /* AMBIENT BACKGROUND — halos neón + rejilla cyberpunk muy sutil */
   body::before {
     content: '';
     position: fixed;
-    top: -200px; left: -200px;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(250,204,21,0.04) 0%, transparent 70%);
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.05) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 75%);
+            mask-image: radial-gradient(circle at 50% 0%, #000 0%, transparent 75%);
     pointer-events: none;
     z-index: 0;
   }
   body::after {
     content: '';
     position: fixed;
-    bottom: -200px; right: -200px;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(59,130,246,0.05) 0%, transparent 70%);
+    bottom: -240px; right: -200px;
+    width: 680px; height: 680px;
+    background: radial-gradient(circle, rgba(168,139,250,0.10) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
@@ -89,7 +115,7 @@
   }
 
   .logo-title {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 2px;
@@ -164,7 +190,7 @@
     color: white;
     border: none;
     border-radius: var(--radius-sm);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -184,7 +210,7 @@
   }
 
   .controls-title {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -219,7 +245,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Chakra Petch', sans-serif;
     font-size: 14px;
     outline: none;
     cursor: pointer;
@@ -232,18 +258,18 @@
 
   .btn-build {
     padding: 10px 28px;
-    background: linear-gradient(135deg, var(--electric) 0%, #F59E0B 100%);
+    background: linear-gradient(135deg, var(--electric) 0%, #F43F5E 100%);
     color: #0A0D14;
     border: none;
     border-radius: var(--radius-sm);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 4px 20px rgba(250,204,21,0.25);
+    box-shadow: 0 4px 20px rgba(124,58,237,0.25);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -251,7 +277,7 @@
 
   .btn-build:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 28px rgba(250,204,21,0.4);
+    box-shadow: 0 6px 28px rgba(124,58,237,0.4);
   }
 
   .btn-build:disabled {
@@ -284,7 +310,7 @@
   .empty-icon { font-size: 48px; opacity: 0.3; }
 
   .empty-title {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 2px;
@@ -304,7 +330,7 @@
     transition: border-color 0.2s;
   }
 
-  .deck-card:hover { border-color: rgba(250,204,21,0.2); }
+  .deck-card:hover { border-color: rgba(124,58,237,0.2); }
 
   .deck-header {
     padding: 18px 24px;
@@ -317,7 +343,7 @@
   }
 
   .deck-rank {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 28px;
     font-weight: 700;
     color: var(--electric);
@@ -328,7 +354,7 @@
   .deck-title-area { flex: 1; }
 
   .deck-name {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -362,7 +388,7 @@
   .btn-copy, .btn-save-deck {
     padding: 7px 14px;
     border-radius: var(--radius-sm);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -506,7 +532,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-weight: 700;
     font-size: 13px;
   }
@@ -522,7 +548,7 @@
     border-radius: var(--radius) var(--radius) 0 0;
     font-size: 12px;
     color: var(--text-muted);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -534,7 +560,7 @@
     color: #0A0D14;
     border: none;
     border-radius: var(--radius-sm);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -581,10 +607,10 @@
     cursor: default;
   }
 
-  .saved-deck-card:hover { border-color: rgba(250,204,21,0.25); background: var(--bg-elevated); }
+  .saved-deck-card:hover { border-color: rgba(124,58,237,0.25); background: var(--bg-elevated); }
 
   .saved-deck-name {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
@@ -628,7 +654,7 @@
     flex: 1;
     padding: 7px;
     border-radius: var(--radius-sm);
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -656,7 +682,7 @@
   }
 
   .legal-section-title {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -744,7 +770,7 @@
 
   .bg-fire { background: rgba(249,115,22,0.15); color: var(--fire); }
   .bg-water { background: rgba(6,182,212,0.15); color: var(--water); }
-  .bg-electric { background: rgba(250,204,21,0.15); color: var(--electric); }
+  .bg-electric { background: rgba(124,58,237,0.15); color: var(--electric); }
   .bg-psychic { background: rgba(168,85,247,0.15); color: var(--psychic); }
   .bg-grass { background: rgba(34,197,94,0.15); color: var(--grass); }
   .bg-dark { background: rgba(139,92,246,0.15); color: var(--dark-type); }
@@ -793,7 +819,7 @@
   }
 
   .modal-title {
-    font-family: 'Rajdhani', sans-serif;
+    font-family: 'Russo One', sans-serif;
     font-size: 18px;
     font-weight: 700;
   }
@@ -836,7 +862,7 @@
 .cd-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);padding:3px 9px;border-radius:999px;font-size:12px}
 .cd-block{background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px;margin:8px 0}
 .cd-h{font-weight:600;margin-bottom:3px}
-.cd-dmg{float:right;color:#FACC15;font-weight:700}
+.cd-dmg{float:right;color:#A78BFA;font-weight:700}
 .cd-t{opacity:.85;font-size:13px}
 .cd-line{margin:8px 0}
 .cd-rule{font-style:italic;opacity:.8;font-size:12px;margin:4px 0}
@@ -857,11 +883,11 @@
 }
 .nav-btn{
   background:rgba(255,255,255,.05); color:#cfd6e4; border:1px solid rgba(255,255,255,.1);
-  padding:8px 16px; border-radius:10px; cursor:pointer; font:600 14px/1 'Rajdhani',sans-serif;
+  padding:8px 16px; border-radius:10px; cursor:pointer; font:600 14px/1 'Russo One',sans-serif;
   letter-spacing:.3px; transition:all .15s;
 }
 .nav-btn:hover{ background:rgba(255,255,255,.1); color:#fff; }
-.nav-btn.active{ background:#FACC15; color:#0A0D14; border-color:#FACC15; }
+.nav-btn.active{ background:#A78BFA; color:#0A0D14; border-color:#A78BFA; }
 
 /* ---------- Contenedor de vistas ---------- */
 .views{ padding:18px 20px 60px; }
@@ -873,9 +899,9 @@
 .tb-btn{
   background:linear-gradient(135deg,#1b2233,#161b27); color:#e8edf6;
   border:1px solid rgba(255,255,255,.12); padding:9px 15px; border-radius:10px;
-  cursor:pointer; font:600 13px/1 'Inter',sans-serif; transition:all .15s;
+  cursor:pointer; font:600 13px/1 'Chakra Petch',sans-serif; transition:all .15s;
 }
-.tb-btn:hover{ border-color:#FACC15; color:#fff; transform:translateY(-1px); }
+.tb-btn:hover{ border-color:#A78BFA; color:#fff; transform:translateY(-1px); }
 .tb-btn.tb-danger{ border-color:rgba(239,68,68,.4); color:#fca5a5; }
 .tb-btn.tb-danger:hover{ background:#EF4444; color:#fff; border-color:#EF4444; }
 
@@ -897,17 +923,17 @@ header{ flex-wrap:wrap; row-gap:8px; }
 }
 .f-field{ display:flex; flex-direction:column; gap:4px; }
 .f-field{ cursor:pointer; }
-.f-field > span{ font:600 11px/1 'Inter',sans-serif; color:#8a93a6; text-transform:uppercase; letter-spacing:.4px; }
+.f-field > span{ font:600 11px/1 'Chakra Petch',sans-serif; color:#8a93a6; text-transform:uppercase; letter-spacing:.4px; }
 .filtros input, .filtros select{
   background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14);
-  border-radius:8px; padding:7px 9px; font:500 13px/1 'Inter',sans-serif; min-width:120px;
+  border-radius:8px; padding:7px 9px; font:500 13px/1 'Chakra Petch',sans-serif; min-width:120px;
 }
-.filtros input:focus, .filtros select:focus{ outline:none; border-color:#FACC15; }
+.filtros input:focus, .filtros select:focus{ outline:none; border-color:#A78BFA; }
 .f-text{ min-width:200px; }
 .f-hp{ min-width:70px; max-width:80px; }
 .f-reset{
   background:rgba(239,68,68,.15); color:#fca5a5; border:1px solid rgba(239,68,68,.3);
-  border-radius:8px; padding:7px 12px; cursor:pointer; font:600 12px/1 'Inter',sans-serif; height:33px;
+  border-radius:8px; padding:7px 12px; cursor:pointer; font:600 12px/1 'Chakra Petch',sans-serif; height:33px;
 }
 .f-reset:hover{ background:rgba(239,68,68,.28); color:#fff; }
 
@@ -921,104 +947,104 @@ header{ flex-wrap:wrap; row-gap:8px; }
   border-radius:14px; overflow:hidden; transition:transform .12s, box-shadow .12s, border-color .12s;
   display:flex; flex-direction:column;
 }
-.cardtile:hover{ transform:translateY(-4px); box-shadow:0 10px 26px rgba(0,0,0,.45); border-color:rgba(250,204,21,.4); }
+.cardtile:hover{ transform:translateY(-4px); box-shadow:0 10px 26px rgba(0,0,0,.45); border-color:rgba(124,58,237,.4); }
 .cardtile.ring-illegal{ border-color:rgba(239,68,68,.55); }
 .cardtile-img{ position:relative; cursor:pointer; aspect-ratio:245/342; background:#0b0e15; }
 .cardtile-img img{ width:100%; height:100%; object-fit:contain; display:block; }
-.cardtile-img .noimg{ display:flex; align-items:center; justify-content:center; height:100%; color:#8a93a6; font:600 14px 'Inter'; text-align:center; padding:10px; }
+.cardtile-img .noimg{ display:flex; align-items:center; justify-content:center; height:100%; color:#8a93a6; font:600 14px 'Chakra Petch'; text-align:center; padding:10px; }
 .qty-badge{
-  position:absolute; top:8px; right:8px; background:#FACC15; color:#0A0D14;
-  font:700 13px/1 'Rajdhani'; padding:4px 8px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.4);
+  position:absolute; top:8px; right:8px; background:#A78BFA; color:#0A0D14;
+  font:700 13px/1 'Russo One'; padding:4px 8px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.4);
 }
 .qty-badge.owned{ background:#22C55E; color:#062a12; }
 .cardtile-bar{ display:flex; align-items:center; gap:6px; padding:7px 8px 4px; }
 .cardtile-bar button{
   width:26px; height:26px; flex:0 0 auto; border-radius:7px; cursor:pointer;
   background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.14);
-  font:700 15px/1 'Inter'; display:flex; align-items:center; justify-content:center;
+  font:700 15px/1 'Chakra Petch'; display:flex; align-items:center; justify-content:center;
 }
-.cardtile-bar button:hover{ background:#FACC15; color:#0A0D14; }
+.cardtile-bar button:hover{ background:#A78BFA; color:#0A0D14; }
 .cardtile-bar .ct-add{ background:rgba(34,197,94,.18); border-color:rgba(34,197,94,.4); color:#86efac; margin-left:auto; }
 .cardtile-bar .ct-add:hover{ background:#22C55E; color:#062a12; }
-.ct-name{ flex:1; min-width:0; font:600 13px/1.2 'Inter'; color:#e8edf6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cardtile-set{ padding:0 9px 9px; font:500 11px/1.3 'Inter'; color:#7b8498; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ct-name{ flex:1; min-width:0; font:600 13px/1.2 'Chakra Petch'; color:#e8edf6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cardtile-set{ padding:0 9px 9px; font:500 11px/1.3 'Chakra Petch'; color:#7b8498; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-.empty-grid{ grid-column:1/-1; text-align:center; color:#7b8498; padding:60px 20px; font:500 15px 'Inter'; }
+.empty-grid{ grid-column:1/-1; text-align:center; color:#7b8498; padding:60px 20px; font:500 15px 'Chakra Petch'; }
 
 /* Zona discreta para "Vaciar colección" (al final, poco llamativa) */
 .col-danger-zone{ text-align:center; margin:40px 0 8px; opacity:.5; transition:opacity .15s; }
 .col-danger-zone:hover{ opacity:1; }
-.link-danger{ background:none; border:none; color:#7b8498; font:500 12px 'Inter'; cursor:pointer; text-decoration:underline; padding:6px; }
+.link-danger{ background:none; border:none; color:#7b8498; font:500 12px 'Chakra Petch'; cursor:pointer; text-decoration:underline; padding:6px; }
 .link-danger:hover{ color:#EF4444; }
 
 /* ============ Proxies / PDF ============ */
 .prox-bar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
-.px-opt{ display:flex; align-items:center; gap:6px; color:#cfd6e4; font:600 13px 'Inter'; }
+.px-opt{ display:flex; align-items:center; gap:6px; color:#cfd6e4; font:600 13px 'Chakra Petch'; }
 .px-opt select{ background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:6px 8px; }
-.prox-drop{ border:2px dashed rgba(255,255,255,.18); border-radius:14px; padding:26px; text-align:center; color:#8a93a6; font:600 14px 'Inter'; transition:all .15s; }
-.prox-drop.drag{ border-color:#FACC15; background:rgba(250,204,21,.08); color:#fde68a; }
-.prox-note{ margin:12px 0 16px; color:#aab2c2; font:500 13px 'Inter'; }
+.prox-drop{ border:2px dashed rgba(255,255,255,.18); border-radius:14px; padding:26px; text-align:center; color:#8a93a6; font:600 14px 'Chakra Petch'; transition:all .15s; }
+.prox-drop.drag{ border-color:#A78BFA; background:rgba(124,58,237,.08); color:#C4B5FD; }
+.prox-note{ margin:12px 0 16px; color:#aab2c2; font:500 13px 'Chakra Petch'; }
 .prox-tile{ position:relative; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,.08); background:#0b0e15; }
 .prox-tile img{ width:100%; aspect-ratio:63/88; object-fit:cover; display:block; }
 .prox-tile-bar{ display:flex; align-items:center; gap:4px; padding:5px 6px; background:rgba(10,13,20,.6); }
-.prox-tile-bar button{ width:24px; height:24px; border-radius:6px; cursor:pointer; background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.14); font:700 13px 'Inter'; }
-.prox-tile-bar button:hover{ background:#FACC15; color:#0A0D14; }
-.prox-tile-bar .px-copies{ font:700 12px 'Rajdhani'; color:#FACC15; min-width:26px; text-align:center; }
+.prox-tile-bar button{ width:24px; height:24px; border-radius:6px; cursor:pointer; background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.14); font:700 13px 'Chakra Petch'; }
+.prox-tile-bar button:hover{ background:#A78BFA; color:#0A0D14; }
+.prox-tile-bar .px-copies{ font:700 12px 'Russo One'; color:#A78BFA; min-width:26px; text-align:center; }
 .prox-tile-bar .prox-del{ margin-left:auto; background:rgba(239,68,68,.18); border-color:rgba(239,68,68,.35); color:#fca5a5; }
 .prox-tile-bar .prox-del:hover{ background:#EF4444; color:#fff; }
 
 /* Buscador dentro de Proxies */
 .prox-search-bar{ display:flex; gap:10px; align-items:center; margin:6px 0 12px; flex-wrap:wrap; }
-.prox-search-bar input{ flex:1; min-width:220px; background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 12px; font:500 14px 'Inter'; }
-.prox-search-bar input:focus{ outline:none; border-color:#FACC15; }
-.prox-search-bar select{ background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 8px; font:500 13px 'Inter'; max-width:160px; }
-.prox-search-bar select:focus{ outline:none; border-color:#FACC15; }
+.prox-search-bar input{ flex:1; min-width:220px; background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 12px; font:500 14px 'Chakra Petch'; }
+.prox-search-bar input:focus{ outline:none; border-color:#A78BFA; }
+.prox-search-bar select{ background:#0F1117; color:#e8edf6; border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:9px 8px; font:500 13px 'Chakra Petch'; max-width:160px; }
+.prox-search-bar select:focus{ outline:none; border-color:#A78BFA; }
 .prox-lang{ display:inline-flex; border:1px solid rgba(255,255,255,.14); border-radius:9px; overflow:hidden; }
-.prox-lang button{ background:#0F1117; color:#aab2c2; border:none; padding:9px 12px; cursor:pointer; font:700 12px 'Inter'; }
-.prox-lang button.active{ background:#FACC15; color:#0A0D14; }
-.prox-search-status{ color:#aab2c2; font:600 13px 'Inter'; }
+.prox-lang button{ background:#0F1117; color:#aab2c2; border:none; padding:9px 12px; cursor:pointer; font:700 12px 'Chakra Petch'; }
+.prox-lang button.active{ background:#A78BFA; color:#0A0D14; }
+.prox-search-status{ color:#aab2c2; font:600 13px 'Chakra Petch'; }
 .prox-results{ grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); margin-bottom:14px; }
 .prox-res{ background:rgba(22,27,39,.5); border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; }
 .prox-res-img{ position:relative; aspect-ratio:63/88; background:#0b0e15; }
 .prox-res-img img{ width:100%; height:100%; object-fit:contain; display:block; }
-.prox-res-img .noimg{ display:flex; align-items:center; justify-content:center; height:100%; padding:6px; text-align:center; font:600 10px 'Inter'; color:#9aa3b4; }
-.prox-res-add{ position:absolute; bottom:6px; right:6px; width:30px; height:30px; border-radius:8px; cursor:pointer; border:none; background:rgba(34,197,94,.9); color:#062a12; font:700 17px/1 'Inter'; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+.prox-res-img .noimg{ display:flex; align-items:center; justify-content:center; height:100%; padding:6px; text-align:center; font:600 10px 'Chakra Petch'; color:#9aa3b4; }
+.prox-res-add{ position:absolute; bottom:6px; right:6px; width:30px; height:30px; border-radius:8px; cursor:pointer; border:none; background:rgba(34,197,94,.9); color:#062a12; font:700 17px/1 'Chakra Petch'; box-shadow:0 2px 6px rgba(0,0,0,.4); }
 .prox-res-add:hover{ background:#22C55E; }
-.prox-res-name{ padding:6px 8px 0; font:600 12px 'Inter'; color:#e8edf6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.prox-res-set{ padding:0 8px 8px; font:500 10px 'Inter'; color:#7b8498; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.prox-res-name{ padding:6px 8px 0; font:600 12px 'Chakra Petch'; color:#e8edf6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.prox-res-set{ padding:0 8px 8px; font:500 10px 'Chakra Petch'; color:#7b8498; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Acciones sobre la imagen (reemplazar / eliminar) */
 .tile-actions{ position:absolute; top:8px; left:8px; display:flex; gap:6px; opacity:0; transition:opacity .12s; z-index:2; }
 .cardtile:hover .tile-actions{ opacity:1; }
 .tile-act{
   width:28px; height:28px; border-radius:8px; cursor:pointer; border:none;
-  background:rgba(10,13,20,.82); color:#fff; font:700 13px/1 'Inter';
+  background:rgba(10,13,20,.82); color:#fff; font:700 13px/1 'Chakra Petch';
   display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.4);
 }
-.tile-act:hover{ background:#FACC15; color:#0A0D14; }
+.tile-act:hover{ background:#A78BFA; color:#0A0D14; }
 .tile-act.del:hover{ background:#EF4444; color:#fff; }
 @media (hover:none){ .tile-actions{ opacity:1; } } /* en móvil siempre visibles */
 
 /* Banner de modo reemplazo */
 .replace-banner{
-  background:linear-gradient(135deg, rgba(250,204,21,.18), rgba(250,204,21,.08));
-  border:1px solid rgba(250,204,21,.45); color:#fde68a;
+  background:linear-gradient(135deg, rgba(124,58,237,.18), rgba(124,58,237,.08));
+  border:1px solid rgba(124,58,237,.45); color:#C4B5FD;
   border-radius:12px; padding:12px 16px; margin-bottom:14px;
-  font:600 14px 'Inter'; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  font:600 14px 'Chakra Petch'; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
 }
 .replace-banner b{ color:#fff; }
 .replace-banner button{
   margin-left:auto; background:rgba(239,68,68,.2); color:#fca5a5;
-  border:1px solid rgba(239,68,68,.4); border-radius:8px; padding:6px 12px; cursor:pointer; font:600 13px 'Inter';
+  border:1px solid rgba(239,68,68,.4); border-radius:8px; padding:6px 12px; cursor:pointer; font:600 13px 'Chakra Petch';
 }
 .replace-banner button:hover{ background:#EF4444; color:#fff; }
 
 /* Botón reemplazar en el detalle */
 .cd-add .btn-rep{
-  background:rgba(250,204,21,.16); color:#fde68a; border:1px solid rgba(250,204,21,.4);
-  padding:9px 14px; border-radius:9px; cursor:pointer; font:700 13px 'Inter';
+  background:rgba(124,58,237,.16); color:#C4B5FD; border:1px solid rgba(124,58,237,.4);
+  padding:9px 14px; border-radius:9px; cursor:pointer; font:700 13px 'Chakra Petch';
 }
-.cd-add .btn-rep:hover{ background:#FACC15; color:#0A0D14; }
+.cd-add .btn-rep:hover{ background:#A78BFA; color:#0A0D14; }
 
 /* ============ Símbolos de energía (SVG) ============ */
 .ener-sym{ display:inline-flex; width:16px; height:16px; vertical-align:-3px; }
@@ -1031,9 +1057,9 @@ header{ flex-wrap:wrap; row-gap:8px; }
 .deck-cards{ display:grid; gap:8px; grid-template-columns:repeat(auto-fill, minmax(78px,1fr)); margin-top:6px; }
 .deck-mini{ position:relative; aspect-ratio:245/342; border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid rgba(255,255,255,.06); }
 .deck-mini img{ width:100%; height:100%; object-fit:contain; display:block; }
-.deck-mini .noimg{ display:flex; align-items:center; justify-content:center; height:100%; padding:6px; text-align:center; font:600 10px 'Inter'; color:#9aa3b4; background:#0b0e15; }
+.deck-mini .noimg{ display:flex; align-items:center; justify-content:center; height:100%; padding:6px; text-align:center; font:600 10px 'Chakra Petch'; color:#9aa3b4; background:#0b0e15; }
 .deck-mini .qty-badge{ top:4px; right:4px; padding:2px 6px; font-size:11px; }
-.deck-mini:hover{ border-color:rgba(250,204,21,.55); }
+.deck-mini:hover{ border-color:rgba(124,58,237,.55); }
 .deck-strategy{ margin-top:16px; }
 
 /* Mazos guardados: rejilla de cartas (miniaturas) con altura acotada */
@@ -1044,7 +1070,7 @@ header{ flex-wrap:wrap; row-gap:8px; }
 .rb-seg{ height:100%; }
 .rb-pk{ background:#22C55E; }   /* Pokémon */
 .rb-tr{ background:#3B82F6; }   /* Entrenadores */
-.rb-en{ background:#FACC15; }   /* Energía */
+.rb-en{ background:#A78BFA; }   /* Energía */
 
 /* ============ Skeletons (shimmer mientras carga la imagen) ============ */
 .cardtile-img, .deck-mini{
@@ -1055,8 +1081,8 @@ header{ flex-wrap:wrap; row-gap:8px; }
 @keyframes shimmer{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
 
 /* ============ Accesibilidad: foco visible ============ */
-:focus-visible{ outline:2px solid #FACC15; outline-offset:2px; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible{ outline:2px solid #FACC15; outline-offset:2px; border-radius:6px; }
+:focus-visible{ outline:2px solid #A78BFA; outline-offset:2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible{ outline:2px solid #A78BFA; outline-offset:2px; border-radius:6px; }
 
 /* ============ Filtros plegables (botón solo en móvil) ============ */
 .f-toggle{ display:none; }
@@ -1068,7 +1094,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .nav-btn{ flex:1; min-height:44px; padding:6px 4px; font-size:11px; text-align:center; }
   body{ padding-bottom:66px; }
   .f-toggle{ display:inline-block; margin-bottom:8px; background:#1b2233; color:#e8edf6;
-             border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:10px 14px; font:600 13px 'Inter'; cursor:pointer; min-height:44px; }
+             border:1px solid rgba(255,255,255,.14); border-radius:9px; padding:10px 14px; font:600 13px 'Chakra Petch'; cursor:pointer; min-height:44px; }
   /* El campo de buscar (1er field) SIEMPRE visible; el resto se pliega tras "Filtros" */
   .filtros .filtros-inner{ display:flex !important; }
   .filtros:not(.open) .filtros-inner > .f-field:not(:first-child){ display:none; }
@@ -1079,7 +1105,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* ---------- Explorador: estado / cargar más ---------- */
-.exp-statusbar{ margin-bottom:12px; color:#aab2c2; font:600 13px 'Inter'; }
+.exp-statusbar{ margin-bottom:12px; color:#aab2c2; font:600 13px 'Chakra Petch'; }
 .exp-more-wrap{ display:flex; justify-content:center; margin-top:22px; }
 
 /* ---------- Detalle: control de añadir ---------- */
@@ -1087,26 +1113,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;
   padding-top:14px; border-top:1px solid rgba(255,255,255,.1);
 }
-.cd-add .owned-line{ color:#aab2c2; font:600 13px 'Inter'; }
+.cd-add .owned-line{ color:#aab2c2; font:600 13px 'Chakra Petch'; }
 .qty-stepper{ display:flex; align-items:center; gap:0; }
 .qty-stepper button{
   width:32px; height:34px; background:rgba(255,255,255,.08); color:#fff;
-  border:1px solid rgba(255,255,255,.16); cursor:pointer; font:700 16px/1 'Inter';
+  border:1px solid rgba(255,255,255,.16); cursor:pointer; font:700 16px/1 'Chakra Petch';
 }
 .qty-stepper button:first-child{ border-radius:8px 0 0 8px; }
 .qty-stepper button:last-child{ border-radius:0 8px 8px 0; }
 .qty-stepper input{
   width:50px; height:34px; text-align:center; background:#0F1117; color:#fff;
-  border:1px solid rgba(255,255,255,.16); border-left:none; border-right:none; font:600 14px 'Inter';
+  border:1px solid rgba(255,255,255,.16); border-left:none; border-right:none; font:600 14px 'Chakra Petch';
 }
 .cd-add .btn-add{
   background:#22C55E; color:#062a12; border:none; padding:9px 16px; border-radius:9px;
-  cursor:pointer; font:700 13px 'Inter';
+  cursor:pointer; font:700 13px 'Chakra Petch';
 }
 .cd-add .btn-add:hover{ filter:brightness(1.08); }
 .cd-add .btn-del{
   background:rgba(239,68,68,.16); color:#fca5a5; border:1px solid rgba(239,68,68,.35);
-  padding:9px 14px; border-radius:9px; cursor:pointer; font:700 13px 'Inter';
+  padding:9px 14px; border-radius:9px; cursor:pointer; font:700 13px 'Chakra Petch';
 }
 .cd-add .btn-del:hover{ background:#EF4444; color:#fff; }
 
@@ -1137,15 +1163,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .login-ball{ width:56px; height:56px; margin:0 auto 18px; }
 .login-ball svg{ width:100%; height:100%; }
 .login-title{
-  font-family:'Rajdhani',sans-serif; font-weight:700;
+  font-family:'Russo One',sans-serif; font-weight:700;
   font-size:1.5rem; color:#fff; margin:0 0 8px; letter-spacing:.5px;
 }
 .login-sub{ color:#9aa3b2; font-size:.95rem; margin:0 0 22px; }
 .login-checking{ color:#6b7280; font-size:.9rem; margin:0; }
 .login-gate-btn{
   display:inline-block; cursor:pointer;
-  font-family:'Rajdhani',sans-serif; font-weight:600; font-size:1.05rem;
-  color:#0A0D14; background:#FACC15;
+  font-family:'Russo One',sans-serif; font-weight:600; font-size:1.05rem;
+  color:#0A0D14; background:#A78BFA;
   border:none; border-radius:12px;
   padding:13px 26px; transition:filter .15s ease, transform .1s ease;
 }
@@ -1195,10 +1221,10 @@ body.auth-in #login-gate{ display:none; }
   padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,.07);
 }
 .view-title{
-  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px;
+  font-family:'Russo One',sans-serif; font-weight:700; font-size:22px;
   letter-spacing:1px; text-transform:uppercase; color:var(--text-primary); line-height:1;
 }
-.view-count{ font:600 13px/1 'Inter',sans-serif; color:var(--text-secondary); white-space:nowrap; }
+.view-count{ font:600 13px/1 'Chakra Petch',sans-serif; color:var(--text-secondary); white-space:nowrap; }
 .view-count strong{ font-family:'JetBrains Mono',monospace; color:var(--electric); }
 
 /* Jerarquía de botones: secundario = contorno (vs primario relleno). */
@@ -1215,4 +1241,57 @@ body.auth-in #login-gate{ display:none; }
   .view.active{ animation:none !important; }
   .login-ball, .pokeball-spin{ animation:none !important; }
   html{ scroll-behavior:auto !important; }
+}
+
+/* =============================================================
+   PARTE B — CAPA NEÓN GAMING (identidad visual)
+   Easing propio (Emil), feedback de pulsación, glows morado/rosa.
+   ============================================================= */
+
+::selection{ background:rgba(124,58,237,.45); color:#fff; }
+
+/* Texto/acento con leve glow para titulares clave */
+.logo-title{ text-shadow:0 0 18px rgba(124,58,237,.5); }
+.view-title{ text-shadow:0 0 14px rgba(124,58,237,.35); }
+
+/* Botón PRIMARIO: gradiente acento→acción, texto blanco, glow */
+.btn-build{
+  background:linear-gradient(135deg, var(--accent) 0%, var(--action) 100%);
+  color:#fff;
+  box-shadow:0 6px 22px rgba(124,58,237,.35), 0 0 0 1px rgba(255,255,255,.06) inset;
+  transition:transform 160ms var(--ease-out), box-shadow 220ms var(--ease-out), filter 200ms var(--ease-out);
+}
+.btn-build:hover{ transform:translateY(-2px); box-shadow:0 10px 30px rgba(124,58,237,.5), var(--glow-action); }
+.btn-build:active{ transform:scale(.97); }
+.btn-build:disabled{ filter:saturate(.4) brightness(.7); box-shadow:none; transform:none; }
+
+/* Botón SECUNDARIO: contorno que se enciende */
+.btn-build.btn-secondary{ background:transparent; border:1px solid rgba(255,255,255,.18); color:var(--text-secondary); box-shadow:none; }
+.btn-build.btn-secondary:hover{ border-color:var(--accent-2); color:#fff; box-shadow:var(--glow-accent); transform:translateY(-2px); }
+
+/* Navegación activa: gradiente + glow (en vez del bloque plano) */
+.nav-btn{ transition:background 160ms var(--ease-out), color 160ms var(--ease-out), box-shadow 200ms var(--ease-out), transform 120ms var(--ease-out); }
+.nav-btn.active{ background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#fff; border-color:transparent; box-shadow:var(--glow-accent); }
+.nav-btn:active{ transform:scale(.97); }
+
+/* Feedback de pulsación (Emil: todo lo pulsable "responde") */
+.tb-btn:active, .btn-add:active, .btn-import:active, .f-reset:active,
+button.stat-pill:active, .login-gate-btn:active, .cardtile-bar button:active,
+.qty-stepper button:active, .prox-lang button:active{ transform:scale(.97); }
+
+/* Tarjetas: borde/halo neón al pasar (transform/opacity, sin reflow) */
+.cardtile{ transition:transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out), border-color 220ms var(--ease-out); }
+.cardtile:hover{ box-shadow:0 14px 34px rgba(0,0,0,.5), 0 0 0 1px var(--accent), var(--glow-accent); }
+.deck-mini:hover{ box-shadow:0 8px 22px rgba(0,0,0,.5), var(--glow-accent); }
+
+/* Foco visible en acento neón */
+:focus-visible{ outline:2px solid var(--accent-2); outline-offset:2px; }
+
+/* Entrada suave al cambiar de vista (escalonado lo añadimos por JS luego) */
+.view.active{ animation:v-in .26s var(--ease-out); }
+@keyframes v-in{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+
+/* Hover solo en punteros finos (Emil: evita falsos hover en táctil) */
+@media (hover:hover) and (pointer:fine){
+  .tb-btn:hover{ box-shadow:var(--glow-accent); }
 }
