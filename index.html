@@ -157,6 +157,79 @@
         <button class="btn-build" id="gen-btn" onclick="generarMazos()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span data-i18n="btn_generate">Generar mazos</span></button>
         <button class="btn-build btn-secondary" id="build-btn" onclick="generateAIPrompt()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span data-i18n="btn_prompt">Prompt para IA</span></button>
       </div>
+      <details class="gen-filters" id="gen-filters">
+        <summary data-i18n="c_filters">Filtros del mazo</summary>
+        <div class="gen-filters-grid">
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_set">Expansión</span>
+            <select class="control-select" id="f-set"><option value=""></option></select>
+          </div>
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_serie">Serie</span>
+            <select class="control-select" id="f-serie"><option value=""></option></select>
+          </div>
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_marca">Marca</span>
+            <select class="control-select" id="f-marca"><option value=""></option></select>
+          </div>
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_format">Formato</span>
+            <select class="control-select" id="f-format">
+              <option value="" data-i18n="f_any">(cualquiera)</option>
+              <option value="standard" data-i18n="fmt_std">Standard</option>
+              <option value="expanded" data-i18n="fmt_exp">Expanded</option>
+              <option value="unlimited" data-i18n="fmt_unl">Unlimited</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_depth">Profundidad evolutiva</span>
+            <select class="control-select" id="f-depth">
+              <option value="" data-i18n="depth_any">Cualquiera</option>
+              <option value="basic" data-i18n="depth_basic">Solo básicos</option>
+              <option value="s1" data-i18n="depth_s1">Hasta Stage 1</option>
+              <option value="s2" data-i18n="depth_s2">Hasta Stage 2</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_speclimit">Máx. Pokémon especiales</span>
+            <select class="control-select" id="f-speclimit">
+              <option value="" data-i18n="opt_nolimit">Sin límite</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <span class="control-label" data-i18n="c_hpmin">PS mínimo</span>
+            <input class="control-select" id="f-hpmin" type="number" min="0" step="10" data-i18n-ph="ph_hpmin" placeholder="0">
+          </div>
+          <div class="control-group gen-filters-wide">
+            <span class="control-label" data-i18n="c_exclude">Excluir cartas</span>
+            <input class="control-select" id="f-exclude" type="text" data-i18n-ph="ph_exclude" placeholder="Ej: Charizard ex, Pikachu">
+          </div>
+          <div class="control-group gen-filters-wide">
+            <span class="control-label" data-i18n="c_mech">Mecánicas permitidas</span>
+            <div class="gm-mecs" id="f-mecs">
+              <label><input type="checkbox" class="gm-mec" value="EX">ex</label>
+              <label><input type="checkbox" class="gm-mec" value="V">V</label>
+              <label><input type="checkbox" class="gm-mec" value="VMAX">VMAX</label>
+              <label><input type="checkbox" class="gm-mec" value="VSTAR">VSTAR</label>
+              <label><input type="checkbox" class="gm-mec" value="VUNION">V-UNION</label>
+              <label><input type="checkbox" class="gm-mec" value="GX">GX</label>
+              <label><input type="checkbox" class="gm-mec" value="MEGA">Mega</label>
+              <label><input type="checkbox" class="gm-mec" value="TERA">Tera</label>
+              <label><input type="checkbox" class="gm-mec" value="RADIANT">Radiant</label>
+              <label><input type="checkbox" class="gm-mec" value="BREAK">BREAK</label>
+              <label><input type="checkbox" class="gm-mec" value="LVX">LV.X</label>
+            </div>
+          </div>
+          <div class="control-group gen-filters-wide">
+            <label class="gm-check"><input type="checkbox" id="f-singleprize"> <span data-i18n="c_singleprize">Solo single-prize (sin ex/V/GX)</span></label>
+          </div>
+        </div>
+      </details>
     </div>
     <div class="decks-output" id="decks-output">
       <div class="empty-state">
@@ -239,6 +312,26 @@
       <button class="modal-close" data-i18n-aria="aria_close" onclick="document.getElementById('modal-overlay').classList.remove('open')">✕</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: modo de inventario antes de generar -->
+<div class="modal-overlay" id="gen-mode-overlay" onclick="if(event.target===this)cerrarModalModo()">
+  <div class="modal gen-mode-modal">
+    <div class="modal-header">
+      <div class="modal-title" data-i18n="gm_title">¿Cómo deben manejarse los inventarios?</div>
+      <button class="modal-close" data-i18n-aria="aria_close" onclick="cerrarModalModo()">✕</button>
+    </div>
+    <div class="modal-body">
+      <button class="gm-option" onclick="generarConModo('indep')">
+        <span class="gm-option-t" data-i18n="gm_indep_t">Inventarios independientes</span>
+        <span class="gm-option-d" data-i18n="gm_indep_d">Cada mazo puede usar cualquier carta disponible; las cartas pueden repetirse entre mazos.</span>
+      </button>
+      <button class="gm-option" onclick="generarConModo('comp')">
+        <span class="gm-option-t" data-i18n="gm_shared_t">Inventario compartido</span>
+        <span class="gm-option-d" data-i18n="gm_shared_d">Una sola colección física: una carta usada por un mazo no puede repetirse en otro de esta generación.</span>
+      </button>
+    </div>
   </div>
 </div>
 

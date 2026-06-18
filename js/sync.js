@@ -1,10 +1,18 @@
 // =============================================================
 //  SINCRONIZACIÓN EN LA NUBE (Firebase Auth con Google + Firestore)
-//  - Inicio de sesión con Google por REDIRECT (fiable en móvil).
-//  - Sesión persistente: una vez dentro, queda permanente y todo
-//    se sincroniza solo entre dispositivos (sin botón de sincronizar).
+//  - Inicio de sesión con Google (popup, con respaldo por redirect).
+//  - Sesión persistente: una vez dentro, todo se sincroniza solo.
 //  - Guardado inmediato + el listener en vivo NO pisa tus cambios.
-//  - Si Firebase no está configurado, la app funciona solo en local.
+//  - Si Firebase no está configurado, la app queda en el gate de login.
+//
+//  ROLES (modo dos jugadores con privacidad):
+//   - DUEÑO (pmmt99): edita su colección. La publica en `compartido/coleccion`
+//     (solo el inventario) para que P2 pueda verla en solo lectura. Sus mazos
+//     guardados viven en `colecciones/{uid}` (privados).
+//   - INVITADA (P2): ve la colección del dueño desde `compartido/coleccion`
+//     (solo lectura) y guarda SUS mazos en `colecciones/{suUid}` (privados).
+//     Ni el dueño ve los mazos de P2 ni P2 los del dueño (lo garantizan las
+//     Reglas de Firestore: cada quien solo lee/escribe su propio documento).
 // =============================================================
 (function(){
   const noConfig = (typeof firebase === 'undefined')
@@ -36,10 +44,11 @@
   // Procesa la vuelta del login por redirect (los errores se muestran)
   auth.getRedirectResult().catch(e => { console.error('[sync] redirect', e); if(typeof showToast==='function') showToast((typeof T==='function'?T('sync_err'):'Error'), 'error'); });
 
-  let uid = null, unsub = null, aplicandoNube = false, pushTimer = null, pushPendiente = false;
+  let uid = null, esDueno = false, unsub = null, unsubInv = null, aplicandoNube = false, pushTimer = null, pushPendiente = false;
 
-  // Lista blanca de acceso (correos autorizados). Añade más correos aquí.
-  const ALLOWED = ['pmmt99@gmail.com'];
+  // Dueño de la colección y lista blanca de acceso (debe coincidir con firestore.rules).
+  const OWNER = 'pmmt99@gmail.com';
+  const ALLOWED = ['pmmt99@gmail.com', 'elizabethrgj378@gmail.com'];
   function permitido(u){ return !!u && ALLOWED.includes((u.email || '').toLowerCase()); }
 
   function texto(k, alt){ return (typeof T === 'function') ? T(k) : alt; }
@@ -98,17 +107,33 @@
   function pintarTodo(){ pintarBoton(); if(uid && _estado) setSyncStatus(_estado); }
   window.syncRepaint = pintarTodo;   // repinta botón + estado al cambiar de idioma
 
-  // Sube la colección a la nube (agrupando ráfagas de cambios, pero sin perderlos)
+  // Publica el inventario del dueño en el documento compartido (solo lectura para P2).
+  function publicarCompartido(){
+    if(!esDueno || !uid) return;
+    const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
+    db.collection('compartido').doc('coleccion').set({ inventory: invSlim, updatedAt: Date.now() })
+      .catch(function(e){ console.error('[sync] compartido', e); });
+  }
+
+  // Sube los datos (agrupando ráfagas de cambios, pero sin perderlos)
   function flushPush(){
     clearTimeout(pushTimer); pushTimer = null;
     if(!uid || !pushPendiente) return;
     pushPendiente = false;
-    const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
     setSyncStatus('saving');
-    db.collection('colecciones').doc(uid).set({
-      inventory: invSlim, savedDecks: savedDecks, updatedAt: Date.now()
-    }).then(function(){ setSyncStatus('saved'); })
-      .catch(function(e){ console.error('[sync] error al guardar', e); setSyncStatus(navigator.onLine ? 'saved' : 'offline'); });
+    if(esDueno){
+      const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
+      Promise.all([
+        db.collection('colecciones').doc(uid).set({ inventory: invSlim, savedDecks: savedDecks, updatedAt: Date.now() }),
+        db.collection('compartido').doc('coleccion').set({ inventory: invSlim, updatedAt: Date.now() })
+      ]).then(function(){ setSyncStatus('saved'); })
+        .catch(function(e){ console.error('[sync] error al guardar', e); setSyncStatus(navigator.onLine ? 'saved' : 'offline'); });
+    } else {
+      // P2: solo sus mazos privados; nunca el inventario (es del dueño, solo lectura).
+      db.collection('colecciones').doc(uid).set({ inventory: [], savedDecks: savedDecks, updatedAt: Date.now() })
+        .then(function(){ setSyncStatus('saved'); })
+        .catch(function(e){ console.error('[sync] error al guardar', e); setSyncStatus(navigator.onLine ? 'saved' : 'offline'); });
+    }
   }
   window.syncPush = function(){
     if(!uid || aplicandoNube) return;
@@ -125,6 +150,17 @@
   window.addEventListener('offline', function(){ if(uid) setSyncStatus('offline'); });
   window.addEventListener('online', function(){ if(uid){ pushPendiente = true; flushPush(); } });
 
+  function cacheLocal(){
+    try {
+      if(uid){
+        const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
+        localStorage.setItem(invKey(uid), JSON.stringify(invSlim));
+        localStorage.setItem(decksKey(uid), JSON.stringify(savedDecks));
+      }
+    } catch(e){}
+  }
+
+  // Aplica un documento de colección completo (inventario + mazos): para el DUEÑO.
   function aplicarDoc(d){
     if(!d) return;
     aplicandoNube = true;
@@ -133,16 +169,30 @@
       if(typeof asegurarId === 'function') inventory.forEach(asegurarId);
     }
     if(Array.isArray(d.savedDecks)) savedDecks = d.savedDecks;
-    try {
-      if(uid){
-        const invSlim = (typeof slimInventory === 'function') ? slimInventory() : inventory;
-        localStorage.setItem(invKey(uid), JSON.stringify(invSlim));
-        localStorage.setItem(decksKey(uid), JSON.stringify(savedDecks));
-      }
-    } catch(e){}
+    cacheLocal();
+    renderAll();
+    aplicandoNube = false;
+  }
+
+  // Solo los mazos guardados (para P2: su propio documento privado).
+  function aplicarMazos(d){
+    aplicandoNube = true;
+    if(d && Array.isArray(d.savedDecks)) savedDecks = d.savedDecks;
+    else if(!d) savedDecks = savedDecks || [];
+    cacheLocal();
+    if(typeof renderSaved === 'function') renderSaved();
+    if(typeof updateStats === 'function') updateStats();
+    aplicandoNube = false;
+  }
+
+  // Solo el inventario compartido del dueño (para P2: solo lectura).
+  function aplicarInventario(d){
+    aplicandoNube = true;
+    inventory = (d && Array.isArray(d.inventory)) ? d.inventory : [];
+    if(typeof asegurarId === 'function') inventory.forEach(asegurarId);
+    cacheLocal();
     if(typeof renderInventory === 'function') renderInventory();
     if(typeof renderLegal === 'function') renderLegal();
-    if(typeof renderSaved === 'function') renderSaved();
     if(typeof updateStats === 'function') updateStats();
     aplicandoNube = false;
   }
@@ -156,10 +206,11 @@
 
   auth.onAuthStateChanged(function(u){
     if(unsub){ unsub(); unsub = null; }
+    if(unsubInv){ unsubInv(); unsubInv = null; }
 
     // Sin sesión: mostrar el gate y vaciar la pantalla (la caché por-uid se conserva).
     if(!u){
-      uid = null; window.__ptcgUid = null;
+      uid = null; esDueno = false; window.__ptcgUid = null; window.__esDueno = false;
       inventory = []; savedDecks = [];
       pintarBoton();
       setSyncStatus('');
@@ -171,7 +222,7 @@
 
     // Cuenta NO autorizada: denegar acceso y cerrar sesión.
     if(!permitido(u)){
-      uid = null; window.__ptcgUid = null;
+      uid = null; esDueno = false; window.__ptcgUid = null; window.__esDueno = false;
       inventory = []; savedDecks = [];
       renderAll();
       gateMsg(texto('login_denied', 'Esa cuenta no tiene acceso.'));
@@ -182,10 +233,11 @@
 
     // Cuenta autorizada: conceder acceso.
     uid = u.uid; window.__ptcgUid = uid;
+    esDueno = ((u.email || '').toLowerCase() === OWNER); window.__esDueno = esDueno;
     gateMsg('');
     setAuthState('in');
     pintarBoton();
-    if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(u.email === 'pmmt99@gmail.com');
+    if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(esDueno);
 
     // Carga instantánea desde la caché local por-uid (offline / mientras llega la nube)
     aplicandoNube = true;
@@ -199,21 +251,36 @@
     renderAll();
     aplicandoNube = false;
 
-    const ref = db.collection('colecciones').doc(uid);
-    ref.get().then(function(snap){
-      const d = snap.exists ? snap.data() : null;
-      const nubeTiene = d && ((Array.isArray(d.inventory) && d.inventory.length) || (Array.isArray(d.savedDecks) && d.savedDecks.length));
-      if(nubeTiene){
-        aplicarDoc(d);
-      } else if(inventory.length || savedDecks.length){
-        // Nube vacía pero hay caché local de ESTE usuario: subirla como su colección.
-        pushPendiente = true; flushPush();
-      }
-      // Cambios en vivo: aplicar SOLO lo confirmado por el servidor (ignorar ecos propios)
-      unsub = ref.onSnapshot(function(s){
-        if(s.metadata && s.metadata.hasPendingWrites) return;
-        aplicarDoc(s.data());
-      });
-    }).catch(e => console.error('[sync] get', e));
+    if(esDueno){
+      // DUEÑO: su documento completo (inventario + mazos) y publica el compartido.
+      const ref = db.collection('colecciones').doc(uid);
+      ref.get().then(function(snap){
+        const d = snap.exists ? snap.data() : null;
+        const nubeTiene = d && ((Array.isArray(d.inventory) && d.inventory.length) || (Array.isArray(d.savedDecks) && d.savedDecks.length));
+        if(nubeTiene){
+          aplicarDoc(d);
+        } else if(inventory.length || savedDecks.length){
+          pushPendiente = true; flushPush();
+        }
+        publicarCompartido();   // asegura que P2 vea el inventario aunque el dueño no edite nada
+        unsub = ref.onSnapshot(function(s){
+          if(s.metadata && s.metadata.hasPendingWrites) return;
+          aplicarDoc(s.data());
+        });
+      }).catch(e => console.error('[sync] get', e));
+    } else {
+      // INVITADA (P2): sus mazos desde su doc; el inventario, del compartido (solo lectura).
+      const ref = db.collection('colecciones').doc(uid);
+      ref.get().then(function(snap){
+        if(snap.exists) aplicarMazos(snap.data());
+        unsub = ref.onSnapshot(function(s){
+          if(s.metadata && s.metadata.hasPendingWrites) return;
+          aplicarMazos(s.data());
+        });
+      }).catch(e => console.error('[sync] get', e));
+      const refInv = db.collection('compartido').doc('coleccion');
+      unsubInv = refInv.onSnapshot(function(s){ aplicarInventario(s.data()); },
+        function(e){ console.error('[sync] compartido onSnapshot', e); });
+    }
   });
 })();

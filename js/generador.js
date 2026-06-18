@@ -9,6 +9,16 @@
 //  Usa los datos ricos de cada carta: ataques (daño/coste), habilidades,
 //  coste de retirada, debilidad/resistencia.
 //  Reutiliza renderDecks()/saveDeck() de app.js para mostrar y guardar.
+//
+//  AMPLIACIONES:
+//   - Modo de inventario INDEPENDIENTE (cada mazo se valida contra el inventario
+//     completo) o COMPARTIDO (una sola colección física que se agota entre los
+//     mazos de la misma ejecución).
+//   - Filtros por mazo: expansión (set), serie, marca de regulación, mecánicas
+//     (ex/V/VMAX/VSTAR/GX/Mega/Tera…), límite de Pokémon especiales (0-4),
+//     formato legal, profundidad evolutiva, single-prize, HP mínimo y excluir.
+//   - Validación con reconstrucción automática: nunca se muestra un mazo inválido.
+//   - Tabla comparativa de fortalezas calculada con métricas reales.
 // =============================================================
 
 const TIPO_ES_A_EN = {
@@ -42,6 +52,51 @@ function _bestAttack(v){
   (v.ataques||[]).forEach(a=>{ const d=_dmg(a); if(d>bd){ bd=d; best=a; } });
   return best;
 }
+
+// ---- Metadatos para filtros (set / serie / marca / formato / mecánicas) ----
+function _setName(v){ return (v.set && v.set.nombre) || ''; }
+function _serie(v){ return (v.set && v.set.serie) || ''; }
+function _marca(v){ return v.marcaRegulacion || ''; }
+function _legalEn(v, fmt){ return ((v.legalidad||{})[fmt] === 'Legal'); }
+// Profundidad evolutiva: 0 básico, 1 stage 1, 2 stage 2
+function _stage(v){
+  const f = (v.fase||'').toLowerCase();
+  if(/stage\s*2|fase\s*2|nivel\s*2/.test(f)) return 2;
+  if(/stage\s*1|fase\s*1|nivel\s*1/.test(f)) return 1;
+  return 0;
+}
+// Mecánicas oficiales detectadas en fase + nombre + texto de reglas
+function _mecanicas(v){
+  if(!_esPokemon(v)) return [];
+  const hay = ((v.fase||'') + ' ' + (v.nombre||'') + ' ' + ((v.reglas||[]).join(' '))).toString();
+  const tags = [];
+  if(/\bVMAX\b/i.test(hay)) tags.push('VMAX');
+  if(/\bVSTAR\b/i.test(hay)) tags.push('VSTAR');
+  if(/\bV[-\s]?UNION\b/i.test(hay)) tags.push('VUNION');
+  if(/\bGX\b/i.test(hay)) tags.push('GX');
+  if(/\btera\b|teracristal|tera type/i.test(hay)) tags.push('TERA');
+  if(/\bradiant\b|radiante/i.test(hay)) tags.push('RADIANT');
+  if(/\bBREAK\b/i.test(hay)) tags.push('BREAK');
+  if(/\bLV\.?\s*X\b/i.test(hay)) tags.push('LVX');
+  if(/\bmega\b|\bM\s+.+\bEX\b/i.test(hay)) tags.push('MEGA');
+  if(/\bex\b/i.test(hay)) tags.push('EX');
+  // "V" a secas (no VMAX/VSTAR/VUNION)
+  if(/\bV\b/.test((v.fase||'') + ' ' + (v.nombre||'')) && !/VMAX|VSTAR|VUNION/i.test(hay)) tags.push('V');
+  return tags;
+}
+function _esEspecial(v){ return _mecanicas(v).length > 0; }
+// Premios que entrega al ser noqueado (para el estilo single-prize)
+function _premios(v){
+  if(!_esPokemon(v)) return 1;
+  const m = _mecanicas(v);
+  if(m.indexOf('VMAX')>=0 || m.indexOf('VUNION')>=0) return 3;
+  if(m.length) return 2;
+  return 1;
+}
+
+// Lista de todas las mecánicas que el filtro puede ofrecer (orden de presentación)
+const MECANICAS = ['EX','V','VMAX','VSTAR','VUNION','GX','MEGA','TERA','RADIANT','BREAK','LVX'];
+
 // Texto corto del mejor ataque del núcleo, p.ej. «Burning Darkness» 180 de daño por 2 energías
 function _descAtaque(a, esLang){
   if(!a) return '';
@@ -80,15 +135,114 @@ const ARQUETIPOS = [
     score:v => _hp(v)/4 + (_tieneResistencia(v)?15:0) - _retreat(v)*6 + _maxDmg(v)*0.4 },
 ];
 
+// =============================================================
+//  FILTROS DEL GENERADOR
+// =============================================================
+
+// Lee los filtros del panel de controles de la vista «Construir».
+function leerFiltros(){
+  const val = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+  const chk = id => { const e = document.getElementById(id); return !!(e && e.checked); };
+  const num = id => { const e = document.getElementById(id); return e && e.value ? (parseInt(e.value)||0) : 0; };
+  const mecs = Array.from(document.querySelectorAll('.gm-mec:checked')).map(c => c.value);
+  const lim = val('f-speclimit');
+  const excl = (val('f-exclude') || '').split(',').map(s => s.trim()).filter(Boolean);
+  return {
+    set: val('f-set'), serie: val('f-serie'), marca: val('f-marca'),
+    formato: val('f-format'),
+    mecanicas: mecs,
+    limiteEspeciales: (lim === '' ? null : (parseInt(lim) || 0)),
+    profundidad: val('f-depth'),
+    singlePrize: chk('f-singleprize'),
+    hpMin: num('f-hpmin'),
+    excluir: excl
+  };
+}
+
+// Aplica los filtros al inventario "owned" (entradas {name, qty, v}).
+function filtrarInventario(owned, f){
+  if(!f) return owned;
+  const exSet = new Set((f.excluir || []).map(normName));
+  return owned.filter(o => {
+    const v = o.v;
+    // set / serie / marca / formato y exclusión: a TODAS las cartas
+    if(f.set    && _setName(v) !== f.set)   return false;
+    if(f.serie  && _serie(v)   !== f.serie) return false;
+    if(f.marca  && _marca(v)   !== f.marca) return false;
+    if(f.formato && !_legalEn(v, f.formato)) return false;
+    if(exSet.has(normName(o.name))) return false;
+    // filtros específicos de Pokémon (no afectan entrenadores ni energías)
+    if(_esPokemon(v)){
+      if(f.profundidad === 'basic' && _stage(v) > 0) return false;
+      if(f.profundidad === 's1'    && _stage(v) > 1) return false;
+      if(f.singlePrize && _premios(v) >= 2) return false;
+      if(f.hpMin && _hp(v) < f.hpMin) return false;
+      const mec = _mecanicas(v);
+      if(mec.length){                              // es un Pokémon especial
+        if(f.limiteEspeciales === 0) return false; // sin especiales en el mazo
+        if(f.mecanicas && f.mecanicas.length && !mec.some(t => f.mecanicas.indexOf(t) >= 0)) return false;
+      }
+    }
+    return true;
+  });
+}
+
+// =============================================================
+//  FLUJO: pregunta de modo de inventario y arranque
+// =============================================================
+
 function generarMazos(){
   if(!inventory.length){ showToast(T('to_need_inv'), 'error'); return; }
+  abrirModalModo();
+}
+
+function abrirModalModo(){
+  const o = document.getElementById('gen-mode-overlay');
+  if(o){ o.classList.add('open'); }
+  else { _generarMazos('indep', leerFiltros()); }   // respaldo si no existe el modal
+}
+function cerrarModalModo(){
+  const o = document.getElementById('gen-mode-overlay');
+  if(o) o.classList.remove('open');
+}
+// Lanzado por los botones del modal: 'indep' | 'comp'
+function generarConModo(modo){
+  cerrarModalModo();
+  _generarMazos(modo, leerFiltros());
+}
+
+// =============================================================
+//  GENERACIÓN
+// =============================================================
+
+function _generarMazos(modo, filtros){
+  const compartido = (modo === 'comp');
   const sel = document.getElementById('deck-type').value;
   const nVar = parseInt(document.getElementById('num-variants').value) || 3;
+  const f = filtros || {};
 
-  // Inventario con datos de carta
-  const owned = inventory.map(e => ({ name: e.name, qty: e.qty, v: regCard(viewFromEntry(e)) }));
+  // Inventario con datos de carta, ya filtrado por los criterios elegidos
+  let owned = inventory.map(e => ({ name: e.name, qty: e.qty, v: regCard(viewFromEntry(e)) }));
+  owned = filtrarInventario(owned, f);
+  if(!owned.length){ showToast(T('gen_filter_none'), 'error'); renderDecks([], sel); return; }
+
   const ownedMap = {}; const ownedNames = new Set();
   owned.forEach(o => { ownedMap[normName(o.name)] = o; ownedNames.add(normName(o.name)); });
+
+  // Pool físico: en modo compartido las cartas se agotan entre mazos.
+  const remaining = {};
+  owned.forEach(o => { remaining[normName(o.name)] = o.qty; });
+  const disp = nm => {
+    const k = normName(nm); const o = ownedMap[k]; if(!o) return 0;
+    return compartido ? (remaining[k] != null ? remaining[k] : 0) : o.qty;
+  };
+  const consumir = d => {
+    if(!compartido) return;
+    const dec = (nm, q) => { const k = normName(nm); if(remaining[k] != null) remaining[k] = Math.max(0, remaining[k] - q); };
+    (d.pokemon||[]).forEach(c => dec(c.card, c.qty));
+    (d.trainers||[]).forEach(c => dec(c.card, c.qty));
+    (d.energies||[]).forEach(c => dec(c.card, c.qty));   // si no está listada, es no-op
+  };
 
   // Tipo objetivo (inglés)
   let tipo = TIPO_ES_A_EN[sel];
@@ -113,15 +267,12 @@ function generarMazos(){
     energyType = Object.keys(cont).sort((a,b)=>cont[b]-cont[a])[0] || 'Lightning';
   }
   const energyName = 'Basic ' + energyType + ' Energy';
+  const energyListed = !!ownedMap[normName(energyName)];
 
   // Entrenadores disponibles (orden por utilidad aproximada)
   const PRIOR = ['professor','research','iono','arven','boss','orders','nemona','jacq','youngster','nest ball','ultra ball','great ball','switch','potion','picnicker','generator','invitation','charisma'];
   const prioVal = nm => { const n = normName(nm); let p = PRIOR.findIndex(k => n.indexOf(k) >= 0); return p < 0 ? 99 : p; };
   const trainersDisp = owned.filter(o => _esTrainer(o.v)).sort((a,b)=>prioVal(a.name)-prioVal(b.name));
-
-  // Unidades de entrenador disponibles (máx 4 por carta), aplanadas
-  const trainerUnits = [];
-  trainersDisp.forEach(t => { const q = Math.min(t.qty, 4); for(let k=0;k<q;k++) trainerUnits.push({ card:t.name, id:t.v.id, img:t.v.imagenChica }); });
 
   // Energía básica del mazo (para mostrar)
   const energyCard = (typeof getCardData==='function') ? getCardData(energyName) : null;
@@ -144,15 +295,28 @@ function generarMazos(){
     const orden = (a,b) => arq.score(b.v) - arq.score(a.v);
     const cand = candidatos.slice().sort(orden);
     const counts = {}; // name -> {qty, v}
+
+    // Unidades de entrenador según la disponibilidad ACTUAL (respeta el pool compartido)
+    const trainerUnits = [];
+    trainersDisp.forEach(t => { const q = Math.min(disp(t.name), 4); for(let k=0;k<q;k++) trainerUnits.push({ card:t.name, id:t.v.id, img:t.v.imagenChica }); });
+
     const sumar = (nm, q) => {
       const o = ownedMap[normName(nm)]; if(!o) return;
-      q = Math.min(q, o.qty, 4);
+      q = Math.min(q, disp(nm), 4);
       if(q <= 0) return;
       if(!counts[nm]) counts[nm] = { qty:0, v:o.v };
       counts[nm].qty = Math.max(counts[nm].qty, q);
     };
     const totalPk = () => Object.values(counts).reduce((s,o)=>s+o.qty,0);
+    // copias de Pokémon especiales ya incluidas (para el tope 0-4)
+    const especialCopias = () => Object.keys(counts).reduce((s,nm)=> s + (_esEspecial(counts[nm].v) ? counts[nm].qty : 0), 0);
     const meter = (c, base) => {
+      // Respeta el tope de Pokémon especiales (máximo total combinado)
+      if(_esEspecial(c.v) && f.limiteEspeciales != null){
+        const room = f.limiteEspeciales - especialCopias();
+        if(room <= 0) return;
+        base = Math.min(base, room);
+      }
       const linea = _requeridas(c.v).concat([c.v.nombre]);
       linea.forEach((nm, i) => sumar(nm, i === linea.length-1 ? base : (i===0 ? base : base-1)));
     };
@@ -191,6 +355,10 @@ function generarMazos(){
       energy = 60 - nTr - nPk;
       if(energy < 0){ nTr += energy; energy = 0; } // último ajuste por entrenadores
     }
+    // En modo compartido la energía básica LISTADA también se agota
+    if(compartido && energyListed && energy > disp(energyName)){
+      energy = Math.max(0, disp(energyName));
+    }
     // Agrupar entrenadores elegidos
     const tmap = {};
     trainerUnits.slice(0, nTr).forEach(u => { (tmap[u.card] = tmap[u.card] || { qty:0, card:u.card, id:u.id, img:u.img }).qty++; });
@@ -203,12 +371,70 @@ function generarMazos(){
       nPk: pokemon.reduce((s,c)=>s+c.qty,0), nTr: trainers.reduce((s,c)=>s+c.qty,0), score };
   }
 
+  // ---- Validación: nunca mostrar un mazo inválido ----
+  function validarMazo(d, coreV){
+    const err = [];
+    const all = [...(d.pokemon||[]), ...(d.trainers||[]), ...(d.energies||[])];
+    const total = all.reduce((s,c)=>s+c.qty,0);
+    if(total !== 60) err.push('total='+total);
+    all.forEach(c => {
+      const o = ownedMap[normName(c.card)];
+      const v = o && o.v;
+      const enBasica = v ? _esEnergiaBasica(v) : /basic .* energy/i.test(c.card);
+      if(!enBasica && c.qty > 4) err.push('>4 '+c.card);
+      if(o){ if(c.qty > disp(c.card)) err.push('qty '+c.card); }
+      else if(!enBasica) err.push('noinv '+c.card);
+    });
+    // Evoluciones legales: las preevoluciones deben estar en el mazo
+    (d.pokemon||[]).forEach(c => {
+      const o = ownedMap[normName(c.card)]; if(!o) return;
+      _requeridas(o.v).forEach(req => {
+        if(!d.pokemon.some(p => normName(p.card) === normName(req))) err.push('evo '+c.card);
+      });
+    });
+    // Tope de Pokémon especiales
+    if(f.limiteEspeciales != null){
+      const esp = (d.pokemon||[]).reduce((s,c)=>{ const o=ownedMap[normName(c.card)]; return s + (o && _esEspecial(o.v) ? c.qty : 0); },0);
+      if(esp > f.limiteEspeciales) err.push('esp='+esp);
+    }
+    // Ataque del núcleo pagable con las energías presentes
+    const tiposEnergia = new Set((d.energies||[]).map(c => { const m=/Basic (\w+) Energy/i.exec(c.card); return m?m[1]:null; }).filter(Boolean));
+    if(coreV){
+      const ba = _bestAttack(coreV);
+      if(ba){ const need = (ba.cost||[]).filter(x=>x!=='Colorless'); if(need.some(t=>!tiposEnergia.has(t))) err.push('core-pago'); }
+    }
+    return { ok: err.length === 0, errores: err };
+  }
+
+  // ---- Métricas reales para la tabla comparativa ----
+  function calcMetricas(d, dificultad){
+    const pk = (d.pokemon||[]).map(c => ({ qty:c.qty, v:(ownedMap[normName(c.card)]||{}).v })).filter(x=>x.v);
+    const nPk = pk.reduce((s,x)=>s+x.qty,0) || 1;
+    const basics = pk.filter(x=>_esBasico(x.v)).reduce((s,x)=>s+x.qty,0);
+    const lineas = new Set(pk.map(x=>x.v.nombre)).size;
+    const draw = (d.trainers||[]).reduce((s,c)=> s + (prioVal(c.card) <= 8 ? c.qty : 0), 0);
+    const avgCost = pk.reduce((s,x)=>s+_avgCost(x.v)*x.qty,0)/nPk;
+    const maxDmg = pk.reduce((m,x)=>Math.max(m,_maxDmg(x.v)),0);
+    const cheap = pk.reduce((m,x)=>Math.max(m,_cheapDmg(x.v)),0);
+    const especiales = pk.filter(x=>_esEspecial(x.v)).reduce((s,x)=>s+x.qty,0);
+
+    const clamp = n => Math.max(1, Math.min(5, Math.round(n)));
+    const consistencia = clamp(1 + draw/4 + (basics/nPk)*3 + (lineas<=3?1 : lineas<=5?0 : -1));
+    const velocidad = clamp(1 + (avgCost<=1.6?3 : avgCost<=2.2?2 : avgCost<=2.8?1 : 0) + (cheap>=60?1:0) + (basics/nPk)*1.5);
+    const dano = clamp(1 + maxDmg/70);
+    const facilidad = clamp(6 - (dificultad||5)/2);
+    const aprender = (facilidad>=4 && consistencia>=3 && especiales<=2);
+    const sum = consistencia + velocidad + dano + facilidad;        // 4..20
+    const potencial = Math.round((sum/20)*10*2)/2;                  // 0..10 en medios puntos
+    return { consistencia, velocidad, dano, facilidad, aprender, potencial };
+  }
+
   // Firma de la composición de Pokémon (nombre × cantidad) para evitar mazos repetidos
   const firmaPk = d => d.pokemon.map(p => p.card + 'x' + p.qty).sort().join('|');
 
-  // Genera hasta nVar variantes DISTINTAS y lógicas: combina cada arquetipo con
-  // rotación del atacante núcleo en varias pasadas y descarta composiciones repetidas.
-  // Si la colección no da para tantos mazos diferentes, devuelve los que sí son únicos.
+  // Genera hasta nVar variantes DISTINTAS y VÁLIDAS: combina cada arquetipo con
+  // rotación del atacante núcleo en varias pasadas y descarta composiciones repetidas
+  // o inválidas (el propio bucle actúa como reconstrucción automática).
   const usedCores = new Set();
   const vistas = new Set();
   const variantes = [];
@@ -225,10 +451,13 @@ function generarMazos(){
       if(d.nPk <= 0) continue;
       const sig = firmaPk(d);
       if(vistas.has(sig)) continue;            // ya existe un mazo con esa misma composición
+      const val = validarMazo(d, core.v);
+      if(!val.ok) continue;                     // inválido: se descarta y el bucle prueba otro
       vistas.add(sig);
       usedCores.add(normName(core.v.nombre));
       d.arq = arq; d.core = core.v;
       variantes.push(d);
+      consumir(d);                              // agota el pool en modo compartido
     }
   }
   if(!variantes.length){ showToast(T('gen_none'), 'error'); renderDecks([], sel); return; }
@@ -291,6 +520,7 @@ function generarMazos(){
       trainers: d.trainers.sort((a,b)=>b.qty-a.qty),
       energies: d.energies,
       difficulty: dificultad,
+      metrics: calcMetricas(d, dificultad),
       strategy,
       advantages,
       weaknesses,
@@ -302,5 +532,36 @@ function generarMazos(){
   });
 
   renderDecks(decks, sel);
-  showToast(esLang ? `${decks.length} mazos generados` : `${decks.length} decks generated`, 'success');
+  let msg = esLang ? `${decks.length} mazos generados` : `${decks.length} decks generated`;
+  if(compartido && decks.length < nVar){
+    msg = esLang
+      ? `${decks.length} mazos: el inventario compartido no alcanzó para más.`
+      : `${decks.length} decks: shared inventory ran out before more.`;
+  }
+  showToast(msg, 'success');
+}
+
+// =============================================================
+//  POBLAR LOS SELECTORES DE FILTRO DESDE EL INVENTARIO
+// =============================================================
+function poblarFiltrosGen(){
+  if(typeof inventory === 'undefined') return;
+  const sets = new Set(), series = new Set(), marcas = new Set();
+  inventory.forEach(e => {
+    const v = (typeof viewFromEntry === 'function') ? viewFromEntry(e) : null; if(!v) return;
+    if(_setName(v)) sets.add(_setName(v));
+    if(_serie(v)) series.add(_serie(v));
+    if(_marca(v)) marcas.add(_marca(v));
+  });
+  const llenar = (id, valores) => {
+    const selEl = document.getElementById(id); if(!selEl) return;
+    const actual = selEl.value;
+    const any = (typeof T==='function') ? T('f_any') : '(cualquiera)';
+    selEl.innerHTML = `<option value="">${any}</option>` +
+      Array.from(valores).sort().map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+    if(actual) selEl.value = actual;
+  };
+  llenar('f-set', sets);
+  llenar('f-serie', series);
+  llenar('f-marca', marcas);
 }

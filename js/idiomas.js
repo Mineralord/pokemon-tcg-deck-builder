@@ -66,6 +66,23 @@ const I18N = {
     cf_remove:'¿Quitar de la colección', cf_import:'Esto reemplazará TODA tu colección actual. ¿Continuar?',
     tile_replace:'Reemplazar esta carta', tile_delete:'Eliminar de la colección',
     btn_generate:'Generar mazos', btn_prompt:'Prompt para IA', gen_none:'No hay atacantes de ese tipo en tu colección.',
+    gen_filter_none:'Ninguna carta cumple los filtros elegidos.',
+    // Modal de modo de inventario
+    gm_title:'¿Cómo deben manejarse los inventarios?', gm_indep_t:'Inventarios independientes',
+    gm_indep_d:'Cada mazo puede usar cualquier carta disponible; las cartas pueden repetirse entre mazos.',
+    gm_shared_t:'Inventario compartido', gm_shared_d:'Una sola colección física: una carta usada por un mazo no puede repetirse en otro de esta generación.',
+    gm_cancel:'Cancelar',
+    // Filtros del generador
+    c_filters:'Filtros del mazo', c_set:'Expansión', c_serie:'Serie', c_marca:'Marca', c_format:'Formato',
+    c_mech:'Mecánicas permitidas', c_speclimit:'Máx. Pokémon especiales', c_depth:'Profundidad evolutiva',
+    c_singleprize:'Solo single-prize (sin ex/V/GX)', c_hpmin:'PS mínimo', c_exclude:'Excluir cartas',
+    opt_nolimit:'Sin límite', fmt_std:'Standard', fmt_exp:'Expanded', fmt_unl:'Unlimited',
+    depth_any:'Cualquiera', depth_basic:'Solo básicos', depth_s1:'Hasta Stage 1', depth_s2:'Hasta Stage 2',
+    ph_exclude:'Ej: Charizard ex, Pikachu', ph_hpmin:'0',
+    // Tabla comparativa
+    cmp_title:'Comparativa de mazos', cmp_feature:'Característica', cmp_deck:'Mazo',
+    cmp_consistency:'Consistencia', cmp_speed:'Velocidad', cmp_damage:'Daño', cmp_ease:'Facilidad',
+    cmp_learn:'Ideal para aprender', cmp_potential:'Potencial con la colección',
   },
   en: {
     app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks', stat_decks_short:'saved',
@@ -131,6 +148,23 @@ const I18N = {
     cf_remove:'Remove from collection', cf_import:'This will replace your ENTIRE current collection. Continue?',
     tile_replace:'Replace this card', tile_delete:'Remove from collection',
     btn_generate:'Generate decks', btn_prompt:'AI prompt', gen_none:'No attackers of that type in your collection.',
+    gen_filter_none:'No card matches the selected filters.',
+    // Inventory mode modal
+    gm_title:'How should inventories be handled?', gm_indep_t:'Independent inventories',
+    gm_indep_d:'Each deck may use any available card; cards can repeat across decks.',
+    gm_shared_t:'Shared inventory', gm_shared_d:'A single physical collection: a card used by one deck cannot be reused in another deck of this run.',
+    gm_cancel:'Cancel',
+    // Generator filters
+    c_filters:'Deck filters', c_set:'Expansion', c_serie:'Series', c_marca:'Reg. mark', c_format:'Format',
+    c_mech:'Allowed mechanics', c_speclimit:'Max special Pokémon', c_depth:'Evolution depth',
+    c_singleprize:'Single-prize only (no ex/V/GX)', c_hpmin:'Min HP', c_exclude:'Exclude cards',
+    opt_nolimit:'No limit', fmt_std:'Standard', fmt_exp:'Expanded', fmt_unl:'Unlimited',
+    depth_any:'Any', depth_basic:'Basics only', depth_s1:'Up to Stage 1', depth_s2:'Up to Stage 2',
+    ph_exclude:'E.g. Charizard ex, Pikachu', ph_hpmin:'0',
+    // Comparison table
+    cmp_title:'Deck comparison', cmp_feature:'Feature', cmp_deck:'Deck',
+    cmp_consistency:'Consistency', cmp_speed:'Speed', cmp_damage:'Damage', cmp_ease:'Ease',
+    cmp_learn:'Ideal to learn', cmp_potential:'Potential with collection',
   }
 };
 function T(k){ return (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.es[k] != null ? I18N.es[k] : k); }

@@ -8,8 +8,13 @@
 const OWNER_EMAIL = 'pmmt99@gmail.com';
 let proxImgs = [];   // [{ src, copies }]
 
-// ---- Permisos: mostrar la herramienta solo al dueño ----
+// ---- Permisos: mostrar la edición y proxies solo al dueño ----
+//  Los invitados (P2) solo pueden VER la colección y armar su mazo: se ocultan
+//  los controles de edición (importar, exportar, vaciar, añadir/quitar/reemplazar)
+//  mediante la clase body.role-guest (ver css/estilos.css). La privacidad real
+//  la garantizan las Reglas de Firestore; esto es solo para una UI limpia.
 function aplicarPermisosDueno(esDueno){
+  document.body.classList.toggle('role-guest', !esDueno);
   const nav = document.getElementById('nav-proxies');
   if(nav) nav.style.display = esDueno ? '' : 'none';
   if(!esDueno){

@@ -893,6 +893,7 @@ function renderDecks(decks, deckType) {
     return;
   }
   let html = '';
+  if (decks.length >= 2) html += renderComparativa(decks);
   decks.forEach((d, deckIdx) => {
     const pokemonCount = (d.pokemon||[]).reduce((s,c)=>s+c.qty,0);
     const trainerCount = (d.trainers||[]).reduce((s,c)=>s+c.qty,0);
@@ -965,6 +966,33 @@ function renderDecks(decks, deckType) {
     </div>`;
   });
   out.innerHTML = html;
+}
+
+// Estrellas llenas/vacías (0-5) para la tabla comparativa
+function estrellas(n){
+  n = Math.max(0, Math.min(5, Math.round(n||0)));
+  return `<span class="cmp-stars">${'★'.repeat(n)}<span class="cmp-empty">${'☆'.repeat(5-n)}</span></span>`;
+}
+
+// Tabla comparativa de fortalezas entre mazos (se muestra con ≥2 mazos)
+function renderComparativa(decks){
+  const conMet = decks.filter(d => d.metrics);
+  if(conMet.length < 2) return '';
+  const filas = [
+    ['cmp_consistency', d => estrellas(d.metrics.consistencia)],
+    ['cmp_speed',       d => estrellas(d.metrics.velocidad)],
+    ['cmp_damage',      d => estrellas(d.metrics.dano)],
+    ['cmp_ease',        d => estrellas(d.metrics.facilidad)],
+    ['cmp_learn',       d => d.metrics.aprender ? '✅' : '⚠️'],
+    ['cmp_potential',   d => `${d.metrics.potencial}/10`]
+  ];
+  const head = `<th>${T('cmp_feature')}</th>` + decks.map((d,i) =>
+    `<th title="${esc(d.name)}">${esc(T('cmp_deck'))} ${i+1}</th>`).join('');
+  const body = filas.map(([k, fn]) =>
+    `<tr><td class="cmp-feat">${T(k)}</td>` + decks.map(d => `<td>${fn(d)}</td>`).join('') + '</tr>'
+  ).join('');
+  return `<div class="cmp-wrap"><div class="deck-section-title">${T('cmp_title')}</div>`
+    + `<div class="cmp-scroll"><table class="cmp-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div></div>`;
 }
 
 // Miniatura visual de una carta dentro de un mazo (imagen + cantidad, clic al detalle)
@@ -1092,6 +1120,7 @@ function showView(name){
   if(name==='coleccion') renderInventory();
   if(name==='legalidad') renderLegal();
   if(name==='mazos') renderSaved();
+  if(name==='construir' && typeof poblarFiltrosGen==='function') poblarFiltrosGen();
   if(name==='explorar' && !expCards.length) doExplorar(true);
   if(name==='proxies'){ if(typeof renderProxies==='function') renderProxies(); if(typeof proxLlenarFiltros==='function') proxLlenarFiltros(); }
 }
