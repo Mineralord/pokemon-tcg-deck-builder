@@ -100,6 +100,7 @@ const I18N = {
     vs_connected:'se conectó', vs_is_ready:'está listo',
     vs_guest_banner:'Modo invitada — ves la colección en solo lectura y armas tu mazo.',
     vs_owner_noshare:'El anfitrión aún no ha compartido su colección.',
+    ro_blocked:'Solo lectura: no puedes editar la colección del anfitrión.',
   },
   en: {
     app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks', stat_decks_short:'saved',
@@ -199,6 +200,7 @@ const I18N = {
     vs_connected:'connected', vs_is_ready:'is ready',
     vs_guest_banner:'Guest mode — you view the collection read-only and build your deck.',
     vs_owner_noshare:'The host has not shared their collection yet.',
+    ro_blocked:'Read-only: you cannot edit the host collection.',
   }
 };
 function T(k){ return (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.es[k] != null ? I18N.es[k] : k); }

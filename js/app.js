@@ -163,6 +163,13 @@ function cdQty(delta){
   const inp = document.getElementById('cd-qty'); if(!inp) return;
   inp.value = Math.max(1, (parseInt(inp.value)||1) + delta);
 }
+// Bloqueo de edición para invitados (P2): la colección es del anfitrión, solo lectura.
+function soloLectura(){ return window.__esDueno === false; }
+function bloquearSiInvitado(){
+  if(soloLectura()){ if(typeof showToast==='function') showToast(T('ro_blocked'), 'error'); return true; }
+  return false;
+}
+
 function agregarDesdeDetalle(){
   const v = cardRegistry[currentDetailId]; if(!v) return;
   if(replaceTargetId){ accionAgregar(v, 1); return; }  // en modo reemplazo, sustituye
@@ -177,6 +184,7 @@ function quitarDesdeDetalle(){
 
 // ===================== AÑADIR / QUITAR POR ID (versión exacta) =====================
 function agregarPorId(view, qty){
+  if(bloquearSiInvitado()) return;
   qty = parseInt(qty) || 1;
   regCard(view);
   const ex = inventory.find(x => x.id === view.id);
@@ -186,6 +194,7 @@ function agregarPorId(view, qty){
   showToast(`${T('to_added')}: ${view.nombre} ×${qty}`, 'success');
 }
 function cambiarCantidad(id, delta){
+  if(bloquearSiInvitado()) return;
   const e = inventory.find(x => x.id === id); if(!e) return;
   const nq = e.qty + delta;
   if(nq <= 0){
@@ -198,6 +207,7 @@ function cambiarCantidad(id, delta){
   save(); renderInventory(); renderLegal();
 }
 function quitarPorId(id){
+  if(bloquearSiInvitado()) return;
   inventory = inventory.filter(x => x.id !== id);
   save(); renderInventory(); renderLegal();
   showToast(T('to_removed'), 'success');
@@ -211,6 +221,7 @@ function pedirEliminar(id){
 
 // ===================== REEMPLAZAR UNA CARTA POR OTRA =====================
 function iniciarReemplazo(id){
+  if(bloquearSiInvitado()) return;
   const e = inventory.find(x => x.id === id); if(!e) return;
   replaceTargetId = id;
   const v = regCard(viewFromEntry(e));
@@ -228,6 +239,7 @@ function cancelarReemplazo(){
   renderExploradorGrid();
 }
 function confirmarReemplazo(newView){
+  if(bloquearSiInvitado()) return;
   const old = inventory.find(x => x.id === replaceTargetId);
   if(!old){ cancelarReemplazo(); return; }
   if(old.id === newView.id){ showToast(T('rep_same'), 'error'); return; }
@@ -364,6 +376,7 @@ function updateStats() {
 
 // ===================== INVENTORY =====================
 function addCard() {
+  if(bloquearSiInvitado()) return;
   const name = document.getElementById('card-name').value.trim();
   const qty = parseInt(document.getElementById('card-qty').value) || 1;
   const type = document.getElementById('card-type').value;
@@ -384,6 +397,7 @@ function addCard() {
 }
 
 function removeCard(name) {
+  if(bloquearSiInvitado()) return;
   inventory = inventory.filter(c => c.name !== name);
   save();
   renderInventory();
@@ -497,6 +511,7 @@ function toggleImport() {
 }
 
 function importList() {
+  if(bloquearSiInvitado()) return;
   const text = document.getElementById('import-text').value;
   if (!text.trim()) return;
   const lines = text.split('\n');
@@ -1242,6 +1257,7 @@ function renderExploradorGrid(){
 
 // ===================== EXPORTAR / IMPORTAR COLECCIÓN =====================
 function vaciarColeccion(){
+  if(bloquearSiInvitado()) return;
   if(!inventory.length){ showToast(T('to_cleared'), 'success'); return; }
   if(!confirm(T('cf_clear'))) return;        // 1ª confirmación
   if(!confirm(T('cf_clear2').replace('{n}', inventory.length))) return;  // 2ª confirmación
@@ -1257,6 +1273,7 @@ function exportarColeccion(){
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 function importarColeccionFile(input){
+  if(bloquearSiInvitado()){ input.value=''; return; }
   const file = input.files && input.files[0]; if(!file) return;
   const r = new FileReader();
   r.onload = () => {
