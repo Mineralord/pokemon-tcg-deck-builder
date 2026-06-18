@@ -10,6 +10,12 @@ __pycache__/
 .claude/skills/
 .agents/
 
+# Artefactos del harness de revisión visual (temporales)
+__live.html
+shot-*.png
+*-neon.png
+preview*.png
+
 # Sistema operativo
 Thumbs.db
 .DS_Store
