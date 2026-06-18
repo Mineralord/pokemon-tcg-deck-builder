@@ -71,7 +71,7 @@
     const b = document.getElementById('sync-btn'); if(!b) return;
     if(uid){
       const u = auth.currentUser;
-      b.textContent = '👤 ' + ((u && (u.displayName || u.email)) || '');
+      b.textContent = ((u && (u.displayName || u.email)) || '');
       b.title = texto('sync_out', 'Salir');
       b.onclick = function(){ if(confirm(texto('sync_out','Salir') + '?')) window.logoutSync(); };
     } else {

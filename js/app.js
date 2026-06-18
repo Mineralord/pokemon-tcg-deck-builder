@@ -710,7 +710,7 @@ function renderLegal() {
   const panel = document.getElementById('legal-panel');
   const pokemon = inventory.filter(c => c.type.startsWith('Pokemon'));
   if (!pokemon.length) {
-    panel.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">${T('legal_empty_title')}</div><div class="empty-desc">${T('legal_empty_desc')}</div></div>`;
+    panel.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div><div class="empty-title">${T('legal_empty_title')}</div><div class="empty-desc">${T('legal_empty_desc')}</div></div>`;
     return;
   }
   const legals = pokemon.filter(c => getLegalStatus(c) === 'legal');
@@ -889,7 +889,7 @@ function renderDecks(decks, deckType) {
   renderedDecks = decks || [];
   renderedDeckType = deckType;
   if (!decks || !decks.length) {
-    out.innerHTML = `<div class="empty-state"><div class="empty-icon">😕</div><div class="empty-title">${T('no_decks_title')}</div><div class="empty-desc">${T('no_decks_desc')}</div></div>`;
+    out.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div><div class="empty-title">${T('no_decks_title')}</div><div class="empty-desc">${T('no_decks_desc')}</div></div>`;
     return;
   }
   let html = '';
@@ -1027,7 +1027,7 @@ function saveDeck(deck, deckType) {
 function renderSaved() {
   const grid = document.getElementById('saved-grid');
   if (!savedDecks.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">💾</div><div class="empty-title">${T('saved_empty_title')}</div><div class="empty-desc">${T('saved_empty_desc')}</div></div>`;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg></div><div class="empty-title">${T('saved_empty_title')}</div><div class="empty-desc">${T('saved_empty_desc')}</div></div>`;
     return;
   }
   let html = '';

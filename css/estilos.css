@@ -1285,6 +1285,11 @@ body.auth-in #login-gate{ display:none; }
 /* Iconos SVG (Lucide) en botones de acción */
 .tb-btn{ display:inline-flex; align-items:center; gap:7px; }
 .btn-ico{ width:16px; height:16px; flex:0 0 auto; }
+.login-gate-btn{ display:inline-flex; align-items:center; gap:8px; }
+.login-gate-btn .btn-ico{ width:18px; height:18px; }
+
+/* Iconos grandes en estados vacíos (en vez de emojis) */
+.empty-icon svg{ width:56px; height:56px; }
 
 /* Feedback de pulsación (Emil: todo lo pulsable "responde") */
 .tb-btn:active, .btn-add:active, .btn-import:active, .f-reset:active,

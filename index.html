@@ -34,7 +34,7 @@
     <h1 class="login-title" data-i18n="login_title">Pokémon TCG Deck Builder</h1>
     <p class="login-sub" data-i18n="login_sub">Inicia sesión para acceder a tu colección.</p>
     <p class="login-checking" data-i18n="login_checking">Comprobando sesión…</p>
-    <button id="login-gate-btn" class="login-gate-btn" data-i18n="login_btn" onclick="loginGoogle()">🔑 Entrar con Google</button>
+    <button id="login-gate-btn" class="login-gate-btn" onclick="loginGoogle()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg><span data-i18n="login_btn">Entrar con Google</span></button>
     <p id="login-gate-msg" class="login-gate-msg"></p>
   </div>
 </div>
@@ -60,8 +60,8 @@
     <div class="stat-pill"><span data-i18n="stat_inv">Inventario</span> <strong id="stat-total">0</strong> <span data-i18n="stat_cards">cartas</span></div>
     <div class="stat-pill"><span data-i18n="stat_decks">Mazos guardados</span> <strong id="stat-decks">0</strong></div>
     <span id="sync-status" class="stat-pill sync-status" style="display:none"></span>
-    <button id="sync-btn" class="stat-pill" style="cursor:pointer;border:none;font:inherit;color:inherit">☁️ Sincronizar</button>
-    <button id="lang-toggle" class="stat-pill" data-i18n-aria="aria_lang" style="cursor:pointer;border:none;font:inherit;color:inherit" onclick="toggleLang()">🌐 EN</button>
+    <button id="sync-btn" class="stat-pill" style="cursor:pointer;border:none;font:inherit;color:inherit">Sincronizar</button>
+    <button id="lang-toggle" class="stat-pill" data-i18n-aria="aria_lang" style="cursor:pointer;border:none;font:inherit;color:inherit" onclick="toggleLang()">EN</button>
   </div>
 </header>
 
@@ -80,7 +80,7 @@
   <!-- ===================== VISTA: COLECCIÓN ===================== -->
   <section class="view active" id="view-coleccion">
     <div class="view-head">
-      <h2 class="view-title" data-i18n="nav_col">🗂️ Colección</h2>
+      <h2 class="view-title" data-i18n="nav_col">Colección</h2>
       <span class="view-count"><strong id="col-count">0</strong> <span data-i18n="stat_cards">cartas</span></span>
     </div>
     <div class="view-toolbar">
@@ -101,14 +101,14 @@
     <div class="filtros" id="filtros-col"></div>
     <div class="cards-grid" id="coleccion-grid"></div>
     <div class="col-danger-zone">
-      <button class="link-danger" data-i18n="btn_clear" onclick="vaciarColeccion()">🗑️ Vaciar colección</button>
+      <button class="link-danger" data-i18n="btn_clear" onclick="vaciarColeccion()">Vaciar colección</button>
     </div>
   </section>
 
   <!-- ===================== VISTA: EXPLORAR ===================== -->
   <section class="view" id="view-explorar">
     <div class="view-head">
-      <h2 class="view-title" data-i18n="nav_exp">🔎 Explorar cartas</h2>
+      <h2 class="view-title" data-i18n="nav_exp">Explorar cartas</h2>
     </div>
     <div class="replace-banner" id="replace-banner" style="display:none"></div>
     <div class="filtros" id="filtros-exp"></div>
@@ -122,7 +122,7 @@
   <!-- ===================== VISTA: CONSTRUIR ===================== -->
   <section class="view" id="view-construir">
     <div class="view-head">
-      <h2 class="view-title" data-i18n="nav_build">⚔️ Construir mazo</h2>
+      <h2 class="view-title" data-i18n="nav_build">Construir mazo</h2>
     </div>
     <div class="build-controls">
       <div class="controls-title" data-i18n="controls_title">Generar prompt para la IA</div>
@@ -160,7 +160,7 @@
     </div>
     <div class="decks-output" id="decks-output">
       <div class="empty-state">
-        <div class="empty-icon">🎴</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/></svg></div>
         <div class="empty-title" data-i18n="build_empty_title">Genera tu prompt</div>
         <div class="empty-desc" data-i18n="build_empty_desc">Elige el tipo de mazo y presiona "Generar prompt para la IA".</div>
       </div>
@@ -170,11 +170,11 @@
   <!-- ===================== VISTA: LEGALIDAD ===================== -->
   <section class="view" id="view-legalidad">
     <div class="view-head">
-      <h2 class="view-title" data-i18n="nav_legal">✅ Legalidad</h2>
+      <h2 class="view-title" data-i18n="nav_legal">Legalidad</h2>
     </div>
     <div class="legal-panel" id="legal-panel">
       <div class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
         <div class="empty-title" data-i18n="legal_empty_title">Inventario vacío</div>
         <div class="empty-desc" data-i18n="legal_empty_desc">Agrega cartas para ver el análisis de legalidad.</div>
       </div>
@@ -184,12 +184,12 @@
   <!-- ===================== VISTA: MAZOS ===================== -->
   <section class="view" id="view-mazos">
     <div class="view-head">
-      <h2 class="view-title" data-i18n="nav_saved">💾 Mazos</h2>
+      <h2 class="view-title" data-i18n="nav_saved">Mazos</h2>
       <span class="view-count"><strong id="saved-count">0</strong> <span data-i18n="stat_decks_short">guardados</span></span>
     </div>
     <div class="saved-grid" id="saved-grid">
       <div class="empty-state" style="grid-column:1/-1">
-        <div class="empty-icon">💾</div>
+        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg></div>
         <div class="empty-title" data-i18n="saved_empty_title">Sin mazos guardados</div>
         <div class="empty-desc" data-i18n="saved_empty_desc">Construye mazos con la IA y guárdalos aquí.</div>
       </div>
@@ -199,7 +199,7 @@
   <!-- ===================== VISTA: PROXIES (solo dueño) ===================== -->
   <section class="view" id="view-proxies">
     <div class="view-head">
-      <h2 class="view-title" data-i18n="nav_proxies">🖨️ Proxies</h2>
+      <h2 class="view-title" data-i18n="nav_proxies">Proxies</h2>
     </div>
     <div class="prox-bar">
       <button class="tb-btn" onclick="document.getElementById('prox-file').click()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg><span data-i18n="px_upload">Subir imágenes</span></button>
