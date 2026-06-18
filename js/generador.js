@@ -97,6 +97,10 @@ function _premios(v){
 // Lista de todas las mecánicas que el filtro puede ofrecer (orden de presentación)
 const MECANICAS = ['EX','V','VMAX','VSTAR','VUNION','GX','MEGA','TERA','RADIANT','BREAK','LVX'];
 
+// Entrenadores de robo/búsqueda por utilidad aproximada (selección y métrica de consistencia)
+const PRIOR = ['professor','research','iono','arven','boss','orders','nemona','jacq','youngster','nest ball','ultra ball','great ball','switch','potion','picnicker','generator','invitation','charisma'];
+function _prioVal(nm){ const n = normName(nm); const p = PRIOR.findIndex(k => n.indexOf(k) >= 0); return p < 0 ? 99 : p; }
+
 // Texto corto del mejor ataque del núcleo, p.ej. «Burning Darkness» 180 de daño por 2 energías
 function _descAtaque(a, esLang){
   if(!a) return '';
@@ -270,9 +274,7 @@ function _generarMazos(modo, filtros){
   const energyListed = !!ownedMap[normName(energyName)];
 
   // Entrenadores disponibles (orden por utilidad aproximada)
-  const PRIOR = ['professor','research','iono','arven','boss','orders','nemona','jacq','youngster','nest ball','ultra ball','great ball','switch','potion','picnicker','generator','invitation','charisma'];
-  const prioVal = nm => { const n = normName(nm); let p = PRIOR.findIndex(k => n.indexOf(k) >= 0); return p < 0 ? 99 : p; };
-  const trainersDisp = owned.filter(o => _esTrainer(o.v)).sort((a,b)=>prioVal(a.name)-prioVal(b.name));
+  const trainersDisp = owned.filter(o => _esTrainer(o.v)).sort((a,b)=>_prioVal(a.name)-_prioVal(b.name));
 
   // Energía básica del mazo (para mostrar)
   const energyCard = (typeof getCardData==='function') ? getCardData(energyName) : null;
@@ -412,7 +414,7 @@ function _generarMazos(modo, filtros){
     const nPk = pk.reduce((s,x)=>s+x.qty,0) || 1;
     const basics = pk.filter(x=>_esBasico(x.v)).reduce((s,x)=>s+x.qty,0);
     const lineas = new Set(pk.map(x=>x.v.nombre)).size;
-    const draw = (d.trainers||[]).reduce((s,c)=> s + (prioVal(c.card) <= 8 ? c.qty : 0), 0);
+    const draw = (d.trainers||[]).reduce((s,c)=> s + (_prioVal(c.card) <= 8 ? c.qty : 0), 0);
     const avgCost = pk.reduce((s,x)=>s+_avgCost(x.v)*x.qty,0)/nPk;
     const maxDmg = pk.reduce((m,x)=>Math.max(m,_maxDmg(x.v)),0);
     const cheap = pk.reduce((m,x)=>Math.max(m,_cheapDmg(x.v)),0);
@@ -564,4 +566,53 @@ function poblarFiltrosGen(){
   llenar('f-set', sets);
   llenar('f-serie', series);
   llenar('f-marca', marcas);
+}
+
+// =============================================================
+//  MÉTRICAS DE UN MAZO YA ARMADO (para el modo Versus / Sala)
+//  Mismas fórmulas que calcMetricas() pero sobre un mazo guardado:
+//  resuelve las vistas de carta por id (cardRegistry) o por nombre (getCardData).
+// =============================================================
+function calcMetricasDeck(deck){
+  if(!deck) return null;
+  if(deck.metrics && deck.metrics.potencial != null){
+    const m = deck.metrics;
+    const n = [...(deck.pokemon||[]),...(deck.trainers||[]),...(deck.energies||[])].reduce((s,c)=>s+c.qty,0);
+    return { consistencia:m.consistencia, velocidad:m.velocidad, dano:m.dano, facilidad:m.facilidad, potencial:m.potencial, nCartas:n };
+  }
+  const vista = c => ((typeof cardRegistry!=='undefined' && c.id && cardRegistry[c.id]) ||
+                      (typeof getCardData==='function' && getCardData(c.card)) || null);
+  const pk = (deck.pokemon||[]).map(c=>({ qty:c.qty, v:vista(c) })).filter(x=>x.v);
+  const nPk = pk.reduce((s,x)=>s+x.qty,0) || 1;
+  const basics = pk.filter(x=>_esBasico(x.v)).reduce((s,x)=>s+x.qty,0);
+  const lineas = new Set(pk.map(x=>x.v.nombre)).size;
+  const draw = (deck.trainers||[]).reduce((s,c)=> s + (_prioVal(c.card) <= 8 ? c.qty : 0), 0);
+  const avgCost = pk.length ? pk.reduce((s,x)=>s+_avgCost(x.v)*x.qty,0)/nPk : 2;
+  const maxDmg = pk.reduce((m,x)=>Math.max(m,_maxDmg(x.v)),0);
+  const cheap = pk.reduce((m,x)=>Math.max(m,_cheapDmg(x.v)),0);
+  const nCartas = [...(deck.pokemon||[]),...(deck.trainers||[]),...(deck.energies||[])].reduce((s,c)=>s+c.qty,0);
+  const dificultad = deck.difficulty || 5;
+  const clamp = n => Math.max(1, Math.min(5, Math.round(n)));
+  const consistencia = clamp(1 + draw/4 + (basics/nPk)*3 + (lineas<=3?1 : lineas<=5?0 : -1));
+  const velocidad = clamp(1 + (avgCost<=1.6?3 : avgCost<=2.2?2 : avgCost<=2.8?1 : 0) + (cheap>=60?1:0) + (basics/nPk)*1.5);
+  const dano = clamp(1 + maxDmg/70);
+  const facilidad = clamp(6 - dificultad/2);
+  const potencial = Math.round(((consistencia+velocidad+dano+facilidad)/20)*10*2)/2;
+  return { consistencia, velocidad, dano, facilidad, potencial, nCartas };
+}
+
+// Vuelca un objeto de "reglas" (acordadas en la Sala) a los controles del generador.
+function aplicarReglasAFiltros(r){
+  if(!r) return;
+  const set = (id,val)=>{ const e=document.getElementById(id); if(e) e.value = (val==null?'':val); };
+  set('deck-type', r.deckType);
+  if(typeof poblarFiltrosGen==='function') poblarFiltrosGen();   // opciones de set/serie/marca
+  set('f-set', r.set); set('f-serie', r.serie); set('f-marca', r.marca);
+  set('f-format', r.formato); set('f-depth', r.profundidad);
+  set('f-speclimit', (r.limiteEspeciales==null?'':String(r.limiteEspeciales)));
+  set('f-hpmin', r.hpMin? String(r.hpMin):'');
+  const sp=document.getElementById('f-singleprize'); if(sp) sp.checked = !!r.singlePrize;
+  const mecs = r.mecanicas||[];
+  document.querySelectorAll('.gm-mec').forEach(c => { c.checked = mecs.indexOf(c.value) >= 0; });
+  const det=document.getElementById('gen-filters'); if(det) det.open = true;
 }

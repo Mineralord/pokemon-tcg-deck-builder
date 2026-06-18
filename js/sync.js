@@ -39,6 +39,8 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+  // Compartimos el handle de Firestore y Auth para el módulo de Sala/Versus (js/sala.js).
+  window.PTCG = { db: db, auth: auth };
   try { auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{}); } catch(e){}
   try { db.enablePersistence({ synchronizeTabs: true }).catch(()=>{}); } catch(e){}
   // Procesa la vuelta del login por redirect (los errores se muestran)
@@ -215,6 +217,7 @@
       pintarBoton();
       setSyncStatus('');
       if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(false);
+      if(typeof window.salaLogout === 'function') window.salaLogout();
       renderAll();
       setAuthState('out');
       return;
@@ -224,6 +227,7 @@
     if(!permitido(u)){
       uid = null; esDueno = false; window.__ptcgUid = null; window.__esDueno = false;
       inventory = []; savedDecks = [];
+      if(typeof window.salaLogout === 'function') window.salaLogout();
       renderAll();
       gateMsg(texto('login_denied', 'Esa cuenta no tiene acceso.'));
       setAuthState('out');
@@ -238,6 +242,7 @@
     setAuthState('in');
     pintarBoton();
     if(typeof aplicarPermisosDueno === 'function') aplicarPermisosDueno(esDueno);
+    if(typeof window.salaLogin === 'function') window.salaLogin(uid, esDueno, u);
 
     // Carga instantánea desde la caché local por-uid (offline / mientras llega la nube)
     aplicandoNube = true;

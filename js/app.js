@@ -1074,6 +1074,7 @@ function renderSaved() {
     </div>`;
   });
   grid.innerHTML = html;
+  if(typeof salaRefrescarMazos === 'function') salaRefrescarMazos();
 }
 
 function viewSavedDeck(i) {
@@ -1121,6 +1122,7 @@ function showView(name){
   if(name==='legalidad') renderLegal();
   if(name==='mazos') renderSaved();
   if(name==='construir' && typeof poblarFiltrosGen==='function') poblarFiltrosGen();
+  if(name==='versus' && typeof salaRenderVersus==='function') salaRenderVersus();
   if(name==='explorar' && !expCards.length) doExplorar(true);
   if(name==='proxies'){ if(typeof renderProxies==='function') renderProxies(); if(typeof proxLlenarFiltros==='function') proxLlenarFiltros(); }
 }

@@ -39,5 +39,11 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['inventory', 'updatedAt'])
         && request.resource.data.inventory is list;
     }
+
+    // Sala / Versus: presencia, reglas acordadas, marcador, moneda, timer y chat.
+    // Solo datos NO sensibles (nunca listas de cartas). Ambos autorizados leen/escriben.
+    match /sala/{docId} {
+      allow read, write: if autorizado();
+    }
   }
 }

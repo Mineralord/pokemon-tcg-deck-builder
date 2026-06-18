@@ -1360,3 +1360,71 @@ body.role-guest .ct-add,
 body.role-guest .btn-add,
 body.role-guest .btn-rep,
 body.role-guest .btn-del{ display:none !important; }
+
+/* ===================== MULTIJUGADOR: insignia de cabecera ===================== */
+.mp-badge{ display:inline-flex; align-items:center; gap:4px; cursor:pointer; }
+.mp-chip{ position:relative; width:26px; height:26px; border-radius:50%; overflow:visible;
+  display:inline-flex; align-items:center; justify-content:center; background:var(--bg-card);
+  border:1px solid var(--border); }
+.mp-chip img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
+.mp-chip .vs-ini{ font-size:11px; font-weight:700; color:var(--text-secondary); }
+.mp-chip .mp-dot{ position:absolute; right:-2px; bottom:-2px; width:9px; height:9px; border-radius:50%;
+  border:2px solid var(--bg-base); background:var(--text-muted); }
+.mp-chip.on .mp-dot{ background:#22c55e; }
+.mp-chip.off{ opacity:.55; }
+
+/* Banner de rol invitada */
+.role-banner{ margin:0 0 14px; padding:10px 14px; border-radius:var(--radius); cursor:pointer;
+  background:rgba(124,58,237,0.12); border:1px solid var(--border-bright); color:var(--text-secondary);
+  font-family:'Chakra Petch',sans-serif; font-size:13px; }
+
+/* ===================== VISTA VERSUS ===================== */
+.versus-root{ display:flex; flex-direction:column; gap:16px; }
+.vs-players{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.vs-player{ display:flex; align-items:center; gap:12px; background:var(--bg-surface);
+  border:1px solid var(--border); border-radius:var(--radius); padding:14px; transition:border-color .2s, box-shadow .2s; }
+.vs-player.ready{ border-color:var(--border-bright); box-shadow:var(--glow-accent); }
+.vs-avatar{ position:relative; width:46px; height:46px; border-radius:50%; background:var(--bg-card);
+  border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.vs-avatar img{ width:100%; height:100%; border-radius:50%; object-fit:cover; }
+.vs-avatar .vs-ini{ font-family:'Russo One',sans-serif; font-size:18px; color:var(--accent-2); }
+.vs-avatar .vs-dot{ position:absolute; right:0; bottom:0; width:12px; height:12px; border-radius:50%;
+  border:2px solid var(--bg-surface); background:var(--text-muted); }
+.vs-player.on .vs-dot{ background:#22c55e; }
+.vs-player.off{ opacity:.6; }
+.vs-pname{ font-family:'Russo One',sans-serif; font-size:15px; }
+.vs-pmeta{ font-size:12px; color:var(--text-muted); }
+.vs-pstate{ font-size:12px; color:var(--accent-2); margin-top:2px; }
+
+.vs-block{ background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+.vs-h{ font-family:'Russo One',sans-serif; font-size:13px; color:var(--accent-2); margin-bottom:12px; text-transform:uppercase; letter-spacing:.5px; }
+.vs-rules-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:12px; }
+.vs-f{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text-muted); font-family:'Chakra Petch',sans-serif; }
+.vs-f-wide{ grid-column:1/-1; }
+.vs-deck-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.vs-deck-row .control-select{ flex:1; min-width:180px; }
+.vs-note{ font-size:12px; color:var(--text-muted); margin-top:8px; }
+.vs-waiting{ color:var(--text-muted); font-family:'Chakra Petch',sans-serif; font-size:13px; padding:8px 0; }
+
+.vs-score{ display:flex; align-items:center; justify-content:center; gap:18px; }
+.vs-score-cell{ text-align:center; }
+.vs-score-name{ font-size:12px; color:var(--text-secondary); }
+.vs-score-num{ font-family:'Russo One',sans-serif; font-size:34px; color:var(--text-primary); }
+.vs-score-sep{ color:var(--text-muted); font-size:24px; }
+.vs-score-add{ margin-top:4px; padding:4px 10px !important; }
+.vs-coin{ text-align:center; margin-top:10px; color:var(--text-secondary); font-family:'Chakra Petch',sans-serif; }
+.vs-extras{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
+.vs-timer-wrap{ display:inline-flex; align-items:center; gap:8px; color:var(--text-muted); font-size:13px; }
+.vs-timer-disp{ font-family:'Russo One',sans-serif; color:var(--accent-2); font-size:16px; min-width:54px; }
+
+.vs-chat-list{ max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+.vs-msg{ font-family:'Chakra Petch',sans-serif; font-size:13px; color:var(--text-secondary); background:var(--bg-card);
+  border:1px solid var(--border); border-radius:10px; padding:6px 10px; align-self:flex-start; max-width:80%; }
+.vs-msg.mine{ align-self:flex-end; background:rgba(124,58,237,0.18); border-color:var(--border-bright); }
+.vs-msg-name{ font-weight:700; color:var(--accent-2); margin-right:4px; }
+.vs-chat-emojis{ display:flex; gap:6px; margin-bottom:8px; }
+.vs-emoji{ background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:4px 8px; cursor:pointer; font-size:16px; }
+.vs-chat-input{ display:flex; gap:8px; }
+.vs-chat-input input{ flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
+  color:var(--text-primary); padding:8px 10px; font:inherit; }
+@media (max-width:560px){ .vs-players{ grid-template-columns:1fr; } }

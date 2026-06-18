@@ -59,6 +59,7 @@
   <div class="header-stats">
     <div class="stat-pill"><span data-i18n="stat_inv">Inventario</span> <strong id="stat-total">0</strong> <span data-i18n="stat_cards">cartas</span></div>
     <div class="stat-pill"><span data-i18n="stat_decks">Mazos guardados</span> <strong id="stat-decks">0</strong></div>
+    <span id="mp-badge" class="mp-badge" style="display:none" title="Versus"></span>
     <span id="sync-status" class="stat-pill sync-status" style="display:none"></span>
     <button id="sync-btn" class="stat-pill" style="cursor:pointer;border:none;font:inherit;color:inherit">Sincronizar</button>
     <button id="lang-toggle" class="stat-pill" data-i18n-aria="aria_lang" style="cursor:pointer;border:none;font:inherit;color:inherit" onclick="toggleLang()">EN</button>
@@ -72,10 +73,13 @@
   <button class="nav-btn" id="nav-construir" onclick="showView('construir')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg><span data-i18n="nav_build">Construir mazo</span></button>
   <button class="nav-btn" id="nav-legalidad" onclick="showView('legalidad')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="nav_legal">Legalidad</span></button>
   <button class="nav-btn" id="nav-mazos" onclick="showView('mazos')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg><span data-i18n="nav_saved">Mazos</span></button>
+  <button class="nav-btn" id="nav-versus" onclick="showView('versus')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 6 6"/><path d="m8 18-2 2"/><path d="m3 19 2-2"/></svg><span data-i18n="nav_versus">Versus</span></button>
   <button class="nav-btn" id="nav-proxies" style="display:none" onclick="showView('proxies')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect width="12" height="8" x="6" y="14" rx="1"/></svg><span data-i18n="nav_proxies">Proxies</span></button>
 </nav>
 
 <main class="views">
+
+  <div id="role-banner" class="role-banner" style="display:none" onclick="showView('versus')"></div>
 
   <!-- ===================== VISTA: COLECCIÓN ===================== -->
   <section class="view active" id="view-coleccion">
@@ -269,6 +273,14 @@
     </div>
   </section>
 
+  <!-- ===================== VISTA: VERSUS / SALA ===================== -->
+  <section class="view" id="view-versus">
+    <div class="view-head">
+      <h2 class="view-title" data-i18n="nav_versus">Versus</h2>
+    </div>
+    <div id="versus-root" class="versus-root"></div>
+  </section>
+
   <!-- ===================== VISTA: PROXIES (solo dueño) ===================== -->
   <section class="view" id="view-proxies">
     <div class="view-head">
@@ -346,6 +358,7 @@
 <script src="js/app.js"></script>
 <script src="js/generador.js"></script>
 <script src="js/proxies.js"></script>
+<script src="js/sala.js"></script>
 
 <!-- Sincronización en la nube (Firebase). Si no configuras firebase-config.js, se ignora. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
