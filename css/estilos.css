@@ -1282,6 +1282,10 @@ body.auth-in #login-gate{ display:none; }
   .nav-ico{ width:20px; height:20px; }
 }
 
+/* Iconos SVG (Lucide) en botones de acción */
+.tb-btn{ display:inline-flex; align-items:center; gap:7px; }
+.btn-ico{ width:16px; height:16px; flex:0 0 auto; }
+
 /* Feedback de pulsación (Emil: todo lo pulsable "responde") */
 .tb-btn:active, .btn-add:active, .btn-import:active, .f-reset:active,
 button.stat-pill:active, .login-gate-btn:active, .cardtile-bar button:active,
