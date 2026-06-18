@@ -1274,6 +1274,14 @@ body.auth-in #login-gate{ display:none; }
 .nav-btn.active{ background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#fff; border-color:transparent; box-shadow:var(--glow-accent); }
 .nav-btn:active{ transform:scale(.97); }
 
+/* Iconos SVG (Lucide) en la navegación */
+.nav-btn{ display:inline-flex; align-items:center; gap:8px; }
+.nav-ico{ width:18px; height:18px; flex:0 0 auto; }
+@media (max-width:640px){
+  .nav-btn{ flex-direction:column; gap:3px; }
+  .nav-ico{ width:20px; height:20px; }
+}
+
 /* Feedback de pulsación (Emil: todo lo pulsable "responde") */
 .tb-btn:active, .btn-add:active, .btn-import:active, .f-reset:active,
 button.stat-pill:active, .login-gate-btn:active, .cardtile-bar button:active,
