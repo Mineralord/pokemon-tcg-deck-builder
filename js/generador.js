@@ -616,3 +616,50 @@ function aplicarReglasAFiltros(r){
   document.querySelectorAll('.gm-mec').forEach(c => { c.checked = mecs.indexOf(c.value) >= 0; });
   const det=document.getElementById('gen-filters'); if(det) det.open = true;
 }
+
+// =============================================================
+//  CUMPLIMIENTO DE UN MAZO GUARDADO RESPECTO A LAS REGLAS PACTADAS
+// =============================================================
+function _vistaDeckCard(c){
+  return ((typeof cardRegistry!=='undefined' && c.id && cardRegistry[c.id]) ||
+          (typeof getCardData==='function' && getCardData(c.card)) || null);
+}
+// ¿Hay alguna regla significativa puesta?
+function reglasActivas(r){
+  if(!r) return false;
+  if(r.deckType && r.deckType !== 'el mejor posible') return true;
+  if(r.set || r.serie || r.marca || r.formato || r.profundidad) return true;
+  if(r.singlePrize) return true;
+  if(r.limiteEspeciales != null) return true;
+  if(r.hpMin) return true;
+  if(r.mecanicas && r.mecanicas.length) return true;
+  return false;
+}
+// ¿El mazo guardado cumple las reglas pactadas? (energía básica exenta de set/serie/marca/formato)
+function mazoCumpleReglas(deck, r){
+  if(!deck || !reglasActivas(r)) return true;
+  if(r.deckType && r.deckType !== 'el mejor posible' && deck.deckType && deck.deckType !== r.deckType) return false;
+  const pks = (deck.pokemon||[]).map(c=>({ c, v:_vistaDeckCard(c) })).filter(x=>x.v);
+  const trs = (deck.trainers||[]).map(c=>({ c, v:_vistaDeckCard(c) })).filter(x=>x.v);
+  for(const {v} of pks.concat(trs)){
+    if(r.set    && _setName(v) && _setName(v) !== r.set)   return false;
+    if(r.serie  && _serie(v)   && _serie(v)   !== r.serie) return false;
+    if(r.marca  && _marca(v)   && _marca(v)   !== r.marca) return false;
+    if(r.formato && !_legalEn(v, r.formato)) return false;
+  }
+  for(const {v} of pks){
+    if(r.profundidad === 'basic' && _stage(v) > 0) return false;
+    if(r.profundidad === 's1'    && _stage(v) > 1) return false;
+    if(r.singlePrize && _premios(v) >= 2) return false;
+    if(r.hpMin && _hp(v) < r.hpMin) return false;
+    if(_esEspecial(v) && r.mecanicas && r.mecanicas.length){
+      const mec = _mecanicas(v);
+      if(!mec.some(t => r.mecanicas.indexOf(t) >= 0)) return false;
+    }
+  }
+  if(r.limiteEspeciales != null){
+    const esp = pks.reduce((s,x)=> s + (_esEspecial(x.v) ? x.c.qty : 0), 0);
+    if(esp > r.limiteEspeciales) return false;
+  }
+  return true;
+}

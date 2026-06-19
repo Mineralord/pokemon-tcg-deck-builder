@@ -14,7 +14,7 @@
   let _sala = {};                 // último snapshot
   let _prevOnline = false, _prevEstado = '';   // para toasts del otro jugador
   let _esqueletoListo = false, _lastReglasVer = -1;
-  let _miMazoIdx = 0, _previewOpen = false;
+  let _miMazoIdx = 0, _previewOpen = false, _soloCumplen = false, _lastMonedaT = 0;
 
   const ONLINE_MS = 45000, HEARTBEAT_MS = 25000;
   const tx = (k, alt) => (typeof T === 'function' ? T(k) : (alt || k));
@@ -70,6 +70,12 @@
   function marcarListo(){
     const deck = (typeof savedDecks!=='undefined' && savedDecks[_miMazoIdx]) ? savedDecks[_miMazoIdx] : null;
     if(!deck){ if(typeof showToast==='function') showToast(tx('vs_pick_deck','Elige un mazo primero'), 'error'); return; }
+    // Aviso (sin bloquear) si el mazo no cumple las reglas pactadas
+    const reglas = _sala.reglas;
+    if(typeof reglasActivas==='function' && reglasActivas(reglas) && typeof mazoCumpleReglas==='function'
+       && !mazoCumpleReglas(deck, reglas) && typeof showToast==='function'){
+      showToast(tx('vs_deck_nocumple','Ojo: este mazo no cumple las reglas pactadas.'), 'error');
+    }
     const m = (typeof calcMetricasDeck==='function') ? calcMetricasDeck(deck) : null;
     // cardCounts como JSON string: con merge:true los mapas anidados se fusionan
     // (acumularían claves viejas); un string se reemplaza entero.
@@ -155,10 +161,12 @@
     const root = document.getElementById('versus-root'); if(!root || _esqueletoListo) return;
     root.innerHTML = `
       <div id="vs-estado" class="vs-estado"></div>
+      <div id="vs-notif" class="vs-notif"></div>
       <div id="vs-players" class="vs-players"></div>
 
       <div class="vs-block">
         <div class="vs-h">${tx('vs_my_deck','Mi mazo para la partida')}</div>
+        <label id="vs-only-wrap" class="vs-only gm-check" style="display:none"><input type="checkbox" id="vs-only"> <span>${tx('vs_only_compliant','Solo los que cumplen las reglas')}</span></label>
         <div id="vs-decks" class="vs-decks"></div>
         <div class="vs-deck-actions">
           <button class="btn-build" id="vs-ready" type="button">${tx('vs_ready','Estoy listo')}</button>
@@ -224,6 +232,8 @@
     document.getElementById('vs-use-rules').onclick = () => { if(typeof aplicarReglasAFiltros==='function') aplicarReglasAFiltros(reglasDesdeDOM()); if(typeof showView==='function') showView('construir'); };
     document.getElementById('vs-ready').onclick = marcarListo;
     document.getElementById('vs-unready').onclick = marcarNoListo;
+    const only = document.getElementById('vs-only');
+    if(only){ only.onchange = () => { _soloCumplen = only.checked; try{ localStorage.setItem('vs_only_'+uid, only.checked?'1':'0'); }catch(e){} _mazosSig=null; renderMisMazos(); }; }
     document.getElementById('vs-preview-btn').onclick = togglePreview;
     document.getElementById('vs-newdeck').onclick = () => { if(typeof showView==='function') showView('construir'); };
     document.getElementById('vs-new-match').onclick = nuevaPartida;
@@ -243,21 +253,36 @@
     const cont = document.getElementById('vs-decks'); if(!cont) return;
     const lista = (typeof savedDecks!=='undefined') ? savedDecks : [];
     if(_miMazoIdx >= lista.length) _miMazoIdx = lista.length ? 0 : -1;
-    const sig = lista.map(d=>d.name).join('|') + '#' + _miMazoIdx;
+    const reglas = _sala.reglas;
+    const hayReglas = (typeof reglasActivas==='function') && reglasActivas(reglas);
+    // Mostrar/ocultar el toggle según haya reglas pactadas
+    const wrap = document.getElementById('vs-only-wrap');
+    const only = document.getElementById('vs-only');
+    if(wrap) wrap.style.display = hayReglas ? '' : 'none';
+    if(only && only.checked !== _soloCumplen) only.checked = _soloCumplen;
+
+    const sig = lista.map(d=>d.name).join('|') + '#' + _miMazoIdx + '#' + (_sala.reglasVer||0) + '#' + (hayReglas&&_soloCumplen?1:0);
     if(sig === _mazosSig) return;
     _mazosSig = sig;
     if(!lista.length){ cont.innerHTML = `<div class="vs-no-decks">${escapa(tx('vs_no_decks','No tienes mazos guardados'))}</div>`; return; }
-    cont.innerHTML = lista.map((d,i)=>{
+
+    const cumpleDe = d => !hayReglas || (typeof mazoCumpleReglas==='function' ? mazoCumpleReglas(d, reglas) : true);
+    let visibles = lista.map((d,i)=>({d,i,ok:cumpleDe(d)}));
+    if(hayReglas && _soloCumplen) visibles = visibles.filter(x=>x.ok);
+    if(!visibles.length){ cont.innerHTML = `<div class="vs-no-decks">${escapa(tx('vs_none_compliant','Ninguno de tus mazos cumple las reglas pactadas.'))}</div>`; return; }
+
+    cont.innerHTML = visibles.map(({d,i,ok})=>{
       const c = conteoDeck(d); const col = tipoColor(d.deckType);
-      return `<button type="button" class="vs-deck-card ${i===_miMazoIdx?'sel':''}" data-i="${i}" style="--tc:${col}">
-        <span class="vs-deck-name">${escapa(d.name||('Mazo '+(i+1)))}</span>
+      const check = (hayReglas && ok) ? `<span class="vs-deck-ok" title="${escapa(tx('vs_compliant','Cumple las reglas'))}">✓</span>` : '';
+      return `<button type="button" class="vs-deck-card ${i===_miMazoIdx?'sel':''} ${(hayReglas&&!ok)?'no-cumple':''}" data-i="${i}" style="--tc:${col}">
+        <span class="vs-deck-name">${escapa(d.name||('Mazo '+(i+1)))}${check}</span>
         <span class="vs-deck-counts">PK ${c.pk} · ${tx('sec_trainers','Entrenadores').slice(0,3)} ${c.tr} · ${tx('sec_energies','Energías').slice(0,2)} ${c.en}</span>
       </button>`;
     }).join('');
     cont.querySelectorAll('.vs-deck-card').forEach(b => b.onclick = () => {
       _miMazoIdx = parseInt(b.getAttribute('data-i'))||0;
       try{ localStorage.setItem('vs_deck_'+uid, String(_miMazoIdx)); }catch(e){}
-      renderMisMazos(); if(_previewOpen) renderPreview();
+      _mazosSig = null; renderMisMazos(); if(_previewOpen) renderPreview();
     });
   }
 
@@ -376,11 +401,19 @@
         + `<button class="btn-build btn-secondary vs-score-add" data-uid="${escapa(k)}" type="button">+1</button></div>`;
     }).join('<span class="vs-score-sep">—</span>');
     cont.querySelectorAll('.vs-score-add').forEach(b=> b.onclick = ()=> addPunto(b.getAttribute('data-uid')));
-    const coin = document.getElementById('vs-coin');
-    if(coin){
-      if(_sala.moneda && _sala.moneda.quien && jugadores()[_sala.moneda.quien])
-        coin.innerHTML = `🪙 ${tx('vs_starts','Empieza')}: <strong>${escapa(nombreDe(jugadores()[_sala.moneda.quien]))}</strong>`;
-      else coin.innerHTML = '';
+  }
+
+  function renderCoin(){
+    const coin = document.getElementById('vs-coin'); if(!coin) return;
+    const m = _sala.moneda;
+    if(!(m && m.quien && jugadores()[m.quien])){ coin.innerHTML=''; _lastMonedaT = m? m.t : 0; return; }
+    const resultado = `🪙 ${tx('vs_starts','Empieza')}: <strong>${escapa(nombreDe(jugadores()[m.quien]))}</strong>`;
+    if(m.t && m.t !== _lastMonedaT){
+      _lastMonedaT = m.t;
+      coin.innerHTML = `<span class="vs-coin-anim">🪙</span>`;
+      setTimeout(()=>{ const c=document.getElementById('vs-coin'); if(c && _sala.moneda && _sala.moneda.t===m.t) c.innerHTML = resultado; }, 950);
+    } else {
+      coin.innerHTML = resultado;
     }
   }
 
@@ -429,11 +462,37 @@
                                  : tx('vs_guest_banner','Modo invitada — ves la colección en solo lectura y armas tu mazo.');
   }
 
+  // Notificaciones del navegador (solo si la pestaña está oculta, para no duplicar el toast)
+  function notif(titulo, cuerpo){
+    try{
+      if(('Notification' in window) && Notification.permission==='granted' && document.hidden){
+        new Notification(titulo, { body: cuerpo||'', icon: 'assets/icon-192.png' });
+      }
+    }catch(e){}
+  }
+  function pedirNotif(){
+    if(!('Notification' in window)) return;
+    Notification.requestPermission().then(()=>{ renderNotif(); }).catch(()=>{});
+  }
+  function renderNotif(){
+    const cont = document.getElementById('vs-notif'); if(!cont) return;
+    if(('Notification' in window) && Notification.permission==='default'){
+      cont.innerHTML = `<button class="btn-build btn-secondary" id="vs-notif-btn" type="button">${tx('vs_notif_enable','Activar avisos')}</button>`;
+      const b = document.getElementById('vs-notif-btn'); if(b) b.onclick = pedirNotif;
+    } else cont.innerHTML = '';
+  }
+
   function toastsTransicion(){
     const o = otro();
     const onNow = onlineDe(o), estNow = (o&&o.estado)||'';
-    if(o && onNow && !_prevOnline && typeof showToast==='function') showToast(nombreDe(o)+' '+tx('vs_connected','se conectó'),'success');
-    if(o && estNow==='ready' && _prevEstado!=='ready' && typeof showToast==='function') showToast(nombreDe(o)+' '+tx('vs_is_ready','está listo'),'success');
+    if(o && onNow && !_prevOnline){
+      if(typeof showToast==='function') showToast(nombreDe(o)+' '+tx('vs_connected','se conectó'),'success');
+      notif(nombreDe(o), tx('vs_connected','se conectó'));
+    }
+    if(o && estNow==='ready' && _prevEstado!=='ready'){
+      if(typeof showToast==='function') showToast(nombreDe(o)+' '+tx('vs_is_ready','está listo'),'success');
+      notif(nombreDe(o), tx('vs_is_ready','está listo'));
+    }
     _prevOnline = onNow; _prevEstado = estNow;
   }
 
@@ -451,7 +510,8 @@
     if(bU) bU.style.display = rdy?'':'none';
     renderMisMazos();
     if(_sala.reglas && (_sala.reglasVer||0) !== _lastReglasVer){ reglasADOM(_sala.reglas); _lastReglasVer = _sala.reglasVer||0; }
-    renderEstadoPartida(); renderStats(); renderConflictos(); renderPremios(); renderScore(); renderTimer(); renderChat();
+    renderNotif();
+    renderEstadoPartida(); renderStats(); renderConflictos(); renderPremios(); renderScore(); renderCoin(); renderTimer(); renderChat();
   }
 
   window.salaRenderVersus = function(){ construirEsqueleto(); setOptsFromInv(); renderTodo(); };
@@ -462,7 +522,8 @@
     miNombre = (user && (user.displayName || user.email)) || (esDueno?'Anfitrión':'Invitada');
     miFoto = (user && user.photoURL) || '';
     try{ const g = parseInt(localStorage.getItem('vs_deck_'+uid)); _miMazoIdx = isNaN(g)?0:g; }catch(e){ _miMazoIdx = 0; }
-    _mazosSig = null;
+    try{ _soloCumplen = localStorage.getItem('vs_only_'+uid)==='1'; }catch(e){ _soloCumplen = false; }
+    _mazosSig = null; _lastMonedaT = 0;
     construirEsqueleto();
     latido();
     if(hbTimer) clearInterval(hbTimer);

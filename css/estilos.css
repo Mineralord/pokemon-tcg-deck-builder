@@ -1462,3 +1462,31 @@ body.role-guest .btn-del{ display:none !important; }
 .vs-rules-det>summary::before{ content:'▸'; margin-right:8px; color:var(--accent-2); display:inline-block; transition:transform .2s; }
 .vs-rules-det[open]>summary::before{ transform:rotate(90deg); }
 .vs-rules-det .vs-rules-grid{ margin-top:12px; }
+
+/* ---- Filtro de cumplimiento de reglas (Fase 5) ---- */
+.vs-only{ margin-bottom:10px; font-size:13px; color:var(--text-secondary); }
+.vs-deck-ok{ color:#22c55e; margin-left:6px; font-weight:700; }
+.vs-deck-card.no-cumple{ opacity:.5; filter:grayscale(.4); }
+.vs-deck-card.no-cumple.sel{ opacity:1; filter:none; }
+.vs-notif{ text-align:center; }
+
+/* ---- Animación de la moneda ---- */
+.vs-coin-anim{ display:inline-block; font-size:26px; animation:vs-flip .9s ease-in-out; }
+@keyframes vs-flip{
+  0%{ transform:rotateY(0) scale(1); }
+  50%{ transform:rotateY(900deg) scale(1.3); }
+  100%{ transform:rotateY(1800deg) scale(1); }
+}
+
+/* ---- Pulido móvil del Versus ---- */
+@media (max-width:560px){
+  .vs-decks{ grid-template-columns:1fr 1fr; }
+  .vs-extras{ flex-direction:column; align-items:stretch; }
+  .vs-extras .btn-build{ width:100%; }
+  .vs-timer-wrap{ justify-content:center; }
+  .vs-prizes{ gap:18px; }
+  .vs-prize-num{ font-size:32px; }
+  .vs-score-num{ font-size:28px; }
+  .vs-chat-list{ max-height:160px; }
+  .vs-estado{ font-size:13px; }
+}

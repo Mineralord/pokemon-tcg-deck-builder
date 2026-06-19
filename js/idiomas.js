@@ -108,6 +108,9 @@ const I18N = {
     vs_conflicts_note:'Comparten estas cartas y no alcanzan las copias físicas. Decidan quién las usa.',
     vs_no_conflicts:'Sin choques: pueden montar ambos mazos a la vez.',
     vs_have:'Tienes', vs_split:'Faltan',
+    vs_only_compliant:'Solo los que cumplen las reglas', vs_compliant:'Cumple las reglas',
+    vs_none_compliant:'Ninguno de tus mazos cumple las reglas pactadas.',
+    vs_deck_nocumple:'Ojo: este mazo no cumple las reglas pactadas.', vs_notif_enable:'Activar avisos',
   },
   en: {
     app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks', stat_decks_short:'saved',
@@ -215,6 +218,9 @@ const I18N = {
     vs_conflicts_note:'You both use these cards and there aren’t enough physical copies. Decide who uses them.',
     vs_no_conflicts:'No clashes: you can build both decks at once.',
     vs_have:'You have', vs_split:'Short',
+    vs_only_compliant:'Only rule-compliant decks', vs_compliant:'Meets the rules',
+    vs_none_compliant:'None of your decks meet the agreed rules.',
+    vs_deck_nocumple:'Heads up: this deck does not meet the agreed rules.', vs_notif_enable:'Enable alerts',
   }
 };
 function T(k){ return (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.es[k] != null ? I18N.es[k] : k); }
