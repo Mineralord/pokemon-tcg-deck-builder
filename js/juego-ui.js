@@ -10,6 +10,7 @@
   const tx = (k, alt) => (typeof T === 'function' ? T(k) : (alt || k));
   const MODE_KEY = 'vs_modo';
   let G = null; // partida actual (estado del motor) o null si estamos en la pantalla de inicio
+  let _accion = null; // acción pendiente de objetivo: {tipo:'evo'|'energia'|'retirar', iid?}
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -26,19 +27,28 @@
   function misMazos() { return (typeof savedDecks !== 'undefined' && savedDecks) ? savedDecks : []; }
 
   // ---------- Componentes ----------
+  const ZAP = '<svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z"/></svg>';
+  function cardBadges(c) {
+    if (!c) return '';
+    let b = '';
+    const ne = (c.energias || []).length;
+    if (ne) b += '<span class="jv-badge jv-badge-e">' + ZAP + ne + '</span>';
+    if (c.danio) b += '<span class="jv-badge jv-badge-d">' + c.danio + '</span>';
+    return b ? ('<span class="jv-badges">' + b + '</span>') : '';
+  }
   function cartaEl(c, opt) {
     opt = opt || {};
     const oc = opt.onclick ? (' onclick="' + opt.onclick + '"') : '';
     if (opt.dorso) return '<div class="jv-card jv-card--back" aria-hidden="true"></div>';
     if (!c) return '<div class="jv-slot" aria-hidden="true"></div>';
-    const cls = 'jv-card' + (opt.clickable ? ' clickable' : '') + (opt.sel ? ' jv-sel' : '') + (opt.dim ? ' jv-dim' : '');
-    if (c.imagen) {
-      return '<div class="' + cls + '" title="' + esc(c.nombre) + '"' + oc + '>' +
-        '<img src="' + esc(c.imagen) + '" alt="' + esc(c.nombre) + '" loading="lazy" decoding="async"></div>';
-    }
-    return '<div class="' + cls + ' jv-card--ph" title="' + esc(c.nombre) + '"' + oc + '>' +
-      '<span class="jv-ph-name">' + esc(c.nombre) + '</span>' +
-      (c.hp ? '<span class="jv-ph-hp">' + c.hp + '</span>' : '') + '</div>';
+    const cls = 'jv-card' + (opt.clickable ? ' clickable' : '') + (opt.sel ? ' jv-sel' : '') +
+      (opt.target ? ' jv-target' : '') + (opt.dim ? ' jv-dim' : '');
+    const badges = opt.badges || '';
+    const inner = c.imagen
+      ? '<img src="' + esc(c.imagen) + '" alt="' + esc(c.nombre) + '" loading="lazy" decoding="async">'
+      : '<span class="jv-ph-name">' + esc(c.nombre) + '</span>' + (c.hp ? '<span class="jv-ph-hp">' + c.hp + '</span>' : '');
+    const phCls = c.imagen ? '' : ' jv-card--ph';
+    return '<div class="' + cls + phCls + '" title="' + esc(c.nombre) + '"' + oc + '>' + inner + badges + '</div>';
   }
   function pileEl(n, dorso, labelKey, labelAlt) {
     const inner = dorso ? '<div class="jv-card jv-card--back" aria-hidden="true"></div>'
@@ -53,11 +63,11 @@
     return '<div><div class="jv-prizes-stack">' + cells + '</div>' +
       '<div class="jv-zlabel">' + tx('jv_z_prizes', 'Premios') + ' ' + restantes + '</div></div>';
   }
-  function benchEl(banca, opt) {
-    opt = opt || {}; let html = '';
+  function benchEl(banca, each) {
+    let html = '';
     for (let i = 0; i < 5; i++) {
       const c = banca && banca[i] ? banca[i] : null;
-      html += cartaEl(c, c ? { clickable: opt.clickable, onclick: opt.onclick ? opt.onclick(c) : '' } : {});
+      html += c ? cartaEl(c, each ? each(c) : {}) : cartaEl(null);
     }
     return '<div class="jv-bench">' + html + '</div>';
   }
@@ -132,40 +142,85 @@
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
   }
 
+  function manoCard(iid) { return (G.lados.A.mano || []).find(function (c) { return c.iid === iid; }) || null; }
+  // ¿La carta en juego `c` es objetivo válido de la acción pendiente?
+  function esObjetivo(c, esActivo) {
+    if (!_accion) return false;
+    if (_accion.tipo === 'energia') return true;
+    if (_accion.tipo === 'evo') { const e = manoCard(_accion.iid); return !!(e && c.nombre === e.evolucionaDe && G.turno > (c.enJuegoDesde || 0)); }
+    if (_accion.tipo === 'retirar') return !esActivo; // objetivo = un banco
+    return false;
+  }
+  function accionBanner() {
+    if (!_accion) return '';
+    const msg = _accion.tipo === 'energia' ? tx('jv_pick_energy_t', 'Elige a quién adjuntar la energía')
+      : _accion.tipo === 'evo' ? tx('jv_pick_evo_t', 'Elige el Pokémon a evolucionar')
+        : tx('jv_pick_retreat_t', 'Elige el Pokémon de banca que pasa a Activo');
+    return '<div class="jv-actionbar"><span>' + esc(msg) + '</span>' +
+      '<button class="jv-btn jv-btn-2" type="button" onclick="jvCancelar()">' + esc(tx('jv_cancel', 'Cancelar')) + '</button></div>';
+  }
+
   function renderTablero() {
     const b = boardView();
     const setup = b.enSetup;
-    // Mano propia: en setup, las cartas básicas son clicables para colocarlas.
+    const jugable = !setup && G.turnoDe === 'A' && G.fase === JUEGO.FASE.MAIN && !G.ganador;
+
+    // ---- Mano propia ----
     const manoHtml = (b.yo.mano || []).map(function (c) {
       const basic = c.supertipo === 'Pokemon' && c.esBasico;
-      return cartaEl(c, { clickable: setup && basic, dim: setup && !basic, onclick: (setup && basic) ? ("jvPlace('" + c.iid + "')") : '' });
+      if (setup) return cartaEl(c, { clickable: basic, dim: !basic, onclick: basic ? ("jvPlace('" + c.iid + "')") : '' });
+      const sel = _accion && _accion.iid === c.iid;
+      const jugarEsta = jugable && (basic || (c.supertipo === 'Pokemon' && c.evolucionaDe) || c.supertipo === 'Energy');
+      return cartaEl(c, { clickable: jugable, sel: sel, dim: jugable && !jugarEsta, onclick: jugable ? ("jvManoClick('" + c.iid + "')") : '' });
     }).join('');
-    const yoActivo = cartaEl(b.yo.activo, { clickable: setup && !!b.yo.activo, onclick: (setup && b.yo.activo) ? ("jvUnplace('" + b.yo.activo.iid + "')") : '' });
-    const yoBanca = benchEl(b.yo.banca, { clickable: setup, onclick: setup ? function (c) { return "jvUnplace('" + c.iid + "')"; } : null });
 
-    const centro = setup ? setupBar() : hudBar(b);
+    // ---- Tu Activo / Banca ----
+    let yoActivo, yoBanca;
+    if (setup) {
+      yoActivo = cartaEl(b.yo.activo, { clickable: !!b.yo.activo, onclick: b.yo.activo ? ("jvUnplace('" + b.yo.activo.iid + "')") : '' });
+      yoBanca = benchEl(b.yo.banca, function (c) { return { clickable: true, onclick: "jvUnplace('" + c.iid + "')" }; });
+    } else {
+      yoActivo = cartaEl(b.yo.activo, b.yo.activo ? activoOpt(b.yo.activo, jugable) : {});
+      yoBanca = benchEl(b.yo.banca, function (c) { return juegoOpt(c, false, jugable); });
+    }
+    const rivalBanca = benchEl(b.rival.banca, function (c) { return { badges: cardBadges(c) }; });
+    const rivalActivo = cartaEl(b.rival.activo, { badges: cardBadges(b.rival.activo) });
+
+    const centro = setup ? setupBar() : (accionBanner() + hudBar(b));
 
     return '' +
       '<div class="jv-board">' +
       closeBtn() +
-      // RIVAL
       '<div class="jv-side jv-side--rival">' +
-        pbarEl(b.rival) + auxRow(b.rival) + benchEl(b.rival.banca) +
-        '<div class="jv-active-wrap"><div class="jv-active">' + cartaEl(b.rival.activo) + '</div></div>' +
+        pbarEl(b.rival) + auxRow(b.rival) + rivalBanca +
+        '<div class="jv-active-wrap"><div class="jv-active">' + rivalActivo + '</div></div>' +
       '</div>' +
-      // CENTRO
       centro +
       '<div class="jv-center"><div class="jv-zlabel">' + tx('jv_z_stadium', 'Estadio') + '</div>' +
         '<div class="jv-zlabel">' + tx('jv_z_lost', 'Zona perdida') + '</div></div>' +
-      // TÚ
       '<div class="jv-side jv-side--yo">' +
         '<div class="jv-active-wrap"><div class="jv-active">' + yoActivo + '</div></div>' +
         yoBanca + auxRow(b.yo) + pbarEl(b.yo) +
       '</div>' +
       '</div>' +
-      // MANO
       '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>' +
       finOverlay();
+  }
+
+  // Opciones de render de un Pokémon en juego propio (banca o activo) en fase MAIN.
+  function juegoOpt(c, esActivo, jugable) {
+    const o = { badges: cardBadges(c) };
+    if (!jugable) return o;
+    if (_accion && esObjetivo(c, esActivo)) { o.target = true; o.clickable = true; o.onclick = "jvJuegoClick('" + c.iid + "')"; }
+    return o;
+  }
+  function activoOpt(c, jugable) {
+    const o = juegoOpt(c, true, jugable);
+    // Sin acción pendiente: tocar el Activo inicia la retirada (si hay banca y no se usó).
+    if (jugable && !_accion && G.lados.A.banca.length && !G.lados.A.retiroUsado) {
+      o.clickable = true; o.onclick = "jvActivoClick()";
+    }
+    return o;
   }
 
   // ---------- Pantalla de inicio de partida ----------
@@ -227,9 +282,27 @@
   window.jvUnplace = function (iid) { if (G) { JUEGO.quitarColocado(G, 'A', iid); renderJuego(); } };
   window.jvAuto = function () { if (G) { JUEGO.autoSetup(G, 'A'); renderJuego(); } };
   window.jvConfirm = function () { if (G) { JUEGO.confirmarSetup(G, 'A'); renderJuego(); } };
-  window.jvFinTurno = function () { if (G && G.turnoDe === 'A' && !G.ganador) { JUEGO.terminarTurno(G); renderJuego(); } };
-  window.jvNueva = function () { G = null; renderJuego(); };
-  window.jvSalir = function () { if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; } G = null; window.setVersusMode('fisico'); };
+  window.jvManoClick = function (iid) {
+    if (!G || G.turnoDe !== 'A' || G.fase !== JUEGO.FASE.MAIN || G.ganador) return;
+    const A = G.lados.A; const c = A.mano.find(function (x) { return x.iid === iid; }); if (!c) return;
+    if (c.supertipo === 'Pokemon' && c.esBasico) { JUEGO.ponerEnBanca(G, 'A', iid); _accion = null; }
+    else if (c.supertipo === 'Pokemon' && c.evolucionaDe) { _accion = (_accion && _accion.iid === iid) ? null : { tipo: 'evo', iid: iid }; }
+    else if (c.supertipo === 'Energy') { if (!A.energiaUsada) _accion = (_accion && _accion.iid === iid) ? null : { tipo: 'energia', iid: iid }; }
+    else { _accion = null; } // entrenadores: Fase 8
+    renderJuego();
+  };
+  window.jvJuegoClick = function (iid) {
+    if (!G || !_accion) return;
+    if (_accion.tipo === 'evo') JUEGO.evolucionar(G, 'A', _accion.iid, iid);
+    else if (_accion.tipo === 'energia') JUEGO.adjuntarEnergia(G, 'A', _accion.iid, iid);
+    else if (_accion.tipo === 'retirar') JUEGO.retirar(G, 'A', iid);
+    _accion = null; renderJuego();
+  };
+  window.jvActivoClick = function () { if (G) { _accion = { tipo: 'retirar' }; renderJuego(); } };
+  window.jvCancelar = function () { _accion = null; renderJuego(); };
+  window.jvFinTurno = function () { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.terminarTurno(G); renderJuego(); } };
+  window.jvNueva = function () { _accion = null; G = null; renderJuego(); };
+  window.jvSalir = function () { if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; } _accion = null; G = null; window.setVersusMode('fisico'); };
 
   // ---------- Pantalla completa inmersiva (solo overlay CSS) ----------
   function entrarFull() {

@@ -8,7 +8,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 4; // sube con cada fase del motor
+  const VERSION = 5; // sube con cada fase del motor
 
   // Fases del juego (rulebook): preparación -> turnos -> fin.
   const FASE = Object.freeze({
@@ -229,7 +229,7 @@
     const i = _buscarMano(L, iid); if (i < 0) return est;
     const c = L.mano[i]; if (!esBasicoPoke(c)) return est;
     if (L.activo) L.mano.push(L.activo);
-    L.activo = c; L.mano.splice(i, 1);
+    c.enJuegoDesde = 0; L.activo = c; L.mano.splice(i, 1);
     return est;
   }
   // Añade un básico de la mano a la banca (máx 5) durante SETUP.
@@ -238,7 +238,7 @@
     if (L.banca.length >= 5) return est;
     const i = _buscarMano(L, iid); if (i < 0) return est;
     const c = L.mano[i]; if (!esBasicoPoke(c)) return est;
-    L.banca.push(c); L.mano.splice(i, 1);
+    c.enJuegoDesde = 0; L.banca.push(c); L.mano.splice(i, 1);
     return est;
   }
   // Devuelve a la mano un Pokémon colocado (activo o de banca) durante SETUP.
@@ -302,6 +302,64 @@
       L.descarte.length + L.premios.length + L.lost.length;
   }
 
+  // ---------- Acciones principales del turno (rulebook p.10-12) ----------
+  function _enMano(L, iid) { const i = _buscarMano(L, iid); return i < 0 ? null : L.mano[i]; }
+  function _refEnJuego(L, iid) {
+    if (L.activo && L.activo.iid === iid) return { card: L.activo, pos: 'activo' };
+    const i = L.banca.findIndex(function (c) { return c.iid === iid; });
+    if (i >= 0) return { card: L.banca[i], pos: 'banca', i: i };
+    return null;
+  }
+  function _esTurnoMain(est, lado) { return !est.ganador && est.fase === FASE.MAIN && est.turnoDe === lado; }
+
+  // Poner un Básico de la mano en la Banca (las veces que quieras).
+  function ponerEnBanca(est, lado, iid) {
+    const L = est.lados[lado]; if (!_esTurnoMain(est, lado) || L.banca.length >= 5) return est;
+    const c = _enMano(L, iid); if (!esBasicoPoke(c)) return est;
+    c.enJuegoDesde = est.turno; L.banca.push(c); L.mano.splice(_buscarMano(L, iid), 1); return est;
+  }
+
+  // Adjuntar 1 energía por turno a un Pokémon en juego.
+  function adjuntarEnergia(est, lado, iidMano, iidObjetivo) {
+    const L = est.lados[lado]; if (!_esTurnoMain(est, lado) || L.energiaUsada) return est;
+    const e = _enMano(L, iidMano); if (!e || e.supertipo !== 'Energy') return est;
+    const r = _refEnJuego(L, iidObjetivo); if (!r) return est;
+    r.card.energias.push(e); L.mano.splice(_buscarMano(L, iidMano), 1); L.energiaUsada = true; return est;
+  }
+
+  // Evolucionar: carta de la mano sobre un Pokémon cuyo nombre = evolucionaDe.
+  function evolucionar(est, lado, iidMano, iidObjetivo) {
+    const L = est.lados[lado]; if (!_esTurnoMain(est, lado)) return est;
+    if (L.turnosJugados === 0) return est;                  // no en tu primer turno
+    const evo = _enMano(L, iidMano); if (!evo || evo.supertipo !== 'Pokemon' || !evo.evolucionaDe) return est;
+    const r = _refEnJuego(L, iidObjetivo); if (!r) return est;
+    const base = r.card;
+    if ((base.nombre || '') !== evo.evolucionaDe) return est;          // debe coincidir
+    if (est.turno <= (base.enJuegoDesde || 0)) return est;            // en juego desde antes de este turno
+    evo.energias = base.energias || []; evo.danio = base.danio || 0;
+    evo.debajo = [base].concat(base.debajo || []);
+    evo.condiciones = [];                                            // se limpian al evolucionar
+    evo.enJuegoDesde = est.turno;
+    if (r.pos === 'activo') L.activo = evo; else L.banca[r.i] = evo;
+    L.mano.splice(_buscarMano(L, iidMano), 1); return est;
+  }
+
+  // Retirar el Activo (1 vez por turno): descarta energías del coste y cambia por un banco.
+  function retirar(est, lado, iidBanca) {
+    const L = est.lados[lado]; if (!_esTurnoMain(est, lado) || L.retiroUsado) return est;
+    if (!L.activo || !L.banca.length) return est;
+    const cond = L.activo.condiciones || [];
+    if (cond.indexOf('asleep') >= 0 || cond.indexOf('paralyzed') >= 0) return est; // Fase 7
+    const coste = L.activo.retirada || 0;
+    if ((L.activo.energias || []).length < coste) return est;
+    for (let k = 0; k < coste; k++) L.descarte.push(L.activo.energias.pop());
+    const i = L.banca.findIndex(function (c) { return c.iid === iidBanca; });
+    if (i < 0) return est;
+    const nuevo = L.banca[i]; L.banca.splice(i, 1);
+    const viejo = L.activo; viejo.condiciones = [];                 // limpia condiciones al ir a banca
+    L.banca.push(viejo); L.activo = nuevo; L.retiroUsado = true; return est;
+  }
+
   // ---------- Estado / reductor ----------
   function estadoInicial() {
     return { v: VERSION, fase: FASE.SETUP, turno: 0, turnoDe: null, lados: {}, seq: 0, log: [] };
@@ -315,6 +373,7 @@
     rng32, barajar, tieneBasico,
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
+    ponerEnBanca, adjuntarEnergia, evolucionar, retirar,
     estadoInicial, aplicarAccion
   };
 

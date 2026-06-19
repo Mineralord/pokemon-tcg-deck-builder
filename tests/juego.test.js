@@ -145,5 +145,53 @@ J.terminarTurno(p3);
 eq(p3.ganador, enTurno, 'gana quien forzó el deck-out del rival');
 eq(p3.fase, J.FASE.END, 'fase END al terminar');
 
+// ---------- Fase 5: acciones principales ----------
+console.log('acciones del turno: banca, energía, evolución, retirada');
+const pikachu = { id: 'x-1', nombre: 'Pikachu', supertipo: 'Pokémon', fase: 'Basic', ps: '60', tipos: ['Lightning'], ataques: [{ name: 'a', cost: ['Lightning'], damage: '10' }], costoRetirada: ['Colorless'] };
+let _id = 0;
+function inst(view, iid) { const c = J.cartaJuego(view); c.iid = iid || ('i' + (_id++)); c.energias = []; c.danio = 0; c.condiciones = []; return c; }
+function escena() {
+  const e = J.crearPartida({ ladoA: { cartas: cartas60 }, ladoB: { cartas: cartas60 }, seed: 1 });
+  J.autoSetup(e, 'A'); J.autoSetup(e, 'B');
+  e.turnoDe = 'A'; e.fase = J.FASE.MAIN; e.turno = 3; e.ganador = null;
+  e.lados.A.turnosJugados = 1; e.lados.A.energiaUsada = false; e.lados.A.retiroUsado = false;
+  const act = inst(pikachu, 'act'); act.enJuegoDesde = 0;
+  e.lados.A.activo = act; e.lados.A.banca = [];
+  e.lados.A.mano = [inst(lightningEnergy, 'e1'), inst(raichu, 'rc1'), inst(pikachu, 'pk2'), inst(lightningEnergy, 'e2')];
+  return e;
+}
+
+let e1 = escena();
+J.ponerEnBanca(e1, 'A', 'pk2');
+eq(e1.lados.A.banca.length, 1, 'poner básico en banca');
+eq(e1.lados.A.mano.length, 3, 'la mano baja a 3');
+
+let e2 = escena();
+J.adjuntarEnergia(e2, 'A', 'e1', 'act');
+eq(e2.lados.A.activo.energias.length, 1, 'energía adjuntada al activo');
+eq(e2.lados.A.energiaUsada, true, 'energiaUsada=true');
+J.adjuntarEnergia(e2, 'A', 'e2', 'act');
+eq(e2.lados.A.activo.energias.length, 1, 'segunda energía bloqueada (1 por turno)');
+
+let e3 = escena();
+J.adjuntarEnergia(e3, 'A', 'e1', 'act');     // 1 energía en el activo Pikachu
+J.evolucionar(e3, 'A', 'rc1', 'act');
+eq(e3.lados.A.activo.nombre, 'Raichu', 'el activo evoluciona a Raichu');
+eq(e3.lados.A.activo.energias.length, 1, 'la evolución conserva la energía');
+eq((e3.lados.A.activo.debajo || []).length >= 1, true, 'queda Pikachu debajo');
+
+let e4 = escena();
+e4.lados.A.turnosJugados = 0;                // primer turno: no se evoluciona
+J.evolucionar(e4, 'A', 'rc1', 'act');
+eq(e4.lados.A.activo.nombre, 'Pikachu', 'no evoluciona en el primer turno');
+
+let e5 = escena();
+J.adjuntarEnergia(e5, 'A', 'e1', 'act');     // Pikachu retirada=1 -> necesita 1 energía
+e5.lados.A.banca = [inst(pikachu, 'b1')];
+J.retirar(e5, 'A', 'b1');
+eq(e5.lados.A.activo.iid, 'b1', 'el de banca pasa a Activo al retirar');
+eq(e5.lados.A.retiroUsado, true, 'retiroUsado=true');
+eq(e5.lados.A.descarte.length, 1, 'se descarta 1 energía por el coste de retirada');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
