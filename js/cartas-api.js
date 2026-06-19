@@ -257,8 +257,10 @@ function tcgdexId(pid){
   return isNaN(n) ? (tset + '-' + num) : (tset + '-' + String(n).padStart(3, '0'));
 }
 
+// Caché v2: incluye también imagen española y nombre de set (las entradas v1 no los traían).
+const ES_CACHE_KEY = 'ptcg_es_cache2';
 let _esCache = {};
-try { _esCache = JSON.parse(localStorage.getItem('ptcg_es_cache') || '{}'); } catch (e) { _esCache = {}; }
+try { _esCache = JSON.parse(localStorage.getItem(ES_CACHE_KEY) || '{}'); } catch (e) { _esCache = {}; }
 
 async function tcgdexEsLive(id){
   if (!id) return null;
@@ -273,10 +275,33 @@ async function tcgdexEsLive(id){
       nombre: d.name,
       habilidades: (d.abilities || []).map(a => ({ name: a.name, text: a.effect })),
       ataques: (d.attacks || []).map(a => ({ name: a.name, text: a.effect })),
-      efecto: d.effect || null
+      efecto: d.effect || null,
+      imagenChica: d.image ? (d.image + '/low.webp') : null,
+      imagenGrande: d.image ? (d.image + '/high.webp') : null,
+      setNombre: (d.set && d.set.name) || null
     };
     _esCache[id] = es;
-    try { localStorage.setItem('ptcg_es_cache', JSON.stringify(_esCache)); } catch (e) {}
+    try { localStorage.setItem(ES_CACHE_KEY, JSON.stringify(_esCache)); } catch (e) {}
     return es;
   } catch (e) { return null; }
+}
+
+// Asegura el español (nombre + imagen + set) de una lista de vistas y, cuando termina de
+// traer las que faltaban, llama onReady() UNA vez. Concurrencia limitada. No-op fuera de ES.
+function localizarVistasEs(views, onReady){
+  if (typeof lang !== 'undefined' && lang !== 'es') return;
+  const faltan = (views || []).filter(v => v && v.id && !v.es);
+  if (!faltan.length) return;
+  let i = 0, activos = 0, hechos = 0, disparado = false;
+  const total = faltan.length;
+  const fin = () => { if (!disparado && hechos >= total){ disparado = true; if (typeof onReady === 'function') onReady(); } };
+  const lanzar = () => {
+    while (activos < 8 && i < total){
+      const v = faltan[i++]; activos++;
+      tcgdexEsLive(v.id).then(es => { if (es) v.es = es; })
+        .catch(()=>{})
+        .then(() => { activos--; hechos++; lanzar(); fin(); });
+    }
+  };
+  lanzar();
 }

@@ -258,6 +258,25 @@ const RULE_TEXT = {
 };
 function trRule(r){ return (RULE_TEXT[r] && RULE_TEXT[r][lang]) || r; }
 
+// --- Localización de carta (nombre / imagen / set) según idioma ---
+function nombreLocal(v){
+  if(!v) return '';
+  if(lang === 'es' && v.es && v.es.nombre) return v.es.nombre;
+  return v.nombre || '';
+}
+function imagenLocal(v, grande){
+  if(!v) return null;
+  if(lang === 'es' && v.es){
+    const im = grande ? v.es.imagenGrande : v.es.imagenChica;
+    if(im) return im;
+  }
+  return grande ? (v.imagenGrande || v.imagenChica) : (v.imagenChica || v.imagenGrande);
+}
+function setNombreLocal(v){
+  if(lang === 'es' && v && v.es && v.es.setNombre) return v.es.setNombre;
+  return (v && v.set && v.set.nombre) || '';
+}
+
 const TYPE_EMOJI = {
   'Pokemon-Fire':'🔥','Pokemon-Water':'💧','Pokemon-Lightning':'⚡','Pokemon-Grass':'🌿','Pokemon-Psychic':'🔮',
   'Pokemon-Darkness':'🌑','Pokemon-Colorless':'⭐','Pokemon-Fighting':'👊','Pokemon-Metal':'⚙️','Trainer':'🎭',

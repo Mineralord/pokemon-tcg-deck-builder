@@ -93,7 +93,7 @@ function renderCardDetail(d){
   const titulo = (useEs && es.nombre) ? es.nombre : d.nombre;
   document.getElementById('modal-title').textContent = titulo;
   if(typeof enriquecerEnergia === 'function') enriquecerEnergia(d);
-  const img = d.imagenGrande || d.imagenChica;
+  const img = imagenLocal(d, true);
   let html = '<div class="card-detail">';
   if(img) html += `<div class="cd-img"><img src="${esc(img)}" alt="${esc(titulo)}" loading="lazy"></div>`;
   html += '<div class="cd-info">';
@@ -127,7 +127,7 @@ function renderCardDetail(d){
   const reglas = (useEs && es.efecto) ? [es.efecto] : (d.reglas||[]).map(trRule);
   reglas.forEach(r => html += `<div class="cd-rule">${esc(r)}</div>`);
   if(d.descripcionPokedex) html += `<div class="cd-flavor">${esc(d.descripcionPokedex)}</div>`;
-  const setn = (d.set && d.set.nombre) ? d.set.nombre : '';
+  const setn = setNombreLocal(d);
   if(setn || d.numeroCarta) html += `<div class="cd-set">${esc(setn)}${d.numeroCarta?(' · '+T('d_no')+' '+esc(d.numeroCarta)):''}${d.ilustrador?(' · '+T('d_illus')+' '+esc(d.ilustrador)):''}</div>`;
 
   // Control para añadir / quitar de la colección (si la carta tiene id)
@@ -472,28 +472,30 @@ function renderInventory(){
   items = ordenarVistas(items, colFiltros.orderBy);
   if(!items.length){ el.innerHTML = `<div class="empty-grid">${T('col_empty')}</div>`; updateStats(); return; }
   el.innerHTML = items.map(({e, v}) => {
-    const img = v.imagenChica || v.imagenGrande;
+    const nom = nombreLocal(v);
+    const img = imagenLocal(v);
     const ring = getLegalStatus(e) === 'illegal' ? ' ring-illegal' : '';
     const idq = esc(jsq(e.id));
-    const setline = `${esc((v.set && v.set.nombre) || '')}${v.numeroCarta ? (' · ' + esc(v.numeroCarta)) : ''}`;
+    const setline = `${esc(setNombreLocal(v))}${v.numeroCarta ? (' · ' + esc(v.numeroCarta)) : ''}`;
     return `<div class="cardtile${ring}">
       <div class="cardtile-img" onclick="showCardById('${idq}')">
         <div class="tile-actions">
           <button class="tile-act" aria-label="${esc(T('tile_replace'))}" title="${esc(T('tile_replace'))}" onclick="event.stopPropagation();iniciarReemplazo('${idq}')">⇄</button>
           <button class="tile-act del" aria-label="${esc(T('tile_delete'))}" title="${esc(T('tile_delete'))}" onclick="event.stopPropagation();pedirEliminar('${idq}')">✕</button>
         </div>
-        ${img ? `<img src="${esc(img)}" alt="${esc(v.nombre)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">` : `<div class="noimg">${esc(v.nombre)}</div>`}
+        ${img ? `<img src="${esc(img)}" alt="${esc(nom)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">` : `<div class="noimg">${esc(nom)}</div>`}
         <span class="qty-badge">×${e.qty}</span>
       </div>
       <div class="cardtile-bar">
         <button aria-label="-1" onclick="cambiarCantidad('${idq}',-1)">−</button>
-        <span class="ct-name" title="${esc(v.nombre)}">${esc(v.nombre)}</span>
+        <span class="ct-name" title="${esc(nom)}">${esc(nom)}</span>
         <button aria-label="+1" onclick="cambiarCantidad('${idq}',1)">+</button>
       </div>
       <div class="cardtile-set">${setline}</div>
     </div>`;
   }).join('');
   updateStats();
+  if(typeof localizarVistasEs === 'function') localizarVistasEs(items.map(o=>o.v), renderInventory);
 }
 
 function getLegalStatus(card) {
@@ -737,8 +739,10 @@ function renderLegal() {
   };
   const thumbOf = c => {
     const d = regCard(viewFromEntry(c));
-    return (d && d.imagenChica) ? `<img class="inv-thumb" src="${esc(d.imagenChica)}" alt="" loading="lazy" onclick="showCardById('${esc(jsq(c.id))}')">` : '';
+    const im = imagenLocal(d);
+    return im ? `<img class="inv-thumb" src="${esc(im)}" alt="" loading="lazy" onclick="showCardById('${esc(jsq(c.id))}')">` : '';
   };
+  const nombreDe = c => esc(nombreLocal(regCard(viewFromEntry(c))) || c.name);
   const clickAttr = c => ` class="clickable" style="cursor:pointer" onclick="showCardById('${esc(jsq(c.id))}')"`;
   let html = '';
   if (legals.length) {
@@ -750,7 +754,7 @@ function renderLegal() {
       html += `<div class="legal-item ok">
         ${thumbOf(c) || '<span class="legal-item-icon">✅</span>'}
         <div class="legal-item-info">
-          <div class="legal-item-name"><span${clickAttr(c)}>${c.name}</span> <span class="inv-badge bg-${color}">×${c.qty}</span></div>
+          <div class="legal-item-name"><span${clickAttr(c)}>${nombreDe(c)}</span> <span class="inv-badge bg-${color}">×${c.qty}</span></div>
           <div class="legal-item-reason">${T('legal_reason_ok')}${extra(c)}</div>
         </div>
       </div>`;
@@ -768,7 +772,7 @@ function renderLegal() {
       html += `<div class="legal-item illegal">
         ${thumbOf(c) || '<span class="legal-item-icon">❌</span>'}
         <div class="legal-item-info">
-          <div class="legal-item-name"><span${clickAttr(c)}>${c.name}</span></div>
+          <div class="legal-item-name"><span${clickAttr(c)}>${nombreDe(c)}</span></div>
           <div class="legal-item-reason">${T('legal_missing')} ${missing.join(', ')}${extra(c)}</div>
         </div>
       </div>`;
@@ -776,6 +780,7 @@ function renderLegal() {
     html += '</div></div>';
   }
   panel.innerHTML = html;
+  if(typeof localizarVistasEs === 'function') localizarVistasEs(pokemon.map(c=>regCard(viewFromEntry(c))), renderLegal);
 }
 
 // ===================== GENERAR PROMPT PARA LA IA =====================
@@ -1012,15 +1017,17 @@ function renderComparativa(decks){
 
 // Miniatura visual de una carta dentro de un mazo (imagen + cantidad, clic al detalle)
 function deckMini(c){
-  const img = c.img || (getCardData(c.card) || {}).imagenChica || (typeof energyImgByName === 'function' ? energyImgByName(c.card) : null);
-  const id = c.id || (getCardData(c.card) || {}).id;
+  const v = (c.id && cardRegistry[c.id]) || getCardData(c.card) || null;
+  const nom = v ? nombreLocal(v) : c.card;
+  const img = (v ? imagenLocal(v) : null) || c.img || (v && v.imagenChica) || (typeof energyImgByName === 'function' ? energyImgByName(c.card) : null);
+  const id = c.id || (v && v.id);
   let click = '';
   if(id && cardRegistry[id]) click = `onclick="showCardById('${esc(jsq(id))}')"`;
   else if(getCardData(c.card)) click = `onclick="showCardDetail('${esc(jsq(c.card))}')"`;
   const inner = img
-    ? `<img src="${esc(img)}" alt="${esc(c.card)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">`
-    : `<div class="noimg">${esc(c.card)}</div>`;
-  return `<div class="deck-mini${img?' has-img':''}" title="${esc(c.qty + '× ' + c.card)}" ${click}>${inner}<span class="qty-badge">×${c.qty}</span></div>`;
+    ? `<img src="${esc(img)}" alt="${esc(nom)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">`
+    : `<div class="noimg">${esc(nom)}</div>`;
+  return `<div class="deck-mini${img?' has-img':''}" title="${esc(c.qty + '× ' + nom)}" ${click}>${inner}<span class="qty-badge">×${c.qty}</span></div>`;
 }
 
 // Genera una línea de carta clicable (si hay datos) para el armador de mazos
@@ -1238,21 +1245,23 @@ function renderExploradorGrid(){
   if(!grid) return;
   if(!expCards.length){ grid.innerHTML = `<div class="empty-grid">${T('exp_empty')}</div>`; return; }
   grid.innerHTML = expCards.map(v => {
-    const img = v.imagenChica || v.imagenGrande;
+    const nom = nombreLocal(v);
+    const img = imagenLocal(v);
     const owned = inventory.find(x => x.id === v.id);
     const idq = esc(jsq(v.id));
     return `<div class="cardtile">
       <div class="cardtile-img" onclick="showCardById('${idq}')">
-        ${img ? `<img src="${esc(img)}" alt="${esc(v.nombre)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">` : `<div class="noimg">${esc(v.nombre)}</div>`}
+        ${img ? `<img src="${esc(img)}" alt="${esc(nom)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">` : `<div class="noimg">${esc(nom)}</div>`}
         ${owned ? `<span class="qty-badge owned">×${owned.qty}</span>` : ''}
       </div>
       <div class="cardtile-bar">
-        <span class="ct-name" title="${esc(v.nombre)}">${esc(v.nombre)}</span>
+        <span class="ct-name" title="${esc(nom)}">${esc(nom)}</span>
         <button class="ct-add" aria-label="${esc(T('cd_add'))}" title="${esc(T('cd_add'))}" onclick="accionAgregar(cardRegistry['${idq}'],1)">＋</button>
       </div>
-      <div class="cardtile-set">${esc((v.set&&v.set.nombre)||'')}${v.rareza?(' · '+esc(trRarity(v.rareza))):''}</div>
+      <div class="cardtile-set">${esc(setNombreLocal(v))}${v.rareza?(' · '+esc(trRarity(v.rareza))):''}</div>
     </div>`;
   }).join('');
+  if(typeof localizarVistasEs === 'function') localizarVistasEs(expCards, renderExploradorGrid);
 }
 
 // ===================== EXPORTAR / IMPORTAR COLECCIÓN =====================

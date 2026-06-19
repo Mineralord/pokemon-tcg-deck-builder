@@ -472,7 +472,7 @@ function _generarMazos(modo, filtros){
     const energyTot = d.energies.reduce((s,c)=>s+c.qty,0);
     const ba = core ? _bestAttack(core) : null;
     const desc = _descAtaque(ba, esLang);
-    const coreNom = core ? core.nombre : '';
+    const coreNom = core ? ((typeof nombreLocal==='function') ? nombreLocal(core) : core.nombre) : '';
     const ret = core ? _retreat(core) : 0;
     const abil = core && (core.habilidades||[])[0] ? core.habilidades[0].name : '';
     const debil = (core && (core.debilidades||[])[0] && core.debilidades[0].type)
