@@ -193,5 +193,64 @@ eq(e5.lados.A.activo.iid, 'b1', 'el de banca pasa a Activo al retirar');
 eq(e5.lados.A.retiroUsado, true, 'retiroUsado=true');
 eq(e5.lados.A.descarte.length, 1, 'se descarta 1 energía por el coste de retirada');
 
+// ---------- Fase 6: ataque ----------
+console.log('ataque: coste, debilidad/resistencia, KO, premios, victoria');
+function combate(defView, bancaDef) {
+  const e = escena();
+  const atk = inst(pikachu, 'atk'); atk.enJuegoDesde = 0; atk.energias = [inst(lightningEnergy, 'le')];
+  e.lados.A.activo = atk; e.lados.A.turnosJugados = 1;
+  const def = inst(defView, 'def'); e.lados.B.activo = def;
+  e.lados.B.banca = bancaDef || [];
+  return e;
+}
+// puedePagar
+ok(J.puedePagar({ energias: [{ energiaTipo: 'Lightning' }] }, ['Lightning']), 'paga coste tipado');
+ok(!J.puedePagar({ energias: [] }, ['Lightning']), 'sin energía no paga');
+ok(J.puedePagar({ energias: [{ energiaTipo: 'Water' }] }, ['Colorless']), 'incoloro lo paga cualquiera');
+
+// debilidad ×2 -> 10 daño *2 = 20, KO sobre 20 HP
+let c1 = combate(Object.assign({}, pikachu, { ps: '20', debilidades: [{ type: 'Lightning', value: '×2' }] }), [inst(pikachu, 'bb')]);
+J.atacar(c1, 'A', 0);
+eq(c1.lados.B.activo.iid, 'bb', 'tras KO, sube el de banca a Activo');
+eq(c1.lados.A.premios.length, 5, 'el atacante toma 1 premio (6->5)');
+eq(c1.lados.B.descarte.length >= 1, true, 'el KO va al descarte');
+eq(c1.turnoDe, 'B', 'atacar termina el turno');
+
+// sin debilidad: 10 daño, sin KO sobre 100 HP
+let c2 = combate(Object.assign({}, pikachu, { ps: '100' }), [inst(pikachu, 'bb')]);
+J.atacar(c2, 'A', 0);
+eq(c2.lados.B.activo.danio, 10, 'daño base 10 aplicado');
+eq(c2.lados.B.activo.iid, 'def', 'sin KO sigue el mismo Activo');
+
+// resistencia -20 con un ataque de 30
+const golpe30 = { id: 'g', nombre: 'Golpeador', supertipo: 'Pokémon', fase: 'Basic', ps: '90', tipos: ['Lightning'], ataques: [{ name: 'big', cost: ['Lightning'], damage: '30' }] };
+let c3 = escena();
+const a3 = inst(golpe30, 'a3'); a3.enJuegoDesde = 0; a3.energias = [inst(lightningEnergy, 'le3')];
+c3.lados.A.activo = a3; c3.lados.A.turnosJugados = 1;
+c3.lados.B.activo = inst(Object.assign({}, pikachu, { ps: '100', resistencias: [{ type: 'Lightning', value: '-20' }] }), 'd3');
+c3.lados.B.banca = [inst(pikachu, 'bb3')];
+J.atacar(c3, 'A', 0);
+eq(c3.lados.B.activo.danio, 10, 'resistencia -20 reduce 30 a 10');
+
+// energía insuficiente -> no hace nada
+let c4 = combate(Object.assign({}, pikachu, { ps: '100' }), []);
+c4.lados.A.activo.energias = []; // quitamos energía
+J.atacar(c4, 'A', 0);
+eq(c4.lados.B.activo.danio || 0, 0, 'sin energía no ataca');
+eq(c4.turnoDe, 'A', 'no se gasta el turno si el ataque es ilegal');
+
+// victoria por premios: 1 premio restante, KO da el último
+let c5 = combate(Object.assign({}, pikachu, { ps: '20', debilidades: [{ type: 'Lightning', value: '×2' }] }), [inst(pikachu, 'bb5')]);
+c5.lados.A.premios = c5.lados.A.premios.slice(0, 1);
+J.atacar(c5, 'A', 0);
+eq(c5.ganador, 'A', 'gana al tomar el último premio');
+eq(c5.fase, J.FASE.END, 'fase END');
+
+// victoria por dejar al rival sin Pokémon
+let c6 = combate(Object.assign({}, pikachu, { ps: '20', debilidades: [{ type: 'Lightning', value: '×2' }] }), []);
+J.atacar(c6, 'A', 0);
+eq(c6.ganador, 'A', 'gana si el rival se queda sin Pokémon');
+eq(c6.motivoFin, 'sinpokemon', 'motivo sinpokemon');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

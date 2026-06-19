@@ -130,7 +130,8 @@
     if (!G || !G.ganador) return '';
     const gane = G.ganador === 'A';
     const titulo = gane ? tx('jv_win', '¡Ganaste!') : tx('jv_lose', 'Perdiste');
-    const motivo = G.motivoFin === 'deckout' ? tx('jv_by_deckout', 'por agotar el mazo del rival') : '';
+    const motivos = { deckout: tx('jv_by_deckout', 'por agotar el mazo del rival'), premios: tx('jv_by_prizes', 'por tomar todos los premios'), sinpokemon: tx('jv_by_nopokemon', 'sin Pokémon en juego') };
+    const motivo = motivos[G.motivoFin] || '';
     return '<div class="jv-overlay"><div class="jv-overlay-card ' + (gane ? 'win' : 'lose') + '">' +
       '<h3>' + esc(titulo) + '</h3>' + (motivo ? '<p>' + esc(motivo) + '</p>' : '') +
       '<button class="jv-btn jv-btn-big" type="button" onclick="jvNueva()">' + esc(tx('jv_new_game', 'Nueva partida')) + '</button>' +
@@ -140,6 +141,23 @@
   function closeBtn() {
     return '<button class="jv-close" type="button" aria-label="' + esc(tx('jv_exit', 'Salir')) + '" title="' + esc(tx('jv_exit', 'Salir')) + '" onclick="jvSalir()">' +
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
+  }
+
+  const TIPO_COLOR = { Grass: '#22c55e', Fire: '#f97316', Water: '#38bdf8', Lightning: '#eab308', Psychic: '#a855f7', Fighting: '#b45309', Darkness: '#1f2937', Metal: '#94a3b8', Fairy: '#ec4899', Dragon: '#ca8a04', Colorless: '#cbd5e1' };
+  function costeHtml(coste) {
+    if (!coste || !coste.length) return '<span class="jv-cost"><i style="background:#cbd5e1"></i></span>';
+    return '<span class="jv-cost">' + coste.map(function (t) { return '<i style="background:' + (TIPO_COLOR[t] || '#cbd5e1') + '"></i>'; }).join('') + '</span>';
+  }
+  function attacksBar() {
+    if (!G || G.ganador || G.turnoDe !== 'A' || !JUEGO.puedeAtacar(G)) return '';
+    const at = G.lados.A.activo; if (!at || !at.ataques || !at.ataques.length) return '';
+    const btns = at.ataques.map(function (a, i) {
+      const pag = JUEGO.puedePagar(at, a.coste);
+      return '<button class="jv-atk" type="button"' + (pag ? '' : ' disabled') + ' onclick="jvAtacar(' + i + ')">' +
+        costeHtml(a.coste) + '<span class="jv-atk-name">' + esc(a.nombre) + '</span>' +
+        (a.danioRaw ? '<span class="jv-atk-dmg">' + esc(a.danioRaw) + '</span>' : '') + '</button>';
+    }).join('');
+    return '<div class="jv-attacks"><div class="jv-attacks-h">' + esc(tx('jv_attack', 'Atacar')) + '</div>' + btns + '</div>';
   }
 
   function manoCard(iid) { return (G.lados.A.mano || []).find(function (c) { return c.iid === iid; }) || null; }
@@ -203,6 +221,7 @@
         yoBanca + auxRow(b.yo) + pbarEl(b.yo) +
       '</div>' +
       '</div>' +
+      attacksBar() +
       '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>' +
       finOverlay();
   }
@@ -298,6 +317,7 @@
     else if (_accion.tipo === 'retirar') JUEGO.retirar(G, 'A', iid);
     _accion = null; renderJuego();
   };
+  window.jvAtacar = function (i) { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.atacar(G, 'A', i); renderJuego(); } };
   window.jvActivoClick = function () { if (G) { _accion = { tipo: 'retirar' }; renderJuego(); } };
   window.jvCancelar = function () { _accion = null; renderJuego(); };
   window.jvFinTurno = function () { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.terminarTurno(G); renderJuego(); } };

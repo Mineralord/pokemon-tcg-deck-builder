@@ -8,7 +8,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 5; // sube con cada fase del motor
+  const VERSION = 6; // sube con cada fase del motor
 
   // Fases del juego (rulebook): preparación -> turnos -> fin.
   const FASE = Object.freeze({
@@ -360,6 +360,76 @@
     L.banca.push(viejo); L.activo = nuevo; L.retiroUsado = true; return est;
   }
 
+  // ---------- Ataque (rulebook p.13-14) ----------
+  // ¿La carta tiene energía suficiente para pagar el coste? (tipado + incoloro)
+  function puedePagar(card, coste) {
+    const pool = (card.energias || []).map(function (e) { return e.energiaTipo || 'Colorless'; });
+    const tipados = (coste || []).filter(function (t) { return t !== 'Colorless'; });
+    for (let i = 0; i < tipados.length; i++) {
+      const j = pool.indexOf(tipados[i]);
+      if (j < 0) return false;
+      pool.splice(j, 1);
+    }
+    const incoloro = (coste || []).filter(function (t) { return t === 'Colorless'; }).length;
+    return pool.length >= incoloro;
+  }
+
+  function _tomarPremios(est, lado, n) {
+    const L = est.lados[lado];
+    for (let k = 0; k < n && L.premios.length; k++) L.mano.push(L.premios.pop());
+    if (L.premios.length === 0) { est.ganador = lado; est.fase = FASE.END; est.motivoFin = 'premios'; }
+    return est;
+  }
+
+  // Noquea una carta de `ladoDef`: descarta (con energías y cartas debajo), el rival toma premios,
+  // y se repone el Activo desde la banca (auto). Sin banca -> el atacante gana.
+  function _noquear(est, ladoDef, card) {
+    const D = est.lados[ladoDef]; const ladoAtk = ladoDef === 'A' ? 'B' : 'A';
+    D.descarte.push(card);
+    (card.energias || []).forEach(function (e) { D.descarte.push(e); }); card.energias = [];
+    (card.debajo || []).forEach(function (c) { D.descarte.push(c); }); card.debajo = [];
+    if (D.activo === card) D.activo = null;
+    else { const i = D.banca.indexOf(card); if (i >= 0) D.banca.splice(i, 1); }
+    _tomarPremios(est, ladoAtk, card.premiosKO || 1);
+    if (est.ganador) return est;
+    if (!D.activo) {
+      if (D.banca.length) D.activo = D.banca.shift();
+      else { est.ganador = ladoAtk; est.fase = FASE.END; est.motivoFin = 'sinpokemon'; }
+    }
+    return est;
+  }
+
+  // Daño efectivo de un ataque sobre el defensor activo (debilidad/resistencia).
+  function danioEfectivo(atacante, defensor, ataque) {
+    let dmg = ataque.danio || 0;
+    if (dmg <= 0) return 0;
+    const t = (atacante.tipos || [])[0];
+    if (t && defensor.debilidad && defensor.debilidad.tipo === t) {
+      if (defensor.debilidad.mult) dmg *= defensor.debilidad.mult;
+      else if (defensor.debilidad.suma) dmg += defensor.debilidad.suma;
+    }
+    if (t && defensor.resistencia && defensor.resistencia.tipo === t) {
+      dmg = Math.max(0, dmg - (defensor.resistencia.resta || 0));
+    }
+    return dmg;
+  }
+
+  // Atacar con el ataque idx del Activo contra el Activo rival. Termina el turno.
+  function atacar(est, lado, idxAtaque) {
+    if (!puedeAtacar(est) || est.turnoDe !== lado) return est;
+    const L = est.lados[lado]; const op = lado === 'A' ? 'B' : 'A'; const O = est.lados[op];
+    const at = L.activo, def = O.activo;
+    if (!at || !def) return est;
+    const ataque = (at.ataques || [])[idxAtaque]; if (!ataque) return est;
+    if (!puedePagar(at, ataque.coste)) return est;
+    const dmg = danioEfectivo(at, def, ataque);
+    if (dmg > 0) def.danio = (def.danio || 0) + dmg;
+    est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg };
+    if ((def.danio || 0) >= def.hp) _noquear(est, op, def);
+    if (!est.ganador) terminarTurno(est);
+    return est;
+  }
+
   // ---------- Estado / reductor ----------
   function estadoInicial() {
     return { v: VERSION, fase: FASE.SETUP, turno: 0, turnoDe: null, lados: {}, seq: 0, log: [] };
@@ -374,6 +444,7 @@
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
     ponerEnBanca, adjuntarEnergia, evolucionar, retirar,
+    puedePagar, danioEfectivo, atacar,
     estadoInicial, aplicarAccion
   };
 
