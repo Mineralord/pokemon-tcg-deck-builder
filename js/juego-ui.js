@@ -81,6 +81,9 @@
       : tx('jv_their_turn', 'Turno del rival');
     return '' +
       '<div class="jv-board">' +
+      '<button class="jv-close" type="button" aria-label="' + esc(tx('jv_exit', 'Salir')) + '" title="' + esc(tx('jv_exit', 'Salir')) + '" onclick="setVersusMode(\'fisico\')">' +
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' +
+      '</button>' +
       '<span class="jv-demo-tag">' + tx('jv_preview', 'Vista previa') + '</span>' +
 
       // ----- RIVAL (arriba) -----
@@ -134,7 +137,28 @@
     root.innerHTML = renderTablero(demoEstado());
   }
 
-  // Cambia entre el tracker físico (#versus-root) y el juego virtual (#juego-root).
+  // ---------- Pantalla completa inmersiva ----------
+  let _saliendo = false;
+  function entrarFull() {
+    const jr = document.getElementById('juego-root');
+    document.body.classList.add('jv-full');
+    if (jr) jr.classList.add('jv-full-root');
+    // Fullscreen nativo como mejora (en iOS no aplica; el overlay CSS ya cubre todo).
+    try {
+      const el = document.documentElement;
+      if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(function () {});
+    } catch (e) {}
+  }
+  function salirFull() {
+    const jr = document.getElementById('juego-root');
+    document.body.classList.remove('jv-full');
+    if (jr) jr.classList.remove('jv-full-root');
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) { _saliendo = true; document.exitFullscreen().catch(function () {}); }
+    } catch (e) {}
+  }
+
+  // Cambia entre el tracker físico (#versus-root) y el juego virtual (#juego-root, full screen).
   window.setVersusMode = function (modo) {
     modo = modo === 'virtual' ? 'virtual' : 'fisico';
     try { localStorage.setItem(MODE_KEY, modo); } catch (e) {}
@@ -146,10 +170,26 @@
     if (jr) jr.style.display = modo === 'virtual' ? '' : 'none';
     if (bf) { bf.classList.toggle('active', modo === 'fisico'); bf.setAttribute('aria-selected', modo === 'fisico'); }
     if (bv) { bv.classList.toggle('active', modo === 'virtual'); bv.setAttribute('aria-selected', modo === 'virtual'); }
-    if (modo === 'virtual') renderJuego();
+    if (modo === 'virtual') { renderJuego(); entrarFull(); }
+    else salirFull();
   };
 
-  window.juegoInitModo = function () { window.setVersusMode(getModo()); };
+  // Si el usuario sale del fullscreen nativo (Esc), salimos también del modo inmersivo.
+  document.addEventListener('fullscreenchange', function () {
+    if (document.fullscreenElement) return;
+    if (_saliendo) { _saliendo = false; return; }
+    if (document.body.classList.contains('jv-full')) window.setVersusMode('fisico');
+  });
+
+  // Arranca SIEMPRE en físico (no forzamos pantalla completa sin gesto del usuario).
+  window.juegoInitModo = function () {
+    const jr = document.getElementById('juego-root');
+    const vr = document.getElementById('versus-root');
+    if (jr) jr.style.display = 'none';
+    if (vr) vr.style.display = '';
+    document.body.classList.remove('jv-full');
+    if (jr) jr.classList.remove('jv-full-root');
+  };
 
   document.addEventListener('DOMContentLoaded', function () {
     if (document.getElementById('juego-root')) window.juegoInitModo();
