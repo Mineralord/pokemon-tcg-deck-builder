@@ -441,6 +441,18 @@
     return est;
   }
 
+  // Usar una habilidad de un Pokémon propio en juego (handler codificado; si no, manual).
+  function usarHabilidad(est, lado, iid, idx) {
+    if (!_esTurnoMain(est, lado)) return est;
+    const L = est.lados[lado]; const r = _refEnJuego(L, iid); if (!r) return est;
+    const h = (r.card.habilidades || [])[idx]; if (!h) return est;
+    const EF = global.JUEGO_EFECTOS;
+    const reg = EF && EF.EFECTOS && EF.EFECTOS[r.card.id];
+    const fn = reg && reg.habilidades && reg.habilidades[h.nombre];
+    if (fn) { try { fn(est, lado, { card: r.card }); } catch (e) {} }
+    return est;
+  }
+
   // ---------- Ataque (rulebook p.13-14) ----------
   // ¿La carta tiene energía suficiente para pagar el coste? (tipado + incoloro)
   function puedePagar(card, coste) {
@@ -578,7 +590,7 @@
     rng32, barajar, tieneBasico,
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
-    ponerEnBanca, adjuntarEnergia, evolucionar, retirar, jugarEntrenador, subEntrenador,
+    ponerEnBanca, adjuntarEnergia, evolucionar, retirar, jugarEntrenador, subEntrenador, usarHabilidad,
     puedePagar, danioEfectivo, atacar, efectoAuto,
     aplicarCondicion, chequeo, ROTATIVAS,
     manualDanioRival, manualCurar, manualRobar, manualCondicionRival,

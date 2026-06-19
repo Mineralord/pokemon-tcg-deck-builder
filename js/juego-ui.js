@@ -169,6 +169,22 @@
     return '<div class="jv-attacks"><div class="jv-attacks-h">' + esc(tx('jv_attack', 'Atacar')) + '</div>' + btns + '</div>';
   }
 
+  // Panel de habilidades de tus Pokémon en juego.
+  function habilidadesPanel() {
+    if (!G || G.ganador || G.turnoDe !== 'A' || G.fase !== JUEGO.FASE.MAIN) return '';
+    const A = G.lados.A; const enJuego = (A.activo ? [A.activo] : []).concat(A.banca);
+    const rows = [];
+    enJuego.forEach(function (c) {
+      (c.habilidades || []).forEach(function (h, idx) {
+        rows.push('<div class="jv-hab"><div class="jv-hab-t"><b>' + esc(c.nombre) + '</b> · ' + esc(h.nombre) + '</div>' +
+          '<div class="jv-hab-x">' + esc(h.texto || '') + '</div>' +
+          '<button class="jv-mbtn" type="button" onclick="jvHab(\'' + c.iid + '\',' + idx + ')">' + esc(tx('jv_use', 'Usar')) + '</button></div>');
+      });
+    });
+    if (!rows.length) return '';
+    return '<details class="jv-manual"><summary>' + esc(tx('jv_abilities', 'Habilidades')) + '</summary><div class="jv-habs">' + rows.join('') + '</div></details>';
+  }
+
   // Panel de acciones manuales (respaldo para efectos no automatizados).
   function manualPanel() {
     if (!G || G.ganador || G.turnoDe !== 'A' || G.fase !== JUEGO.FASE.MAIN) return '';
@@ -242,7 +258,7 @@
         yoBanca + auxRow(b.yo) + pbarEl(b.yo) +
       '</div>' +
       '</div>' +
-      attacksBar() + manualPanel() +
+      attacksBar() + habilidadesPanel() + manualPanel() +
       '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>' +
       finOverlay();
   }
@@ -344,6 +360,7 @@
   window.jvMC = function (n) { if (G) { JUEGO.manualCurar(G, 'A', n); renderJuego(); } };
   window.jvMR = function () { if (G) { JUEGO.manualRobar(G, 'A', 1); renderJuego(); } };
   window.jvMK = function (c) { if (G) { JUEGO.manualCondicionRival(G, 'A', c); renderJuego(); } };
+  window.jvHab = function (iid, idx) { if (G) { JUEGO.usarHabilidad(G, 'A', iid, idx); renderJuego(); } };
   window.jvActivoClick = function () { if (G) { _accion = { tipo: 'retirar' }; renderJuego(); } };
   window.jvCancelar = function () { _accion = null; renderJuego(); };
   window.jvFinTurno = function () { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.terminarTurno(G); renderJuego(); } };
