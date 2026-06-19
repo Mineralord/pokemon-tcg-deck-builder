@@ -8,7 +8,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 6; // sube con cada fase del motor
+  const VERSION = 7; // sube con cada fase del motor
 
   // Fases del juego (rulebook): preparación -> turnos -> fin.
   const FASE = Object.freeze({
@@ -272,18 +272,62 @@
     est.fase = FASE.MAIN;
     return est;
   }
-  // ¿Puede atacar ahora? El que empieza no ataca en su primer turno.
+  // ¿Puede atacar ahora? El que empieza no ataca en su primer turno; Dormido/Paralizado lo impiden.
   function puedeAtacar(est) {
     if (est.ganador || est.fase !== FASE.MAIN) return false;
     const L = est.lados[est.turnoDe];
     if (est.turnoDe === est.inicia && L.turnosJugados === 0) return false;
+    const c = (L.activo && L.activo.condiciones) || [];
+    if (c.indexOf('asleep') >= 0 || c.indexOf('paralyzed') >= 0) return false;
     return true;
   }
-  // Termina el turno actual (chequeo Pokémon se añade en Fase 7) y pasa al rival.
-  function terminarTurno(est) {
+
+  // ---------- Condiciones especiales (rulebook p.15-16) ----------
+  const ROTATIVAS = ['asleep', 'confused', 'paralyzed']; // mutuamente excluyentes (gira la carta)
+  function _tiene(card, c) { return card && (card.condiciones || []).indexOf(c) >= 0; }
+  function _quitar(card, c) { if (card && card.condiciones) card.condiciones = card.condiciones.filter(function (x) { return x !== c; }); }
+  // Moneda determinista por estado (serializable para online): true = cara.
+  function _flip(est) {
+    est.rngN = (est.rngN || 0) + 1;
+    const f = rng32(((est.seed || 1) ^ Math.imul(est.rngN, 2654435761)) >>> 0);
+    return f() < 0.5;
+  }
+  // Aplica una condición al Activo de `lado` (las rotativas se reemplazan entre sí).
+  function aplicarCondicion(est, lado, cond) {
+    const a = est.lados[lado] && est.lados[lado].activo; if (!a) return est;
+    a.condiciones = a.condiciones || [];
+    if (ROTATIVAS.indexOf(cond) >= 0) {
+      a.condiciones = a.condiciones.filter(function (x) { return ROTATIVAS.indexOf(x) < 0; });
+      a.condiciones.push(cond);
+    } else if (a.condiciones.indexOf(cond) < 0) a.condiciones.push(cond);
+    return est;
+  }
+  function _koSiProcede(est, lado) {
+    const a = est.lados[lado] && est.lados[lado].activo;
+    if (a && (a.danio || 0) >= a.hp) _noquear(est, lado, a);
+  }
+  // Chequeo Pokémon entre turnos: orden Veneno -> Quemado -> Dormido -> Paralizado.
+  function chequeo(est, ladoQueTermina, flip) {
+    const coin = flip || function () { return _flip(est); };
+    ['A', 'B'].forEach(function (lado) {
+      const a = est.lados[lado].activo; if (!a) return;
+      if (_tiene(a, 'poisoned')) a.danio = (a.danio || 0) + 10;
+      if (_tiene(a, 'burned')) { a.danio = (a.danio || 0) + 20; if (coin()) _quitar(a, 'burned'); }
+      if (_tiene(a, 'asleep')) { if (coin()) _quitar(a, 'asleep'); }
+    });
+    // Paralizado: se recupera tras el turno de su dueño.
+    const ap = est.lados[ladoQueTermina].activo; if (ap) _quitar(ap, 'paralyzed');
+    _koSiProcede(est, 'A'); _koSiProcede(est, 'B');
+    return est;
+  }
+
+  // Termina el turno: chequeo Pokémon y paso al rival.
+  function terminarTurno(est, flip) {
     if (est.ganador) return est;
     const lado = est.turnoDe; est.lados[lado].turnosJugados++;
-    est.fase = FASE.CHECKUP; // placeholder; condiciones especiales en Fase 7
+    est.fase = FASE.CHECKUP;
+    chequeo(est, lado, flip);
+    if (est.ganador) return est;
     est.turnoDe = (lado === 'A' ? 'B' : 'A'); est.turno++;
     return _comenzarTurno(est);
   }
@@ -415,13 +459,24 @@
   }
 
   // Atacar con el ataque idx del Activo contra el Activo rival. Termina el turno.
-  function atacar(est, lado, idxAtaque) {
+  function atacar(est, lado, idxAtaque, flip) {
     if (!puedeAtacar(est) || est.turnoDe !== lado) return est;
     const L = est.lados[lado]; const op = lado === 'A' ? 'B' : 'A'; const O = est.lados[op];
     const at = L.activo, def = O.activo;
     if (!at || !def) return est;
     const ataque = (at.ataques || [])[idxAtaque]; if (!ataque) return est;
     if (!puedePagar(at, ataque.coste)) return est;
+    // Confusión: moneda; si sale cruz, el ataque falla y se autoinflige 30.
+    if (_tiene(at, 'confused')) {
+      const cara = flip ? flip() : _flip(est);
+      if (!cara) {
+        at.danio = (at.danio || 0) + 30;
+        est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: 0, confuso: true };
+        if ((at.danio || 0) >= at.hp) _noquear(est, lado, at);
+        if (!est.ganador) terminarTurno(est);
+        return est;
+      }
+    }
     const dmg = danioEfectivo(at, def, ataque);
     if (dmg > 0) def.danio = (def.danio || 0) + dmg;
     est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg };
@@ -445,6 +500,7 @@
     terminarTurno, puedeAtacar,
     ponerEnBanca, adjuntarEnergia, evolucionar, retirar,
     puedePagar, danioEfectivo, atacar,
+    aplicarCondicion, chequeo, ROTATIVAS,
     estadoInicial, aplicarAccion
   };
 

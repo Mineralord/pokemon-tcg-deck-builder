@@ -202,6 +202,11 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .jv-badge-e{ background:rgba(167,139,250,.95); color:#0A0D14; }
 .jv-badge-d{ background:rgba(244,63,94,.95); color:#fff; margin-left:auto; }
 
+/* ---------- Chips de condición especial ---------- */
+.jv-conds{ position:absolute; top:2px; left:2px; right:2px; display:flex; flex-wrap:wrap; gap:2px; pointer-events:none; }
+.jv-cond{ font:700 8px/1 'JetBrains Mono',monospace; color:#0A0D14; padding:2px 3px; border-radius:4px;
+  box-shadow:0 1px 3px rgba(0,0,0,.6); font-style:normal; }
+
 /* ---------- Objetivo seleccionable (parpadeo neón) ---------- */
 .jv-card.jv-target{ cursor:pointer; outline:2px solid #6ee7b7; outline-offset:1px;
   box-shadow:0 0 16px rgba(110,231,183,.7); animation:jv-pulse 1s var(--jv-ease-in-out) infinite; }

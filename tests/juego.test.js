@@ -252,5 +252,55 @@ J.atacar(c6, 'A', 0);
 eq(c6.ganador, 'A', 'gana si el rival se queda sin Pokémon');
 eq(c6.motivoFin, 'sinpokemon', 'motivo sinpokemon');
 
+// ---------- Fase 7: condiciones especiales ----------
+console.log('condiciones especiales: chequeo, bloqueos, confusión');
+const heads = function () { return true; };
+const tails = function () { return false; };
+
+// Veneno: +10 en el chequeo
+let s1 = escena(); s1.lados.A.activo.hp = 100;
+J.aplicarCondicion(s1, 'A', 'poisoned');
+J.chequeo(s1, 'A', heads);
+eq(s1.lados.A.activo.danio, 10, 'veneno suma 10 en el chequeo');
+
+// Quemado: +20 siempre; cara -> se cura
+let s2 = escena(); s2.lados.A.activo.hp = 100;
+J.aplicarCondicion(s2, 'A', 'burned');
+J.chequeo(s2, 'A', heads);
+eq(s2.lados.A.activo.danio, 20, 'quemado suma 20');
+eq(s2.lados.A.activo.condiciones.indexOf('burned'), -1, 'cara cura el quemado');
+let s2b = escena(); s2b.lados.A.activo.hp = 100;
+J.aplicarCondicion(s2b, 'A', 'burned');
+J.chequeo(s2b, 'A', tails);
+eq(s2b.lados.A.activo.condiciones.indexOf('burned') >= 0, true, 'cruz mantiene el quemado');
+
+// Dormido bloquea ataque; cara despierta en el chequeo
+let s3 = escena(); s3.lados.A.activo.energias = [inst(lightningEnergy, 'le')];
+J.aplicarCondicion(s3, 'A', 'asleep');
+eq(J.puedeAtacar(s3), false, 'dormido no puede atacar');
+J.chequeo(s3, 'A', heads);
+eq(s3.lados.A.activo.condiciones.indexOf('asleep'), -1, 'cara despierta');
+
+// Paralizado: no ataca y se cura tras el turno del dueño
+let s4 = escena(); s4.lados.A.activo.energias = [inst(lightningEnergy, 'le')];
+J.aplicarCondicion(s4, 'A', 'paralyzed');
+eq(J.puedeAtacar(s4), false, 'paralizado no puede atacar');
+J.chequeo(s4, 'A', heads);
+eq(s4.lados.A.activo.condiciones.indexOf('paralyzed'), -1, 'se cura tras su turno');
+
+// Rotativas: se reemplazan entre sí
+let s5 = escena();
+J.aplicarCondicion(s5, 'A', 'asleep'); J.aplicarCondicion(s5, 'A', 'paralyzed');
+eq(s5.lados.A.activo.condiciones.indexOf('asleep'), -1, 'paralizar reemplaza dormir');
+eq(s5.lados.A.activo.condiciones.indexOf('paralyzed') >= 0, true, 'queda paralizado');
+
+// Confusión: cruz -> ataque falla y +30 a sí mismo
+let s6 = combate(Object.assign({}, pikachu, { ps: '100' }), [inst(pikachu, 'bb')]);
+J.aplicarCondicion(s6, 'A', 'confused');
+J.atacar(s6, 'A', 0, tails);
+eq(s6.lados.A.activo.danio, 30, 'confusión (cruz): +30 a sí mismo');
+eq(s6.lados.B.activo.danio || 0, 0, 'cruz: el rival no recibe daño');
+eq(s6.turnoDe, 'B', 'el ataque confuso termina el turno');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

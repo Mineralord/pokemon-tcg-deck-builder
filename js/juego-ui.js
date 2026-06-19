@@ -36,6 +36,14 @@
     if (c.danio) b += '<span class="jv-badge jv-badge-d">' + c.danio + '</span>';
     return b ? ('<span class="jv-badges">' + b + '</span>') : '';
   }
+  const COND_MAP = { poisoned: ['PSN', '#22c55e'], burned: ['BRN', '#f97316'], asleep: ['SLP', '#38bdf8'], paralyzed: ['PAR', '#eab308'], confused: ['CNF', '#a855f7'] };
+  function condChips(c) {
+    const cs = (c && c.condiciones) || [];
+    if (!cs.length) return '';
+    return '<span class="jv-conds">' + cs.map(function (x) {
+      const m = COND_MAP[x] || [x, '#999']; return '<i class="jv-cond" style="background:' + m[1] + '">' + m[0] + '</i>';
+    }).join('') + '</span>';
+  }
   function cartaEl(c, opt) {
     opt = opt || {};
     const oc = opt.onclick ? (' onclick="' + opt.onclick + '"') : '';
@@ -48,7 +56,7 @@
       ? '<img src="' + esc(c.imagen) + '" alt="' + esc(c.nombre) + '" loading="lazy" decoding="async">'
       : '<span class="jv-ph-name">' + esc(c.nombre) + '</span>' + (c.hp ? '<span class="jv-ph-hp">' + c.hp + '</span>' : '');
     const phCls = c.imagen ? '' : ' jv-card--ph';
-    return '<div class="' + cls + phCls + '" title="' + esc(c.nombre) + '"' + oc + '>' + inner + badges + '</div>';
+    return '<div class="' + cls + phCls + '" title="' + esc(c.nombre) + '"' + oc + '>' + inner + condChips(c) + badges + '</div>';
   }
   function pileEl(n, dorso, labelKey, labelAlt) {
     const inner = dorso ? '<div class="jv-card jv-card--back" aria-hidden="true"></div>'
