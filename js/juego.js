@@ -8,7 +8,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 7; // sube con cada fase del motor
+  const VERSION = 8; // sube con cada fase del motor
 
   // Fases del juego (rulebook): preparación -> turnos -> fin.
   const FASE = Object.freeze({
@@ -479,10 +479,53 @@
     }
     const dmg = danioEfectivo(at, def, ataque);
     if (dmg > 0) def.danio = (def.danio || 0) + dmg;
-    est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg };
-    if ((def.danio || 0) >= def.hp) _noquear(est, op, def);
+    // Efectos: 1) handler codificado por carta (precedencia) 2) auto-intérprete de texto.
+    let efectos = [];
+    const EF = global.JUEGO_EFECTOS;
+    const coded = EF && EF.efectoDe && EF.efectoDe(at.id, 'ataques', ataque.nombre);
+    if (coded) { try { coded(est, lado, { at: at, def: def, ataque: ataque }); efectos = ['coded']; } catch (e) {} }
+    else efectos = efectoAuto(est, lado, ataque);
+    est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg, efectos: efectos };
+    _koSiProcede(est, op); _koSiProcede(est, lado);
     if (!est.ganador) terminarTurno(est);
     return est;
+  }
+
+  // Auto-intérprete: aplica los efectos de texto más comunes (condiciones, curar, robar).
+  function efectoAuto(est, lado, ataque) {
+    const op = lado === 'A' ? 'B' : 'A';
+    const t = (ataque.texto || '').toLowerCase();
+    const out = [];
+    if (/now asleep|is asleep/.test(t)) { aplicarCondicion(est, op, 'asleep'); out.push('asleep'); }
+    if (/now paralyzed|is paralyzed/.test(t)) { aplicarCondicion(est, op, 'paralyzed'); out.push('paralyzed'); }
+    if (/now poisoned|is poisoned/.test(t)) { aplicarCondicion(est, op, 'poisoned'); out.push('poisoned'); }
+    if (/now burned|is burned/.test(t)) { aplicarCondicion(est, op, 'burned'); out.push('burned'); }
+    if (/now confused|is confused/.test(t)) { aplicarCondicion(est, op, 'confused'); out.push('confused'); }
+    const mh = /heal (\d+) damage from this/i.exec(ataque.texto || '');
+    if (mh) { const a = est.lados[lado].activo; if (a) { a.danio = Math.max(0, (a.danio || 0) - parseInt(mh[1], 10)); out.push('heal'); } }
+    const md = /draw (\d+) cards?/i.exec(ataque.texto || '');
+    if (md) { const L = est.lados[lado]; for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift()); out.push('draw'); }
+    return out;
+  }
+
+  // ---------- Respaldo manual asistido (efectos no automatizados) ----------
+  function manualDanioRival(est, lado, n) {
+    const op = lado === 'A' ? 'B' : 'A'; const a = est.lados[op].activo;
+    if (!_esTurnoMain(est, lado) || !a) return est;
+    a.danio = (a.danio || 0) + n; _koSiProcede(est, op); return est;
+  }
+  function manualCurar(est, lado, n) {
+    const a = est.lados[lado].activo; if (!_esTurnoMain(est, lado) || !a) return est;
+    a.danio = Math.max(0, (a.danio || 0) - n); return est;
+  }
+  function manualRobar(est, lado, n) {
+    const L = est.lados[lado]; if (!_esTurnoMain(est, lado)) return est;
+    for (let k = 0; k < n && L.mazo.length; k++) L.mano.push(L.mazo.shift());
+    if (!L.mazo.length) {} return est;
+  }
+  function manualCondicionRival(est, lado, cond) {
+    const op = lado === 'A' ? 'B' : 'A'; if (!_esTurnoMain(est, lado)) return est;
+    return aplicarCondicion(est, op, cond);
   }
 
   // ---------- Estado / reductor ----------
@@ -499,8 +542,9 @@
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
     ponerEnBanca, adjuntarEnergia, evolucionar, retirar,
-    puedePagar, danioEfectivo, atacar,
+    puedePagar, danioEfectivo, atacar, efectoAuto,
     aplicarCondicion, chequeo, ROTATIVAS,
+    manualDanioRival, manualCurar, manualRobar, manualCondicionRival,
     estadoInicial, aplicarAccion
   };
 

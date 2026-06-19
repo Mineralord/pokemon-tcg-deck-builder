@@ -162,10 +162,23 @@
     const btns = at.ataques.map(function (a, i) {
       const pag = JUEGO.puedePagar(at, a.coste);
       return '<button class="jv-atk" type="button"' + (pag ? '' : ' disabled') + ' onclick="jvAtacar(' + i + ')">' +
-        costeHtml(a.coste) + '<span class="jv-atk-name">' + esc(a.nombre) + '</span>' +
-        (a.danioRaw ? '<span class="jv-atk-dmg">' + esc(a.danioRaw) + '</span>' : '') + '</button>';
+        '<span class="jv-atk-top">' + costeHtml(a.coste) + '<span class="jv-atk-name">' + esc(a.nombre) + '</span>' +
+        (a.danioRaw ? '<span class="jv-atk-dmg">' + esc(a.danioRaw) + '</span>' : '') + '</span>' +
+        (a.texto ? '<span class="jv-atk-fx">' + esc(a.texto) + '</span>' : '') + '</button>';
     }).join('');
     return '<div class="jv-attacks"><div class="jv-attacks-h">' + esc(tx('jv_attack', 'Atacar')) + '</div>' + btns + '</div>';
+  }
+
+  // Panel de acciones manuales (respaldo para efectos no automatizados).
+  function manualPanel() {
+    if (!G || G.ganador || G.turnoDe !== 'A' || G.fase !== JUEGO.FASE.MAIN) return '';
+    function b(fn, label) { return '<button class="jv-mbtn" type="button" onclick="' + fn + '">' + esc(label) + '</button>'; }
+    return '<details class="jv-manual"><summary>' + esc(tx('jv_manual', 'Acciones manuales (efectos)')) + '</summary>' +
+      '<div class="jv-manual-grid">' +
+        b('jvMD(10)', tx('jv_m_dmg', 'Daño rival') + ' +10') + b('jvMD(20)', tx('jv_m_dmg', 'Daño rival') + ' +20') + b('jvMD(30)', tx('jv_m_dmg', 'Daño rival') + ' +30') +
+        b('jvMC(10)', tx('jv_m_heal', 'Curar') + ' 10') + b('jvMC(20)', tx('jv_m_heal', 'Curar') + ' 20') + b('jvMR()', tx('jv_m_draw', 'Robar 1')) +
+        b("jvMK('poisoned')", 'PSN') + b("jvMK('burned')", 'BRN') + b("jvMK('asleep')", 'SLP') + b("jvMK('paralyzed')", 'PAR') + b("jvMK('confused')", 'CNF') +
+      '</div></details>';
   }
 
   function manoCard(iid) { return (G.lados.A.mano || []).find(function (c) { return c.iid === iid; }) || null; }
@@ -229,7 +242,7 @@
         yoBanca + auxRow(b.yo) + pbarEl(b.yo) +
       '</div>' +
       '</div>' +
-      attacksBar() +
+      attacksBar() + manualPanel() +
       '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>' +
       finOverlay();
   }
@@ -326,6 +339,10 @@
     _accion = null; renderJuego();
   };
   window.jvAtacar = function (i) { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.atacar(G, 'A', i); renderJuego(); } };
+  window.jvMD = function (n) { if (G) { JUEGO.manualDanioRival(G, 'A', n); renderJuego(); } };
+  window.jvMC = function (n) { if (G) { JUEGO.manualCurar(G, 'A', n); renderJuego(); } };
+  window.jvMR = function () { if (G) { JUEGO.manualRobar(G, 'A', 1); renderJuego(); } };
+  window.jvMK = function (c) { if (G) { JUEGO.manualCondicionRival(G, 'A', c); renderJuego(); } };
   window.jvActivoClick = function () { if (G) { _accion = { tipo: 'retirar' }; renderJuego(); } };
   window.jvCancelar = function () { _accion = null; renderJuego(); };
   window.jvFinTurno = function () { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.terminarTurno(G); renderJuego(); } };

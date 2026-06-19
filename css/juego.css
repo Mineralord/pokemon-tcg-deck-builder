@@ -229,8 +229,21 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .jv-atk:hover{ border-color:#F43F5E; box-shadow:0 6px 18px rgba(244,63,94,.4); transform:translateY(-2px); }
 .jv-atk:active{ transform:scale(.97); }
 .jv-atk:disabled{ opacity:.4; cursor:not-allowed; transform:none; box-shadow:none; }
+.jv-atk{ flex-direction:column; align-items:stretch; max-width:280px; }
+.jv-atk-top{ display:inline-flex; align-items:center; gap:7px; }
 .jv-atk-name{ font-weight:700; }
-.jv-atk-dmg{ font:700 14px/1 'JetBrains Mono',monospace; color:#F43F5E; }
+.jv-atk-dmg{ font:700 14px/1 'JetBrains Mono',monospace; color:#F43F5E; margin-left:auto; }
+.jv-atk-fx{ font:400 10.5px/1.3 'Chakra Petch',sans-serif; color:#c9b8f0; opacity:.85; text-align:left;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+/* ---------- Panel de acciones manuales ---------- */
+.jv-manual{ margin-top:6px; border:1px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.03); }
+.jv-manual>summary{ cursor:pointer; padding:9px 12px; font:600 12px/1 'Chakra Petch',sans-serif; color:#9aa6bd; }
+.jv-manual-grid{ display:flex; flex-wrap:wrap; gap:6px; padding:0 10px 10px; }
+.jv-mbtn{ cursor:pointer; min-height:36px; padding:7px 10px; border-radius:9px; border:1px solid rgba(255,255,255,.14);
+  background:#161b27; color:#e8edf6; font:600 12px/1 'Chakra Petch',sans-serif; transition:border-color .15s, transform .1s; }
+.jv-mbtn:hover{ border-color:#A78BFA; }
+.jv-mbtn:active{ transform:scale(.96); }
 .jv-cost{ display:inline-flex; gap:2px; }
 .jv-cost i{ width:11px; height:11px; border-radius:50%; display:inline-block; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
 

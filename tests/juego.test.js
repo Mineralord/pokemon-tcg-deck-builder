@@ -302,5 +302,27 @@ eq(s6.lados.A.activo.danio, 30, 'confusión (cruz): +30 a sí mismo');
 eq(s6.lados.B.activo.danio || 0, 0, 'cruz: el rival no recibe daño');
 eq(s6.turnoDe, 'B', 'el ataque confuso termina el turno');
 
+// ---------- Fase 8a: motor de efectos (auto-intérprete + manual) ----------
+console.log('efectos: auto-intérprete y respaldo manual');
+let h1 = escena(); h1.lados.B.activo = inst(pikachu, 'd');
+J.efectoAuto(h1, 'A', { texto: "Your opponent's Active Pokémon is now Asleep." });
+eq(h1.lados.B.activo.condiciones.indexOf('asleep') >= 0, true, 'auto: aplica Dormido al rival');
+
+let h2 = escena(); h2.lados.A.activo.danio = 30;
+J.efectoAuto(h2, 'A', { texto: 'Heal 30 damage from this Pokémon.' });
+eq(h2.lados.A.activo.danio, 0, 'auto: cura 30');
+
+let h3 = escena(); const m0 = h3.lados.A.mano.length;
+J.efectoAuto(h3, 'A', { texto: 'Draw 2 cards.' });
+eq(h3.lados.A.mano.length, m0 + 2, 'auto: roba 2');
+
+let h4 = escena(); h4.lados.B.activo = inst(Object.assign({}, pikachu, { ps: '100' }), 'd4');
+J.manualDanioRival(h4, 'A', 30);
+eq(h4.lados.B.activo.danio, 30, 'manual: pone 30 de daño al rival');
+J.manualCondicionRival(h4, 'A', 'poisoned');
+eq(h4.lados.B.activo.condiciones.indexOf('poisoned') >= 0, true, 'manual: envenena al rival');
+h4.lados.A.activo.danio = 50; J.manualCurar(h4, 'A', 20);
+eq(h4.lados.A.activo.danio, 30, 'manual: cura 20 propio');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
