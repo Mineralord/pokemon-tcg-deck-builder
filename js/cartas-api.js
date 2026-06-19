@@ -287,18 +287,27 @@ async function tcgdexEsLive(id){
 }
 
 // Asegura el español (nombre + imagen + set) de una lista de vistas y, cuando termina de
-// traer las que faltaban, llama onReady() UNA vez. Concurrencia limitada. No-op fuera de ES.
+// traer las que faltaban, llama onReady() UNA vez —sólo si hubo cambios. Concurrencia
+// limitada. No-op fuera de ES.
+// _esTried marca los ids ya intentados (aunque TCGdex no tenga español) para no reencolarlos
+// en re-renders posteriores; junto con el guard de "cambios" evita el bucle infinito de render.
+const _esTried = new Set();
 function localizarVistasEs(views, onReady){
   if (typeof lang !== 'undefined' && lang !== 'es') return;
-  const faltan = (views || []).filter(v => v && v.id && !v.es);
+  const faltan = (views || []).filter(v => v && v.id && !v.es && !_esTried.has(v.id));
   if (!faltan.length) return;
-  let i = 0, activos = 0, hechos = 0, disparado = false;
+  let i = 0, activos = 0, hechos = 0, disparado = false, cambios = 0;
   const total = faltan.length;
-  const fin = () => { if (!disparado && hechos >= total){ disparado = true; if (typeof onReady === 'function') onReady(); } };
+  const fin = () => {
+    if (!disparado && hechos >= total){
+      disparado = true;
+      if (cambios && typeof onReady === 'function') onReady();
+    }
+  };
   const lanzar = () => {
     while (activos < 8 && i < total){
-      const v = faltan[i++]; activos++;
-      tcgdexEsLive(v.id).then(es => { if (es) v.es = es; })
+      const v = faltan[i++]; activos++; _esTried.add(v.id);
+      tcgdexEsLive(v.id).then(es => { if (es){ v.es = es; cambios++; } })
         .catch(()=>{})
         .then(() => { activos--; hechos++; lanzar(); fin(); });
     }
