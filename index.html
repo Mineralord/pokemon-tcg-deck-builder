@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Chakra+Petch:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/estilos.css">
+<link rel="stylesheet" href="css/juego.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F0F23">
 <meta name="mobile-web-app-capable" content="yes">
@@ -278,7 +279,12 @@
     <div class="view-head">
       <h2 class="view-title" data-i18n="nav_versus">Versus</h2>
     </div>
+    <div class="vs-mode-switch" role="tablist" aria-label="Modo de Versus">
+      <button id="vs-mode-fisico" class="vs-mode-btn active" type="button" role="tab" aria-selected="true" onclick="setVersusMode('fisico')" data-i18n="vs_mode_fisico">Cartas físicas</button>
+      <button id="vs-mode-virtual" class="vs-mode-btn" type="button" role="tab" aria-selected="false" onclick="setVersusMode('virtual')" data-i18n="vs_mode_virtual">Juego virtual</button>
+    </div>
     <div id="versus-root" class="versus-root"></div>
+    <div id="juego-root" class="juego-root" style="display:none"></div>
   </section>
 
   <!-- ===================== VISTA: PROXIES (solo dueño) ===================== -->
@@ -359,6 +365,13 @@
 <script src="js/generador.js"></script>
 <script src="js/proxies.js"></script>
 <script src="js/sala.js"></script>
+
+<!-- Juego virtual (pestaña Versus). Motor + UI + efectos + IA + sonido. -->
+<script src="js/sonido.js"></script>
+<script src="js/juego.js"></script>
+<script src="js/juego-efectos.js"></script>
+<script src="js/juego-ia.js"></script>
+<script src="js/juego-ui.js"></script>
 
 <!-- Sincronización en la nube (Firebase). Si no configuras firebase-config.js, se ignora. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>

@@ -1,0 +1,56 @@
+/* =============================================================
+   juego.css — Juego Virtual Pokémon TCG (pestaña Versus)
+   Identidad Retro-Futurism gaming: reutiliza la paleta/fuentes del shell.
+   Se carga DESPUÉS de estilos.css. Tokens de movimiento (filosofía Emil):
+   solo animar transform/opacity; easing custom; respetar reduced-motion.
+   ============================================================= */
+
+:root{
+  /* Curvas de easing (más "punch" que las nativas) */
+  --jv-ease-out: cubic-bezier(0.23, 1, 0.32, 1);      /* entradas, feedback */
+  --jv-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);  /* movimiento en pantalla */
+  --jv-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Escala de z-index del tablero */
+  --jv-z-mat: 10;
+  --jv-z-card: 20;
+  --jv-z-drag: 30;
+  --jv-z-overlay: 50;
+  --jv-z-modal: 60;
+}
+
+/* ---------- Selector de modo (Cartas físicas | Juego virtual) ---------- */
+.vs-mode-switch{
+  display:inline-flex; gap:4px; padding:4px; margin-bottom:16px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;
+}
+.vs-mode-btn{
+  appearance:none; cursor:pointer; border:none; background:transparent;
+  color:#cfd6e4; font:600 13px/1 'Chakra Petch',sans-serif; letter-spacing:.3px;
+  padding:9px 16px; min-height:40px; border-radius:9px;
+  transition:background-color .18s var(--jv-ease-out), color .18s var(--jv-ease-out);
+}
+.vs-mode-btn:hover{ color:#fff; }
+.vs-mode-btn.active{ background:#A78BFA; color:#0A0D14; }
+.vs-mode-btn:active{ transform:scale(.97); }
+.vs-mode-btn:focus-visible{ outline:2px solid #A78BFA; outline-offset:2px; }
+
+/* ---------- Contenedor del juego virtual ---------- */
+.juego-root{ position:relative; z-index:var(--jv-z-mat); }
+
+/* Placeholder mientras se construyen las fases */
+.jv-wip{
+  text-align:center; padding:48px 20px; border-radius:16px;
+  background:radial-gradient(120% 120% at 50% 0%, rgba(124,58,237,.18), rgba(10,13,20,0) 60%),
+             rgba(255,255,255,.03);
+  border:1px solid rgba(167,139,250,.25);
+}
+.jv-wip-ico{ color:#A78BFA; filter:drop-shadow(0 0 10px rgba(167,139,250,.5)); margin-bottom:12px; }
+.jv-wip h3{ font:700 22px/1.2 'Russo One',sans-serif; color:#E2E8F0; margin:0 0 8px;
+  text-shadow:0 0 12px rgba(167,139,250,.35); }
+.jv-wip p{ font:400 14px/1.6 'Chakra Petch',sans-serif; color:#9aa6bd; max-width:520px; margin:0 auto; }
+
+@media (prefers-reduced-motion: reduce){
+  .vs-mode-btn{ transition:color .18s linear; }
+  .vs-mode-btn:active{ transform:none; }
+}

@@ -85,6 +85,9 @@ const I18N = {
     cmp_learn:'Ideal para aprender', cmp_potential:'Potencial con la colección',
     // Versus / Sala
     nav_versus:'Versus',
+    vs_mode_fisico:'Cartas físicas', vs_mode_virtual:'Juego virtual',
+    jv_wip_title:'Juego virtual en construcción',
+    jv_wip_body:'El tablero, las animaciones y el motor de reglas llegarán por fases. El modo de cartas físicas sigue disponible aquí al lado.',
     vs_player:'Jugador', vs_you:'tú', vs_owner:'Anfitrión', vs_guest:'Invitada',
     vs_online:'en línea', vs_offline:'desconectado',
     vs_st_idle:'Inactivo', vs_st_building:'Armando', vs_st_ready:'Listo',
@@ -195,6 +198,9 @@ const I18N = {
     cmp_learn:'Ideal to learn', cmp_potential:'Potential with collection',
     // Versus / Room
     nav_versus:'Versus',
+    vs_mode_fisico:'Physical cards', vs_mode_virtual:'Virtual game',
+    jv_wip_title:'Virtual game under construction',
+    jv_wip_body:'The board, animations and rules engine will arrive in phases. The physical-cards mode is still available right here.',
     vs_player:'Player', vs_you:'you', vs_owner:'Host', vs_guest:'Guest',
     vs_online:'online', vs_offline:'offline',
     vs_st_idle:'Idle', vs_st_building:'Building', vs_st_ready:'Ready',
