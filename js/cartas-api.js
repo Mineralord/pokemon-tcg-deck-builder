@@ -247,14 +247,20 @@ function tcgdexId(pid){
   if (!pid || pid.indexOf('-') < 0) return null;
   const i = pid.lastIndexOf('-');
   const sid = pid.slice(0, i), num = pid.slice(i + 1);
+  // Era SV (Escarlata/Púrpura y Mega): TCGdex usa ids con ceros a la izquierda
+  // (pokemontcg "sv1-25" -> tcgdex "sv01-025"). Hay que transformar set y número.
   let tset = TCGDEX_SETS[sid];
   if (!tset) {
     const m = /^sv(\d+)(pt5)?$/.exec(sid);
     if (m) tset = 'sv' + String(+m[1]).padStart(2, '0') + (m[2] ? '.5' : '');
   }
-  if (!tset) return null;
-  const n = parseInt(num, 10);
-  return isNaN(n) ? (tset + '-' + num) : (tset + '-' + String(n).padStart(3, '0'));
+  if (tset) {
+    const n = parseInt(num, 10);
+    return isNaN(n) ? (tset + '-' + num) : (tset + '-' + String(n).padStart(3, '0'));
+  }
+  // Resto de eras (swsh, sm, xy, ...): el id de TCGdex coincide tal cual con el de
+  // pokemontcg.io, así que se reenvía sin cambios (si TCGdex no lo tiene -> 404 -> inglés).
+  return pid;
 }
 
 // Caché v2: incluye también imagen española y nombre de set (las entradas v1 no los traían).
