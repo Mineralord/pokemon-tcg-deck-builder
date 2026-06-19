@@ -137,25 +137,19 @@
     root.innerHTML = renderTablero(demoEstado());
   }
 
-  // ---------- Pantalla completa inmersiva ----------
-  let _saliendo = false;
+  // ---------- Pantalla completa inmersiva (solo overlay CSS) ----------
+  // No usamos la Fullscreen API nativa: en móvil/escritorio escala la página y
+  // produce un zoom molesto. El overlay fijo (position:fixed inset:0) ya da la
+  // sensación de pantalla completa sin alterar el zoom.
   function entrarFull() {
     const jr = document.getElementById('juego-root');
     document.body.classList.add('jv-full');
     if (jr) jr.classList.add('jv-full-root');
-    // Fullscreen nativo como mejora (en iOS no aplica; el overlay CSS ya cubre todo).
-    try {
-      const el = document.documentElement;
-      if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(function () {});
-    } catch (e) {}
   }
   function salirFull() {
     const jr = document.getElementById('juego-root');
     document.body.classList.remove('jv-full');
     if (jr) jr.classList.remove('jv-full-root');
-    try {
-      if (document.fullscreenElement && document.exitFullscreen) { _saliendo = true; document.exitFullscreen().catch(function () {}); }
-    } catch (e) {}
   }
 
   // Cambia entre el tracker físico (#versus-root) y el juego virtual (#juego-root, full screen).
@@ -174,11 +168,9 @@
     else salirFull();
   };
 
-  // Si el usuario sale del fullscreen nativo (Esc), salimos también del modo inmersivo.
-  document.addEventListener('fullscreenchange', function () {
-    if (document.fullscreenElement) return;
-    if (_saliendo) { _saliendo = false; return; }
-    if (document.body.classList.contains('jv-full')) window.setVersusMode('fisico');
+  // Salir del modo inmersivo con la tecla Esc.
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.body.classList.contains('jv-full')) window.setVersusMode('fisico');
   });
 
   // Arranca SIEMPRE en físico (no forzamos pantalla completa sin gesto del usuario).
