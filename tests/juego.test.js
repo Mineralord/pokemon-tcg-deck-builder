@@ -77,5 +77,48 @@ ok(val.basicos >= 4, 'tiene básicos (' + val.basicos + ')');
 eq(val.faltan.length, 0, 'sin Pokémon faltos de datos');
 eq(val.ok, true, 'mazo jugable');
 
+// ---------- Fase 3: preparación de partida ----------
+function mazo60(resolver) {
+  // 12 Pokémon básicos + resto entrenadores/energía hasta 60 (garantiza básicos en mano).
+  return {
+    pokemon: [{ card: 'Pikachu ex', id: 'svp-106', qty: 12 }],
+    trainers: [{ card: 'X', id: 't1', qty: 18 }],
+    energies: [{ card: 'Lightning Energy', qty: 30 }]
+  };
+}
+const cartas60 = J.expandirMazo(mazo60(), resolver);
+eq(cartas60.length, 60, 'mazo de prueba = 60');
+
+console.log('crearPartida — reparto y determinismo');
+const p1 = J.crearPartida({ ladoA: { nombre: 'Tú', cartas: cartas60 }, ladoB: { nombre: 'Rival', cartas: cartas60 }, seed: 42 });
+const p2 = J.crearPartida({ ladoA: { nombre: 'Tú', cartas: cartas60 }, ladoB: { nombre: 'Rival', cartas: cartas60 }, seed: 42 });
+eq(p1.lados.A.mano.length >= 7, true, 'mano inicial >= 7');
+eq(p1.lados.A.mano[0].iid, p2.lados.A.mano[0].iid, 'misma semilla -> mismo reparto (determinista)');
+eq(J.tieneBasico(p1.lados.A.mano), true, 'mano A tiene básico');
+eq(J.totalCartasLado(p1.lados.A), 60, 'conservación: 60 cartas lado A');
+
+console.log('colocar Activo / Banca + confirmar setup');
+const bA = p1.lados.A.mano.filter(function (c) { return c.supertipo === 'Pokemon' && c.esBasico; });
+J.colocarActivo(p1, 'A', bA[0].iid);
+eq(p1.lados.A.activo && p1.lados.A.activo.iid, bA[0].iid, 'activo colocado');
+if (bA[1]) J.colocarBanca(p1, 'A', bA[1].iid);
+const manoAntes = p1.lados.A.mano.length;
+J.quitarColocado(p1, 'A', bA[0].iid);
+eq(p1.lados.A.activo, null, 'quitar activo lo devuelve a la mano');
+eq(p1.lados.A.mano.length, manoAntes + 1, 'la mano recupera la carta');
+J.colocarActivo(p1, 'A', bA[0].iid);
+J.confirmarSetup(p1, 'A');
+eq(p1.lados.A.premios.length, 6, 'A coloca 6 premios al confirmar');
+eq(p1.lados.A.estado, 'ready', 'A queda listo');
+eq(J.totalCartasLado(p1.lados.A), 60, 'conservación tras premios');
+
+console.log('autoSetup del rival arranca la partida');
+J.autoSetup(p1, 'B');
+eq(p1.lados.B.estado, 'ready', 'B listo (auto)');
+eq(p1.lados.B.premios.length, 6, 'B con 6 premios');
+eq(p1.fase, J.FASE.DRAW, 'ambos listos -> fase DRAW');
+ok(p1.turnoDe === 'A' || p1.turnoDe === 'B', 'turnoDe definido tras setup');
+eq(p1.turno, 1, 'turno 1');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

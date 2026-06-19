@@ -8,7 +8,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 1; // sube con cada fase del motor
+  const VERSION = 3; // sube con cada fase del motor
 
   // Fases del juego (rulebook): preparación -> turnos -> fin.
   const FASE = Object.freeze({
@@ -156,26 +156,136 @@
     };
   }
 
-  // ---------- Estado ----------
-  function estadoInicial() {
+  // ---------- RNG determinista + baraja ----------
+  function rng32(seed) {
+    let a = (seed >>> 0) || 1;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function barajar(arr, rnd) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function tieneBasico(cartas) {
+    return cartas.some(function (c) { return c.supertipo === 'Pokemon' && c.esBasico; });
+  }
+  function esBasicoPoke(c) { return c && c.supertipo === 'Pokemon' && c.esBasico; }
+
+  // ---------- Preparación de partida (rulebook p.8) ----------
+  function _lado(nombre) {
     return {
-      v: VERSION,
-      fase: FASE.SETUP,
-      turno: 0,
-      turnoDe: null,
-      jugadores: {},
-      seq: 0,
-      log: []
+      nombre: nombre || '?', mazo: [], mano: [], banca: [], activo: null,
+      descarte: [], premios: [], lost: [], estadio: null,
+      estado: 'setup', mulligans: 0, energiaUsada: false
     };
   }
 
-  // Reductor puro (se irá implementando desde la Fase 3).
-  function aplicarAccion(estado, accion) { return estado; }
+  // opts: { ladoA:{nombre,cartas}, ladoB:{nombre,cartas}, seed }
+  function crearPartida(opts) {
+    opts = opts || {};
+    const seed = (opts.seed != null) ? opts.seed : (Date.now() >>> 0);
+    const rnd = rng32(seed);
+    let iid = 0;
+    function inst(cartas) {
+      return (cartas || []).map(function (c) {
+        const o = Object.assign({}, c); o.iid = 'c' + (iid++); o.danio = 0; o.energias = []; o.condiciones = []; return o;
+      });
+    }
+    const A = _lado(opts.ladoA && opts.ladoA.nombre || 'A');
+    const B = _lado(opts.ladoB && opts.ladoB.nombre || 'B');
+    A.mazo = barajar(inst(opts.ladoA && opts.ladoA.cartas), rnd);
+    B.mazo = barajar(inst(opts.ladoB && opts.ladoB.cartas), rnd);
+    function reparte(L) { L.mano = L.mazo.splice(0, 7); }
+    function mulligan(L) { L.mazo = barajar(L.mazo.concat(L.mano), rnd); L.mano = L.mazo.splice(0, 7); }
+    reparte(A); reparte(B);
+    let guard = 0;
+    while (!tieneBasico(A.mano) && A.mazo.length && guard++ < 50) { mulligan(A); A.mulligans++; }
+    guard = 0;
+    while (!tieneBasico(B.mano) && B.mazo.length && guard++ < 50) { mulligan(B); B.mulligans++; }
+    // Cartas extra: cada lado roba tantas como mulligans hizo el rival (regla opcional, automática).
+    if (B.mulligans) A.mano = A.mano.concat(A.mazo.splice(0, B.mulligans));
+    if (A.mulligans) B.mano = B.mano.concat(B.mazo.splice(0, A.mulligans));
+    const inicia = rnd() < 0.5 ? 'A' : 'B';
+    return {
+      v: VERSION, fase: FASE.SETUP, seed: seed, turno: 0, turnoDe: null,
+      inicia: inicia, primerTurno: true, lados: { A: A, B: B }, seq: 0, log: []
+    };
+  }
+
+  function _buscarMano(L, iid) { return L.mano.findIndex(function (c) { return c.iid === iid; }); }
+
+  // Coloca un básico de la mano como Activo (durante SETUP).
+  function colocarActivo(est, lado, iid) {
+    const L = est.lados[lado]; if (!L || L.estado !== 'setup') return est;
+    const i = _buscarMano(L, iid); if (i < 0) return est;
+    const c = L.mano[i]; if (!esBasicoPoke(c)) return est;
+    if (L.activo) L.mano.push(L.activo);
+    L.activo = c; L.mano.splice(i, 1);
+    return est;
+  }
+  // Añade un básico de la mano a la banca (máx 5) durante SETUP.
+  function colocarBanca(est, lado, iid) {
+    const L = est.lados[lado]; if (!L || L.estado !== 'setup') return est;
+    if (L.banca.length >= 5) return est;
+    const i = _buscarMano(L, iid); if (i < 0) return est;
+    const c = L.mano[i]; if (!esBasicoPoke(c)) return est;
+    L.banca.push(c); L.mano.splice(i, 1);
+    return est;
+  }
+  // Devuelve a la mano un Pokémon colocado (activo o de banca) durante SETUP.
+  function quitarColocado(est, lado, iid) {
+    const L = est.lados[lado]; if (!L || L.estado !== 'setup') return est;
+    if (L.activo && L.activo.iid === iid) { L.mano.push(L.activo); L.activo = null; return est; }
+    const i = L.banca.findIndex(function (c) { return c.iid === iid; });
+    if (i >= 0) { L.mano.push(L.banca[i]); L.banca.splice(i, 1); }
+    return est;
+  }
+  // Confirma la colocación de un lado: requiere Activo; coloca 6 premios; si ambos listos, arranca.
+  function confirmarSetup(est, lado) {
+    const L = est.lados[lado]; if (!L || L.estado !== 'setup' || !L.activo) return est;
+    if (!L.premios.length) L.premios = L.mazo.splice(0, 6);
+    L.estado = 'ready';
+    const A = est.lados.A, B = est.lados.B;
+    if (A.estado === 'ready' && B.estado === 'ready') {
+      est.fase = FASE.DRAW; est.turno = 1; est.turnoDe = est.inicia;
+    }
+    return est;
+  }
+
+  // Coloca automáticamente un lado (rival de práctica): 1 activo + banca con básicos.
+  function autoSetup(est, lado) {
+    const L = est.lados[lado]; if (!L) return est;
+    const basicos = L.mano.filter(esBasicoPoke);
+    if (basicos[0]) colocarActivo(est, lado, basicos[0].iid);
+    for (let i = 1; i < basicos.length && L.banca.length < 5; i++) colocarBanca(est, lado, basicos[i].iid);
+    return confirmarSetup(est, lado);
+  }
+
+  function totalCartasLado(L) {
+    return L.mazo.length + L.mano.length + L.banca.length + (L.activo ? 1 : 0) +
+      L.descarte.length + L.premios.length + L.lost.length;
+  }
+
+  // ---------- Estado / reductor ----------
+  function estadoInicial() {
+    return { v: VERSION, fase: FASE.SETUP, turno: 0, turnoDe: null, lados: {}, seq: 0, log: [] };
+  }
+  function aplicarAccion(estado, accion) { return estado; } // se implementa desde la Fase 4
 
   const API = {
     VERSION, FASE,
     cartaJuego, expandirMazo, validarMazoJugable,
     energiaBasicaView, tipoEnergia,
+    rng32, barajar, tieneBasico,
+    crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     estadoInicial, aplicarAccion
   };
 
