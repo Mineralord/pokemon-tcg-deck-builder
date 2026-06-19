@@ -1428,3 +1428,37 @@ body.role-guest .btn-del{ display:none !important; }
 .vs-chat-input input{ flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
   color:var(--text-primary); padding:8px 10px; font:inherit; }
 @media (max-width:560px){ .vs-players{ grid-template-columns:1fr; } }
+
+/* ---- QoL Versus (Fase 4) ---- */
+.vs-estado{ text-align:center; font-family:'Russo One',sans-serif; font-size:15px; color:var(--text-secondary);
+  background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; }
+.vs-estado.ready{ color:var(--accent-2); border-color:var(--border-bright); box-shadow:var(--glow-accent); }
+
+.vs-decks{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:12px; }
+.vs-deck-card{ text-align:left; cursor:pointer; background:var(--bg-card); border:1px solid var(--border);
+  border-left:4px solid var(--tc,var(--accent-2)); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px;
+  color:var(--text-primary); transition:border-color .15s, box-shadow .15s, transform .1s; }
+.vs-deck-card:hover{ transform:translateY(-1px); border-color:var(--border-bright); }
+.vs-deck-card.sel{ border-color:var(--accent-2); box-shadow:var(--glow-accent); background:rgba(124,58,237,0.12); }
+.vs-deck-name{ font-family:'Chakra Petch',sans-serif; font-weight:600; font-size:13px; }
+.vs-deck-counts{ font-size:11px; color:var(--text-muted); }
+.vs-no-decks{ color:var(--text-muted); font-size:13px; font-family:'Chakra Petch',sans-serif; }
+.vs-deck-actions{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.vs-preview{ margin-top:12px; }
+.vs-preview .deck-cards{ display:flex; flex-wrap:wrap; gap:6px; }
+
+.vs-conflicts .vs-conflicts-ok{ color:#22c55e; font-family:'Chakra Petch',sans-serif; }
+
+.vs-prizes{ display:flex; align-items:flex-start; justify-content:center; gap:32px; flex-wrap:wrap; }
+.vs-prize-cell{ text-align:center; }
+.vs-prize-name{ font-size:12px; color:var(--text-secondary); }
+.vs-prize-num{ font-family:'Russo One',sans-serif; font-size:40px; color:var(--accent-2); line-height:1.1; }
+.vs-prize-btns{ display:flex; gap:6px; justify-content:center; }
+.vs-prize-btns button{ padding:4px 12px !important; font-size:16px !important; }
+
+.vs-rules-det{ }
+.vs-rules-det>summary{ cursor:pointer; list-style:none; }
+.vs-rules-det>summary::-webkit-details-marker{ display:none; }
+.vs-rules-det>summary::before{ content:'▸'; margin-right:8px; color:var(--accent-2); display:inline-block; transition:transform .2s; }
+.vs-rules-det[open]>summary::before{ transform:rotate(90deg); }
+.vs-rules-det .vs-rules-grid{ margin-top:12px; }

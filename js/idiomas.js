@@ -101,6 +101,13 @@ const I18N = {
     vs_guest_banner:'Modo invitada — ves la colección en solo lectura y armas tu mazo.',
     vs_owner_noshare:'El anfitrión aún no ha compartido su colección.',
     ro_blocked:'Solo lectura: no puedes editar la colección del anfitrión.',
+    vs_preview:'Ver mi mazo', vs_new_deck:'Generar mazo nuevo',
+    vs_ready_note2:'Tu mazo es privado: el otro jugador solo verá tus estadísticas y las cartas en común a repartir.',
+    vs_prizes:'Premios', vs_new_match:'Nueva partida', vs_you_win:'¡Ganaste la partida!',
+    vs_both_ready:'¡Listos!', vs_conflicts_title:'Cartas en común a repartir',
+    vs_conflicts_note:'Comparten estas cartas y no alcanzan las copias físicas. Decidan quién las usa.',
+    vs_no_conflicts:'Sin choques: pueden montar ambos mazos a la vez.',
+    vs_have:'Tienes', vs_split:'Faltan',
   },
   en: {
     app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks', stat_decks_short:'saved',
@@ -201,6 +208,13 @@ const I18N = {
     vs_guest_banner:'Guest mode — you view the collection read-only and build your deck.',
     vs_owner_noshare:'The host has not shared their collection yet.',
     ro_blocked:'Read-only: you cannot edit the host collection.',
+    vs_preview:'View my deck', vs_new_deck:'Generate new deck',
+    vs_ready_note2:'Your deck stays private: the other player only sees your stats and the shared cards to split.',
+    vs_prizes:'Prizes', vs_new_match:'New match', vs_you_win:'You won the match!',
+    vs_both_ready:'Ready!', vs_conflicts_title:'Shared cards to split',
+    vs_conflicts_note:'You both use these cards and there aren’t enough physical copies. Decide who uses them.',
+    vs_no_conflicts:'No clashes: you can build both decks at once.',
+    vs_have:'You have', vs_split:'Short',
   }
 };
 function T(k){ return (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.es[k] != null ? I18N.es[k] : k); }
