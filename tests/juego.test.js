@@ -116,9 +116,34 @@ console.log('autoSetup del rival arranca la partida');
 J.autoSetup(p1, 'B');
 eq(p1.lados.B.estado, 'ready', 'B listo (auto)');
 eq(p1.lados.B.premios.length, 6, 'B con 6 premios');
-eq(p1.fase, J.FASE.DRAW, 'ambos listos -> fase DRAW');
+eq(p1.fase, J.FASE.MAIN, 'ambos listos -> arranca en MAIN (ya robó)');
 ok(p1.turnoDe === 'A' || p1.turnoDe === 'B', 'turnoDe definido tras setup');
 eq(p1.turno, 1, 'turno 1');
+
+// ---------- Fase 4: estructura de turno ----------
+console.log('estructura de turno');
+const ini = p1.inicia, otro = ini === 'A' ? 'B' : 'A';
+eq(p1.turnoDe, ini, 'empieza el ganador de la moneda');
+eq(J.puedeAtacar(p1), false, 'el que empieza NO ataca en su primer turno');
+const manoIniAntes = p1.lados[otro].mano.length;
+J.terminarTurno(p1);
+eq(p1.turnoDe, otro, 'terminarTurno pasa al rival');
+eq(p1.turno, 2, 'turno 2');
+eq(p1.fase, J.FASE.MAIN, 'el rival arranca en MAIN');
+eq(p1.lados[otro].mano.length, manoIniAntes + 1, 'el rival robó 1 al empezar su turno');
+eq(J.puedeAtacar(p1), true, 'el segundo jugador SÍ puede atacar en su turno 1');
+J.terminarTurno(p1);
+eq(p1.turnoDe, ini, 'vuelve al inicial');
+eq(J.puedeAtacar(p1), true, 'el inicial ya puede atacar en su 2º turno');
+
+console.log('derrota por mazo vacío (deck-out)');
+const p3 = J.crearPartida({ ladoA: { nombre: 'Tú', cartas: cartas60 }, ladoB: { nombre: 'Rival', cartas: cartas60 }, seed: 7 });
+J.autoSetup(p3, 'A'); J.autoSetup(p3, 'B');
+const enTurno = p3.turnoDe, rival = enTurno === 'A' ? 'B' : 'A';
+p3.lados[rival].mazo = []; // el rival se quedará sin cartas al empezar su turno
+J.terminarTurno(p3);
+eq(p3.ganador, enTurno, 'gana quien forzó el deck-out del rival');
+eq(p3.fase, J.FASE.END, 'fase END al terminar');
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -101,6 +101,32 @@
       '</div></div>';
   }
 
+  function hudBar(b) {
+    const miTurno = (G.turnoDe === 'A') && !G.ganador;
+    const turnoTxt = b.turnoDe === 'yo' ? tx('jv_your_turn', 'Tu turno') : tx('jv_their_turn', 'Turno del rival');
+    let html = '<div class="jv-hud">' +
+      '<span class="jv-turn">' + esc(tx('jv_turn', 'Turno')) + ' ' + (G.turno || 1) + ' · ' + esc(turnoTxt) + '</span>';
+    if (miTurno) {
+      html += '<button class="jv-btn jv-btn-2" type="button" onclick="jvFinTurno()">' + esc(tx('jv_end_turn', 'Terminar turno')) + '</button>';
+    } else if (!G.ganador) {
+      html += '<span class="jv-thinking">' + esc(tx('jv_rival_thinking', 'El rival juega…')) + '</span>';
+    }
+    html += '</div>' +
+      '<div class="jv-hint">' + esc(tx('jv_actions_soon', 'Las acciones de turno (energía, evolución, ataque…) llegan en las próximas fases.')) + '</div>';
+    return html;
+  }
+
+  function finOverlay() {
+    if (!G || !G.ganador) return '';
+    const gane = G.ganador === 'A';
+    const titulo = gane ? tx('jv_win', '¡Ganaste!') : tx('jv_lose', 'Perdiste');
+    const motivo = G.motivoFin === 'deckout' ? tx('jv_by_deckout', 'por agotar el mazo del rival') : '';
+    return '<div class="jv-overlay"><div class="jv-overlay-card ' + (gane ? 'win' : 'lose') + '">' +
+      '<h3>' + esc(titulo) + '</h3>' + (motivo ? '<p>' + esc(motivo) + '</p>' : '') +
+      '<button class="jv-btn jv-btn-big" type="button" onclick="jvNueva()">' + esc(tx('jv_new_game', 'Nueva partida')) + '</button>' +
+      '</div></div>';
+  }
+
   function closeBtn() {
     return '<button class="jv-close" type="button" aria-label="' + esc(tx('jv_exit', 'Salir')) + '" title="' + esc(tx('jv_exit', 'Salir')) + '" onclick="jvSalir()">' +
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
@@ -117,8 +143,7 @@
     const yoActivo = cartaEl(b.yo.activo, { clickable: setup && !!b.yo.activo, onclick: (setup && b.yo.activo) ? ("jvUnplace('" + b.yo.activo.iid + "')") : '' });
     const yoBanca = benchEl(b.yo.banca, { clickable: setup, onclick: setup ? function (c) { return "jvUnplace('" + c.iid + "')"; } : null });
 
-    const centro = setup ? setupBar()
-      : '<div class="jv-hud"><span class="jv-turn">' + (b.turnoDe === 'yo' ? tx('jv_your_turn', 'Tu turno') : tx('jv_their_turn', 'Turno del rival')) + '</span></div>';
+    const centro = setup ? setupBar() : hudBar(b);
 
     return '' +
       '<div class="jv-board">' +
@@ -139,7 +164,8 @@
       '</div>' +
       '</div>' +
       // MANO
-      '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>';
+      '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>' +
+      finOverlay();
   }
 
   // ---------- Pantalla de inicio de partida ----------
@@ -160,10 +186,19 @@
       '</div></div>';
   }
 
+  let _rivalTimer = null;
   function renderJuego() {
     const root = document.getElementById('juego-root');
     if (!root) return;
     root.innerHTML = G ? renderTablero() : pantallaInicio();
+    // Turno del rival (sin IA todavía): auto-pasa para que el ciclo sea observable.
+    if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; }
+    if (G && !G.ganador && G.fase !== JUEGO.FASE.SETUP && G.turnoDe === 'B') {
+      _rivalTimer = setTimeout(function () {
+        _rivalTimer = null;
+        if (G && G.turnoDe === 'B' && !G.ganador) { JUEGO.terminarTurno(G); renderJuego(); }
+      }, 850);
+    }
   }
 
   // ---------- Acciones (globales para onclick) ----------
@@ -192,7 +227,9 @@
   window.jvUnplace = function (iid) { if (G) { JUEGO.quitarColocado(G, 'A', iid); renderJuego(); } };
   window.jvAuto = function () { if (G) { JUEGO.autoSetup(G, 'A'); renderJuego(); } };
   window.jvConfirm = function () { if (G) { JUEGO.confirmarSetup(G, 'A'); renderJuego(); } };
-  window.jvSalir = function () { G = null; window.setVersusMode('fisico'); };
+  window.jvFinTurno = function () { if (G && G.turnoDe === 'A' && !G.ganador) { JUEGO.terminarTurno(G); renderJuego(); } };
+  window.jvNueva = function () { G = null; renderJuego(); };
+  window.jvSalir = function () { if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; } G = null; window.setVersusMode('fisico'); };
 
   // ---------- Pantalla completa inmersiva (solo overlay CSS) ----------
   function entrarFull() {

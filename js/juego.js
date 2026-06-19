@@ -8,7 +8,7 @@
 (function (global) {
   'use strict';
 
-  const VERSION = 3; // sube con cada fase del motor
+  const VERSION = 4; // sube con cada fase del motor
 
   // Fases del juego (rulebook): preparación -> turnos -> fin.
   const FASE = Object.freeze({
@@ -184,7 +184,8 @@
     return {
       nombre: nombre || '?', mazo: [], mano: [], banca: [], activo: null,
       descarte: [], premios: [], lost: [], estadio: null,
-      estado: 'setup', mulligans: 0, energiaUsada: false
+      estado: 'setup', mulligans: 0, energiaUsada: false,
+      retiroUsado: false, supporterUsado: false, estadioUsado: false, turnosJugados: 0
     };
   }
 
@@ -216,7 +217,7 @@
     const inicia = rnd() < 0.5 ? 'A' : 'B';
     return {
       v: VERSION, fase: FASE.SETUP, seed: seed, turno: 0, turnoDe: null,
-      inicia: inicia, primerTurno: true, lados: { A: A, B: B }, seq: 0, log: []
+      inicia: inicia, ganador: null, motivoFin: null, lados: { A: A, B: B }, seq: 0, log: []
     };
   }
 
@@ -255,9 +256,36 @@
     L.estado = 'ready';
     const A = est.lados.A, B = est.lados.B;
     if (A.estado === 'ready' && B.estado === 'ready') {
-      est.fase = FASE.DRAW; est.turno = 1; est.turnoDe = est.inicia;
+      est.turno = 1; est.turnoDe = est.inicia;
+      _comenzarTurno(est);
     }
     return est;
+  }
+
+  // ---------- Estructura de turno (rulebook p.9-14) ----------
+  // Inicia el turno del jugador `turnoDe`: roba 1 carta (derrota si no puede) y pasa a MAIN.
+  function _comenzarTurno(est) {
+    const lado = est.turnoDe; const L = est.lados[lado];
+    if (!L.mazo.length) { est.ganador = (lado === 'A' ? 'B' : 'A'); est.fase = FASE.END; est.motivoFin = 'deckout'; return est; }
+    L.mano.push(L.mazo.shift());           // robar del top
+    L.energiaUsada = false; L.retiroUsado = false; L.supporterUsado = false; L.estadioUsado = false;
+    est.fase = FASE.MAIN;
+    return est;
+  }
+  // ¿Puede atacar ahora? El que empieza no ataca en su primer turno.
+  function puedeAtacar(est) {
+    if (est.ganador || est.fase !== FASE.MAIN) return false;
+    const L = est.lados[est.turnoDe];
+    if (est.turnoDe === est.inicia && L.turnosJugados === 0) return false;
+    return true;
+  }
+  // Termina el turno actual (chequeo Pokémon se añade en Fase 7) y pasa al rival.
+  function terminarTurno(est) {
+    if (est.ganador) return est;
+    const lado = est.turnoDe; est.lados[lado].turnosJugados++;
+    est.fase = FASE.CHECKUP; // placeholder; condiciones especiales en Fase 7
+    est.turnoDe = (lado === 'A' ? 'B' : 'A'); est.turno++;
+    return _comenzarTurno(est);
   }
 
   // Coloca automáticamente un lado (rival de práctica): 1 activo + banca con básicos.
@@ -286,6 +314,7 @@
     energiaBasicaView, tipoEnergia,
     rng32, barajar, tieneBasico,
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
+    terminarTurno, puedeAtacar,
     estadoInicial, aplicarAccion
   };
 
