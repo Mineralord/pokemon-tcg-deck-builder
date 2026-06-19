@@ -209,7 +209,7 @@
       const basic = c.supertipo === 'Pokemon' && c.esBasico;
       if (setup) return cartaEl(c, { clickable: basic, dim: !basic, onclick: basic ? ("jvPlace('" + c.iid + "')") : '' });
       const sel = _accion && _accion.iid === c.iid;
-      const jugarEsta = jugable && (basic || (c.supertipo === 'Pokemon' && c.evolucionaDe) || c.supertipo === 'Energy');
+      const jugarEsta = jugable && (basic || (c.supertipo === 'Pokemon' && c.evolucionaDe) || c.supertipo === 'Energy' || c.supertipo === 'Trainer');
       return cartaEl(c, { clickable: jugable, sel: sel, dim: jugable && !jugarEsta, onclick: jugable ? ("jvManoClick('" + c.iid + "')") : '' });
     }).join('');
 
@@ -328,7 +328,8 @@
     if (c.supertipo === 'Pokemon' && c.esBasico) { JUEGO.ponerEnBanca(G, 'A', iid); _accion = null; }
     else if (c.supertipo === 'Pokemon' && c.evolucionaDe) { _accion = (_accion && _accion.iid === iid) ? null : { tipo: 'evo', iid: iid }; }
     else if (c.supertipo === 'Energy') { if (!A.energiaUsada) _accion = (_accion && _accion.iid === iid) ? null : { tipo: 'energia', iid: iid }; }
-    else { _accion = null; } // entrenadores: Fase 8
+    else if (c.supertipo === 'Trainer') { JUEGO.jugarEntrenador(G, 'A', iid); _accion = null; }
+    else { _accion = null; }
     renderJuego();
   };
   window.jvJuegoClick = function (iid) {

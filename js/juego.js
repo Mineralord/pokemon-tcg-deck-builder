@@ -93,14 +93,25 @@
   function energiaBasicaView(name) {
     return { nombre: name, supertipo: 'Energy', tipos: [tipoEnergia(name)], esEnergiaBasica: true };
   }
+  // Subtipo de Entrenador a partir del texto de reglas.
+  function subEntrenador(reglas) {
+    const r = (reglas || []).join(' ').toLowerCase();
+    if (r.indexOf('supporter') >= 0) return 'supporter';
+    if (r.indexOf('stadium') >= 0) return 'stadium';
+    if (r.indexOf('pokémon tool') >= 0 || r.indexOf('pokemon tool') >= 0) return 'tool';
+    return 'item';
+  }
 
   // ---------- Normalizador: vista de carta -> carta de juego ----------
   function cartaJuego(view) {
     if (!view) return null;
     const poke = esPokemon(view);
     const energy = esEnergia(view);
+    const trainer = esEntrenador(view);
     const tipos = (view.tipos || []).slice();
     return {
+      texto: trainer ? ((view.reglas || [])[0] || '') : '',
+      subTrainer: trainer ? subEntrenador(view.reglas) : null,
       id: view.id || null,
       nombre: view.nombre || view.name || '',
       supertipo: poke ? 'Pokemon' : (energy ? 'Energy' : (esEntrenador(view) ? 'Trainer' : '?')),
@@ -404,6 +415,32 @@
     L.banca.push(viejo); L.activo = nuevo; L.retiroUsado = true; return est;
   }
 
+  // Jugar un Entrenador (Item/Supporter/Estadio/Herramienta) con sus límites por turno.
+  function jugarEntrenador(est, lado, iid) {
+    const L = est.lados[lado]; if (!_esTurnoMain(est, lado)) return est;
+    const i = _buscarMano(L, iid); if (i < 0) return est;
+    const c = L.mano[i]; if (c.supertipo !== 'Trainer') return est;
+    const sub = c.subTrainer || 'item';
+    if (sub === 'supporter') {
+      if (L.supporterUsado) return est;
+      if (lado === est.inicia && L.turnosJugados === 0) return est; // el que empieza no juega Supporter en su 1er turno
+    }
+    if (sub === 'stadium' && L.estadioUsado) return est;
+    // Efecto: handler codificado o auto-intérprete (de momento: robar N).
+    const EF = global.JUEGO_EFECTOS;
+    const reg = EF && EF.EFECTOS && EF.EFECTOS[c.id];
+    if (reg && reg.jugar) { try { reg.jugar(est, lado, { carta: c }); } catch (e) {} }
+    else {
+      const md = /draw (\d+) cards?/i.exec(c.texto || '');
+      if (md) for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift());
+    }
+    L.mano.splice(_buscarMano(L, iid), 1);
+    if (sub === 'stadium') { if (L.estadio) L.descarte.push(L.estadio); L.estadio = c; L.estadioUsado = true; }
+    else if (sub === 'tool') { if (L.activo) { L.activo.tools = L.activo.tools || []; L.activo.tools.push(c); } else L.descarte.push(c); }
+    else { L.descarte.push(c); if (sub === 'supporter') L.supporterUsado = true; }
+    return est;
+  }
+
   // ---------- Ataque (rulebook p.13-14) ----------
   // ¿La carta tiene energía suficiente para pagar el coste? (tipado + incoloro)
   function puedePagar(card, coste) {
@@ -541,7 +578,7 @@
     rng32, barajar, tieneBasico,
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
-    ponerEnBanca, adjuntarEnergia, evolucionar, retirar,
+    ponerEnBanca, adjuntarEnergia, evolucionar, retirar, jugarEntrenador, subEntrenador,
     puedePagar, danioEfectivo, atacar, efectoAuto,
     aplicarCondicion, chequeo, ROTATIVAS,
     manualDanioRival, manualCurar, manualRobar, manualCondicionRival,

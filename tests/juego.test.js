@@ -324,5 +324,38 @@ eq(h4.lados.B.activo.condiciones.indexOf('poisoned') >= 0, true, 'manual: envene
 h4.lados.A.activo.danio = 50; J.manualCurar(h4, 'A', 20);
 eq(h4.lados.A.activo.danio, 30, 'manual: cura 20 propio');
 
+// ---------- Fase 8b: jugar Entrenadores ----------
+console.log('entrenadores: subtipo, límites y efecto');
+const nemona = { id: 'tr-n', nombre: 'Nemona', supertipo: 'Trainer', reglas: ['Draw 3 cards.', 'You may play only 1 Supporter card during your turn.'] };
+const greatball = { id: 'tr-g', nombre: 'Great Ball', supertipo: 'Trainer', reglas: ['Look at the top 7 cards of your deck...', 'You may play any number of Item cards during your turn.'] };
+const stad = { id: 'tr-s', nombre: 'Arena X', supertipo: 'Trainer', reglas: ['Some effect.', 'You may play only 1 Stadium card during your turn.'] };
+eq(J.cartaJuego(nemona).subTrainer, 'supporter', 'Nemona = Supporter');
+eq(J.cartaJuego(greatball).subTrainer, 'item', 'Great Ball = Item');
+eq(J.cartaJuego(stad).subTrainer, 'stadium', 'Arena = Stadium');
+ok(J.cartaJuego(nemona).texto.indexOf('Draw 3') >= 0, 'texto del entrenador capturado');
+
+let t1 = escena();
+t1.lados.A.mano = [inst(nemona, 'n1'), inst(nemona, 'n2'), inst(greatball, 'g1')];
+const m1 = t1.lados.A.mano.length;
+J.jugarEntrenador(t1, 'A', 'n1');
+eq(t1.lados.A.supporterUsado, true, 'supporterUsado tras jugar Nemona');
+eq(t1.lados.A.descarte.indexOf(t1.lados.A.descarte.find(function (c) { return c.id === 'tr-n'; })) >= 0, true, 'Nemona al descarte');
+// jugó 1 (-1) y robó 3 (+3) => mano +2
+eq(t1.lados.A.mano.length, m1 - 1 + 3, 'Nemona roba 3');
+const m2 = t1.lados.A.mano.length;
+J.jugarEntrenador(t1, 'A', 'n2');
+eq(t1.lados.A.mano.length, m2, 'segundo Supporter bloqueado (1/turno)');
+
+// Supporter bloqueado en el primer turno del que empieza
+let t2 = escena(); t2.inicia = 'A'; t2.lados.A.turnosJugados = 0;
+t2.lados.A.mano = [inst(nemona, 'n3')];
+J.jugarEntrenador(t2, 'A', 'n3');
+eq(t2.lados.A.supporterUsado, false, 'el que empieza no juega Supporter en su 1er turno');
+
+// Estadio reemplaza
+let t3 = escena(); t3.lados.A.mano = [inst(stad, 's1')];
+J.jugarEntrenador(t3, 'A', 's1');
+eq(t3.lados.A.estadio && t3.lados.A.estadio.id, 'tr-s', 'Estadio queda en juego');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
