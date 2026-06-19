@@ -16,6 +16,8 @@
   --jv-z-drag: 30;
   --jv-z-overlay: 50;
   --jv-z-modal: 60;
+  /* Tamaño de carta fluido (mobile-first) */
+  --jv-cw: clamp(42px, 12vw, 84px);
 }
 
 /* ---------- Selector de modo (Cartas físicas | Juego virtual) ---------- */
@@ -38,7 +40,7 @@
 /* ---------- Contenedor del juego virtual ---------- */
 .juego-root{ position:relative; z-index:var(--jv-z-mat); }
 
-/* Placeholder mientras se construyen las fases */
+/* Placeholder (se usa cuando no hay tablero todavía) */
 .jv-wip{
   text-align:center; padding:48px 20px; border-radius:16px;
   background:radial-gradient(120% 120% at 50% 0%, rgba(124,58,237,.18), rgba(10,13,20,0) 60%),
@@ -50,7 +52,133 @@
   text-shadow:0 0 12px rgba(167,139,250,.35); }
 .jv-wip p{ font:400 14px/1.6 'Chakra Petch',sans-serif; color:#9aa6bd; max-width:520px; margin:0 auto; }
 
+/* ============================ TABLERO ============================ */
+.jv-board{
+  position:relative; display:flex; flex-direction:column; gap:8px;
+  padding:12px; border-radius:16px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px), /* scanlines sutiles */
+    radial-gradient(120% 80% at 50% 0%, rgba(244,63,94,.10), rgba(10,13,20,0) 55%),
+    radial-gradient(120% 80% at 50% 100%, rgba(124,58,237,.16), rgba(10,13,20,0) 55%),
+    #0b0f17;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.55);
+}
+
+/* Etiqueta de vista previa (Fase 2) */
+.jv-demo-tag{
+  position:absolute; top:8px; right:10px; z-index:var(--jv-z-overlay);
+  font:600 10px/1 'Chakra Petch',sans-serif; letter-spacing:.5px; text-transform:uppercase;
+  color:#A78BFA; background:rgba(124,58,237,.12); border:1px solid rgba(167,139,250,.35);
+  padding:5px 8px; border-radius:999px;
+}
+
+/* HUD / banner de turno */
+.jv-hud{ display:flex; align-items:center; justify-content:center; gap:10px; min-height:26px; }
+.jv-turn{
+  font:700 13px/1 'Russo One',sans-serif; letter-spacing:.4px; color:#E2E8F0;
+  padding:6px 14px; border-radius:999px;
+  background:linear-gradient(135deg, rgba(124,58,237,.35), rgba(167,139,250,.15));
+  border:1px solid rgba(167,139,250,.4); text-shadow:0 0 10px rgba(167,139,250,.4);
+}
+
+/* Un lado del tablero (rival arriba, tú abajo) */
+.jv-side{ display:flex; flex-direction:column; gap:6px; }
+.jv-side--rival{ }
+.jv-side--yo{ }
+
+/* Cabecera de jugador (avatar + nombre + premios restantes) */
+.jv-pbar{ display:flex; align-items:center; gap:8px; font:600 12px/1 'Chakra Petch',sans-serif; color:#cfd6e4; }
+.jv-pbar .jv-av{ width:24px;height:24px;border-radius:50%;background:#2a3346;display:flex;align-items:center;justify-content:center;
+  font:700 11px/1 'Russo One';color:#A78BFA;overflow:hidden; }
+.jv-pbar .jv-av img{ width:100%;height:100%;object-fit:cover; }
+.jv-pbar .jv-prizecount{ margin-left:auto; color:#F43F5E; font-family:'JetBrains Mono',monospace; }
+
+/* Fila de zonas auxiliares (mazo / descarte / premios) */
+.jv-row{ display:flex; align-items:flex-end; gap:8px; justify-content:center; flex-wrap:nowrap; }
+.jv-row--aux{ justify-content:space-between; }
+.jv-aux-group{ display:flex; gap:8px; align-items:flex-end; }
+
+/* Etiqueta de zona */
+.jv-zlabel{ font:600 9px/1 'Chakra Petch',sans-serif; letter-spacing:.4px; text-transform:uppercase;
+  color:#6b7691; text-align:center; margin-top:3px; }
+
+/* Banca: 5 huecos */
+.jv-bench{ display:flex; gap:6px; justify-content:center; flex-wrap:nowrap; }
+
+/* Activo destacado */
+.jv-active-wrap{ display:flex; justify-content:center; }
+.jv-active{ position:relative; }
+.jv-active .jv-card{ width:calc(var(--jv-cw) * 1.35); }
+.jv-active::after{ content:''; position:absolute; inset:-8px; border-radius:14px; pointer-events:none;
+  box-shadow:0 0 24px rgba(167,139,250,.45); }
+
+/* Estadio / zona perdida (franja central) */
+.jv-center{ display:flex; align-items:center; justify-content:center; gap:14px; min-height:18px;
+  border-top:1px dashed rgba(255,255,255,.08); border-bottom:1px dashed rgba(255,255,255,.08); padding:6px 0; }
+.jv-center .jv-zlabel{ margin:0; }
+
+/* ---------- Carta ---------- */
+.jv-card{
+  width:var(--jv-cw); aspect-ratio:63/88; border-radius:7px; position:relative;
+  background:#11151f; border:1px solid rgba(255,255,255,.12); overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.5); flex:0 0 auto;
+  transition:transform .16s var(--jv-ease-out), box-shadow .16s var(--jv-ease-out);
+}
+.jv-card img{ width:100%; height:100%; object-fit:cover; display:block; }
+.jv-card.clickable{ cursor:pointer; }
+@media (hover:hover) and (pointer:fine){
+  .jv-card.clickable:hover{ transform:translateY(-3px); box-shadow:0 8px 20px rgba(124,58,237,.4); }
+}
+.jv-card:active.clickable{ transform:scale(.97); }
+
+/* Placeholder de carta sin imagen */
+.jv-card--ph{ display:flex; flex-direction:column; justify-content:space-between; padding:5px;
+  background:linear-gradient(160deg,#1b2233,#11151f); }
+.jv-card--ph .jv-ph-name{ font:600 8px/1.1 'Chakra Petch',sans-serif; color:#dbe2ef; word-break:break-word; }
+.jv-card--ph .jv-ph-hp{ font:700 9px/1 'JetBrains Mono',monospace; color:#F43F5E; align-self:flex-end; }
+
+/* Hueco vacío (banca/activo libre) */
+.jv-slot{ width:var(--jv-cw); aspect-ratio:63/88; border-radius:7px; flex:0 0 auto;
+  border:1px dashed rgba(255,255,255,.14); background:rgba(255,255,255,.02); }
+.jv-active .jv-slot{ width:calc(var(--jv-cw) * 1.35); }
+
+/* Reverso de carta (mano rival, mazo, premios) */
+.jv-card--back{ background:
+  radial-gradient(circle at 50% 38%, rgba(167,139,250,.45), rgba(124,58,237,0) 60%),
+  linear-gradient(135deg,#241b3d,#15101f);
+  border-color:rgba(167,139,250,.35); }
+.jv-card--back::after{ content:''; position:absolute; inset:0;
+  background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.18), transparent 42%); }
+
+/* Pilas (mazo/descarte/premios) con contador */
+.jv-pile{ position:relative; width:var(--jv-cw); }
+.jv-pile .jv-count{ position:absolute; bottom:-2px; right:-2px; z-index:2;
+  font:700 10px/1 'JetBrains Mono',monospace; color:#0A0D14; background:#A78BFA;
+  padding:2px 5px; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.5); }
+.jv-prizes-stack{ display:grid; grid-template-columns:repeat(3, calc(var(--jv-cw) * .5)); gap:3px; }
+.jv-prizes-stack .jv-mini{ aspect-ratio:63/88; border-radius:4px;
+  background:linear-gradient(135deg,#241b3d,#15101f); border:1px solid rgba(167,139,250,.4); }
+.jv-prizes-stack .jv-mini.taken{ opacity:.18; }
+
+/* Mano propia (abanico inferior) */
+.jv-hand{ display:flex; justify-content:center; padding-top:6px; min-height:calc(var(--jv-cw) * 1.4); }
+.jv-hand-inner{ display:flex; }
+.jv-hand .jv-card{ width:calc(var(--jv-cw) * 1.05); margin-left:calc(var(--jv-cw) * -0.38);
+  transform-origin:bottom center; transition:transform .18s var(--jv-ease-out); }
+.jv-hand .jv-card:first-child{ margin-left:0; }
+@media (hover:hover) and (pointer:fine){
+  .jv-hand .jv-card:hover{ transform:translateY(-10px) scale(1.06); z-index:var(--jv-z-card); }
+}
+
+/* Responsive: en pantallas anchas, cartas algo mayores y más aire */
+@media (min-width:760px){
+  :root{ --jv-cw: clamp(58px, 7vw, 92px); }
+  .jv-board{ padding:18px; gap:12px; }
+}
+
 @media (prefers-reduced-motion: reduce){
   .vs-mode-btn{ transition:color .18s linear; }
-  .vs-mode-btn:active{ transform:none; }
+  .vs-mode-btn:active, .jv-card:active.clickable{ transform:none; }
+  .jv-card, .jv-hand .jv-card{ transition:none; }
 }
