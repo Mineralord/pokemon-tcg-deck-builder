@@ -20,6 +20,9 @@
   --jv-cw: clamp(42px, 12vw, 84px);
 }
 
+/* Evita el "font boosting" de Chrome móvil (infla el texto y parece zoom). */
+html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+
 /* ---------- Selector de modo (Cartas físicas | Juego virtual) ---------- */
 .vs-mode-switch{
   display:inline-flex; gap:4px; padding:4px; margin-bottom:16px;
@@ -189,16 +192,18 @@ body.jv-full .views{ padding:0 !important; }
 .juego-root.jv-full-root{
   position:fixed; inset:0; z-index:var(--jv-z-modal);
   background:#0b0f17; overflow:auto; -webkit-overflow-scrolling:touch;
+  touch-action:manipulation; /* evita el doble-tap-zoom */
   animation:jv-enter .28s var(--jv-ease-out) both;
 }
 .juego-root.jv-full-root .jv-board{
   min-height:100vh; min-height:100dvh; border-radius:0; border:none;
-  justify-content:space-between;
+  justify-content:space-between; touch-action:manipulation;
 }
-/* Cartas al MÁXIMO tamaño que entra bien (limitado por alto y ancho del viewport). */
-.juego-root.jv-full-root{ --jv-cw: min(25vw, 13.5dvh); }
+/* Cartas grandes PERO que el tablero quepa en pantalla (sin sensación de zoom).
+   Límite por ancho (5 de banca) y por alto (todas las filas). */
+.juego-root.jv-full-root{ --jv-cw: min(16.5vw, 8.4dvh); }
 @media (min-width:760px){
-  .juego-root.jv-full-root{ --jv-cw: min(14vw, 15dvh); }
+  .juego-root.jv-full-root{ --jv-cw: min(10vw, 11dvh); }
 }
 
 @keyframes jv-enter{ from{ opacity:0; transform:scale(.98); } to{ opacity:1; transform:scale(1); } }
