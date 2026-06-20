@@ -387,5 +387,30 @@ eq(d6.lados.A.descarte.length, 1, 'energía al descarte');
 let d7 = escd(); J.efectoAuto(d7, 'A', { texto: 'Flip a coin. If heads, your opponent\'s Active Pokémon is now Paralyzed.' }, alwaysH);
 eq(d7.lados.B.activo.condiciones.indexOf('paralyzed') >= 0, true, 'moneda cara: paraliza (sin doble aplicación)');
 
+// ---------- Fase 12: IA ----------
+console.log('IA: juega su turno y ataca');
+const IA = require('../js/juego-ia.js');
+let ia1 = J.crearPartida({ ladoA: { cartas: cartas60 }, ladoB: { cartas: cartas60 }, seed: 5 });
+J.autoSetup(ia1, 'A'); J.autoSetup(ia1, 'B');
+ia1.turnoDe = 'B'; ia1.fase = J.FASE.MAIN; ia1.turno = 4; ia1.ganador = null;
+ia1.lados.B.turnosJugados = 1; ia1.lados.B.energiaUsada = false;
+const bat = inst(pikachu, 'bteam'); bat.enJuegoDesde = 0; bat.energias = [inst(lightningEnergy, 'le')];
+ia1.lados.B.activo = bat;
+ia1.lados.A.activo = inst(Object.assign({}, pikachu, { ps: '100' }), 'ahead');
+ia1.lados.A.banca = [inst(pikachu, 'abk')];
+IA.configurar({ dificultad: 'medio', modo: 'reglas' });
+IA.jugarTurno(ia1);
+eq(ia1.turnoDe, 'A', 'la IA terminó su turno (pasa a A)');
+ok((ia1.lados.A.activo.danio || 0) > 0 || ia1.lados.A.activo.iid !== 'ahead', 'la IA atacó al jugador');
+
+// IA sin energía: no puede atacar pero igual termina el turno
+let ia2 = J.crearPartida({ ladoA: { cartas: cartas60 }, ladoB: { cartas: cartas60 }, seed: 6 });
+J.autoSetup(ia2, 'A'); J.autoSetup(ia2, 'B');
+ia2.turnoDe = 'B'; ia2.fase = J.FASE.MAIN; ia2.turno = 4; ia2.lados.B.turnosJugados = 1;
+ia2.lados.B.activo = inst(pikachu, 'b2'); ia2.lados.B.activo.energias = []; ia2.lados.B.mano = [];
+ia2.lados.A.activo = inst(pikachu, 'a2'); ia2.lados.A.banca = [inst(pikachu, 'a2b')];
+IA.jugarTurno(ia2);
+eq(ia2.turnoDe, 'A', 'la IA termina turno aunque no pueda atacar');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

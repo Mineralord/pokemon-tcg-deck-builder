@@ -617,4 +617,4 @@
   global.JUEGO = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 
-})(typeof self !== 'undefined' ? self : this);
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));

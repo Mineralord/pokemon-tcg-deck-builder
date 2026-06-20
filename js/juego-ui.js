@@ -162,23 +162,22 @@
 
   // ---------- Efectos visuales/sonido ----------
   function snd(n) { if (typeof SONIDO !== 'undefined') SONIDO.play(n); }
-  function fxAtaque(dmg, ko) {
-    snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(15);
+  function fxHit(sel, dmg, ko) {
     setTimeout(function () {
-      const card = document.querySelector('#juego-root .jv-side--rival .jv-active .jv-card');
-      const wrap = document.querySelector('#juego-root .jv-side--rival .jv-active');
+      const wrap = document.querySelector(sel);
+      const card = wrap && wrap.querySelector('.jv-card');
       if (card) { card.classList.add('jv-shake'); setTimeout(function () { card.classList.remove('jv-shake'); }, 360); }
       if (wrap) {
-        const f = document.createElement('div');
-        f.className = 'jv-dmgfloat';
+        const f = document.createElement('div'); f.className = 'jv-dmgfloat';
         f.textContent = ko ? 'KO' : ('-' + (dmg > 0 ? dmg : 0));
-        wrap.appendChild(f);
-        setTimeout(function () { f.remove(); }, 750);
+        wrap.appendChild(f); setTimeout(function () { f.remove(); }, 750);
       }
       snd(ko ? 'ko' : 'hit');
-      if (ko) { snd('prize'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate([20, 40, 30]); }
+      if (ko && typeof SONIDO !== 'undefined') { snd('prize'); SONIDO.vibrate([20, 40, 30]); }
     }, 170);
   }
+  function fxAtaque(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(15); fxHit('#juego-root .jv-side--rival .jv-active', dmg, ko); }
+  function fxDefensa(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(20); fxHit('#juego-root .jv-side--yo .jv-active', dmg, ko); }
 
   const TIPO_COLOR = { Grass: '#22c55e', Fire: '#f97316', Water: '#38bdf8', Lightning: '#eab308', Psychic: '#a855f7', Fighting: '#b45309', Darkness: '#1f2937', Metal: '#94a3b8', Fairy: '#ec4899', Dragon: '#ca8a04', Colorless: '#cbd5e1' };
   function costeHtml(coste) {
@@ -320,8 +319,15 @@
     return '<div class="jv-board"><div class="jv-start">' + closeBtn() +
       '<h3>' + esc(tx('jv_start_title', 'Juego virtual')) + '</h3>' +
       '<label class="jv-field"><span>' + esc(tx('jv_your_deck', 'Tu mazo')) + '</span><select id="jv-deck-yo" class="control-select">' + opts + '</select></label>' +
-      '<label class="jv-field"><span>' + esc(tx('jv_rival_deck', 'Mazo del rival (práctica)')) + '</span><select id="jv-deck-rival" class="control-select">' + opts + '</select></label>' +
-      '<p class="jv-note">' + esc(tx('jv_start_note', 'Práctica local: tú colocas tus Pokémon; el rival se prepara solo. Los turnos llegarán en la siguiente fase.')) + '</p>' +
+      '<label class="jv-field"><span>' + esc(tx('jv_rival_deck', 'Mazo de la IA')) + '</span><select id="jv-deck-rival" class="control-select">' + opts + '</select></label>' +
+      '<label class="jv-field"><span>' + esc(tx('jv_ai_diff', 'Dificultad de la IA')) + '</span><select id="jv-ai-diff" class="control-select">' +
+        '<option value="facil">' + esc(tx('jv_easy', 'Fácil')) + '</option>' +
+        '<option value="medio" selected>' + esc(tx('jv_med', 'Media')) + '</option>' +
+        '<option value="dificil">' + esc(tx('jv_hard', 'Difícil')) + '</option></select></label>' +
+      '<label class="jv-field"><span>' + esc(tx('jv_ai_mode', 'Comportamiento de la IA')) + '</span><select id="jv-ai-mode" class="control-select">' +
+        '<option value="reglas" selected>' + esc(tx('jv_rules_b', 'Sigue reglas')) + '</option>' +
+        '<option value="random">' + esc(tx('jv_random_b', 'Aleatorio')) + '</option></select></label>' +
+      '<p class="jv-note">' + esc(tx('jv_start_note', 'Práctica local: tú colocas tus Pokémon; la IA se prepara y juega sola.')) + '</p>' +
       '<button class="jv-btn jv-btn-big" type="button" onclick="jvEmpezar()">' + esc(tx('jv_start_btn', 'Repartir y empezar')) + '</button>' +
       '</div></div>';
   }
@@ -338,8 +344,16 @@
     if (G && !G.ganador && G.fase !== JUEGO.FASE.SETUP && G.turnoDe === 'B') {
       _rivalTimer = setTimeout(function () {
         _rivalTimer = null;
-        if (G && G.turnoDe === 'B' && !G.ganador) { JUEGO.terminarTurno(G); renderJuego(); }
-      }, 850);
+        if (!(G && G.turnoDe === 'B' && !G.ganador)) return;
+        const ya = G.lados.A.activo; const idA = ya && ya.iid; const dA = ya ? (ya.danio || 0) : 0;
+        if (typeof JUEGO_IA !== 'undefined' && JUEGO_IA.jugarTurno) JUEGO_IA.jugarTurno(G);
+        else JUEGO.terminarTurno(G);
+        const aa = G.lados.A.activo;
+        let ko = false, dmg = 0;
+        if (!aa || aa.iid !== idA) ko = (idA != null); else dmg = (aa.danio || 0) - dA;
+        renderJuego();
+        if (ko || dmg > 0) fxDefensa(dmg, ko);
+      }, 750);
     }
   }
 
@@ -352,6 +366,12 @@
     const iy = parseInt((document.getElementById('jv-deck-yo') || {}).value, 10) || 0;
     const ir = parseInt((document.getElementById('jv-deck-rival') || {}).value, 10) || 0;
     const dy = decks[iy], dr = decks[ir] || decks[iy];
+    if (typeof JUEGO_IA !== 'undefined' && JUEGO_IA.configurar) {
+      JUEGO_IA.configurar({
+        dificultad: ((document.getElementById('jv-ai-diff') || {}).value) || 'medio',
+        modo: ((document.getElementById('jv-ai-mode') || {}).value) || 'reglas'
+      });
+    }
     G = JUEGO.crearPartida({
       ladoA: { nombre: tx('vs_you', 'Tú'), cartas: cartasDeMazo(dy) },
       ladoB: { nombre: tx('jv_rival', 'Rival'), cartas: cartasDeMazo(dr) }
