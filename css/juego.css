@@ -326,9 +326,33 @@ body.jv-full .views{ padding:0 !important; }
 .jv-close:active{ transform:scale(.95); }
 .jv-close:focus-visible{ outline:2px solid #A78BFA; outline-offset:2px; }
 
+/* Botón de sonido (arriba a la derecha) */
+.jv-mute{
+  position:fixed; top:max(10px, env(safe-area-inset-top)); right:10px; z-index:var(--jv-z-overlay);
+  width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+  border-radius:12px; cursor:pointer; color:#E2E8F0;
+  background:rgba(20,16,31,.7); border:1px solid rgba(167,139,250,.4);
+  backdrop-filter:blur(6px); transition:background-color .16s var(--jv-ease-out);
+}
+.jv-mute:hover{ background:rgba(124,58,237,.4); }
+.jv-mute:active{ transform:scale(.95); }
+.jv-mute:focus-visible{ outline:2px solid #A78BFA; outline-offset:2px; }
+
+/* Impacto: sacudida + número de daño flotante */
+@keyframes jv-shake{ 0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-5px); } 40%{ transform:translateX(5px); } 60%{ transform:translateX(-3px); } 80%{ transform:translateX(3px); } }
+.jv-card.jv-shake{ animation:jv-shake .36s var(--jv-ease-in-out); }
+.jv-dmgfloat{
+  position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:var(--jv-z-overlay);
+  font:800 26px/1 'Russo One',sans-serif; color:#F43F5E; text-shadow:0 2px 8px rgba(0,0,0,.8), 0 0 14px rgba(244,63,94,.6);
+  pointer-events:none; animation:jv-float .75s var(--jv-ease-out) forwards;
+}
+@keyframes jv-float{ 0%{ opacity:0; transform:translate(-50%,6px) scale(.7); } 25%{ opacity:1; transform:translate(-50%,-6px) scale(1.1); } 100%{ opacity:0; transform:translate(-50%,-40px) scale(1); } }
+
 @media (prefers-reduced-motion: reduce){
   .vs-mode-btn{ transition:color .18s linear; }
   .vs-mode-btn:active, .jv-card:active.clickable, .jv-close:active{ transform:none; }
   .jv-card, .jv-hand .jv-card{ transition:none; }
-  .juego-root.jv-full-root, .jv-card.jv-target, .jv-overlay{ animation:none; }
+  .juego-root.jv-full-root, .jv-card.jv-target, .jv-overlay, .jv-card.jv-shake{ animation:none; }
+  .jv-dmgfloat{ animation:jv-float-rm 1s linear forwards; }
 }
+@keyframes jv-float-rm{ 0%{ opacity:1; } 100%{ opacity:0; } }

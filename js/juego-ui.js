@@ -148,7 +148,36 @@
 
   function closeBtn() {
     return '<button class="jv-close" type="button" aria-label="' + esc(tx('jv_exit', 'Salir')) + '" title="' + esc(tx('jv_exit', 'Salir')) + '" onclick="jvSalir()">' +
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>' +
+      muteBtn();
+  }
+  function muteBtn() {
+    const m = (typeof SONIDO !== 'undefined') && SONIDO.isMuted();
+    const ico = m
+      ? '<path d="M11 5 6 9H2v6h4l5 4z"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>'
+      : '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/>';
+    return '<button class="jv-mute" type="button" aria-label="' + esc(tx('jv_sound', 'Sonido')) + '" title="' + esc(tx('jv_sound', 'Sonido')) + '" onclick="jvMute()">' +
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ico + '</svg></button>';
+  }
+
+  // ---------- Efectos visuales/sonido ----------
+  function snd(n) { if (typeof SONIDO !== 'undefined') SONIDO.play(n); }
+  function fxAtaque(dmg, ko) {
+    snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(15);
+    setTimeout(function () {
+      const card = document.querySelector('#juego-root .jv-side--rival .jv-active .jv-card');
+      const wrap = document.querySelector('#juego-root .jv-side--rival .jv-active');
+      if (card) { card.classList.add('jv-shake'); setTimeout(function () { card.classList.remove('jv-shake'); }, 360); }
+      if (wrap) {
+        const f = document.createElement('div');
+        f.className = 'jv-dmgfloat';
+        f.textContent = ko ? 'KO' : ('-' + (dmg > 0 ? dmg : 0));
+        wrap.appendChild(f);
+        setTimeout(function () { f.remove(); }, 750);
+      }
+      snd(ko ? 'ko' : 'hit');
+      if (ko) { snd('prize'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate([20, 40, 30]); }
+    }, 170);
   }
 
   const TIPO_COLOR = { Grass: '#22c55e', Fire: '#f97316', Water: '#38bdf8', Lightning: '#eab308', Psychic: '#a855f7', Fighting: '#b45309', Darkness: '#1f2937', Metal: '#94a3b8', Fairy: '#ec4899', Dragon: '#ca8a04', Colorless: '#cbd5e1' };
@@ -297,11 +326,13 @@
       '</div></div>';
   }
 
-  let _rivalTimer = null;
+  let _rivalTimer = null, _finSonado = false;
   function renderJuego() {
     const root = document.getElementById('juego-root');
     if (!root) return;
     root.innerHTML = G ? renderTablero() : pantallaInicio();
+    if (G && G.ganador) { if (!_finSonado) { _finSonado = true; snd(G.ganador === 'A' ? 'win' : 'lose'); } }
+    else _finSonado = false;
     // Turno del rival (sin IA todavía): auto-pasa para que el ciclo sea observable.
     if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; }
     if (G && !G.ganador && G.fase !== JUEGO.FASE.SETUP && G.turnoDe === 'B') {
@@ -341,21 +372,32 @@
   window.jvManoClick = function (iid) {
     if (!G || G.turnoDe !== 'A' || G.fase !== JUEGO.FASE.MAIN || G.ganador) return;
     const A = G.lados.A; const c = A.mano.find(function (x) { return x.iid === iid; }); if (!c) return;
-    if (c.supertipo === 'Pokemon' && c.esBasico) { JUEGO.ponerEnBanca(G, 'A', iid); _accion = null; }
+    if (c.supertipo === 'Pokemon' && c.esBasico) { JUEGO.ponerEnBanca(G, 'A', iid); _accion = null; snd('button'); }
     else if (c.supertipo === 'Pokemon' && c.evolucionaDe) { _accion = (_accion && _accion.iid === iid) ? null : { tipo: 'evo', iid: iid }; }
     else if (c.supertipo === 'Energy') { if (!A.energiaUsada) _accion = (_accion && _accion.iid === iid) ? null : { tipo: 'energia', iid: iid }; }
-    else if (c.supertipo === 'Trainer') { JUEGO.jugarEntrenador(G, 'A', iid); _accion = null; }
+    else if (c.supertipo === 'Trainer') { JUEGO.jugarEntrenador(G, 'A', iid); _accion = null; snd('button'); }
     else { _accion = null; }
     renderJuego();
   };
   window.jvJuegoClick = function (iid) {
     if (!G || !_accion) return;
-    if (_accion.tipo === 'evo') JUEGO.evolucionar(G, 'A', _accion.iid, iid);
-    else if (_accion.tipo === 'energia') JUEGO.adjuntarEnergia(G, 'A', _accion.iid, iid);
-    else if (_accion.tipo === 'retirar') JUEGO.retirar(G, 'A', iid);
+    if (_accion.tipo === 'evo') { JUEGO.evolucionar(G, 'A', _accion.iid, iid); snd('evolve'); }
+    else if (_accion.tipo === 'energia') { JUEGO.adjuntarEnergia(G, 'A', _accion.iid, iid); snd('energy'); }
+    else if (_accion.tipo === 'retirar') { JUEGO.retirar(G, 'A', iid); snd('button'); }
     _accion = null; renderJuego();
   };
-  window.jvAtacar = function (i) { if (G && G.turnoDe === 'A' && !G.ganador) { _accion = null; JUEGO.atacar(G, 'A', i); renderJuego(); } };
+  window.jvAtacar = function (i) {
+    if (!G || G.turnoDe !== 'A' || G.ganador) return;
+    _accion = null;
+    const rb = G.lados.B.activo; const idB = rb && rb.iid; const dB = rb ? (rb.danio || 0) : 0;
+    JUEGO.atacar(G, 'A', i);
+    const ra = G.lados.B.activo;
+    let ko = false, dmg = 0;
+    if (!ra || ra.iid !== idB) ko = true; else dmg = (ra.danio || 0) - dB;
+    renderJuego();
+    fxAtaque(dmg, ko);
+  };
+  window.jvMute = function () { if (typeof SONIDO !== 'undefined') { SONIDO.setMute(!SONIDO.isMuted()); if (!SONIDO.isMuted()) snd('button'); renderJuego(); } };
   window.jvMD = function (n) { if (G) { JUEGO.manualDanioRival(G, 'A', n); renderJuego(); } };
   window.jvMC = function (n) { if (G) { JUEGO.manualCurar(G, 'A', n); renderJuego(); } };
   window.jvMR = function () { if (G) { JUEGO.manualRobar(G, 'A', 1); renderJuego(); } };
