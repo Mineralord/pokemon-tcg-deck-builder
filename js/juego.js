@@ -540,20 +540,37 @@
     return est;
   }
 
-  // Auto-intérprete: aplica los efectos de texto más comunes (condiciones, curar, robar).
-  function efectoAuto(est, lado, ataque) {
+  // Auto-intérprete: aplica los efectos de texto más comunes de forma determinista.
+  // coinFn opcional (para tests); por defecto usa la moneda serializable del estado.
+  function efectoAuto(est, lado, ataque, coinFn) {
     const op = lado === 'A' ? 'B' : 'A';
-    const t = (ataque.texto || '').toLowerCase();
-    const out = [];
-    if (/now asleep|is asleep/.test(t)) { aplicarCondicion(est, op, 'asleep'); out.push('asleep'); }
-    if (/now paralyzed|is paralyzed/.test(t)) { aplicarCondicion(est, op, 'paralyzed'); out.push('paralyzed'); }
-    if (/now poisoned|is poisoned/.test(t)) { aplicarCondicion(est, op, 'poisoned'); out.push('poisoned'); }
-    if (/now burned|is burned/.test(t)) { aplicarCondicion(est, op, 'burned'); out.push('burned'); }
-    if (/now confused|is confused/.test(t)) { aplicarCondicion(est, op, 'confused'); out.push('confused'); }
-    const mh = /heal (\d+) damage from this/i.exec(ataque.texto || '');
-    if (mh) { const a = est.lados[lado].activo; if (a) { a.danio = Math.max(0, (a.danio || 0) - parseInt(mh[1], 10)); out.push('heal'); } }
-    const md = /draw (\d+) cards?/i.exec(ataque.texto || '');
-    if (md) { const L = est.lados[lado]; for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift()); out.push('draw'); }
+    const me = est.lados[lado], rival = est.lados[op];
+    const at = me.activo, def = rival.activo;
+    const texto = ataque.texto || ''; const t = texto.toLowerCase();
+    const coin = coinFn || function () { return _flip(est); };
+    const out = []; let m;
+    const addDef = function (n) { if (def && n > 0) { def.danio = (def.danio || 0) + n; } };
+
+    // Condiciones incondicionales al Activo rival (salvo si dependen de moneda, que se trata aparte).
+    const coinCond = /flip a coin\. if heads,[^.]*is now /i.test(texto);
+    [['asleep', /now asleep|is asleep/], ['paralyzed', /now paralyzed|is paralyzed/],
+     ['poisoned', /now poisoned|is poisoned/], ['burned', /now burned|is burned/], ['confused', /now confused|is confused/]
+    ].forEach(function (p) { if (p[1].test(t) && !coinCond) { if (def) { aplicarCondicion(est, op, p[0]); out.push(p[0]); } } });
+
+    if ((m = /flip a coin\. if heads, this attack does (\d+) more damage/i.exec(texto))) { if (coin()) { addDef(parseInt(m[1], 10)); out.push('coin+dmg'); } }
+    if ((m = /flip a coin\. if heads,[^.]*is now (asleep|paralyzed|poisoned|burned|confused)/i.exec(texto))) { if (coin() && def) { aplicarCondicion(est, op, m[1].toLowerCase()); out.push('coin-cond'); } }
+    if (/flip a coin\. if heads, discard an energy from your opponent's active/i.test(texto)) { if (coin() && def && def.energias.length) { rival.descarte.push(def.energias.pop()); out.push('coin-disc'); } }
+    if ((m = /flip a coin until you get tails\. this attack does (\d+) damage for each heads/i.exec(texto))) { let h = 0; while (coin()) h++; addDef(h * parseInt(m[1], 10)); out.push('streak'); }
+    if ((m = /flip (\d+) coins?\. this attack does (\d+) damage for each heads/i.exec(texto))) { let h = 0, n = parseInt(m[1], 10); for (let k = 0; k < n; k++) if (coin()) h++; addDef(h * parseInt(m[2], 10)); out.push('coins'); }
+    if ((m = /does (\d+) more damage for each damage counter on this/i.exec(texto))) { if (at) addDef(parseInt(m[1], 10) * Math.floor((at.danio || 0) / 10)); out.push('perCounter'); }
+    if ((m = /does (\d+) more damage for each of your opponent's benched/i.exec(texto))) { addDef(parseInt(m[1], 10) * rival.banca.length); out.push('perBench'); }
+    if ((m = /does (\d+) more damage for each energy attached to your opponent's active/i.exec(texto))) { if (def) addDef(parseInt(m[1], 10) * (def.energias || []).length); out.push('perEnergy'); }
+    if ((m = /also does (\d+) damage to itself/i.exec(texto))) { if (at) { at.danio = (at.danio || 0) + parseInt(m[1], 10); out.push('recoil'); } }
+    if ((m = /discard (a|an|\d+) energy from this pokémon/i.exec(texto))) { const n = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : 1; for (let k = 0; k < n && at && at.energias.length; k++) me.descarte.push(at.energias.pop()); out.push('selfDiscard'); }
+    if ((m = /heal (\d+) damage from this/i.exec(texto))) { if (at) { at.danio = Math.max(0, (at.danio || 0) - parseInt(m[1], 10)); out.push('heal'); } }
+    if (/recovers from all special conditions/i.test(texto) && at) { at.condiciones = []; out.push('clearcond'); }
+    if ((m = /draw (\d+) cards?/i.exec(texto))) { for (let k = 0; k < parseInt(m[1], 10) && me.mazo.length; k++) me.mano.push(me.mazo.shift()); out.push('draw'); }
+    else if (/draw a card/i.test(texto)) { if (me.mazo.length) me.mano.push(me.mazo.shift()); out.push('draw'); }
     return out;
   }
 

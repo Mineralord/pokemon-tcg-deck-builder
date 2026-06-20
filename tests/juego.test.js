@@ -357,5 +357,35 @@ let t3 = escena(); t3.lados.A.mano = [inst(stad, 's1')];
 J.jugarEntrenador(t3, 'A', 's1');
 eq(t3.lados.A.estadio && t3.lados.A.estadio.id, 'tr-s', 'Estadio queda en juego');
 
+// ---------- Fase 8d: auto-intérprete ampliado ----------
+console.log('auto-intérprete ampliado: monedas, daño variable, retroceso, descarte');
+function escd() { const e = escena(); e.lados.B.activo = inst(Object.assign({}, pikachu, { ps: '500' }), 'dd'); e.lados.B.banca = [inst(pikachu, 'b1'), inst(pikachu, 'b2')]; return e; }
+const alwaysH = function () { return true; };
+const seq = function (arr) { let i = 0; return function () { return arr[i++]; }; };
+
+let d1 = escd(); J.efectoAuto(d1, 'A', { texto: 'Flip a coin. If heads, this attack does 20 more damage.' }, alwaysH);
+eq(d1.lados.B.activo.danio, 20, 'moneda cara: +20 daño');
+
+let d2 = escd(); J.efectoAuto(d2, 'A', { texto: 'Flip a coin until you get tails. This attack does 30 damage for each heads.' }, seq([true, true, false]));
+eq(d2.lados.B.activo.danio, 60, 'racha 2 caras x30 = 60');
+
+let d3 = escd(); J.efectoAuto(d3, 'A', { texto: "This attack does 30 more damage for each of your opponent's Benched Pokémon." });
+eq(d3.lados.B.activo.danio, 60, '30 x 2 en banca = 60');
+
+let d4 = escd(); d4.lados.A.activo.danio = 30;
+J.efectoAuto(d4, 'A', { texto: 'This attack does 30 more damage for each damage counter on this Pokémon.' });
+eq(d4.lados.B.activo.danio, 90, '30 x 3 contadores = 90');
+
+let d5 = escd(); J.efectoAuto(d5, 'A', { texto: 'This Pokémon also does 30 damage to itself.' });
+eq(d5.lados.A.activo.danio, 30, 'retroceso 30 a sí mismo');
+
+let d6 = escd(); d6.lados.A.activo.energias = [inst(lightningEnergy, 'x1'), inst(lightningEnergy, 'x2')];
+J.efectoAuto(d6, 'A', { texto: 'Discard an Energy from this Pokémon.' });
+eq(d6.lados.A.activo.energias.length, 1, 'descarta 1 energía propia');
+eq(d6.lados.A.descarte.length, 1, 'energía al descarte');
+
+let d7 = escd(); J.efectoAuto(d7, 'A', { texto: 'Flip a coin. If heads, your opponent\'s Active Pokémon is now Paralyzed.' }, alwaysH);
+eq(d7.lados.B.activo.condiciones.indexOf('paralyzed') >= 0, true, 'moneda cara: paraliza (sin doble aplicación)');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
