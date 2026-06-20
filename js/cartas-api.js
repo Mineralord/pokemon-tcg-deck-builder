@@ -89,10 +89,10 @@ function tcgdexToView(c){
   };
 }
 async function tcgdexBuscar(f, page, lang){
-  page = page || 1; lang = lang || 'en';
+  page = page || 1; lang = lang || 'es';
   const params = new URLSearchParams();
   if (f.name && f.name.trim()) params.set('name', f.name.trim());
-  if (f.type){ params.set('types', (lang === 'es' && TCGDEX_TIPO_ES[f.type]) ? TCGDEX_TIPO_ES[f.type] : f.type); }
+  if (f.type){ params.set('types', TCGDEX_TIPO_ES[f.type] || f.type); }
   if (f.setId) params.set('set', f.setId);
   params.set('pagination:page', String(page));
   params.set('pagination:itemsPerPage', String(PAGE_SIZE));
@@ -299,7 +299,6 @@ async function tcgdexEsLive(id){
 // en re-renders posteriores; junto con el guard de "cambios" evita el bucle infinito de render.
 const _esTried = new Set();
 function localizarVistasEs(views, onReady){
-  if (typeof lang !== 'undefined' && lang !== 'es') return;
   const faltan = (views || []).filter(v => v && v.id && !v.es && !_esTried.has(v.id));
   if (!faltan.length) return;
   let i = 0, activos = 0, hechos = 0, disparado = false, cambios = 0;

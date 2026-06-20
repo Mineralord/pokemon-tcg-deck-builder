@@ -464,7 +464,7 @@ function _generarMazos(modo, filtros){
   }
   if(!variantes.length){ showToast(T('gen_none'), 'error'); renderDecks([], sel); return; }
 
-  const esLang = (lang === 'es');
+  const esLang = true; // español, base universal
   const decks = variantes.map((d, i) => {
     const arq = d.arq, core = d.core;
     const rank = i + 1;

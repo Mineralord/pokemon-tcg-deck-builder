@@ -50,16 +50,8 @@ function proxVaciar(){ proxImgs = []; renderProxies(); }
 
 // ---- Buscar cualquier carta (en vivo) y añadirla ----
 let proxFiltros = { name: '', type: '', setId: '', orderBy: 'name' };
-let proxLang = 'es';   // idioma de las imágenes a imprimir: 'es' (TCGdex) | 'en' (pokemontcg)
+const proxLang = 'es';   // español, base universal (imágenes de TCGdex)
 let proxPage = 1, proxResultados = {}, proxReq = 0, _proxTimer = null;
-
-function proxSetLang(l){
-  proxLang = l;
-  document.querySelectorAll('#prox-lang button').forEach(b => b.classList.toggle('active', b.getAttribute('data-l') === l));
-  proxFiltros.setId = '';        // los ids de set difieren entre ES (TCGdex) y EN (pokemontcg)
-  if(typeof proxLlenarSets === 'function') proxLlenarSets();
-  proxBuscar(true);
-}
 
 function proxOnSearchInput(val){
   proxFiltros.name = val;
@@ -78,7 +70,7 @@ function proxLlenarFiltros(){
   }
   proxLlenarSets();
 }
-// El set depende del idioma: ES usa los sets de TCGdex (ids que coinciden con su búsqueda); EN usa los de pokemontcg
+// Sets en español (TCGdex), base universal.
 function proxLlenarSets(){
   const sSel = document.getElementById('prox-f-set'); if(!sSel) return;
   const opt = s => `<option value="${esc(s.id)}">${esc(s.name + (s.serie ? (' · ' + s.serie) : (s.series ? (' · ' + s.series) : '')))}</option>`;
@@ -86,14 +78,8 @@ function proxLlenarSets(){
     sSel.innerHTML = `<option value="">${esc(T('f_set'))}</option>` + (sets || []).map(opt).join('');
     sSel.value = proxFiltros.setId || '';
   };
-  if(proxLang === 'es'){
-    pintar([]);
-    if(typeof cargarSetsSerieTcgdex === 'function') cargarSetsSerieTcgdex('es').then(pintar).catch(() => {});
-  } else {
-    const sets = (typeof _setsList !== 'undefined' && _setsList) ? _setsList : [];
-    pintar(sets);
-    if(!sets.length && typeof cargarSets === 'function'){ cargarSets().then(() => proxLlenarSets()).catch(() => {}); }
-  }
+  pintar([]);
+  if(typeof cargarSetsSerieTcgdex === 'function') cargarSetsSerieTcgdex('es').then(pintar).catch(() => {});
 }
 async function proxBuscar(reset){
   if(typeof apiBuscar !== 'function') return;
@@ -108,7 +94,7 @@ async function proxBuscar(reset){
   const myReq = ++proxReq;
   if(status) status.textContent = T('px_searching');
   try{
-    const r = (proxLang === 'es' && typeof tcgdexBuscar === 'function')
+    const r = (typeof tcgdexBuscar === 'function')
       ? await tcgdexBuscar(proxFiltros, proxPage, 'es')
       : await apiBuscar(proxFiltros, proxPage);
     if(myReq !== proxReq) return;

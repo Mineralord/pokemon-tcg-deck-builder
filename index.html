@@ -63,7 +63,6 @@
     <span id="mp-badge" class="mp-badge" style="display:none" title="Versus"></span>
     <span id="sync-status" class="stat-pill sync-status" style="display:none"></span>
     <button id="sync-btn" class="stat-pill" style="cursor:pointer;border:none;font:inherit;color:inherit">Sincronizar</button>
-    <button id="lang-toggle" class="stat-pill" data-i18n-aria="aria_lang" style="cursor:pointer;border:none;font:inherit;color:inherit" onclick="toggleLang()">EN</button>
   </div>
 </header>
 
@@ -305,10 +304,6 @@
     </div>
     <div class="prox-search-bar">
       <input type="search" id="prox-search" data-i18n-ph="px_search_ph" data-i18n-aria="px_search_ph" aria-label="Buscar cualquier carta del juego" placeholder="Buscar cualquier carta del juego…" autocomplete="off" autocapitalize="off" oninput="proxOnSearchInput(this.value)">
-      <div class="prox-lang" id="prox-lang" role="group" aria-label="Idioma de las cartas" title="Idioma de las cartas">
-        <button type="button" data-l="es" class="active" aria-label="Español" onclick="proxSetLang('es')">ES</button>
-        <button type="button" data-l="en" aria-label="English" onclick="proxSetLang('en')">EN</button>
-      </div>
       <select id="prox-f-type" data-i18n-aria="f_type" aria-label="Tipo" onchange="proxSetFiltro('type',this.value)"></select>
       <select id="prox-f-set" data-i18n-aria="f_set" aria-label="Set" onchange="proxSetFiltro('setId',this.value)"></select>
       <span id="prox-search-status" class="prox-search-status"></span>

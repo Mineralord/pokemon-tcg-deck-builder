@@ -86,7 +86,7 @@ function showCardDetail(name){
 function renderCardDetail(d){
   regCard(d);
   currentDetailId = d.id || null;
-  const useEs = (lang === 'es' && d.es);
+  const useEs = !!d.es;
   const es = d.es || {};
   const habEs = es.habilidades || [];
   const atkEs = es.ataques || [];
@@ -152,7 +152,7 @@ function renderCardDetail(d){
   document.getElementById('modal-overlay').classList.add('open');
 
   // Español en vivo (TCGdex) si falta y estamos en modo ES
-  if(lang === 'es' && !d.es && d.id && typeof tcgdexEsLive === 'function'){
+  if(!d.es && d.id && typeof tcgdexEsLive === 'function'){
     tcgdexEsLive(d.id).then(es => {
       if(es){ d.es = es; if(currentDetailId === d.id) renderCardDetail(d); }
     });
@@ -413,7 +413,7 @@ let _setsList = [];
 // --- Localización de nombres de expansión en el desplegable (ES/EN) ---
 let _setNameEs = null, _serieEsByEn = null, _locLoading = false;
 function setLabel(s){
-  if(lang === 'es' && _setNameEs){
+  if(_setNameEs){
     const tid = (typeof tcgdexSetIdFor === 'function') ? tcgdexSetIdFor(s.id) : s.id;
     const nombre = _setNameEs[tid] || s.name;
     const serie = (_serieEsByEn && _serieEsByEn[s.series]) || s.series;
@@ -812,35 +812,7 @@ function generateAIPrompt() {
   };
 
   let prompt;
-  if (lang === 'en') {
-    if (illegals.length) {
-      illegalText = '\nCARDS ALREADY DETECTED AS ILLEGAL (do not use them, they lack a pre-evolution):\n';
-      illegals.forEach(c => { illegalText += `  ${c.name} — missing: ${missingOf(c).join(', ')}\n`; });
-    }
-    prompt = `Act as an expert Pokémon TCG deck builder.
-
-This is my COMPLETE and CLOSED inventory. Treat it as the absolute totality of cards I own. If a card is not listed here, I do NOT have it and you cannot use it. Do not invent cards, quantities, abilities or attacks.
-${invText}${illegalText}
-MANDATORY RULES:
-1. Only use cards listed above, respecting the exact quantities (max 4 copies per card in a deck, except basic energy).
-2. If an evolution requires pre-evolutions I don't have, it is ILLEGAL and cannot appear in the deck.
-3. Verify each Pokémon's real type (e.g. Jynx ex from set 151 is Water type, not Psychic).
-4. Verify that attacks can be paid with the deck's energy.
-5. Colorless Pokémon or others whose attacks are paid with colorless energy may be included if they add consistency or damage; explain why you include them.
-
-REQUEST:
-Build ${numVariants} ${dt}-type deck variants, ordered from strongest to weakest.
-Preferred distribution: ~20 Pokémon, ~20 Trainers, ~20 Energy (exactly 60 cards).
-
-For each variant show:
-- Full list of 60 cards (no tables, format "quantity name")
-- Number of Pokémon, Trainers and Energy
-- Main strategy, strengths, weaknesses
-- Difficulty of use (1-10)
-- A "Considered off-type Pokémon" section
-
-Before showing each deck, validate: all cards exist in the inventory, no quantity exceeds what's available, all evolutions are legal, the deck has exactly 60 cards.`;
-  } else {
+  {
     if (illegals.length) {
       illegalText = '\nCARTAS YA DETECTADAS COMO ILEGALES (no las uses, les falta preevolución):\n';
       illegals.forEach(c => { illegalText += `  ${c.name} — falta: ${missingOf(c).join(', ')}\n`; });
@@ -1155,7 +1127,7 @@ function pintarFiltros(){
     const cont = document.getElementById(id);
     if(cont) cont.innerHTML = `<button class="f-toggle" aria-label="${esc(T('f_toggle'))}" onclick="toggleFiltros('${sc}')">🎛️ ${esc(T('f_toggle'))}</button>` + buildFilterBar(sc);
   });
-  if(lang === 'es') cargarLocalizacionSets();   // traduce los nombres de expansión al español
+  cargarLocalizacionSets();   // traduce los nombres de expansión al español
 }
 function toggleFiltros(scope){
   const cont = document.getElementById('filtros-' + scope);

@@ -1,5 +1,7 @@
 // ===================== IDIOMA / LANGUAGE (i18n) =====================
-let lang = localStorage.getItem('ptcg_lang') || 'es';
+// Idioma único: español, base universal. (Inglés eliminado por completo.)
+const lang = 'es';
+try { localStorage.removeItem('ptcg_lang'); } catch (e) {}
 
 const I18N = {
   es: {
@@ -38,7 +40,6 @@ const I18N = {
     no_data:'No hay datos de', no_data2:'Ejecuta descargar-cartas.py para incluirla.',
     prompt_steps1:'El prompt ya se copió a tu portapapeles ✅', prompt_steps2:'Abre una conversación con Claude y <strong>pégalo</strong> (Ctrl/Cmd + V)', prompt_steps3:'Claude te dará los mazos listos para copiar',
     prompt_header:'Prompt generado — tipo', prompt_variants_word:'variantes',
-    lang_btn:'EN',
     nav_col:'Colección', nav_exp:'Explorar cartas', nav_build:'Construir mazo', nav_legal:'Legalidad', nav_saved:'Mazos', nav_proxies:'Proxies',
     px_upload:'Subir imágenes', px_from_col:'Añadir desde mi colección', px_size:'Hoja', px_cut:'Líneas de corte', px_gen:'Generar PDF',
     px_drop:'Arrastra aquí tus imágenes (o usa "Subir imágenes")', px_note:'Imprime al 100% / tamaño real (NO "ajustar a página"). Cada carta 6,3 × 8,8 cm · 9 por hoja. Total: ',
@@ -47,7 +48,7 @@ const I18N = {
     btn_export:'Exportar', btn_import_file:'Importar archivo',
     f_search:'Buscar por nombre…', f_any:'(cualquiera)', f_type:'Tipo', f_supertype:'Categoría', f_rarity:'Rareza', f_set:'Set / Expansión',
     f_subtype:'Subtipo', f_hp_min:'PS mín', f_hp_max:'PS máx', f_pokedex:'Nº Pokédex', f_order:'Ordenar', f_reset:'Limpiar', f_regmark:'Marca', f_toggle:'Filtros',
-    aria_lang:'Cambiar idioma', aria_close:'Cerrar',
+    aria_close:'Cerrar',
     sync_in:'Sincronizar', sync_out:'Salir', sync_ok:'Sincronización activada', sync_err:'No se pudo iniciar sesión', sync_login:'Entrar con Google',
     sync_keep:'Tienes {n} cartas en este dispositivo. ¿Conservarlas en tu cuenta?\n\nAceptar = conservarlas · Cancelar = empezar con colección vacía',
     login_title:'Pokémon TCG Deck Builder', login_sub:'Inicia sesión para acceder a tu colección.', login_checking:'Comprobando sesión…', login_btn:'Entrar con Google', login_denied:'Esa cuenta no tiene acceso.',
@@ -144,200 +145,52 @@ const I18N = {
     vs_none_compliant:'Ninguno de tus mazos cumple las reglas pactadas.',
     vs_deck_nocumple:'Ojo: este mazo no cumple las reglas pactadas.', vs_notif_enable:'Activar avisos',
   },
-  en: {
-    app_sub:'Pokémon Card Manager', stat_inv:'Inventory', stat_cards:'cards', stat_decks:'Saved decks', stat_decks_short:'saved',
-    inventory:'Inventory', search_ph:'Search card...', f_name:'Card name', f_name_ph:'E.g. Rapidash',
-    f_qty:'Quantity', f_type:'Type', btn_add:'+ Add', btn_quick_load:'⚡ Load my confirmed inventory',
-    btn_import_toggle:'Import card list', import_do:'Import', import_ph:'Paste your table or card list here...',
-    import_hint:'Paste your list in <strong>any</strong> of these formats:<br>• <strong>Table:</strong> <code>106&nbsp;&nbsp;H&nbsp;&nbsp;Pikachu ex&nbsp;&nbsp;Lightning&nbsp;&nbsp;1×</code><br>• <strong>Comma:</strong> <code>Rapidash, Pokemon-Fire, 7</code><br>• <strong>Colon:</strong> <code>Rapidash: 7</code>',
-    empty_inv:'Add cards manually<br>or import a list to begin',
-    tab_build:'⚔️ Build Deck', tab_legal:'✅ Check Legality', tab_saved:'💾 Saved Decks',
-    controls_title:'Generate AI prompt', c_deck_type:'Deck type', c_variants:'Variants', btn_build:'📋 Generate AI prompt',
-    loading:'Analyzing inventory', build_empty_title:'Generate your prompt',
-    build_empty_desc:'Choose the deck type and press "Generate AI prompt". A ready-to-paste text will be copied for a conversation with Claude.',
-    legal_empty_title:'Empty inventory', legal_empty_desc:'Add cards to see the evolution-line legality analysis.',
-    saved_empty_title:'No saved decks', saved_empty_desc:'Build decks with the AI and save them here to review later.',
-    t_pk_fire:'Pokémon — Fire', t_pk_water:'Pokémon — Water', t_pk_lightning:'Pokémon — Lightning', t_pk_grass:'Pokémon — Grass',
-    t_pk_psychic:'Pokémon — Psychic', t_pk_dark:'Pokémon — Darkness', t_pk_colorless:'Pokémon — Colorless', t_pk_fighting:'Pokémon — Fighting',
-    t_pk_metal:'Pokémon — Metal', t_trainer:'Trainer', t_en_fire:'Energy — Fire', t_en_water:'Energy — Water',
-    t_en_lightning:'Energy — Lightning', t_en_grass:'Energy — Grass', t_en_psychic:'Energy — Psychic', t_en_dark:'Energy — Darkness', t_en_colorless:'Energy — Colorless',
-    d_fire:'🔥 Fire', d_water:'💧 Water', d_lightning:'⚡ Lightning', d_grass:'🌿 Grass', d_psychic:'🔮 Psychic', d_dark:'🌑 Darkness', d_fighting:'👊 Fighting', d_colorless:'⭐ Colorless', d_best:'🏆 The best possible',
-    v3:'3 variants', v4:'4 variants', v5:'5 variants', v6:'6 variants', v7:'7 variants', v8:'8 variants', v9:'9 variants', v10:'10 variants',
-    grp_pokemon:'Pokémon', grp_energy:'Energy', grp_trainer:'Trainers',
-    d_ps:'HP', d_ability:'Ability', d_weak:'Weakness', d_resist:'Resistance', d_retreat:'Retreat', d_evolves:'Evolves from', d_type:'Type', d_no:'No.', d_illus:'Illus.',
-    legal_legals:'Legal Pokémon', legal_illegals:'Illegal Pokémon', legal_reason_ok:'Complete evolution line', legal_missing:'Missing:',
-    no_results:'No results for', empty_default:'Add cards manually<br>or import a list',
-    sec_pokemon:'Pokémon', sec_trainers:'Trainers', sec_energies:'Energy', m_total:'Total',
-    s_analysis:'Analysis', s_strategy:'Strategy', s_advantages:'Strengths', s_weaknesses:'Weaknesses', s_difficulty:'Difficulty', s_offtype:'Off-type Pokémon',
-    btn_copy:'📋 Copy', btn_save:'💾 Save', btn_view:'View', btn_delete:'Delete', btn_recopy:'📋 Copy again',
-    no_decks_title:'No results', no_decks_desc:'The AI could not build decks with the current inventory.',
-    saved_type:'Type', deck_total_word:'cards',
-    to_need_name:'Enter the card name', to_updated:'Updated', to_added:'Added', to_loaded:'Inventory loaded',
-    to_unique:'unique', to_imported:'cards imported', to_lines_skipped:'lines skipped', to_need_inv:'Load your inventory first',
-    to_prompt_copied:'Prompt copied — paste it into a conversation with Claude', to_prompt_manual:'Generate the prompt and copy it manually below',
-    to_prompt_recopied:'Prompt copied again', to_deck_copied:'Deck copied to clipboard', to_saved:'saved', to_deck_deleted:'Deck deleted',
-    load_confirm:'This will replace your current inventory with your confirmed inventory (Pikachu Deck + Darkrai Deck + 151 cards). Continue?',
-    no_data:'No data for', no_data2:'Run descargar-cartas.py to include it.',
-    prompt_steps1:'The prompt is already copied to your clipboard ✅', prompt_steps2:'Open a conversation with Claude and <strong>paste it</strong> (Ctrl/Cmd + V)', prompt_steps3:'Claude will give you ready-to-copy decks',
-    prompt_header:'Prompt generated — type', prompt_variants_word:'variants',
-    lang_btn:'ES',
-    nav_col:'Collection', nav_exp:'Browse cards', nav_build:'Build deck', nav_legal:'Legality', nav_saved:'Decks', nav_proxies:'Proxies',
-    px_upload:'Upload images', px_from_col:'Add from my collection', px_size:'Sheet', px_cut:'Cut lines', px_gen:'Generate PDF',
-    px_drop:'Drag your images here (or use "Upload images")', px_note:'Print at 100% / actual size (NOT "fit to page"). Each card 6.3 × 8.8 cm · 9 per sheet. Total: ',
-    px_empty_grid:'No images added yet.', px_empty:'Add images first.', px_no_col:'Your collection is empty.', px_added:'added', px_generating:'Generating PDF…', px_done:'PDF generated', px_failed:'failed', px_lib_err:'Could not load the PDF generator (offline?).',
-    px_search_ph:'Search any card in the game…', px_searching:'Searching…', px_no_results:'No results.', px_add:'Add to PDF', px_more:'Load more', px_search_results:'results', px_none:'Could not add any image to the PDF.',
-    btn_export:'Export', btn_import_file:'Import file',
-    f_search:'Search by name…', f_any:'(any)', f_type:'Type', f_supertype:'Category', f_rarity:'Rarity', f_set:'Set / Expansion',
-    f_subtype:'Subtype', f_hp_min:'HP min', f_hp_max:'HP max', f_pokedex:'Pokédex No.', f_order:'Sort', f_reset:'Clear', f_regmark:'Reg. mark', f_toggle:'Filters',
-    aria_lang:'Toggle language', aria_close:'Close',
-    sync_in:'Sync', sync_out:'Sign out', sync_ok:'Sync enabled', sync_err:'Could not sign in', sync_login:'Sign in with Google',
-    sync_keep:'You have {n} cards on this device. Keep them in your account?\n\nOK = keep them · Cancel = start with an empty collection',
-    login_title:'Pokémon TCG Deck Builder', login_sub:'Sign in to access your collection.', login_checking:'Checking session…', login_btn:'Sign in with Google', login_denied:'That account does not have access.',
-    sync_saving:'Saving…', sync_saved:'Saved', sync_offline:'Offline',
-    btn_clear:'Clear collection', cf_clear:'Clear your ENTIRE collection? This cannot be undone.', cf_clear2:'Final confirmation: {n} cards will be deleted and this CANNOT be undone. Are you sure?', to_cleared:'Collection cleared',
-    ord_name:'Name (A-Z)', ord_name_desc:'Name (Z-A)', ord_hp:'HP ↑', ord_hp_desc:'HP ↓', ord_number:'Card No.', ord_recent:'Newest',
-    col_empty:'Your collection is empty or no card matches the filters.',
-    exp_empty:'No results. Try other filters.', exp_loading:'Searching…', exp_results:'results', exp_error:'Query error (offline?).',
-    exp_more:'Load more', exp_hint:'Search and filter ALL cards in the game. Tap a card to see its printing and add it.',
-    exp_cache:'cache', exp_backup:'TCGdex backup',
-    cd_owned:'In your collection', cd_add:'Add to my collection', cd_remove1:'Remove 1',
-    to_import_ok:'Collection imported', to_import_err:'Invalid file', to_removed:'Removed from collection',
-    rep_btn:'🔄 Replace', rep_use:'Use as replacement', rep_choosing:'Replacing', rep_cancel:'✕ Cancel replacement',
-    rep_confirm:'Replace this card with the new one?', rep_keepqty:'Quantity kept', rep_done:'Card replaced',
-    rep_same:'Same card', rep_hint:'Pick below the exact card you want instead.',
-    cf_remove:'Remove from collection', cf_import:'This will replace your ENTIRE current collection. Continue?',
-    tile_replace:'Replace this card', tile_delete:'Remove from collection',
-    btn_generate:'Generate decks', btn_prompt:'AI prompt', gen_none:'No attackers of that type in your collection.',
-    gen_filter_none:'No card matches the selected filters.',
-    // Inventory mode modal
-    gm_title:'How should inventories be handled?', gm_indep_t:'Independent inventories',
-    gm_indep_d:'Each deck may use any available card; cards can repeat across decks.',
-    gm_shared_t:'Shared inventory', gm_shared_d:'A single physical collection: a card used by one deck cannot be reused in another deck of this run.',
-    gm_cancel:'Cancel',
-    // Generator filters
-    c_filters:'Deck filters', c_set:'Expansion', c_serie:'Series', c_marca:'Reg. mark', c_format:'Format',
-    c_mech:'Allowed mechanics', c_speclimit:'Max special Pokémon', c_depth:'Evolution depth',
-    c_singleprize:'Single-prize only (no ex/V/GX)', c_hpmin:'Min HP', c_exclude:'Exclude cards',
-    opt_nolimit:'No limit', fmt_std:'Standard', fmt_exp:'Expanded', fmt_unl:'Unlimited',
-    depth_any:'Any', depth_basic:'Basics only', depth_s1:'Up to Stage 1', depth_s2:'Up to Stage 2',
-    ph_exclude:'E.g. Charizard ex, Pikachu', ph_hpmin:'0',
-    // Comparison table
-    cmp_title:'Deck comparison', cmp_feature:'Feature', cmp_deck:'Deck',
-    cmp_consistency:'Consistency', cmp_speed:'Speed', cmp_damage:'Damage', cmp_ease:'Ease',
-    cmp_learn:'Ideal to learn', cmp_potential:'Potential with collection',
-    // Versus / Room
-    nav_versus:'Versus',
-    vs_mode_fisico:'Physical cards', vs_mode_virtual:'Virtual game',
-    jv_wip_title:'Virtual game under construction',
-    jv_wip_body:'The board, animations and rules engine will arrive in phases. The physical-cards mode is still available right here.',
-    jv_preview:'Preview', jv_exit:'Exit', jv_your_turn:'Your turn', jv_their_turn:"Opponent's turn",
-    jv_z_prizes:'Prizes', jv_z_deck:'Deck', jv_z_discard:'Discard', jv_z_stadium:'Stadium', jv_z_lost:'Lost Zone',
-    jv_rival:'Opponent', jv_start_title:'Virtual game',
-    jv_your_deck:'Your deck', jv_rival_deck:'Opponent deck (practice)',
-    jv_no_decks:'First create or save a deck in "Build deck" or "Decks".',
-    jv_start_note:'Local practice: you place your Pokémon; the opponent sets up automatically. Turns arrive in the next phase.',
-    jv_start_btn:'Deal and start',
-    jv_setup_active:'Tap a Basic Pokémon in your hand to set it as Active',
-    jv_setup_bench:'Add Basics to your Bench (optional) and press Confirm',
-    jv_auto:'Auto', jv_confirm:'Confirm',
-    jv_turn:'Turn', jv_end_turn:'End turn', jv_rival_thinking:'Opponent playing…',
-    jv_actions_soon:'Tap a hand card to play it, your Active to retreat, and use the attacks below.',
-    jv_pick_energy_t:'Choose who to attach the energy to', jv_pick_evo_t:'Choose the Pokémon to evolve',
-    jv_pick_retreat_t:'Choose the benched Pokémon to make Active', jv_cancel:'Cancel',
-    jv_attack:'Attack', jv_by_prizes:'by taking all prize cards', jv_by_nopokemon:'opponent has no Pokémon left',
-    jv_manual:'Manual actions (effects)', jv_m_dmg:'Dmg opp.', jv_m_heal:'Heal', jv_m_draw:'Draw 1',
-    jv_abilities:'Abilities', jv_use:'Use', jv_sound:'Sound',
-    jv_ai_diff:'AI difficulty', jv_easy:'Easy', jv_med:'Medium', jv_hard:'Hard',
-    jv_ai_mode:'AI behavior', jv_rules_b:'Follows rules', jv_random_b:'Random',
-    jv_or:'or', jv_online:'Play online (2 players)',
-    jv_online_note:'Online: both players must have Versus open. You play with the deck above.',
-    jv_waiting_online:'Waiting for the other player… (they must pick a deck and tap "Play online").',
-    jv_login_first:'Sign in and open Versus first',
-    jv_pase:'Pass and play (same device)', jv_pass_device:'Pass the device', jv_pass_to:'Now playing:',
-    jv_im_ready:"I'm ready", jv_p1:'Player 1', jv_p2:'Player 2', jv_player:'Player',
-    jv_concede:'Concede', jv_concede_q:'Are you sure you want to concede?', jv_by_concede:'by concede',
-    jv_undo:'Undo', jv_resume:'Resume game', jv_close:'Close',
-    jv_hint_play:'Tap hand cards to play them, your Active to retreat, and below to attack.',
-    jv_win:'You win!', jv_lose:'You lose', jv_by_deckout:'by emptying the opponent deck', jv_new_game:'New game',
-    vs_player:'Player', vs_you:'you', vs_owner:'Host', vs_guest:'Guest',
-    vs_online:'online', vs_offline:'offline',
-    vs_st_idle:'Idle', vs_st_building:'Building', vs_st_ready:'Ready',
-    vs_rules:'Match rules', vs_bestof:'Best of', vs_use_rules:'Use these rules to generate',
-    vs_my_deck:'My deck for the match', vs_ready:"I'm ready", vs_unready:'Not ready',
-    vs_ready_note:'Only the stats (stars) are shared, never your cards or deck type.',
-    vs_pick_deck:'Pick a saved deck first', vs_no_decks:'You have no saved decks',
-    vs_deck_of:'Deck of', vs_waiting:'Waiting for the other player to be ready…',
-    vs_stats_title:'Strength comparison (cards stay hidden)', vs_waiting_player:'Waiting for player…',
-    vs_score:'Scoreboard', vs_flip:'Flip a coin', vs_reset:'Reset scoreboard', vs_starts:'Starts',
-    vs_timer:'Timer', vs_need_two:'The other player is missing',
-    vs_chat:'Chat', vs_chat_ph:'Type a message…', vs_send:'Send',
-    vs_connected:'connected', vs_is_ready:'is ready',
-    vs_guest_banner:'Guest mode — you view the collection read-only and build your deck.',
-    vs_owner_noshare:'The host has not shared their collection yet.',
-    ro_blocked:'Read-only: you cannot edit the host collection.',
-    vs_preview:'View my deck', vs_new_deck:'Generate new deck',
-    vs_ready_note2:'Your deck stays private: the other player only sees your stats and the shared cards to split.',
-    vs_prizes:'Prizes', vs_new_match:'New match', vs_you_win:'You won the match!',
-    vs_both_ready:'Ready!', vs_conflicts_title:'Shared cards to split',
-    vs_conflicts_note:'You both use these cards and there aren’t enough physical copies. Decide who uses them.',
-    vs_no_conflicts:'No clashes: you can build both decks at once.',
-    vs_have:'You have', vs_split:'Short',
-    vs_only_compliant:'Only rule-compliant decks', vs_compliant:'Meets the rules',
-    vs_none_compliant:'None of your decks meet the agreed rules.',
-    vs_deck_nocumple:'Heads up: this deck does not meet the agreed rules.', vs_notif_enable:'Enable alerts',
-  }
 };
-function T(k){ return (I18N[lang] && I18N[lang][k] != null) ? I18N[lang][k] : (I18N.es[k] != null ? I18N.es[k] : k); }
+function T(k){ return (I18N.es[k] != null) ? I18N.es[k] : k; }
 
-// --- Traducción de vocabulario fijo de las cartas (inglés -> ES/EN) ---
+// --- Traducción de vocabulario fijo de las cartas (inglés de origen -> español) ---
 const TYPE_WORD = {
-  Fire:{es:'Fuego',en:'Fire'}, Water:{es:'Agua',en:'Water'}, Lightning:{es:'Eléctrico',en:'Lightning'},
-  Grass:{es:'Planta',en:'Grass'}, Psychic:{es:'Psíquico',en:'Psychic'}, Darkness:{es:'Oscuro',en:'Darkness'},
-  Fighting:{es:'Lucha',en:'Fighting'}, Metal:{es:'Metal',en:'Metal'}, Fairy:{es:'Hada',en:'Fairy'},
-  Dragon:{es:'Dragón',en:'Dragon'}, Colorless:{es:'Incoloro',en:'Colorless'}
+  Fire:'Fuego', Water:'Agua', Lightning:'Eléctrico', Grass:'Planta', Psychic:'Psíquico',
+  Darkness:'Oscuro', Fighting:'Lucha', Metal:'Metal', Fairy:'Hada', Dragon:'Dragón', Colorless:'Incoloro'
 };
-function trType(t){ return (TYPE_WORD[t] && TYPE_WORD[t][lang]) || t; }
-const SUPER_WORD = { 'Pokémon':{es:'Pokémon',en:'Pokémon'}, 'Pokemon':{es:'Pokémon',en:'Pokémon'}, 'Trainer':{es:'Entrenador',en:'Trainer'}, 'Energy':{es:'Energía',en:'Energy'} };
-function trSuper(s){ return (SUPER_WORD[s] && SUPER_WORD[s][lang]) || s; }
+function trType(t){ return TYPE_WORD[t] || t; }
+const SUPER_WORD = { 'Pokémon':'Pokémon', 'Pokemon':'Pokémon', 'Trainer':'Entrenador', 'Energy':'Energía' };
+function trSuper(s){ return SUPER_WORD[s] || s; }
 const PHASE_WORD = {
-  'Basic':{es:'Básico',en:'Basic'}, 'Stage 1':{es:'Fase 1',en:'Stage 1'}, 'Stage 2':{es:'Fase 2',en:'Stage 2'},
-  'ex':{es:'ex',en:'ex'}, 'Supporter':{es:'Partidario',en:'Supporter'}, 'Item':{es:'Objeto',en:'Item'},
-  'Stadium':{es:'Estadio',en:'Stadium'}, 'Pokémon Tool':{es:'Herramienta Pokémon',en:'Pokémon Tool'},
-  'Basic Energy':{es:'Energía Básica',en:'Basic Energy'}, 'Special Energy':{es:'Energía Especial',en:'Special Energy'},
-  'Special':{es:'Especial',en:'Special'}, 'VSTAR':{es:'VSTAR',en:'VSTAR'}, 'V':{es:'V',en:'V'}
+  'Basic':'Básico', 'Stage 1':'Fase 1', 'Stage 2':'Fase 2', 'ex':'ex', 'Supporter':'Partidario',
+  'Item':'Objeto', 'Stadium':'Estadio', 'Pokémon Tool':'Herramienta Pokémon',
+  'Basic Energy':'Energía Básica', 'Special Energy':'Energía Especial', 'Special':'Especial', 'VSTAR':'VSTAR', 'V':'V'
 };
-function trPhase(fase){ if(!fase) return ''; return fase.split(',').map(s=>s.trim()).map(t=>(PHASE_WORD[t]&&PHASE_WORD[t][lang])||t).join(', '); }
+function trPhase(fase){ if(!fase) return ''; return fase.split(',').map(s=>s.trim()).map(t=>PHASE_WORD[t]||t).join(', '); }
 const RARITY_WORD = {
-  'Common':{es:'Común',en:'Common'}, 'Uncommon':{es:'Infrecuente',en:'Uncommon'}, 'Rare':{es:'Rara',en:'Rare'},
-  'Rare Holo':{es:'Rara Holo',en:'Rare Holo'}, 'Double Rare':{es:'Doble Rara',en:'Double Rare'},
-  'Ultra Rare':{es:'Ultra Rara',en:'Ultra Rare'}, 'Illustration Rare':{es:'Rara Ilustración',en:'Illustration Rare'},
-  'Special Illustration Rare':{es:'Rara Ilustración Especial',en:'Special Illustration Rare'},
-  'Hyper Rare':{es:'Híper Rara',en:'Hyper Rare'}, 'Promo':{es:'Promo',en:'Promo'}, 'ACE SPEC Rare':{es:'ACE SPEC Rara',en:'ACE SPEC Rare'}
+  'Common':'Común', 'Uncommon':'Infrecuente', 'Rare':'Rara', 'Rare Holo':'Rara Holo', 'Double Rare':'Doble Rara',
+  'Ultra Rare':'Ultra Rara', 'Illustration Rare':'Rara Ilustración', 'Special Illustration Rare':'Rara Ilustración Especial',
+  'Hyper Rare':'Híper Rara', 'Promo':'Promo', 'ACE SPEC Rare':'ACE SPEC Rara'
 };
-function trRarity(r){ return (RARITY_WORD[r] && RARITY_WORD[r][lang]) || r; }
+function trRarity(r){ return RARITY_WORD[r] || r; }
 const RULE_TEXT = {
   'Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.':
-    {es:'Regla de Pokémon ex: cuando tu Pokémon ex queda Fuera de Combate, tu rival roba 2 cartas de Premio.',
-     en:'Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards.'}
+    'Regla de Pokémon ex: cuando tu Pokémon ex queda Fuera de Combate, tu rival roba 2 cartas de Premio.'
 };
-function trRule(r){ return (RULE_TEXT[r] && RULE_TEXT[r][lang]) || r; }
+function trRule(r){ return RULE_TEXT[r] || r; }
 
-// --- Localización de carta (nombre / imagen / set) según idioma ---
+// --- Localización de carta (nombre / imagen / set): español, con respaldo al
+//     dato de origen (inglés) solo cuando TCGdex no tiene la versión española. ---
 function nombreLocal(v){
   if(!v) return '';
-  if(lang === 'es' && v.es && v.es.nombre) return v.es.nombre;
+  if(v.es && v.es.nombre) return v.es.nombre;
   return v.nombre || '';
 }
 function imagenLocal(v, grande){
   if(!v) return null;
-  if(lang === 'es' && v.es){
+  if(v.es){
     const im = grande ? v.es.imagenGrande : v.es.imagenChica;
     if(im) return im;
   }
   return grande ? (v.imagenGrande || v.imagenChica) : (v.imagenChica || v.imagenGrande);
 }
 function setNombreLocal(v){
-  if(lang === 'es' && v && v.es && v.es.setNombre) return v.es.setNombre;
+  if(v && v.es && v.es.setNombre) return v.es.setNombre;
   return (v && v.set && v.set.nombre) || '';
 }
 
@@ -354,11 +207,8 @@ function typeGroupLabel(type){
   const word = kind === 'Energy' ? T('grp_energy') : T('grp_pokemon');
   return `${emoji} ${word} ${trType(t)}`.trim();
 }
-const DECK_TYPE_WORD = {
-  'Fuego':'Fire','Agua':'Water','Eléctrico':'Lightning','Planta':'Grass','Psíquico':'Psychic',
-  'Oscuro':'Darkness','Lucha':'Fighting','Incoloro':'Colorless','el mejor posible':'the best possible'
-};
-function deckTypeLabel(v){ return lang === 'en' ? (DECK_TYPE_WORD[v] || v) : v; }
+// El tipo de mazo ya está en español (base universal); se muestra tal cual.
+function deckTypeLabel(v){ return v; }
 
 function applyLang(){
   document.documentElement.lang = lang;
@@ -366,11 +216,8 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = T(el.getAttribute('data-i18n-html')); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = T(el.getAttribute('data-i18n-ph')); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => { el.setAttribute('aria-label', T(el.getAttribute('data-i18n-aria'))); });
-  const lb = document.getElementById('lang-toggle'); if(lb) lb.textContent = T('lang_btn');
   if(typeof pintarFiltros === 'function') pintarFiltros();
   if(typeof syncRepaint === 'function') syncRepaint();
   renderInventory(); renderLegal(); renderSaved();
   if(typeof renderExploradorGrid === 'function') renderExploradorGrid();
-  localStorage.setItem('ptcg_lang', lang);
 }
-function toggleLang(){ lang = (lang === 'es') ? 'en' : 'es'; applyLang(); }
