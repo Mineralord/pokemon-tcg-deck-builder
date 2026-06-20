@@ -277,6 +277,15 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .jv-note, .jv-start p{ font:400 13px/1.55 'Chakra Petch',sans-serif; color:#8a93a6; margin:0; }
 .jv-or{ text-align:center; font:600 11px/1 'Chakra Petch',sans-serif; color:#6b7691; text-transform:uppercase; letter-spacing:1px; margin:2px 0; position:relative; }
 
+/* ---------- Relevo "pase y juega" ---------- */
+.jv-handoff{ max-width:420px; margin:auto; align-self:center; display:flex; flex-direction:column; align-items:center;
+  gap:14px; padding:40px 24px; text-align:center; color:#A78BFA; }
+.jv-handoff svg{ filter:drop-shadow(0 0 12px rgba(167,139,250,.5)); }
+.jv-handoff h3{ font:700 24px/1.1 'Russo One',sans-serif; color:#E2E8F0; margin:0; text-shadow:0 0 14px rgba(167,139,250,.4); }
+.jv-handoff p{ font:400 15px/1.4 'Chakra Petch',sans-serif; color:#cfd6e4; margin:0; }
+.jv-handoff p b{ color:#A78BFA; }
+.jv-handoff .jv-btn{ width:100%; }
+
 /* ---------- Barra de colocación (setup) ---------- */
 .jv-setupbar{ display:flex; flex-direction:column; gap:8px; align-items:center; padding:8px 10px;
   background:rgba(124,58,237,.12); border:1px solid rgba(167,139,250,.3); border-radius:12px; }

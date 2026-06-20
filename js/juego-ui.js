@@ -11,8 +11,9 @@
   const MODE_KEY = 'vs_modo';
   let G = null; // partida actual (estado del motor) o null si estamos en la pantalla de inicio
   let _accion = null; // acción pendiente de objetivo: {tipo:'evo'|'energia'|'retirar', iid?}
-  let _modo = 'local'; // 'local' (vs IA / pase) | 'online'
+  let _modo = 'local'; // 'local' (vs IA) | 'pase' | 'online'
   let _miLado = 'A';   // lado del motor que controla ESTE cliente
+  let _handoff = false, _handoffA = null; // relevo de dispositivo en "pase y juega"
 
   function MI() { return _miLado; }
   function OP() { return _miLado === 'A' ? 'B' : 'A'; }
@@ -25,7 +26,17 @@
     if (typeof window.salaSetPartida === 'function') window.salaSetPartida(slimG());
   }
   // Tras una mutación local: sincroniza (si online) y re-renderiza.
-  function trasMutar() { pushOnline(); renderJuego(); }
+  function trasMutar() { pushOnline(); renderJuego(); maybeHandoff(0); }
+  // En "pase y juega": muestra el relevo cuando cambia el jugador en turno o en el setup.
+  function maybeHandoff(delay) {
+    if (_modo !== 'pase' || !G || G.ganador) return;
+    let target = null;
+    if (G.fase === JUEGO.FASE.SETUP) {
+      if (G.lados[_miLado].estado === 'ready' && G.lados[OP()].estado === 'setup') target = OP();
+    } else if (G.turnoDe !== _miLado) target = G.turnoDe;
+    if (!target) return;
+    setTimeout(function () { _handoffA = target; _handoff = true; renderJuego(); }, delay || 0);
+  }
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -334,7 +345,7 @@
     return '<div class="jv-board"><div class="jv-start">' + closeBtn() +
       '<h3>' + esc(tx('jv_start_title', 'Juego virtual')) + '</h3>' +
       '<label class="jv-field"><span>' + esc(tx('jv_your_deck', 'Tu mazo')) + '</span><select id="jv-deck-yo" class="control-select">' + opts + '</select></label>' +
-      '<label class="jv-field"><span>' + esc(tx('jv_rival_deck', 'Mazo de la IA')) + '</span><select id="jv-deck-rival" class="control-select">' + opts + '</select></label>' +
+      '<label class="jv-field"><span>' + esc(tx('jv_rival_deck', 'Mazo del rival (IA / Jugador 2)')) + '</span><select id="jv-deck-rival" class="control-select">' + opts + '</select></label>' +
       '<label class="jv-field"><span>' + esc(tx('jv_ai_diff', 'Dificultad de la IA')) + '</span><select id="jv-ai-diff" class="control-select">' +
         '<option value="facil">' + esc(tx('jv_easy', 'Fácil')) + '</option>' +
         '<option value="medio" selected>' + esc(tx('jv_med', 'Media')) + '</option>' +
@@ -345,6 +356,7 @@
       '<p class="jv-note">' + esc(tx('jv_start_note', 'Práctica local: tú colocas tus Pokémon; la IA se prepara y juega sola.')) + '</p>' +
       '<button class="jv-btn jv-btn-big" type="button" onclick="jvEmpezar()">' + esc(tx('jv_start_btn', 'Repartir y empezar')) + '</button>' +
       '<div class="jv-or">' + esc(tx('jv_or', 'o')) + '</div>' +
+      '<button class="jv-btn jv-btn-2 jv-btn-big" type="button" onclick="jvPase()">' + esc(tx('jv_pase', 'Pase y juega (mismo dispositivo)')) + '</button>' +
       '<button class="jv-btn jv-btn-2 jv-btn-big" type="button" onclick="jvOnline()">' + esc(tx('jv_online', 'Jugar online (2 jugadores)')) + '</button>' +
       '<p class="jv-note">' + esc(tx('jv_online_note', 'Online: los dos jugadores deben tener Versus abierto. Juegas con el mazo de arriba.')) + '</p>' +
       '</div></div>';
@@ -356,11 +368,21 @@
       '<button class="jv-btn jv-btn-2 jv-btn-big" type="button" onclick="jvNueva()">' + esc(tx('jv_cancel', 'Cancelar')) + '</button>' +
       '</div></div>';
   }
+  function pantallaHandoff() {
+    const nom = (G.lados[_handoffA] && G.lados[_handoffA].nombre) || tx('jv_player', 'Jugador');
+    return '<div class="jv-board"><div class="jv-handoff">' +
+      '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>' +
+      '<h3>' + esc(tx('jv_pass_device', 'Pasa el dispositivo')) + '</h3>' +
+      '<p>' + esc(tx('jv_pass_to', 'Le toca a')) + ' <b>' + esc(nom) + '</b></p>' +
+      '<button class="jv-btn jv-btn-big" type="button" onclick="jvHandoff()">' + esc(tx('jv_im_ready', 'Estoy listo')) + '</button>' +
+      '</div></div>';
+  }
 
   let _rivalTimer = null, _finSonado = false;
   function renderJuego() {
     const root = document.getElementById('juego-root');
     if (!root) return;
+    if (_handoff && G) { root.innerHTML = pantallaHandoff(); return; }
     root.innerHTML = G ? renderTablero() : (_modo === 'online' ? pantallaEsperaOnline() : pantallaInicio());
     if (G && G.ganador) { if (!_finSonado) { _finSonado = true; snd(G.ganador === 'A' ? 'win' : 'lose'); } }
     else _finSonado = false;
@@ -445,6 +467,20 @@
       }
     }
   };
+  // Pase y juega: 2 jugadores en el mismo dispositivo, por turnos con relevo.
+  window.jvPase = function () {
+    const decks = misMazos(); if (!decks.length) return;
+    _modo = 'pase'; _miLado = 'A'; _handoff = false; _accion = null;
+    const iy = parseInt((document.getElementById('jv-deck-yo') || {}).value, 10) || 0;
+    const ir = parseInt((document.getElementById('jv-deck-rival') || {}).value, 10) || 0;
+    G = JUEGO.crearPartida({
+      ladoA: { nombre: tx('jv_p1', 'Jugador 1'), cartas: cartasDeMazo(decks[iy]) },
+      ladoB: { nombre: tx('jv_p2', 'Jugador 2'), cartas: cartasDeMazo(decks[ir] || decks[iy]) }
+    });
+    renderJuego(); // el Jugador 1 (lado A) coloca primero
+  };
+  window.jvHandoff = function () { _miLado = _handoffA; _handoff = false; _accion = null; renderJuego(); };
+
   window.jvPlace = function (iid) {
     if (!G) return;
     if (!L().activo) JUEGO.colocarActivo(G, MI(), iid);
@@ -480,6 +516,7 @@
     if (!ra || ra.iid !== idB) ko = true; else dmg = (ra.danio || 0) - dB;
     pushOnline(); renderJuego();
     fxAtaque(dmg, ko);
+    if (_modo === 'pase') maybeHandoff(900); // deja ver el impacto antes del relevo
   };
   window.jvMute = function () { if (typeof SONIDO !== 'undefined') { SONIDO.setMute(!SONIDO.isMuted()); if (!SONIDO.isMuted()) snd('button'); renderJuego(); } };
   window.jvMD = function (n) { if (G) { JUEGO.manualDanioRival(G, MI(), n); trasMutar(); } };
@@ -490,8 +527,8 @@
   window.jvActivoClick = function () { if (G) { _accion = { tipo: 'retirar' }; renderJuego(); } };
   window.jvCancelar = function () { _accion = null; renderJuego(); };
   window.jvFinTurno = function () { if (G && G.turnoDe === MI() && !G.ganador) { _accion = null; JUEGO.terminarTurno(G); trasMutar(); } };
-  window.jvNueva = function () { _accion = null; if (_modo === 'online' && typeof window.salaResetPartida === 'function') window.salaResetPartida(); G = null; _modo = 'local'; renderJuego(); };
-  window.jvSalir = function () { if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; } _accion = null; G = null; _modo = 'local'; window.setVersusMode('fisico'); };
+  window.jvNueva = function () { _accion = null; _handoff = false; if (_modo === 'online' && typeof window.salaResetPartida === 'function') window.salaResetPartida(); G = null; _modo = 'local'; renderJuego(); };
+  window.jvSalir = function () { if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; } _accion = null; _handoff = false; G = null; _modo = 'local'; window.setVersusMode('fisico'); };
 
   // ---------- Pantalla completa inmersiva (solo overlay CSS) ----------
   function entrarFull() {
