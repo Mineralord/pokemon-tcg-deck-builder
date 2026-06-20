@@ -594,6 +594,13 @@
     return aplicarCondicion(est, op, cond);
   }
 
+  // Rendirse: el rival gana al instante.
+  function rendirse(est, lado) {
+    if (est.ganador) return est;
+    est.ganador = (lado === 'A' ? 'B' : 'A'); est.fase = FASE.END; est.motivoFin = 'rendicion';
+    return est;
+  }
+
   // ---------- Estado / reductor ----------
   function estadoInicial() {
     return { v: VERSION, fase: FASE.SETUP, turno: 0, turnoDe: null, lados: {}, seq: 0, log: [] };
@@ -608,7 +615,7 @@
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
     ponerEnBanca, adjuntarEnergia, evolucionar, retirar, jugarEntrenador, subEntrenador, usarHabilidad,
-    puedePagar, danioEfectivo, atacar, efectoAuto,
+    puedePagar, danioEfectivo, atacar, efectoAuto, rendirse,
     aplicarCondicion, chequeo, ROTATIVAS,
     manualDanioRival, manualCurar, manualRobar, manualCondicionRival,
     estadoInicial, aplicarAccion

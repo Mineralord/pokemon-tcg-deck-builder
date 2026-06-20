@@ -412,5 +412,12 @@ ia2.lados.A.activo = inst(pikachu, 'a2'); ia2.lados.A.banca = [inst(pikachu, 'a2
 IA.jugarTurno(ia2);
 eq(ia2.turnoDe, 'A', 'la IA termina turno aunque no pueda atacar');
 
+// ---------- Fase 13: rendirse ----------
+console.log('rendirse');
+let rr = escena();
+J.rendirse(rr, 'A');
+eq(rr.ganador, 'B', 'al rendirse A, gana B');
+eq(rr.motivoFin, 'rendicion', 'motivo rendicion');
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
