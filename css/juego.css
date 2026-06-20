@@ -254,6 +254,9 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 /* ---------- HUD de turno ---------- */
 .jv-hud{ flex-wrap:wrap; }
 .jv-thinking{ font:600 12px/1 'Chakra Petch',sans-serif; color:#A78BFA; opacity:.9; }
+.jv-turn-mio{ background:linear-gradient(135deg, rgba(110,231,183,.35), rgba(167,139,250,.18)) !important;
+  border-color:rgba(110,231,183,.5) !important; }
+.jv-card:focus-visible{ outline:2px solid #6ee7b7; outline-offset:2px; }
 .jv-hint{ text-align:center; font:400 10.5px/1.4 'Chakra Petch',sans-serif; color:#6b7691; margin-top:-2px; }
 
 /* ---------- Utilidades del HUD (deshacer / rendirse) ---------- */

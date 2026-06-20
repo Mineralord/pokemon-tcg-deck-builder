@@ -94,7 +94,8 @@
       ? '<img src="' + esc(c.imagen) + '" alt="' + esc(c.nombre) + '" loading="lazy" decoding="async">'
       : '<span class="jv-ph-name">' + esc(c.nombre) + '</span>' + (c.hp ? '<span class="jv-ph-hp">' + c.hp + '</span>' : '');
     const phCls = c.imagen ? '' : ' jv-card--ph';
-    return '<div class="' + cls + phCls + '" title="' + esc(c.nombre) + '"' + oc + '>' + inner + condChips(c) + badges + '</div>';
+    const aria = opt.clickable ? (' role="button" tabindex="0" aria-label="' + esc(c.nombre) + '"') : '';
+    return '<div class="' + cls + phCls + '" title="' + esc(c.nombre) + '"' + oc + aria + '>' + inner + condChips(c) + badges + '</div>';
   }
   function pileEl(n, dorso, labelKey, labelAlt) {
     const inner = dorso ? '<div class="jv-card jv-card--back" aria-hidden="true"></div>'
@@ -161,13 +162,14 @@
     const miTurno = (G.turnoDe === MI()) && !G.ganador;
     const turnoTxt = b.turnoDe === 'yo' ? tx('jv_your_turn', 'Tu turno') : tx('jv_their_turn', 'Turno del rival');
     let html = '<div class="jv-hud">' +
-      '<span class="jv-turn">' + esc(tx('jv_turn', 'Turno')) + ' ' + (G.turno || 1) + ' · ' + esc(turnoTxt) + '</span>';
+      '<span class="jv-turn' + (miTurno ? ' jv-turn-mio' : '') + '">' + esc(tx('jv_turn', 'Turno')) + ' ' + (G.turno || 1) + ' · ' + esc(turnoTxt) + '</span>';
     if (miTurno) {
       html += '<button class="jv-btn jv-btn-2" type="button" onclick="jvFinTurno()">' + esc(tx('jv_end_turn', 'Terminar turno')) + '</button>';
     } else if (!G.ganador) {
       html += '<span class="jv-thinking">' + esc(tx('jv_rival_thinking', 'El rival juega…')) + '</span>';
     }
     html += '</div>';
+    if (miTurno) html += '<div class="jv-hint">' + esc(tx('jv_hint_play', 'Toca cartas de tu mano para jugarlas, tu Activo para retirarte, y abajo para atacar.')) + '</div>';
     // Barra de utilidades: deshacer (local/pase) + rendirse.
     let utils = '';
     if (_modo !== 'online' && _hist.length > 1) utils += '<button class="jv-util" type="button" onclick="jvDeshacer()">' + esc(tx('jv_undo', 'Deshacer')) + '</button>';
@@ -618,7 +620,18 @@
   };
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && document.body.classList.contains('jv-full')) window.setVersusMode('fisico');
+    if (e.key === 'Escape') {
+      if (_zoom) { window.jvZoomClose(); return; }
+      if (document.body.classList.contains('jv-full')) window.setVersusMode('fisico');
+      return;
+    }
+    // Activación por teclado de cartas/role=button dentro del juego.
+    if ((e.key === 'Enter' || e.key === ' ') && document.activeElement) {
+      const el = document.activeElement;
+      if (el.getAttribute && el.getAttribute('role') === 'button' && el.closest && el.closest('#juego-root')) {
+        e.preventDefault(); el.click();
+      }
+    }
   });
 
   window.juegoInitModo = function () {
