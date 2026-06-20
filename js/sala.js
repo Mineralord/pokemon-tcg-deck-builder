@@ -67,6 +67,27 @@
     const r = ref(); if(!r) return;
     r.set({ reglas: reglas, reglasVer: (_sala.reglasVer||0) + 1 }, { merge: true }).catch(e => console.warn('[sala] reglas', e));
   }
+
+  // ---------- Puente para el Juego Virtual online (Fase 10) ----------
+  window.salaUid = function(){ return uid; };
+  window.salaEsDueno = function(){ return esDueno; };
+  window.salaOtroOnline = function(){ return onlineDe(otro()); };
+  // Publica/lee el mazo de juego (lista de cartas slim) como cadena JSON en el jugador.
+  window.salaSetMiDeck = function(cartas){ actualizarJugador({ deckJuego: JSON.stringify(cartas || []) }); };
+  window.salaGetDeck = function(quien){
+    const j = quien === 'yo' ? yo() : otro();
+    try { return (j && j.deckJuego) ? JSON.parse(j.deckJuego) : null; } catch(e){ return null; }
+  };
+  // Escribe/limpia el estado de la partida (como cadena JSON para evitar límites de Firestore).
+  window.salaSetPartida = function(pObj){
+    const r = ref(); if(!r) return;
+    r.set({ partida: JSON.stringify(pObj) }, { merge: true }).catch(e => console.warn('[sala] partida', e));
+  };
+  window.salaResetPartida = function(){
+    const r = ref(); if(!r) return;
+    r.set({ partida: null }, { merge: true }).catch(()=>{});
+    actualizarJugador({ deckJuego: null });
+  };
   function marcarListo(){
     const deck = (typeof savedDecks!=='undefined' && savedDecks[_miMazoIdx]) ? savedDecks[_miMazoIdx] : null;
     if(!deck){ if(typeof showToast==='function') showToast(tx('vs_pick_deck','Elige un mazo primero'), 'error'); return; }
@@ -530,7 +551,7 @@
     hbTimer = setInterval(latido, HEARTBEAT_MS);
     if(unsub) unsub();
     const r = ref(); if(!r) return;
-    unsub = r.onSnapshot(s => { _sala = s.data() || {}; toastsTransicion(); renderTodo(); }, e => console.warn('[sala] snapshot', e));
+    unsub = r.onSnapshot(s => { _sala = s.data() || {}; toastsTransicion(); renderTodo(); if(typeof window.juegoOnSala==='function') window.juegoOnSala(_sala); }, e => console.warn('[sala] snapshot', e));
   };
   window.salaLogout = function(){
     if(hbTimer){ clearInterval(hbTimer); hbTimer=null; }
