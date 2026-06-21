@@ -12,7 +12,7 @@
   // Ops que ya ejecuta el motor en Fase 1 (deterministas, sin elección).
   const OPS_F1 = ['danio', 'danioExtra', 'recoil', 'estado', 'quitarEstado',
     'curar', 'descartarEnergia', 'robar', 'descartarMano',
-    'aLostZone', 'descartarMazo', 'lostMazo'];
+    'aLostZone', 'descartarMazo', 'lostMazo', 'barajarManoEnMazo'];
   // Ops reservadas para Fase 2 (requieren elección). Se validan pero el motor de
   // Fase 1 las deja al respaldo manual.
   const OPS_F2 = ['buscarMazo', 'elegirObjetivo', 'moverEnergia', 'ponerEnBanca',

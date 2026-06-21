@@ -470,6 +470,10 @@
       if (lado === est.inicia && L.turnosJugados === 0) return est; // el que empieza no juega Supporter en su 1er turno
     }
     if (sub === 'stadium' && L.estadioUsado) return est;
+    // La carta jugada SALE de la mano antes de resolver su efecto (p.ej. "baraja tu
+    // mano en el mazo" no debe contar el propio Entrenador) y se coloca después.
+    L.mano.splice(i, 1);
+    if (sub === 'supporter') L.supporterUsado = true;
     // Efecto: handler codificado o auto-intérprete (de momento: robar N).
     const EF = global.JUEGO_EFECTOS;
     const reg = EF && EF.EFECTOS && EF.EFECTOS[c.id];
@@ -481,7 +485,6 @@
         if (md) for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift());
       }
     }
-    L.mano.splice(_buscarMano(L, iid), 1);
     if (sub === 'stadium') { if (L.estadio) L.descarte.push(L.estadio); L.estadio = c; L.estadioUsado = true; }
     else if (sub === 'tool') { if (L.activo) { L.activo.tools = L.activo.tools || []; L.activo.tools.push(c); } else L.descarte.push(c); }
     else { L.descarte.push(c); if (sub === 'supporter') L.supporterUsado = true; }

@@ -272,6 +272,14 @@
         out.push('descartarMano');
         break;
       }
+      case 'barajarManoEnMazo': {
+        // Baraja toda tu mano dentro del mazo (p.ej. Joven/Drasna antes de robar).
+        const L = ctx.est.lados[ctx.lado];
+        while (L.mano.length) L.mazo.push(L.mano.pop());
+        barajar(L.mazo, rndDe(ctx.est));
+        out.push('barajarManoEnMazo');
+        break;
+      }
       default:
         out.push('manual'); // op desconocida -> respaldo manual asistido
     }
@@ -300,7 +308,7 @@
           opciones: cs.map(function (c) { return opcionDe(c, 'juego'); }), min: Math.min(n, cs.length), max: n, cancelable: false };
       }
       case 'cambiarActivo': {
-        const lado = o.objetivo === 'rival' ? ctx.op : ctx.lado;
+        const lado = o.lado === 'rival' ? ctx.op : ctx.lado;
         const banca = est.lados[lado].banca;
         return { tipo: 'cambiarActivo', prompt: o.prompt || 'Elige el nuevo Activo', ladoCambio: lado,
           opciones: banca.map(function (c) { return opcionDe(c, 'banca'); }), min: banca.length ? 1 : 0, max: 1, cancelable: false };
@@ -340,7 +348,7 @@
         break;
       }
       case 'cambiarActivo': {
-        const lado = o.objetivo === 'rival' ? ctx.op : ctx.lado;
+        const lado = o.lado === 'rival' ? ctx.op : ctx.lado;
         const Lc = est.lados[lado];
         const iid = sel[0]; const i = Lc.banca.findIndex(function (c) { return c.iid === iid; });
         if (i >= 0) { const nuevo = Lc.banca.splice(i, 1)[0]; if (Lc.activo) { Lc.activo.condiciones = []; Lc.banca.push(Lc.activo); } Lc.activo = nuevo; }
