@@ -130,7 +130,7 @@
       // energías
       esEnergiaBasica: !!view.esEnergiaBasica,
       energiaTipo: energy ? (tipos[0] || 'Colorless') : null,
-      imagen: view.imagenChica || view.imagenGrande || null,
+      imagen: (view.es && view.es.imagenChica) || view.imagenChica || view.imagenGrande || null,
       es: view.es || null,
       raw: view
     };

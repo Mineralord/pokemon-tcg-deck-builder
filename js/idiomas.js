@@ -203,12 +203,34 @@ function nombreLocal(v){
   if(esEnergiaBasicaVista(v)){ const t=_tipoEnergiaVista(v); if(t && ENERGIA_ES[t]) return ENERGIA_ES[t]; }
   return ES_FALLBACK_NOM[v.id] || ES_FALLBACK_NOM[v.nombre] || v.nombre || '';
 }
+// Deriva la URL de la imagen ESPAÑOLA (TCGdex) directamente desde el id de la carta,
+// sin depender del DB ni de peticiones async. Patrón: assets.tcgdex.net/es/<serie>/<set>/<num3>/low|high.webp
+const _TCGDEX_SETS_IMG = {
+  sv1:'sv01', sv2:'sv02', sv3:'sv03', sv3pt5:'sv03.5', sv4:'sv04', sv4pt5:'sv04.5',
+  sv5:'sv05', sv6:'sv06', sv6pt5:'sv06.5', sv7:'sv07', sv8:'sv08', sv8pt5:'sv08.5',
+  sv9:'sv09', sv10:'sv10', svp:'svp', me1:'me01', me2:'me02', me2pt5:'me02.5', me3:'me03', me4:'me04'
+};
+function _tcgdexSetImg(sid){
+  if(_TCGDEX_SETS_IMG[sid]) return _TCGDEX_SETS_IMG[sid];
+  const m = /^sv(\d+)(pt5)?$/.exec(sid); if(m) return 'sv'+String(+m[1]).padStart(2,'0')+(m[2]?'.5':'');
+  return null;
+}
+function _imgEsUrl(id, grande){
+  if(!id || id.indexOf('-')<0) return null;
+  const i = id.lastIndexOf('-'); const sid = id.slice(0,i), num = id.slice(i+1);
+  const tset = _tcgdexSetImg(sid); if(!tset) return null;
+  const serie = /^sv/.test(tset) ? 'sv' : (/^me/.test(tset) ? 'me' : null); if(!serie) return null;
+  const n = parseInt(num,10); if(isNaN(n)) return null;
+  return 'https://assets.tcgdex.net/es/'+serie+'/'+tset+'/'+String(n).padStart(3,'0')+'/'+(grande?'high':'low')+'.webp';
+}
 function imagenLocal(v, grande){
   if(!v) return null;
   if(v.es){
     const im = grande ? v.es.imagenGrande : v.es.imagenChica;
     if(im) return im;
   }
+  const der = _imgEsUrl(v.id, grande);           // imagen ES derivada del id (garantiza español)
+  if(der) return der;
   return grande ? (v.imagenGrande || v.imagenChica) : (v.imagenChica || v.imagenGrande);
 }
 function setNombreLocal(v){
