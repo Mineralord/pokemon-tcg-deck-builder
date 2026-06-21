@@ -297,6 +297,14 @@ async function tcgdexEsLive(id){
   } catch (e) { _esFail[id] = Date.now(); return null; }
 }
 
+// Imagen ESPAÑOLA ya cacheada (persistida) para un id, si TCGdex la trajo antes.
+// Permite que el grid reutilice la imagen española sin volver a pedirla y sin caer al inglés.
+function imgEsCache(id, grande){
+  const e = id && _esCache[id];
+  if (!e || typeof e !== 'object') return null;
+  return (grande ? e.imagenGrande : e.imagenChica) || null;
+}
+
 // Asegura el español (nombre + imagen + set) de una lista de vistas y, cuando termina de
 // traer las que faltaban, llama onReady() UNA vez —sólo si hubo cambios. Concurrencia
 // limitada. No-op fuera de ES.

@@ -229,9 +229,13 @@ function imagenLocal(v, grande){
     const im = grande ? v.es.imagenGrande : v.es.imagenChica;
     if(im) return im;
   }
-  const der = _imgEsUrl(v.id, grande);           // imagen ES derivada del id (garantiza español)
+  // Imagen española ya cacheada (TCGdex) para esta carta — cubre eras no derivables.
+  if(typeof imgEsCache === 'function'){ const c = imgEsCache(v.id, grande); if(c) return c; }
+  const der = _imgEsUrl(v.id, grande);           // imagen ES derivada del id (SV/me)
   if(der) return der;
-  return grande ? (v.imagenGrande || v.imagenChica) : (v.imagenChica || v.imagenGrande);
+  // Sin español todavía: NO usamos la imagen inglesa. Placeholder hasta que el
+  // top-up (localizarVistasEs) traiga la imagen española.
+  return null;
 }
 function setNombreLocal(v){
   if(v && v.es && v.es.setNombre) return v.es.setNombre;
