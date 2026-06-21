@@ -468,8 +468,9 @@
     }
   }
 
-  // Auto-resuelve elecciones pendientes del lado IA (local). Heurística básica (Fase 8 la refina).
+  // Auto-resuelve elecciones pendientes del lado IA (local). Delega en el motor de IA.
   function autoResolverIA() {
+    if (typeof JUEGO_IA !== 'undefined' && JUEGO_IA.resolverPendientes) { JUEGO_IA.resolverPendientes(G, OP()); return; }
     let guard = 0;
     while (G && G.pendiente && G.pendiente.lado === OP() && guard++ < 20) {
       const p = G.pendiente;

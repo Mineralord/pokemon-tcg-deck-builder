@@ -12,6 +12,22 @@
 
   function enJuego(L) { return (L.activo ? [L.activo] : []).concat(L.banca); }
 
+  // Resuelve las elecciones pendientes del lado IA ('B') con heurística básica:
+  // toma las primeras opciones hasta cubrir el mínimo (o 1 si es opcional).
+  // Reutilizable en local / online / tests (no depende del DOM).
+  function resolverPendientes(est, lado) {
+    const J = global.JUEGO; if (!J || !J.resolverEleccion) return est;
+    lado = lado || 'B';
+    let guard = 0;
+    while (est && est.pendiente && est.pendiente.lado === lado && guard++ < 40) {
+      const p = est.pendiente;
+      const n = Math.max(p.min || 0, Math.min(p.max || 1, (p.opciones || []).length ? 1 : 0));
+      const sel = (p.opciones || []).slice(0, n).map(function (o) { return o.iid; });
+      J.resolverEleccion(est, lado, sel);
+    }
+    return est;
+  }
+
   // Juega el turno completo del lado 'B' y lo termina.
   function jugarTurno(est) {
     const J = global.JUEGO; if (!J) return est;
@@ -38,13 +54,13 @@
       if (e && tgt) J.adjuntarEnergia(est, lado, e.iid, tgt.iid);
     }
 
-    // 4) Jugar Entrenadores de robar (seguros).
+    // 4) Jugar Entrenadores seguros (robar/buscar) y resolver sus elecciones.
     if (!aleatorio) {
-      L.mano.filter(function (c) { return c.supertipo === 'Trainer' && /draw/i.test(c.texto || ''); }).slice()
-        .forEach(function (c) { J.jugarEntrenador(est, lado, c.iid); });
+      L.mano.filter(function (c) { return c.supertipo === 'Trainer' && (c.subTrainer === 'item' || c.subTrainer === 'supporter') && /draw|search|busca|roba/i.test(c.texto || ''); }).slice()
+        .forEach(function (c) { if (L.mano.indexOf(c) >= 0) { J.jugarEntrenador(est, lado, c.iid); resolverPendientes(est, lado); } });
     }
 
-    // 5) Atacar (si puede). Atacar termina el turno automáticamente.
+    // 5) Atacar (si puede). Atacar termina el turno; las elecciones del ataque se resuelven solas.
     if (J.puedeAtacar(est)) {
       const at = L.activo, def = est.lados.A.activo;
       const payable = (at.ataques || []).map(function (a, i) { return { a: a, i: i }; })
@@ -54,12 +70,13 @@
         if (aleatorio) {
           pick = payable[Math.floor(Math.random() * payable.length)];
         } else {
-          payable.sort(function (x, y) { return J.danioEfectivo(at, def, y.a) - J.danioEfectivo(at, def, x.a); });
-          const rem = def ? (def.hp - (def.danio || 0)) : 0;
-          const ko = payable.find(function (x) { return def && J.danioEfectivo(at, def, x.a) >= rem; });
-          pick = (config.dificultad === DIFICULTAD.DIFICIL && ko) ? ko : payable[0];
+          payable.sort(function (x, y) { return J.danioEfectivo(at, def, y.a, est) - J.danioEfectivo(at, def, x.a, est); });
+          const rem = def ? (J.danioEfectivo ? (def.hp - (def.danio || 0)) : 0) : 0;
+          const ko = payable.find(function (x) { return def && J.danioEfectivo(at, def, x.a, est) >= rem; });
+          pick = (ko || payable[0]);       // medio y difícil priorizan el KO
         }
         J.atacar(est, lado, pick.i);
+        resolverPendientes(est, lado);     // completa la elección del ataque (snipe, etc.)
         return est;
       }
     }
@@ -67,7 +84,7 @@
     return est;
   }
 
-  const API = { DIFICULTAD, config, configurar, jugarTurno, siguienteAccion: function () { return null; } };
+  const API = { DIFICULTAD, config, configurar, jugarTurno, resolverPendientes, siguienteAccion: function () { return null; } };
   global.JUEGO_IA = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 
