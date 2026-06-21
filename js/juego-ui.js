@@ -208,13 +208,25 @@
 
   // ---------- Efectos visuales/sonido ----------
   function snd(n) { if (typeof SONIDO !== 'undefined') SONIDO.play(n); }
+  // Embestida del atacante hacia el rival ('up' = tú atacas; 'down' = el rival ataca).
+  function fxLunge(sel, dir) {
+    const card = document.querySelector(sel + ' .jv-card');
+    if (!card) return; const cls = 'jv-lunge-' + dir;
+    card.classList.add(cls); setTimeout(function () { card.classList.remove(cls); }, 320);
+  }
   function fxHit(sel, dmg, ko) {
     setTimeout(function () {
       const wrap = document.querySelector(sel);
       const card = wrap && wrap.querySelector('.jv-card');
-      if (card) { card.classList.add('jv-shake'); setTimeout(function () { card.classList.remove('jv-shake'); }, 360); }
+      if (card) {
+        card.classList.add('jv-shake'); setTimeout(function () { card.classList.remove('jv-shake'); }, 360);
+        // Destello de impacto.
+        const fl = document.createElement('div'); fl.className = 'jv-flash';
+        card.appendChild(fl); setTimeout(function () { fl.remove(); }, 320);
+        if (ko) { card.classList.add('jv-ko'); }   // disolución
+      }
       if (wrap) {
-        const f = document.createElement('div'); f.className = 'jv-dmgfloat';
+        const f = document.createElement('div'); f.className = 'jv-dmgfloat' + (dmg >= 120 ? ' big' : '');
         f.textContent = ko ? 'KO' : ('-' + (dmg > 0 ? dmg : 0));
         wrap.appendChild(f); setTimeout(function () { f.remove(); }, 750);
       }
@@ -222,8 +234,18 @@
       if (ko && typeof SONIDO !== 'undefined') { snd('prize'); SONIDO.vibrate([20, 40, 30]); }
     }, 170);
   }
-  function fxAtaque(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(15); fxHit('#juego-root .jv-side--rival .jv-active', dmg, ko); }
-  function fxDefensa(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(20); fxHit('#juego-root .jv-side--yo .jv-active', dmg, ko); }
+  function fxAtaque(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(15); fxLunge('#juego-root .jv-side--yo .jv-active', 'up'); fxHit('#juego-root .jv-side--rival .jv-active', dmg, ko); }
+  function fxDefensa(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(20); fxLunge('#juego-root .jv-side--rival .jv-active', 'down'); fxHit('#juego-root .jv-side--yo .jv-active', dmg, ko); }
+  // Banner breve "Tu turno" al pasar a tu turno.
+  let _ultTurnoDe = null;
+  function fxTurno() {
+    if (!G || G.ganador || G.fase === JUEGO.FASE.SETUP) { _ultTurnoDe = G && G.turnoDe; return; }
+    if (G.turnoDe === _ultTurnoDe) return; const cambio = _ultTurnoDe != null; _ultTurnoDe = G.turnoDe;
+    if (!cambio || G.turnoDe !== MI() || _modo === 'online') return;
+    const root = document.getElementById('juego-root'); if (!root) return;
+    const b = document.createElement('div'); b.className = 'jv-turnbanner'; b.textContent = tx('jv_your_turn', '¡Tu turno!');
+    root.appendChild(b); setTimeout(function () { b.remove(); }, 1100);
+  }
 
   const TIPO_COLOR = { Grass: '#22c55e', Fire: '#f97316', Water: '#38bdf8', Lightning: '#eab308', Psychic: '#a855f7', Fighting: '#b45309', Darkness: '#1f2937', Metal: '#94a3b8', Fairy: '#ec4899', Dragon: '#ca8a04', Colorless: '#cbd5e1' };
   function costeHtml(coste) {
@@ -449,6 +471,7 @@
     root.innerHTML = G ? renderTablero() : (_modo === 'online' ? pantallaEsperaOnline() : pantallaInicio());
     if (G && G.ganador) { if (!_finSonado) { _finSonado = true; snd(G.ganador === MI() ? 'win' : 'lose'); } }
     else _finSonado = false;
+    if (G) fxTurno();
     // Turno del rival (sin IA todavía): auto-pasa para que el ciclo sea observable.
     if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; }
     if (_modo !== 'online' && G && !G.ganador && G.fase !== JUEGO.FASE.SETUP && G.turnoDe === OP()) {
