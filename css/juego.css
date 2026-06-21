@@ -460,3 +460,32 @@ body.jv-full .views{ padding:0 !important; }
   border-color:rgba(250,204,21,.5); }
 /* Marcador de premios más visible */
 .jv-pbar .jv-prizecount{ color:#fde68a; }
+
+/* ============================================================
+   FASE 10c — Layout HORIZONTAL real (estilo TCG Live)
+   Solo móvil en landscape (orientación horizontal + pantalla baja). El modo
+   vertical y el escritorio NO se tocan. Al girar el teléfono (con autogiro),
+   cada lado se reorganiza en banda horizontal aprovechando el ancho:
+   [info+premios | mazo/descarte | banca | ACTIVO]  (rival arriba / tú abajo).
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 600px){
+  .juego-root.jv-full-root{ --jv-cw: min(6.6vw, 15dvh); }
+  .juego-root.jv-full-root .jv-board{ padding:6px 14px; gap:4px; justify-content:center; }
+  /* Cada lado: banda horizontal */
+  .jv-full-root .jv-side{ flex-direction:row; align-items:center; justify-content:center; gap:12px; flex-wrap:nowrap; }
+  /* Info del jugador en columna compacta */
+  .jv-full-root .jv-side .jv-pbar{ flex-direction:column; gap:3px; min-width:50px; text-align:center; font-size:11px; }
+  .jv-full-root .jv-side .jv-pbar .jv-prizecount{ margin:0; }
+  /* Zonas auxiliares (mazo/descarte/premios) apiladas en columna para ahorrar ancho */
+  .jv-full-root .jv-side .jv-row--aux{ flex-direction:column; align-items:center; gap:5px; }
+  .jv-full-root .jv-side .jv-aux-group{ flex-direction:column; gap:5px; }
+  /* Banca: hasta 5 en una fila compacta */
+  .jv-full-root .jv-bench{ flex-wrap:nowrap; gap:5px; }
+  /* Activo más grande, al borde central de cada banda */
+  .jv-full-root .jv-active .jv-card{ width:calc(var(--jv-cw) * 1.45); }
+  /* Centro (estadio/zona perdida) mínimo */
+  .jv-full-root .jv-center{ min-height:8px; margin:0; }
+  .jv-full-root .jv-center .jv-zlabel{ padding:2px 8px; font-size:8px; }
+  /* Mano: tira inferior compacta */
+  .jv-full-root .jv-hand{ margin-top:2px; }
+}
