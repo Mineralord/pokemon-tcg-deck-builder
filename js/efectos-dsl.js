@@ -22,7 +22,7 @@
   const OBJETIVOS = ['esteP', 'propioActivo', 'rivalActivo', 'propiaBanca', 'rivalBanca',
     'propioTodos', 'rivalTodos', 'todos', 'propioMazo', 'propioDescarte', 'propiaMano', 'elegido'];
 
-  const FILTRO_KEYS = ['tipo', 'etapa', 'nombre', 'esBasico', 'supertipo', 'tieneDanio', 'conEnergia'];
+  const FILTRO_KEYS = ['tipo', 'etapa', 'nombre', 'esBasico', 'supertipo', 'tieneDanio', 'conEnergia', 'tera', 'premiosMin'];
 
   const COND_TIPOS = ['coin', 'tieneDanio', 'tieneCondicion', 'cuenta', 'primerTurno'];
 

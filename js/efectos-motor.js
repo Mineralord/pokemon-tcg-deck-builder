@@ -76,6 +76,8 @@
     if (f.supertipo != null && card.supertipo !== f.supertipo) return false;
     if (f.tieneDanio != null && ((card.danio || 0) > 0) !== !!f.tieneDanio) return false;
     if (f.conEnergia != null && ((card.energias || []).length > 0) !== !!f.conEnergia) return false;
+    if (f.tera != null && !!card.tera !== !!f.tera) return false;
+    if (f.premiosMin != null && (card.premiosKO || 0) < f.premiosMin) return false;
     return true;
   }
 

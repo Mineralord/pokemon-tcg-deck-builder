@@ -77,7 +77,21 @@
     'sv3pt5-165': { pasivos: [{ mod: 'reduceDanio', cantidad: 30, a: 'esteP', filtro: { etapa: 1 } }] },  // Banda Rígida: Fase 1 recibe 30 menos
 
     // ---------- Recuperación de descarte ----------
-    'sv8-251': { jugar: { ops: [{ op: 'buscarDescarte', cantidad: 1, destino: 'mano', prompt: 'Elige una carta de tu descarte para volver a tu mano' }] } } // Camilla Nocturna
+    'sv8-251': { jugar: { ops: [{ op: 'buscarDescarte', cantidad: 1, destino: 'mano', prompt: 'Elige una carta de tu descarte para volver a tu mano' }] } }, // Camilla Nocturna
+
+    // ---------- Más entrenadores (búsqueda) ----------
+    'sv3pt5-156': { jugar: { ops: [{ op: 'mirarTopN', n: 8, filtro: { supertipo: 'Pokemon' }, cantidad: 3, destino: 'mano', prompt: 'Mira las 8 de arriba: elige Pokémon para tu mano' }] } }, // Transferencia de Bill
+    'sv1-175': { jugar: { ops: [{ op: 'buscarMazo', filtro: { supertipo: 'Pokemon', esBasico: false }, cantidad: 2, destino: 'mano', prompt: 'Busca hasta 2 Pokémon de Evolución' }] } }, // Cinio (Jacq)
+    'sv8-170': { jugar: { ops: [{ op: 'buscarMazo', filtro: { supertipo: 'Pokemon', premiosMin: 2 }, cantidad: 3, destino: 'mano', prompt: 'Busca hasta 3 Pokémon ex' }] } }, // Cyrano
+    'sv8-189': { jugar: { ops: [{ op: 'buscarMazo', filtro: { tera: true }, cantidad: 1, destino: 'mano', prompt: 'Busca un Pokémon Tera' }] } }, // Tera Orbe
+
+    // ---------- Habilidades (Fase 7) ----------
+    // Blastoise ex — Coraza Sólida: recibe 30 menos de daño (pasivo al portador).
+    'sv3pt5-9': { habilidades: { 'Solid Shell': { pasivos: [{ mod: 'reduceDanio', cantidad: 30, a: 'esteP' }] } } },
+    // Dodrio — Robo Veloz: 1 vez por turno, pon 1 contador de daño en este y roba 1.
+    'sv3pt5-85': { habilidades: { 'Zooming Draw': { unaVezPorTurno: true, soloActivo: false, ops: [{ op: 'danio', objetivo: 'esteP', cantidad: 10 }, { op: 'robar', cantidad: 1 }] } } },
+    // Starmie — Cometa Misterioso: 1 vez por turno, 2 contadores a 1 Pokémon rival elegido.
+    'sv3pt5-121': { habilidades: { 'Mysterious Comet': { unaVezPorTurno: true, ops: [{ op: 'elegirObjetivo', objetivo: 'rivalTodos', cuantos: 1, prompt: 'Elige un Pokémon rival (20 de daño)' }, { op: 'danio', objetivo: 'elegido', cantidad: 20 }] } } }
   };
 
   // Validación temprana en desarrollo: avisa si alguna entrada está mal formada.
