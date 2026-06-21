@@ -11,12 +11,15 @@ function ptcgDecksKey(){ return window.__ptcgUid ? ('decks_' + window.__ptcgUid)
 
 // ===================== BASE DE DATOS DE CARTAS (cartas-db.js) =====================
 const CARD_DB = {};
+const CARD_BY_ID = {};
 function normName(s){ return (s || '').toLowerCase().trim().replace(/[‘’]/g, "'"); }
 (function buildCardDB(){
   const data = (window.CARTAS_DB && window.CARTAS_DB.cartas) || [];
-  data.forEach(c => { CARD_DB[normName(c.nombre)] = c; });
+  // Por NOMBRE (last-wins, sirve para jugabilidad) y por ID (arte exacto, para mostrar).
+  data.forEach(c => { CARD_DB[normName(c.nombre)] = c; if (c.id) CARD_BY_ID[c.id] = c; });
 })();
 function getCardData(name){ return CARD_DB[normName(name)] || null; }
+function getCardById(id){ return (id && CARD_BY_ID[id]) || null; }
 function esc(s){ return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 // energyIcon() y los símbolos de energía están en energias.js
 
@@ -31,8 +34,9 @@ function jsq(s){ return String(s == null ? '' : s).replace(/\\/g, '\\\\').replac
 // desde: objeto en memoria -> base local (por nombre) -> caché por id -> API (async).
 function viewFromEntry(e){
   let d;
-  if (e.card) d = e.card;                                   // en memoria (sesión actual)
-  if (!d){ d = getCardData(e.name); if (d && !d.id) d.id = e.id; }   // base local por nombre
+  if (e.card && e.card.id === e.id) d = e.card;             // en memoria (mismo arte exacto)
+  if (!d && e.id) d = getCardById(e.id);                    // por ID exacto (arte correcto)
+  if (!d){ d = getCardData(e.name); if (d && !d.id) d.id = e.id; }   // base local por nombre (respaldo)
   if (!d && e.id && typeof cardCacheGet === 'function') d = cardCacheGet(e.id);   // caché por id
   if (!d && e.id) rehidratarEntrada(e.id);                  // traer de la API en segundo plano
   if (!d) d = { id: e.id, nombre: e.name, tipos: [], ataques: [], habilidades: [] };
