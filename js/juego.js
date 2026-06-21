@@ -168,6 +168,43 @@
     };
   }
 
+  // ---------- Validación de construcción (formato Estándar) ----------
+  // Marcas de regulación vigentes (configurable: rotación por temporada).
+  const MARCAS_ESTANDAR = ['F', 'G', 'H', 'I'];
+  function _fase(c) { return ((c.raw && c.raw.fase) || '').toLowerCase(); }
+  function _reglasTxt(c) { return (((c.raw && c.raw.reglas) || [])).join(' ').toLowerCase(); }
+  function esEnergiaBasicaCarta(c) {
+    if (c.esEnergiaBasica) return true;
+    return c.supertipo === 'Energy' && _fase(c).indexOf('basic') >= 0 && _fase(c).indexOf('special') < 0;
+  }
+  function esAceSpec(c) { return _reglasTxt(c).indexOf('ace spec') >= 0; }
+  function esRadiant(c) { return _fase(c).indexOf('radiant') >= 0; }
+  function marcaDe(c) { return (c.raw && c.raw.marcaRegulacion) || null; }
+
+  // Valida un mazo expandido (60 cartas de juego) según el formato Estándar.
+  // opts.marcasPermitidas permite configurar la rotación. Devuelve { ok, errores[] } en español.
+  function validarEstandar(cartas, opts) {
+    opts = opts || {};
+    const marcas = opts.marcasPermitidas || MARCAS_ESTANDAR;
+    const errores = [];
+    if (cartas.length !== 60) errores.push('El mazo debe tener exactamente 60 cartas (tiene ' + cartas.length + ').');
+    if (!cartas.filter(esBasicoPoke).length) errores.push('El mazo necesita al menos 1 Pokémon Básico.');
+    const cuenta = {};
+    cartas.forEach(function (c) { if (esEnergiaBasicaCarta(c)) return; const k = c.nombre || c.id; cuenta[k] = (cuenta[k] || 0) + 1; });
+    Object.keys(cuenta).forEach(function (k) { if (cuenta[k] > 4) errores.push('No puedes tener más de 4 copias de "' + k + '" (tiene ' + cuenta[k] + ').'); });
+    cartas.forEach(function (c) {
+      if (esEnergiaBasicaCarta(c)) return;
+      const m = marcaDe(c);
+      if (!m || marcas.indexOf(m) < 0) errores.push('"' + (c.nombre || c.id) + '" no es legal en Estándar (marca ' + (m || '—') + ').');
+    });
+    const ace = cartas.filter(esAceSpec).length;
+    if (ace > 1) errores.push('Solo se permite 1 carta ACE SPEC por mazo (tiene ' + ace + ').');
+    const rad = cartas.filter(esRadiant).length;
+    if (rad > 1) errores.push('Solo se permite 1 Pokémon Radiante por mazo (tiene ' + rad + ').');
+    const uniq = errores.filter(function (v, i) { return errores.indexOf(v) === i; });
+    return { ok: uniq.length === 0, errores: uniq };
+  }
+
   // ---------- RNG determinista + baraja ----------
   function rng32(seed) {
     let a = (seed >>> 0) || 1;
@@ -700,7 +737,7 @@
 
   const API = {
     VERSION, FASE,
-    cartaJuego, expandirMazo, validarMazoJugable,
+    cartaJuego, expandirMazo, validarMazoJugable, validarEstandar, MARCAS_ESTANDAR,
     energiaBasicaView, tipoEnergia,
     rng32, barajar, tieneBasico,
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
