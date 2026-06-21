@@ -280,6 +280,8 @@
     if (!L.mazo.length) { est.ganador = (lado === 'A' ? 'B' : 'A'); est.fase = FASE.END; est.motivoFin = 'deckout'; return est; }
     L.mano.push(L.mazo.shift());           // robar del top
     L.energiaUsada = false; L.retiroUsado = false; L.supporterUsado = false; L.estadioUsado = false;
+    // Reinicia las habilidades "una vez por turno" de tus Pokémon en juego.
+    (L.activo ? [L.activo] : []).concat(L.banca).forEach(function (c) { if (c) c.habUsadas = []; });
     est.fase = FASE.MAIN;
     return est;
   }
@@ -330,7 +332,7 @@
     });
     // Paralizado: se recupera tras el turno de su dueño.
     const ap = est.lados[ladoQueTermina].activo; if (ap) _quitar(ap, 'paralyzed');
-    _koSiProcede(est, 'A'); _koSiProcede(est, 'B');
+    _barridoKO(est);
     return est;
   }
 
@@ -448,15 +450,25 @@
   }
 
   // Usar una habilidad de un Pokémon propio en juego (handler codificado; si no, manual).
+  // Respeta restricciones declaradas en el DSL: unaVezPorTurno y soloActivo.
   function usarHabilidad(est, lado, iid, idx) {
     if (!_esTurnoMain(est, lado)) return est;
     const L = est.lados[lado]; const r = _refEnJuego(L, iid); if (!r) return est;
     const h = (r.card.habilidades || [])[idx]; if (!h) return est;
+    // Restricciones declaradas (data/efectos-db.js).
+    const DB = global.EFECTOS_DB; const def = DB && DB[r.card.id];
+    const meta = def && def.habilidades && def.habilidades[h.nombre];
+    if (meta) {
+      if (meta.soloActivo && r.pos !== 'activo') return est;
+      r.card.habUsadas = r.card.habUsadas || [];
+      if (meta.unaVezPorTurno && r.card.habUsadas.indexOf(h.nombre) >= 0) return est;
+    }
     const EF = global.JUEGO_EFECTOS;
     const reg = EF && EF.EFECTOS && EF.EFECTOS[r.card.id];
     const fn = reg && reg.habilidades && reg.habilidades[h.nombre];
     if (fn) { try { fn(est, lado, { card: r.card }); } catch (e) {} }
     else if (EF && EF.resolverDSL) { EF.resolverDSL(est, lado, r.card.id, 'habilidades', h.nombre, { at: r.card, fuente: r.card, faseFinal: 'habilidad' }); }
+    if (meta && meta.unaVezPorTurno) { r.card.habUsadas = r.card.habUsadas || []; r.card.habUsadas.push(h.nombre); }
     return est;
   }
 
@@ -495,6 +507,22 @@
     if (!D.activo) {
       if (D.banca.length) D.activo = D.banca.shift();
       else { est.ganador = ladoAtk; est.fase = FASE.END; est.motivoFin = 'sinpokemon'; }
+    }
+    return est;
+  }
+
+  // Barrido de KO: noquea cualquier Pokémon (Activo o de Banca) cuyo daño alcance su HP efectivo.
+  // Orden de premios: primero los del rival del jugador en turno (los toma el jugador en turno),
+  // luego los propios (los toma el rival). Cubre el "snipe" a banca y daños indirectos.
+  function _barridoKO(est) {
+    if (est.ganador) return est;
+    const tp = est.turnoDe || 'A';
+    const orden = [tp === 'A' ? 'B' : 'A', tp];
+    for (let s = 0; s < orden.length; s++) {
+      const lado = orden[s]; const L = est.lados[lado];
+      L.banca.slice().forEach(function (c) { if ((c.danio || 0) >= _hpEf(est, c)) _noquear(est, lado, c); });
+      if (L.activo && (L.activo.danio || 0) >= _hpEf(est, L.activo)) _noquear(est, lado, L.activo);
+      if (est.ganador) return est;
     }
     return est;
   }
@@ -555,7 +583,7 @@
     }
     est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg, efectos: efectos };
     if (est.pendiente) return est;            // efecto a la espera de una elección: el turno NO termina aún
-    _koSiProcede(est, op); _koSiProcede(est, lado);
+    _barridoKO(est);
     if (!est.ganador) terminarTurno(est);
     return est;
   }
@@ -598,7 +626,7 @@
   function manualDanioRival(est, lado, n) {
     const op = lado === 'A' ? 'B' : 'A'; const a = est.lados[op].activo;
     if (!_esTurnoMain(est, lado) || !a) return est;
-    a.danio = (a.danio || 0) + n; _koSiProcede(est, op); return est;
+    a.danio = (a.danio || 0) + n; _barridoKO(est); return est;
   }
   function manualCurar(est, lado, n) {
     const a = est.lados[lado].activo; if (!_esTurnoMain(est, lado) || !a) return est;
@@ -630,7 +658,7 @@
   function _finalizarEfecto(est, fase, lado) {
     if (fase === 'ataque') {
       const op = lado === 'A' ? 'B' : 'A';
-      _koSiProcede(est, op); _koSiProcede(est, lado);
+      _barridoKO(est);
       if (!est.ganador) terminarTurno(est);
     }
     // 'habilidad' / 'entrenador': se permanece en MAIN; nada que finalizar.
