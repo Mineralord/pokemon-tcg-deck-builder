@@ -473,3 +473,31 @@ body.jv-full .views{ padding:0 !important; }
   .juego-root.jv-full-root .jv-center{ min-height:14px; }
   .juego-root.jv-full-root .jv-zlabel{ font-size:8px; }
 }
+
+/* OPCIONAL: "Forzar horizontal" — rota el contenido 90° por CSS (técnica estándar
+   con origen arriba-izquierda). Se activa con el botón ⟳; es reversible. Solo
+   tiene efecto en el juego inmersivo y en pantallas estrechas (portrait). */
+@media (orientation: portrait) and (max-width: 920px){
+  body.jv-rotar .juego-root.jv-full-root{
+    position:fixed; top:0; left:0;
+    width:100vh; height:100vw; overflow:hidden;
+    transform-origin:top left; transform:rotate(90deg) translateY(-100vw);
+    --jv-cw: min(8.6vh, 13vw);
+  }
+  body.jv-rotar .juego-root.jv-full-root .jv-board{ min-height:0; height:100%; padding:8px 18px; gap:3px; }
+  body.jv-rotar .juego-root.jv-full-root .jv-side{ gap:3px; }
+  body.jv-rotar .juego-root.jv-full-root .jv-center{ min-height:14px; }
+  body.jv-rotar .juego-root.jv-full-root .jv-zlabel{ font-size:8px; }
+}
+/* Botón de rotar (junto al de sonido) */
+.jv-rot{
+  position:fixed; top:max(10px, env(safe-area-inset-top)); right:62px; z-index:var(--jv-z-overlay);
+  width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+  border-radius:12px; cursor:pointer; color:#E2E8F0;
+  background:rgba(20,16,31,.7); border:1px solid rgba(94,234,212,.5);
+  backdrop-filter:blur(6px); transition:background-color .16s var(--jv-ease-out);
+  font:700 20px/1 'Russo One',sans-serif;
+}
+.jv-rot:hover{ background:rgba(13,148,136,.4); }
+.jv-rot:active{ transform:scale(.95); }
+body.jv-rotar .jv-rot{ background:rgba(13,148,136,.6); border-color:rgba(94,234,212,.8); }
