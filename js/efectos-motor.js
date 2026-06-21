@@ -87,6 +87,7 @@
       case 'rivalBanca': arr = O.banca.slice(); break;
       case 'propioTodos': arr = (L.activo ? [L.activo] : []).concat(L.banca); break;
       case 'rivalTodos': arr = (O.activo ? [O.activo] : []).concat(O.banca); break;
+      case 'todos': arr = (L.activo ? [L.activo] : []).concat(L.banca, O.activo ? [O.activo] : [], O.banca); break;
       case 'elegido': arr = ctx.elegido ? ctx.elegido.slice() : []; break;
       default: { const c = cartaUnica(ctx, objetivo); arr = c ? [c] : []; }
     }
@@ -194,7 +195,9 @@
       }
       case 'estado': {
         const estados = Array.isArray(o.estado) ? o.estado : [o.estado];
+        const PAS = global.EFECTOS_PASIVOS;
         cartasObjetivo(ctx, o.objetivo || 'rivalActivo', o.filtro).forEach(function (c) {
+          if (PAS && PAS.cartaInmune && PAS.cartaInmune(ctx.est, c.iid)) return; // inmune (pasivo)
           estados.forEach(function (e) { aplicarEstadoCarta(c, e); });
         });
         out.push('estado');

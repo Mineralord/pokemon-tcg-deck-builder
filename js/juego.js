@@ -306,6 +306,8 @@
   // Aplica una condición al Activo de `lado` (las rotativas se reemplazan entre sí).
   function aplicarCondicion(est, lado, cond) {
     const a = est.lados[lado] && est.lados[lado].activo; if (!a) return est;
+    const PAS = global.EFECTOS_PASIVOS;
+    if (PAS && PAS.cartaInmune && PAS.cartaInmune(est, a.iid)) return est; // inmune a estados (pasivo)
     a.condiciones = a.condiciones || [];
     if (ROTATIVAS.indexOf(cond) >= 0) {
       a.condiciones = a.condiciones.filter(function (x) { return ROTATIVAS.indexOf(x) < 0; });
@@ -315,7 +317,7 @@
   }
   function _koSiProcede(est, lado) {
     const a = est.lados[lado] && est.lados[lado].activo;
-    if (a && (a.danio || 0) >= a.hp) _noquear(est, lado, a);
+    if (a && (a.danio || 0) >= _hpEf(est, a)) _noquear(est, lado, a);
   }
   // Chequeo Pokémon entre turnos: orden Veneno -> Quemado -> Dormido -> Paralizado.
   function chequeo(est, ladoQueTermina, flip) {
@@ -405,7 +407,8 @@
     if (!L.activo || !L.banca.length) return est;
     const cond = L.activo.condiciones || [];
     if (cond.indexOf('asleep') >= 0 || cond.indexOf('paralyzed') >= 0) return est; // Fase 7
-    const coste = L.activo.retirada || 0;
+    const PAS = global.EFECTOS_PASIVOS;
+    const coste = (PAS && PAS.retiroEf) ? PAS.retiroEf(est, L.activo) : (L.activo.retirada || 0);
     if ((L.activo.energias || []).length < coste) return est;
     for (let k = 0; k < coste; k++) L.descarte.push(L.activo.energias.pop());
     const i = L.banca.findIndex(function (c) { return c.iid === iidBanca; });
@@ -496,8 +499,8 @@
     return est;
   }
 
-  // Daño efectivo de un ataque sobre el defensor activo (debilidad/resistencia).
-  function danioEfectivo(atacante, defensor, ataque) {
+  // Daño efectivo de un ataque sobre el defensor activo (debilidad/resistencia + pasivos).
+  function danioEfectivo(atacante, defensor, ataque, est) {
     let dmg = ataque.danio || 0;
     if (dmg <= 0) return 0;
     const t = (atacante.tipos || [])[0];
@@ -508,7 +511,15 @@
     if (t && defensor.resistencia && defensor.resistencia.tipo === t) {
       dmg = Math.max(0, dmg - (defensor.resistencia.resta || 0));
     }
+    // Pasivos del defensor (reducción/aumento de daño): tools, estadios, habilidades.
+    const PAS = global.EFECTOS_PASIVOS;
+    if (est && PAS && PAS.danioAjustado) dmg = PAS.danioAjustado(est, defensor, dmg);
     return dmg;
+  }
+  // HP efectivo (incluye hpExtra de pasivos). Sin pasivos -> hp base.
+  function _hpEf(est, card) {
+    const PAS = global.EFECTOS_PASIVOS;
+    return (est && PAS && PAS.hpEf) ? PAS.hpEf(est, card) : (card ? card.hp : 0);
   }
 
   // Atacar con el ataque idx del Activo contra el Activo rival. Termina el turno.
@@ -525,12 +536,12 @@
       if (!cara) {
         at.danio = (at.danio || 0) + 30;
         est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: 0, confuso: true };
-        if ((at.danio || 0) >= at.hp) _noquear(est, lado, at);
+        if ((at.danio || 0) >= _hpEf(est, at)) _noquear(est, lado, at);
         if (!est.ganador) terminarTurno(est);
         return est;
       }
     }
-    const dmg = danioEfectivo(at, def, ataque);
+    const dmg = danioEfectivo(at, def, ataque, est);
     if (dmg > 0) def.danio = (def.danio || 0) + dmg;
     // Efectos: 1) handler JS legado 2) DSL autorado 3) auto-intérprete de texto.
     let efectos = [];

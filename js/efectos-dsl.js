@@ -19,7 +19,7 @@
   const OPS = OPS_F1.concat(OPS_F2);
 
   const OBJETIVOS = ['esteP', 'propioActivo', 'rivalActivo', 'propiaBanca', 'rivalBanca',
-    'propioTodos', 'rivalTodos', 'propioMazo', 'propioDescarte', 'propiaMano', 'elegido'];
+    'propioTodos', 'rivalTodos', 'todos', 'propioMazo', 'propioDescarte', 'propiaMano', 'elegido'];
 
   const FILTRO_KEYS = ['tipo', 'etapa', 'nombre', 'esBasico', 'supertipo', 'tieneDanio', 'conEnergia'];
 
