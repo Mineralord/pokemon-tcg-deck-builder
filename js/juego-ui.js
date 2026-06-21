@@ -208,6 +208,15 @@
 
   // ---------- Efectos visuales/sonido ----------
   function snd(n) { if (typeof SONIDO !== 'undefined') SONIDO.play(n); }
+  // Carta voladora (floreo de robo / vuelo de premio). cls: 'jv-fly-draw' | 'jv-fly-prize'.
+  function fxFly(cls, delay) {
+    const root = document.getElementById('juego-root'); if (!root) return;
+    setTimeout(function () {
+      if (!document.getElementById('juego-root')) return;
+      const el = document.createElement('div'); el.className = 'jv-fly ' + cls;
+      root.appendChild(el); setTimeout(function () { el.remove(); }, 700);
+    }, delay || 0);
+  }
   // Embestida del atacante hacia el rival ('up' = tú atacas; 'down' = el rival ataca).
   function fxLunge(sel, dir) {
     const card = document.querySelector(sel + ' .jv-card');
@@ -231,7 +240,7 @@
         wrap.appendChild(f); setTimeout(function () { f.remove(); }, 750);
       }
       snd(ko ? 'ko' : 'hit');
-      if (ko && typeof SONIDO !== 'undefined') { snd('prize'); SONIDO.vibrate([20, 40, 30]); }
+      if (ko && typeof SONIDO !== 'undefined') { snd('prize'); SONIDO.vibrate([20, 40, 30]); fxFly('jv-fly-prize', 220); }
     }, 170);
   }
   function fxAtaque(dmg, ko) { snd('attack'); if (typeof SONIDO !== 'undefined') SONIDO.vibrate(15); fxLunge('#juego-root .jv-side--yo .jv-active', 'up'); fxHit('#juego-root .jv-side--rival .jv-active', dmg, ko); }
@@ -245,7 +254,7 @@
     const root = document.getElementById('juego-root'); if (!root) return;
     const b = document.createElement('div'); b.className = 'jv-turnbanner'; b.textContent = tx('jv_your_turn', '¡Tu turno!');
     root.appendChild(b); setTimeout(function () { b.remove(); }, 1100);
-    snd('turn');
+    snd('turn'); fxFly('jv-fly-draw', 80);
   }
 
   const TIPO_COLOR = { Grass: '#22c55e', Fire: '#f97316', Water: '#38bdf8', Lightning: '#eab308', Psychic: '#a855f7', Fighting: '#b45309', Darkness: '#1f2937', Metal: '#94a3b8', Fairy: '#ec4899', Dragon: '#ca8a04', Colorless: '#cbd5e1' };

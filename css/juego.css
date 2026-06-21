@@ -495,6 +495,22 @@ body.jv-full .views{ padding:0 !important; }
 }
 @keyframes jv-ko-rm{ 0%{ opacity:1; } 100%{ opacity:0; } }
 
+/* Carta voladora: floreo de robo y vuelo de premio */
+.jv-fly{ position:absolute; left:50%; top:50%; width:var(--jv-cw, 56px); aspect-ratio:63/88;
+  border-radius:8px; z-index:var(--jv-z-overlay); pointer-events:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.5); }
+.jv-fly-draw{ background:linear-gradient(135deg,#3b2d6b,#7c3aed); border:1px solid rgba(167,139,250,.6);
+  animation:jv-fly-draw .62s var(--jv-ease-out) forwards; }
+@keyframes jv-fly-draw{ 0%{ transform:translate(-50%,-280%) scale(.7); opacity:0; }
+  22%{ opacity:1; } 100%{ transform:translate(-50%,260%) scale(.92); opacity:0; } }
+.jv-fly-prize{ background:linear-gradient(135deg,#b45309,#fbbf24); border:1px solid rgba(253,224,71,.8);
+  box-shadow:0 0 18px rgba(250,204,21,.7), 0 6px 18px rgba(0,0,0,.5);
+  animation:jv-fly-prize .66s var(--jv-ease-out) forwards; }
+@keyframes jv-fly-prize{ 0%{ transform:translate(-50%,-50%) scale(.35); opacity:0; }
+  30%{ transform:translate(-50%,-50%) scale(1.12); opacity:1; }
+  100%{ transform:translate(-50%,230%) scale(.7); opacity:0; } }
+@media (prefers-reduced-motion: reduce){ .jv-fly{ display:none; } }
+
 /* ============================================================
    FASE 10c — Layout HORIZONTAL real (estilo TCG Live)
    Solo móvil en landscape (orientación horizontal + pantalla baja). El modo
