@@ -503,7 +503,15 @@ function _mazoAuto(tipo, energyName, nombre){
 }
 // Crea (si no existen) los mazos iniciales Eléctrico y Oscuro y los guarda.
 function armarMazosIniciales(){
-  const defs = [['Lightning', 'Basic Lightning Energy', 'Mazo Eléctrico'], ['Darkness', 'Basic Darkness Energy', 'Mazo Oscuro']];
+  const defs = [
+    ['Lightning', 'Basic Lightning Energy', 'Mazo Eléctrico'],
+    ['Fire', 'Basic Fire Energy', 'Mazo Fuego'],
+    ['Water', 'Basic Water Energy', 'Mazo Agua'],
+    ['Grass', 'Basic Grass Energy', 'Mazo Planta'],
+    ['Psychic', 'Basic Psychic Energy', 'Mazo Psíquico'],
+    ['Fighting', 'Basic Fighting Energy', 'Mazo Lucha'],
+    ['Darkness', 'Basic Darkness Energy', 'Mazo Oscuro']
+  ];
   let creados = 0;
   defs.forEach(function (d){
     if (savedDecks.some(x => x.name === d[2])) return;
