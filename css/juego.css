@@ -473,18 +473,3 @@ body.jv-full .views{ padding:0 !important; }
   .juego-root.jv-full-root .jv-center{ min-height:14px; }
   .juego-root.jv-full-root .jv-zlabel{ font-size:8px; }
 }
-/* Móvil en vertical dentro del juego inmersivo: ROTAMOS el tablero 90° por CSS,
-   así se ve apaisado al sostener el teléfono de lado, sin depender del autogiro
-   del sistema (funciona en iOS y Android). */
-@media (orientation: portrait) and (max-width: 920px){
-  .juego-root.jv-full-root{
-    width:100dvh; height:100dvw; top:50%; left:50%; right:auto; bottom:auto;
-    transform:translate(-50%,-50%) rotate(90deg); transform-origin:center center;
-    overflow:hidden;
-    --jv-cw: min(8.6dvh, 13dvw);
-  }
-  .juego-root.jv-full-root .jv-board{ min-height:0; height:100%; padding:8px 16px; gap:3px; }
-  .juego-root.jv-full-root .jv-side{ gap:3px; }
-  .juego-root.jv-full-root .jv-center{ min-height:14px; }
-  .juego-root.jv-full-root .jv-zlabel{ font-size:8px; }
-}
