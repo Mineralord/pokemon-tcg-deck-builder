@@ -120,6 +120,7 @@
       stage: poke ? stageDe(view) : 0,
       evolucionaDe: view.evolucionaDe || null,
       esBasico: poke && !view.evolucionaDe,
+      tera: poke && /\btera\b/i.test(view.fase || ''),
       ataques: poke ? (view.ataques || []).map(parseAtaque) : [],
       habilidades: poke ? (view.habilidades || []).map(function (h) { return { nombre: h.name, texto: h.text }; }) : [],
       debilidad: poke ? parseDebilidad(view.debilidades) : null,
@@ -196,7 +197,7 @@
       nombre: nombre || '?', mazo: [], mano: [], banca: [], activo: null,
       descarte: [], premios: [], lost: [], estadio: null,
       estado: 'setup', mulligans: 0, energiaUsada: false,
-      retiroUsado: false, supporterUsado: false, estadioUsado: false, turnosJugados: 0
+      retiroUsado: false, supporterUsado: false, estadioUsado: false, turnosJugados: 0, vstarUsado: false
     };
   }
 
@@ -460,6 +461,7 @@
     const DB = global.EFECTOS_DB; const def = DB && DB[r.card.id];
     const meta = def && def.habilidades && def.habilidades[h.nombre];
     if (meta) {
+      if (meta.vstar && L.vstarUsado) return est;          // ya usaste tu Poder VSTAR esta partida
       if (meta.soloActivo && r.pos !== 'activo') return est;
       r.card.habUsadas = r.card.habUsadas || [];
       if (meta.unaVezPorTurno && r.card.habUsadas.indexOf(h.nombre) >= 0) return est;
@@ -470,6 +472,7 @@
     if (fn) { try { fn(est, lado, { card: r.card }); } catch (e) {} }
     else if (EF && EF.resolverDSL) { EF.resolverDSL(est, lado, r.card.id, 'habilidades', h.nombre, { at: r.card, fuente: r.card, faseFinal: 'habilidad' }); }
     if (meta && meta.unaVezPorTurno) { r.card.habUsadas = r.card.habUsadas || []; r.card.habUsadas.push(h.nombre); }
+    if (meta && meta.vstar) L.vstarUsado = true;
     return est;
   }
 
@@ -571,6 +574,11 @@
     if (!at || !def) return est;
     const ataque = (at.ataques || [])[idxAtaque]; if (!ataque) return est;
     if (!puedePagar(at, ataque.coste)) return est;
+    // Ataque marcado como VSTAR: solo una vez por partida.
+    const _dbAtk = global.EFECTOS_DB && global.EFECTOS_DB[at.id];
+    const _metaAtk = _dbAtk && _dbAtk.ataques && _dbAtk.ataques[ataque.nombre];
+    if (_metaAtk && _metaAtk.vstar && L.vstarUsado) return est;
+    if (_metaAtk && _metaAtk.vstar) L.vstarUsado = true;
     // Confusión: moneda; si sale cruz, el ataque falla y se autoinflige 30.
     if (_tiene(at, 'confused')) {
       const cara = flip ? flip() : _flip(est);

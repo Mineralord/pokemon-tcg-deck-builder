@@ -184,7 +184,13 @@
       }
       case 'danio': {
         const n = valorCantidad(ctx, o);
-        cartasObjetivo(ctx, o.objetivo, o.filtro).forEach(function (c) { if (n > 0) c.danio = (c.danio || 0) + n; });
+        const L = ctx.est.lados[ctx.lado], O = ctx.est.lados[ctx.op];
+        cartasObjetivo(ctx, o.objetivo, o.filtro).forEach(function (c) {
+          if (n <= 0) return;
+          // Terastal: los Pokémon Tera no reciben daño de ataques mientras están en Banca.
+          if (c.tera && (L.banca.indexOf(c) >= 0 || O.banca.indexOf(c) >= 0)) return;
+          c.danio = (c.danio || 0) + n;
+        });
         if (n > 0) out.push('danio');
         break;
       }
