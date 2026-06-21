@@ -25,12 +25,30 @@
       }
     },
 
-    // Charizard ex (151) — Explosive Vortex: 330, descarta 3 energías de este Pokémon.
+    // Charizard ex (151) — Brave Wing: 60 (+100 si tiene daño); Explosive Vortex: 330, descarta 3 energías.
     'sv3pt5-6': {
       ataques: {
+        'Brave Wing': { ops: [{ op: 'danioExtra', cantidad: 100, condicion: { tipo: 'tieneDanio', objetivo: 'esteP' } }] },
         'Explosive Vortex': { ops: [{ op: 'descartarEnergia', objetivo: 'esteP', cantidad: 3 }] }
       }
     },
+
+    // ---------- Ataques de Pokémon ex (Fase 7) ----------
+    'sv3pt5-38': { ataques: { 'Heat Wave': { ops: [{ op: 'estado', objetivo: 'rivalActivo', estado: 'burned' }] } } }, // Ninetales ex
+    'sv3pt5-65': { ataques: { 'Mind Jack': { ops: [{ op: 'danioExtra', porCada: { op: 'cuenta', objetivo: 'rivalBanca', multiplica: 30 } }] } } }, // Alakazam ex
+    'sv3pt5-115': { ataques: { 'Triple Draw': { ops: [{ op: 'robar', cantidad: 3 }] } } }, // Kangaskhan ex
+    'sv3pt5-124': { ataques: { 'Icy Wind': { ops: [{ op: 'estado', objetivo: 'rivalActivo', estado: 'asleep' }] } } }, // Jynx ex
+    'sv8-42': { ataques: { 'Hypno Splash': { ops: [{ op: 'estado', objetivo: 'rivalActivo', estado: 'asleep' }] } } }, // Milotic ex
+    'sv8-37': { ataques: { 'Spicy Rage': { ops: [{ op: 'danioExtra', porCada: { op: 'contadores', objetivo: 'esteP', multiplica: 70 } }] } } }, // Scovillain ex
+    'sv8-48': { ataques: { 'Black Frost': { ops: [{ op: 'recoil', cantidad: 30 }] } } }, // Black Kyurem ex
+    'sv3pt5-145': { ataques: { 'Multishot Lightning': { ops: [                                  // Zapdos ex
+      { op: 'elegirObjetivo', objetivo: 'rivalBanca', cuantos: 1, prompt: 'Elige un Pokémon de la Banca rival (90 de daño)' },
+      { op: 'danio', objetivo: 'elegido', cantidad: 90 }
+    ] } } },
+    'sv8-119': { ataques: { 'Obsidian': { ops: [                                                  // Hydreigon ex
+      { op: 'elegirObjetivo', objetivo: 'rivalBanca', cuantos: 2, prompt: 'Elige 2 Pokémon de la Banca rival (130 de daño)' },
+      { op: 'danio', objetivo: 'elegido', cantidad: 130 }
+    ] } } },
 
     // ---------- Entrenadores (Fase 7) ----------
     'sv1-180': { jugar: { ops: [{ op: 'robar', cantidad: 3 }] } },                               // Nemona
