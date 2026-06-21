@@ -474,9 +474,45 @@ function restaurarColeccion(){
     total += qty;
   });
   save(); renderInventory(); renderLegal();
-  showToast(`Colección restaurada: ${total} cartas`, 'success');
+  const nm = armarMazosIniciales();
+  showToast(`Colección restaurada: ${total} cartas${nm?` · ${nm} mazos listos`:''}`, 'success');
 }
 window.restaurarColeccion = restaurarColeccion;
+
+// Construye un mazo jugable de 60 cartas de un tipo: básicos con ataque + entrenadores
+// + energía básica hasta 60 (≤4 por nombre; energía ilimitada). Devuelve null si no hay básicos.
+function _mazoAuto(tipo, energyName, nombre){
+  const inv = inventory.map(e => ({ name: e.name, qty: e.qty, v: regCard(viewFromEntry(e)) }));
+  const sup = v => (v.supertipo || '').toLowerCase();
+  const esPoke = v => sup(v).indexOf('pok') >= 0;
+  const esTrainer = v => sup(v).indexOf('train') >= 0 || sup(v).indexOf('entren') >= 0;
+  const esBasico = v => esPoke(v) && !v.evolucionaDe;
+  const encaja = v => (v.tipos || []).indexOf(tipo) >= 0 || (v.tipos || []).indexOf('Colorless') >= 0;
+  const pokemon = [], trainers = []; let total = 0;
+  inv.filter(o => esBasico(o.v) && encaja(o.v) && (o.v.ataques || []).length).forEach(o => {
+    if (total >= 14) return; const q = Math.min(o.qty, 4); pokemon.push({ card: o.name, qty: q, id: o.v.id }); total += q;
+  });
+  if (!pokemon.length) return null;
+  inv.filter(o => esTrainer(o.v)).forEach(o => {
+    if (total >= 36) return; const q = Math.min(o.qty, 4); trainers.push({ card: o.name, qty: q, id: o.v.id }); total += q;
+  });
+  const energies = [{ card: energyName, qty: Math.max(1, 60 - total) }];
+  return { name: nombre, rank: '1', pokemon: pokemon, trainers: trainers, energies: energies,
+    difficulty: 'media', strategy: '', advantages: '', weaknesses: '', metrics: {} };
+}
+// Crea (si no existen) los mazos iniciales Eléctrico y Oscuro y los guarda.
+function armarMazosIniciales(){
+  const defs = [['Lightning', 'Basic Lightning Energy', 'Mazo Eléctrico'], ['Darkness', 'Basic Darkness Energy', 'Mazo Oscuro']];
+  let creados = 0;
+  defs.forEach(function (d){
+    if (savedDecks.some(x => x.name === d[2])) return;
+    const m = _mazoAuto(d[0], d[1], d[2]);
+    if (m) { savedDecks.push(Object.assign(m, { deckType: 'Pokemon-' + d[0], savedAt: Date.now() })); creados++; }
+  });
+  if (creados) { save(); if (typeof renderSaved === 'function') renderSaved(); }
+  return creados;
+}
+window.armarMazosIniciales = armarMazosIniciales;
 
 function renderInventory(){
   const el = document.getElementById('coleccion-grid');
