@@ -337,7 +337,7 @@
       def: cont ? buscarPorIid(est, cont.defIid) : ((ctxExtra && ctxExtra.def) || est.lados[ladoRival(lado)].activo),
       fuente: cont ? buscarPorIid(est, cont.fuenteIid) : ((ctxExtra && ctxExtra.fuente) || null),
       elegido: cont ? (cont.elegidoIids || []).map(function (i) { return buscarPorIid(est, i); }).filter(Boolean) : [],
-      flip: function () { return flipDe(est); }
+      flip: (ctxExtra && ctxExtra.flip) || function () { return flipDe(est); }
     };
     ctx._faseFinal = cont ? cont.faseFinal : (ctxExtra && ctxExtra.faseFinal) || null;
     return ctx;

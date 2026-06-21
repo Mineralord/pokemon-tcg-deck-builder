@@ -28,7 +28,7 @@
   const PORCADA_OPS = ['cuenta', 'energias', 'contadores', 'caras', 'carasDe', 'carasHastaCruz'];
 
   const MODS = ['reduceDanio', 'hpExtra', 'costoRetiro', 'costoAtaque', 'inmuneEstado',
-    'proveeEnergia', 'aumentaDanio', 'bloqueaHabilidad'];
+    'proveeEnergia', 'aumentaDanio', 'bloqueaHabilidad', 'noRetira'];
 
   const ESTADOS = ['asleep', 'confused', 'paralyzed', 'poisoned', 'burned'];
 

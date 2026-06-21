@@ -181,11 +181,12 @@
 
   function finOverlay() {
     if (!G || !G.ganador) return '';
-    const gane = G.ganador === 'A';
-    const titulo = gane ? tx('jv_win', '¡Ganaste!') : tx('jv_lose', 'Perdiste');
-    const motivos = { deckout: tx('jv_by_deckout', 'por agotar el mazo del rival'), premios: tx('jv_by_prizes', 'por tomar todos los premios'), sinpokemon: tx('jv_by_nopokemon', 'sin Pokémon en juego'), rendicion: tx('jv_by_concede', 'por rendición') };
+    const empate = G.ganador === 'empate';
+    const gane = !empate && G.ganador === MI();
+    const titulo = empate ? tx('jv_draw', 'Empate') : (gane ? tx('jv_win', '¡Ganaste!') : tx('jv_lose', 'Perdiste'));
+    const motivos = { deckout: tx('jv_by_deckout', 'por agotar el mazo del rival'), premios: tx('jv_by_prizes', 'por tomar todos los premios'), sinpokemon: tx('jv_by_nopokemon', 'sin Pokémon en juego'), rendicion: tx('jv_by_concede', 'por rendición'), empate: tx('jv_by_draw', 'ambos sin Pokémon a la vez') };
     const motivo = motivos[G.motivoFin] || '';
-    return '<div class="jv-overlay"><div class="jv-overlay-card ' + (gane ? 'win' : 'lose') + '">' +
+    return '<div class="jv-overlay"><div class="jv-overlay-card ' + (empate ? 'draw' : (gane ? 'win' : 'lose')) + '">' +
       '<h3>' + esc(titulo) + '</h3>' + (motivo ? '<p>' + esc(motivo) + '</p>' : '') +
       '<button class="jv-btn jv-btn-big" type="button" onclick="jvNueva()">' + esc(tx('jv_new_game', 'Nueva partida')) + '</button>' +
       '</div></div>';
@@ -446,7 +447,7 @@
     if (!root) return;
     if (_handoff && G) { root.innerHTML = pantallaHandoff(); return; }
     root.innerHTML = G ? renderTablero() : (_modo === 'online' ? pantallaEsperaOnline() : pantallaInicio());
-    if (G && G.ganador) { if (!_finSonado) { _finSonado = true; snd(G.ganador === 'A' ? 'win' : 'lose'); } }
+    if (G && G.ganador) { if (!_finSonado) { _finSonado = true; snd(G.ganador === MI() ? 'win' : 'lose'); } }
     else _finSonado = false;
     // Turno del rival (sin IA todavía): auto-pasa para que el ciclo sea observable.
     if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; }

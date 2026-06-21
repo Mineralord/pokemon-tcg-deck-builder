@@ -410,6 +410,7 @@
     const cond = L.activo.condiciones || [];
     if (cond.indexOf('asleep') >= 0 || cond.indexOf('paralyzed') >= 0) return est; // Fase 7
     const PAS = global.EFECTOS_PASIVOS;
+    if (PAS && PAS.noPuedeRetirar && PAS.noPuedeRetirar(est, L.activo.iid)) return est; // efecto "no puede retirarse"
     const coste = (PAS && PAS.retiroEf) ? PAS.retiroEf(est, L.activo) : (L.activo.retirada || 0);
     if ((L.activo.energias || []).length < coste) return est;
     for (let k = 0; k < coste; k++) L.descarte.push(L.activo.energias.pop());
@@ -495,7 +496,9 @@
 
   // Noquea una carta de `ladoDef`: descarta (con energías y cartas debajo), el rival toma premios,
   // y se repone el Activo desde la banca (auto). Sin banca -> el atacante gana.
-  function _noquear(est, ladoDef, card) {
+  // diferirFin: no decide la victoria por "sin Pokémon" aquí (lo hace _barridoKO de forma
+  // central, para permitir el EMPATE cuando ambos lados pierden su último Pokémon a la vez).
+  function _noquear(est, ladoDef, card, diferirFin) {
     const D = est.lados[ladoDef]; const ladoAtk = ladoDef === 'A' ? 'B' : 'A';
     D.descarte.push(card);
     (card.energias || []).forEach(function (e) { D.descarte.push(e); }); card.energias = [];
@@ -506,8 +509,18 @@
     if (est.ganador) return est;
     if (!D.activo) {
       if (D.banca.length) D.activo = D.banca.shift();
-      else { est.ganador = ladoAtk; est.fase = FASE.END; est.motivoFin = 'sinpokemon'; }
+      else if (!diferirFin) { est.ganador = ladoAtk; est.fase = FASE.END; est.motivoFin = 'sinpokemon'; }
     }
+    return est;
+  }
+  // Evaluación central de fin por falta de Pokémon (tras un barrido). Permite empate.
+  function _finPorSinPokemon(est) {
+    if (est.ganador) return est;
+    const Avacio = !est.lados.A.activo && !est.lados.A.banca.length;
+    const Bvacio = !est.lados.B.activo && !est.lados.B.banca.length;
+    if (Avacio && Bvacio) { est.ganador = 'empate'; est.fase = FASE.END; est.motivoFin = 'empate'; }
+    else if (Avacio) { est.ganador = 'B'; est.fase = FASE.END; est.motivoFin = 'sinpokemon'; }
+    else if (Bvacio) { est.ganador = 'A'; est.fase = FASE.END; est.motivoFin = 'sinpokemon'; }
     return est;
   }
 
@@ -520,11 +533,11 @@
     const orden = [tp === 'A' ? 'B' : 'A', tp];
     for (let s = 0; s < orden.length; s++) {
       const lado = orden[s]; const L = est.lados[lado];
-      L.banca.slice().forEach(function (c) { if ((c.danio || 0) >= _hpEf(est, c)) _noquear(est, lado, c); });
-      if (L.activo && (L.activo.danio || 0) >= _hpEf(est, L.activo)) _noquear(est, lado, L.activo);
-      if (est.ganador) return est;
+      L.banca.slice().forEach(function (c) { if ((c.danio || 0) >= _hpEf(est, c)) _noquear(est, lado, c, true); });
+      if (L.activo && (L.activo.danio || 0) >= _hpEf(est, L.activo)) _noquear(est, lado, L.activo, true);
+      if (est.ganador) return est; // victoria por premios: inmediata
     }
-    return est;
+    return _finPorSinPokemon(est);
   }
 
   // Daño efectivo de un ataque sobre el defensor activo (debilidad/resistencia + pasivos).

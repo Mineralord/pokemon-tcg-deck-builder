@@ -292,6 +292,7 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .jv-overlay-card h3{ font:700 28px/1.1 'Russo One',sans-serif; margin:0 0 6px; }
 .jv-overlay-card.win h3{ color:#A78BFA; text-shadow:0 0 18px rgba(167,139,250,.6); }
 .jv-overlay-card.lose h3{ color:#F43F5E; text-shadow:0 0 18px rgba(244,63,94,.5); }
+.jv-overlay-card.draw h3{ color:#A9B2C7; text-shadow:0 0 14px rgba(169,178,199,.4); }
 .jv-overlay-card p{ font:400 13px/1.5 'Chakra Petch',sans-serif; color:#9aa6bd; margin:0 0 16px; }
 
 /* ---------- Pantalla de inicio ---------- */

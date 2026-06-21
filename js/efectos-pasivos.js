@@ -58,7 +58,7 @@
 
   // Modificadores agregados que afectan a la carta `iid`.
   function modsCarta(est, iid) {
-    const acc = { reduceDanio: 0, aumentaDanio: 0, hpExtra: 0, retiroSet: null, inmune: false, bloqueaHab: false };
+    const acc = { reduceDanio: 0, aumentaDanio: 0, hpExtra: 0, retiroSet: null, inmune: false, bloqueaHab: false, noRetira: false };
     if (iid == null) return acc;
     forEachFuente(est, function (fLado, fCard, pasivos) {
       pasivos.forEach(function (p) {
@@ -70,6 +70,7 @@
           case 'costoRetiro': if (p.set != null) acc.retiroSet = p.set; break;
           case 'inmuneEstado': acc.inmune = true; break;
           case 'bloqueaHabilidad': acc.bloqueaHab = true; break;
+          case 'noRetira': acc.noRetira = true; break;
         }
       });
     });
@@ -88,6 +89,7 @@
   }
   // ¿La carta es inmune a condiciones especiales?
   function cartaInmune(est, iid) { return modsCarta(est, iid).inmune; }
+  function noPuedeRetirar(est, iid) { return modsCarta(est, iid).noRetira; }
   function ladoInmune(est, lado) { const a = est.lados[lado] && est.lados[lado].activo; return !!a && cartaInmune(est, a.iid); }
   // Daño de ataque ajustado por pasivos del defensor (reduce/aumenta). dmg ya trae debilidad/resist.
   function danioAjustado(est, defCard, dmg) {
@@ -98,7 +100,8 @@
 
   const API = {
     modsCarta: modsCarta, statsEfectivas: statsEfectivas, hpEf: hpEf, retiroEf: retiroEf,
-    cartaInmune: cartaInmune, ladoInmune: ladoInmune, danioAjustado: danioAjustado, _setObjetivo: setObjetivo
+    cartaInmune: cartaInmune, ladoInmune: ladoInmune, noPuedeRetirar: noPuedeRetirar,
+    danioAjustado: danioAjustado, _setObjetivo: setObjetivo
   };
   global.EFECTOS_PASIVOS = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

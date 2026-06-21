@@ -13,7 +13,8 @@ function eq(a, b, msg) { ok(a === b, msg + ' (esperaba ' + JSON.stringify(b) + '
 global.EFECTOS_DB = {
   'snp': { ataques: { 'Snipe': { ops: [{ op: 'danio', objetivo: 'rivalBanca', cantidad: 200 }] } } },
   'abil': { habilidades: { 'Draw Engine': { unaVezPorTurno: true, ops: [{ op: 'robar', cantidad: 1 }] } } },
-  'abil2': { habilidades: { 'Front Only': { soloActivo: true, ops: [{ op: 'robar', cantidad: 1 }] } } }
+  'abil2': { habilidades: { 'Front Only': { soloActivo: true, ops: [{ op: 'robar', cantidad: 1 }] } } },
+  'glue': { pasivos: [{ mod: 'noRetira', a: 'esteP' }] }
 };
 
 function vista(id, nombre, ataques, habilidades) {
@@ -71,6 +72,25 @@ est.lados.A.banca = [front];
 const m0 = est.lados.A.mano.length;
 J.usarHabilidad(est, 'A', front.iid, 0);
 eq(est.lados.A.mano.length, m0, 'en banca: no se activa');
+
+console.log('KO simultáneo del último Pokémon de ambos lados → empate');
+function lethal() { const c = J.cartaJuego(vista('z', 'Z')); c.hp = 100; c.danio = 120; c.energias = []; c.condiciones = []; c.premiosKO = 1; return c; }
+function premios(n) { const a = []; for (let i = 0; i < n; i++) a.push({}); return a; }
+let estE = { seed: 1, rngN: 0, turno: 3, turnoDe: 'A', inicia: 'A', ganador: null, motivoFin: null, fase: J.FASE.MAIN,
+  lados: { A: { activo: lethal(), banca: [], descarte: [], premios: premios(6), lost: [], mazo: [{}], mano: [], turnosJugados: 1, estadio: null },
+           B: { activo: lethal(), banca: [], descarte: [], premios: premios(6), lost: [], mazo: [{}], mano: [], turnosJugados: 1, estadio: null } } };
+J.terminarTurno(estE);
+eq(estE.ganador, 'empate', 'resultado empate');
+eq(estE.motivoFin, 'empate', 'motivo empate');
+
+console.log('noRetira — un Pokémon con el efecto no puede retirarse');
+const glue = J.cartaJuego(vista('glue', 'Glue')); glue.iid = 'A-glue'; glue.retirada = 1;
+glue.energias = [{ supertipo: 'Energy', energiaTipo: 'Colorless' }]; glue.condiciones = [];
+const bn = J.cartaJuego(vista('b', 'Banco')); bn.iid = 'A-bn';
+let estR = { fase: J.FASE.MAIN, turnoDe: 'A', ganador: null,
+  lados: { A: { activo: glue, banca: [bn], descarte: [], estadio: null, retiroUsado: false }, B: { activo: J.cartaJuego(vista('o', 'O')), banca: [], descarte: [], estadio: null } } };
+J.retirar(estR, 'A', bn.iid);
+eq(estR.lados.A.activo.iid, 'A-glue', 'el activo NO cambió (no puede retirarse)');
 
 console.log('\n' + (fail === 0 ? '✓ TODO OK' : '✗ FALLOS') + ' — pass=' + pass + ' fail=' + fail);
 if (fail > 0) process.exit(1);
