@@ -1,10 +1,13 @@
 /* =============================================================
-   efectos-motor.js — Intérprete del DSL de efectos (Fase 1c)
-   Ejecuta las `ops` deterministas (sin elección) de una entrada del DSL contra
-   el estado de la partida. Las ops que requieren elección (Fase 2) se ignoran
-   aquí y devuelven la marca 'manual' para caer al respaldo asistido.
-   Determinismo: usa una moneda con el MISMO algoritmo que js/juego.js (_flip),
-   para que online / IA / tests coincidan jugada a jugada.
+   efectos-motor.js — Intérprete del DSL de efectos (Fases 1c + 2)
+   Ejecuta las `ops` de una entrada del DSL contra el estado de la partida.
+   - Fase 1: ops deterministas sin elección.
+   - Fase 2: ops con elección (buscarMazo, elegirObjetivo, cambiarActivo,
+     ponerEnBanca, mirarTopN). Cuando una op necesita decidir algo del jugador,
+     el motor PAUSA: escribe `est.pendiente` (serializable, por iids) y devuelve la
+     marca 'pendiente'. El juego reanuda con resumir(est, seleccion).
+   Determinismo: moneda/baraje con el MISMO algoritmo que js/juego.js, para que
+   online / IA / tests coincidan jugada a jugada.
    ============================================================= */
 (function (global) {
   'use strict';
@@ -24,6 +27,18 @@
     const f = rng32(((est.seed || 1) ^ Math.imul(est.rngN, 2654435761)) >>> 0);
     return f() < 0.5;
   }
+  // Baraja determinista (avanza el RNG del estado).
+  function rndDe(est) {
+    est.rngN = (est.rngN || 0) + 1;
+    return rng32(((est.seed || 1) ^ Math.imul(est.rngN, 40503)) >>> 0);
+  }
+  function barajar(arr, rnd) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
 
   const ROTATIVAS = ['asleep', 'confused', 'paralyzed'];
   function aplicarEstadoCarta(card, cond) {
@@ -35,6 +50,9 @@
     } else if (card.condiciones.indexOf(cond) < 0) card.condiciones.push(cond);
   }
 
+  const OPS_ELECCION = ['buscarMazo', 'elegirObjetivo', 'cambiarActivo', 'ponerEnBanca', 'mirarTopN'];
+  function esEleccion(op) { return OPS_ELECCION.indexOf(op) >= 0; }
+
   // ---------- Resolución de objetivos ----------
   function ladoRival(lado) { return lado === 'A' ? 'B' : 'A'; }
 
@@ -44,6 +62,7 @@
       case 'esteP': return ctx.fuente || ctx.at || L.activo;
       case 'propioActivo': return L.activo;
       case 'rivalActivo': return O.activo;
+      case 'elegido': return (ctx.elegido && ctx.elegido[0]) || null;
       default: return null;
     }
   }
@@ -68,6 +87,7 @@
       case 'rivalBanca': arr = O.banca.slice(); break;
       case 'propioTodos': arr = (L.activo ? [L.activo] : []).concat(L.banca); break;
       case 'rivalTodos': arr = (O.activo ? [O.activo] : []).concat(O.banca); break;
+      case 'elegido': arr = ctx.elegido ? ctx.elegido.slice() : []; break;
       default: { const c = cartaUnica(ctx, objetivo); arr = c ? [c] : []; }
     }
     return filtro ? arr.filter(function (c) { return cumpleFiltro(c, filtro); }) : arr;
@@ -88,6 +108,23 @@
     if (zona) return zona.length;
     return cartasObjetivo(ctx, objetivo).length;
   }
+
+  // Busca una carta por iid en cualquier zona de cualquier lado.
+  function buscarPorIid(est, iid) {
+    if (iid == null) return null;
+    const lados = est.lados;
+    for (const k in lados) {
+      const L = lados[k];
+      if (L.activo && L.activo.iid === iid) return L.activo;
+      const zonas = [L.banca, L.mano, L.mazo, L.descarte, L.premios, L.lost];
+      for (let z = 0; z < zonas.length; z++) {
+        const arr = zonas[z]; if (!arr) continue;
+        for (let i = 0; i < arr.length; i++) if (arr[i] && arr[i].iid === iid) return arr[i];
+      }
+    }
+    return null;
+  }
+  function iidsDe(cards) { return (cards || []).map(function (c) { return c && c.iid; }).filter(function (x) { return x != null; }); }
 
   // ---------- Evaluadores ----------
   function evalPorCada(ctx, pc) {
@@ -129,9 +166,8 @@
     }
   }
 
-  // ---------- Ejecución de ops ----------
+  // ---------- Ejecución de ops deterministas (Fase 1) ----------
   function dueñoDe(ctx, card) {
-    // ¿de qué lado es esta carta? (para descartes correctos)
     const L = ctx.est.lados[ctx.lado], O = ctx.est.lados[ctx.op];
     if (L.activo === card || L.banca.indexOf(card) >= 0) return L;
     if (O.activo === card || O.banca.indexOf(card) >= 0) return O;
@@ -204,32 +240,170 @@
         break;
       }
       default:
-        out.push('manual'); // op de Fase 2: respaldo manual asistido
+        out.push('manual'); // op desconocida -> respaldo manual asistido
     }
   }
 
-  // ---------- API pública ----------
-  // Ejecuta una entrada del DSL. ctxExtra: { at, def, fuente, flip }.
-  // Devuelve lista de marcas de efectos aplicados (o ['manual'] si no ejecutable).
-  function ejecutar(est, lado, entrada, ctxExtra) {
-    if (!entrada) return ['manual'];
+  // ---------- Ops con elección (Fase 2) ----------
+  // Construye la solicitud serializable de elección de una op.
+  function opcionDe(c, zona) { return { iid: c.iid, nombre: c.nombre, imagen: c.imagen || null, zona: zona }; }
+  function solicitudDe(ctx, o) {
+    const est = ctx.est, L = est.lados[ctx.lado], O = est.lados[ctx.op];
+    switch (o.op) {
+      case 'buscarMazo': {
+        const op = L.mazo.filter(function (c) { return cumpleFiltro(c, o.filtro); });
+        return { tipo: 'buscarMazo', prompt: o.prompt || 'Busca en tu mazo', destino: o.destino || 'mano',
+          opciones: op.map(function (c) { return opcionDe(c, 'mazo'); }), min: 0, max: o.cantidad || 1, cancelable: true };
+      }
+      case 'mirarTopN': {
+        const top = L.mazo.slice(0, o.n || 1).filter(function (c) { return cumpleFiltro(c, o.filtro); });
+        return { tipo: 'mirarTopN', prompt: o.prompt || 'Mira las cartas de arriba', destino: o.destino || 'mano',
+          opciones: top.map(function (c) { return opcionDe(c, 'mazo'); }), min: 0, max: o.cantidad || 1, cancelable: true };
+      }
+      case 'elegirObjetivo': {
+        const cs = cartasObjetivo(ctx, o.objetivo || 'propioTodos', o.filtro);
+        const n = o.cuantos || 1;
+        return { tipo: 'elegirObjetivo', prompt: o.prompt || 'Elige un objetivo',
+          opciones: cs.map(function (c) { return opcionDe(c, 'juego'); }), min: Math.min(n, cs.length), max: n, cancelable: false };
+      }
+      case 'cambiarActivo': {
+        const lado = o.objetivo === 'rival' ? ctx.op : ctx.lado;
+        const banca = est.lados[lado].banca;
+        return { tipo: 'cambiarActivo', prompt: o.prompt || 'Elige el nuevo Activo', ladoCambio: lado,
+          opciones: banca.map(function (c) { return opcionDe(c, 'banca'); }), min: banca.length ? 1 : 0, max: 1, cancelable: false };
+      }
+      case 'ponerEnBanca': {
+        const basicos = L.mano.filter(function (c) { return c.supertipo === 'Pokemon' && c.esBasico && cumpleFiltro(c, o.filtro); });
+        return { tipo: 'ponerEnBanca', prompt: o.prompt || 'Pon Básicos en tu Banca',
+          opciones: basicos.map(function (c) { return opcionDe(c, 'mano'); }), min: 0, max: Math.min(o.cantidad || 5, 5 - L.banca.length), cancelable: true };
+      }
+      default: return { tipo: o.op, opciones: [], min: 0, max: 0, cancelable: true };
+    }
+  }
+
+  // Aplica una op de elección con la selección (array de iids) ya provista.
+  function aplicarEleccion(ctx, o, sel, out) {
+    const est = ctx.est, L = est.lados[ctx.lado];
+    sel = sel || [];
+    switch (o.op) {
+      case 'buscarMazo':
+      case 'mirarTopN': {
+        const destino = o.destino || 'mano';
+        sel.forEach(function (iid) {
+          const i = L.mazo.findIndex(function (c) { return c.iid === iid; });
+          if (i < 0) return;
+          const c = L.mazo.splice(i, 1)[0];
+          if (destino === 'banca' && L.banca.length < 5) c.enJuegoDesde = est.turno, L.banca.push(c);
+          else if (destino === 'activo' && !L.activo) c.enJuegoDesde = est.turno, L.activo = c;
+          else L.mano.push(c);
+        });
+        if (o.op === 'buscarMazo') barajar(L.mazo, rndDe(est)); // barajar tras buscar
+        out.push('buscar');
+        break;
+      }
+      case 'elegirObjetivo': {
+        ctx.elegido = sel.map(function (iid) { return buscarPorIid(est, iid); }).filter(Boolean);
+        out.push('elegido');
+        break;
+      }
+      case 'cambiarActivo': {
+        const lado = o.objetivo === 'rival' ? ctx.op : ctx.lado;
+        const Lc = est.lados[lado];
+        const iid = sel[0]; const i = Lc.banca.findIndex(function (c) { return c.iid === iid; });
+        if (i >= 0) { const nuevo = Lc.banca.splice(i, 1)[0]; if (Lc.activo) { Lc.activo.condiciones = []; Lc.banca.push(Lc.activo); } Lc.activo = nuevo; }
+        out.push('cambiar');
+        break;
+      }
+      case 'ponerEnBanca': {
+        sel.forEach(function (iid) {
+          if (L.banca.length >= 5) return;
+          const i = L.mano.findIndex(function (c) { return c.iid === iid; });
+          if (i < 0) return; const c = L.mano.splice(i, 1)[0]; c.enJuegoDesde = est.turno; L.banca.push(c);
+        });
+        out.push('banca');
+        break;
+      }
+    }
+  }
+
+  // ---------- Bucle de ejecución con pausa/reanudación ----------
+  function construirCtx(est, lado, ctxExtra, cont) {
     const ctx = {
       est: est, lado: lado, op: ladoRival(lado),
-      at: (ctxExtra && ctxExtra.at) || est.lados[lado].activo,
-      def: (ctxExtra && ctxExtra.def) || est.lados[ladoRival(lado)].activo,
-      fuente: (ctxExtra && ctxExtra.fuente) || null,
-      flip: (ctxExtra && ctxExtra.flip) || function () { return flipDe(est); }
+      at: cont ? buscarPorIid(est, cont.atIid) : ((ctxExtra && ctxExtra.at) || est.lados[lado].activo),
+      def: cont ? buscarPorIid(est, cont.defIid) : ((ctxExtra && ctxExtra.def) || est.lados[ladoRival(lado)].activo),
+      fuente: cont ? buscarPorIid(est, cont.fuenteIid) : ((ctxExtra && ctxExtra.fuente) || null),
+      elegido: cont ? (cont.elegidoIids || []).map(function (i) { return buscarPorIid(est, i); }).filter(Boolean) : [],
+      flip: function () { return flipDe(est); }
     };
-    if (typeof entrada.efectoJS === 'function') {
-      try { entrada.efectoJS(ctx); return ['efectoJS']; } catch (e) { return ['manual']; }
+    ctx._faseFinal = cont ? cont.faseFinal : (ctxExtra && ctxExtra.faseFinal) || null;
+    return ctx;
+  }
+
+  function pausar(ctx, opActual, opsRestantes, req, out) {
+    const cont = {
+      lado: ctx.lado,
+      atIid: ctx.at && ctx.at.iid, defIid: ctx.def && ctx.def.iid, fuenteIid: ctx.fuente && ctx.fuente.iid,
+      elegidoIids: iidsDe(ctx.elegido),
+      ops: opsRestantes.slice(),         // ops[0] es la op pausada (se re-ejecuta con la selección)
+      marcas: out.slice(),
+      faseFinal: ctx._faseFinal
+    };
+    ctx.est.pendiente = {
+      tipo: req.tipo, lado: ctx.lado, prompt: req.prompt || '', opciones: req.opciones || [],
+      min: req.min || 0, max: req.max || 1, cancelable: !!req.cancelable, cont: cont
+    };
+  }
+
+  // Corre una lista de ops. `selInicial` (iids) resuelve la primera op si es de elección.
+  function correrOps(ctx, ops, selInicial) {
+    const out = (ctx._marcas || []).slice(); ctx._marcas = null;
+    for (let i = 0; i < ops.length; i++) {
+      const o = ops[i];
+      if (esEleccion(o.op)) {
+        if (o.condicion && !evalCondicion(ctx, o.condicion)) continue;
+        if (i === 0 && selInicial != null) { aplicarEleccion(ctx, o, selInicial, out); selInicial = null; continue; }
+        const req = solicitudDe(ctx, o);
+        if ((req.opciones || []).length === 0) { continue; } // nada que elegir -> se omite
+        pausar(ctx, o, ops.slice(i), req, out);
+        return out.concat(['pendiente']);
+      }
+      ejecutarOp(ctx, o, out);
     }
-    if (!Array.isArray(entrada.ops) || !entrada.ops.length) return ['manual'];
-    const out = [];
-    entrada.ops.forEach(function (o) { ejecutarOp(ctx, o, out); });
     return out.length ? out : ['manual'];
   }
 
-  const API = { ejecutar: ejecutar, flipDe: flipDe, _evalCondicion: evalCondicion, _cartasObjetivo: cartasObjetivo };
+  // ---------- API pública ----------
+  function ejecutar(est, lado, entrada, ctxExtra) {
+    if (!entrada) return ['manual'];
+    if (typeof entrada.efectoJS === 'function') {
+      const ctx = construirCtx(est, lado, ctxExtra, null);
+      try { entrada.efectoJS(ctx); return ['efectoJS']; } catch (e) { return ['manual']; }
+    }
+    if (!Array.isArray(entrada.ops) || !entrada.ops.length) return ['manual'];
+    const ctx = construirCtx(est, lado, ctxExtra, null);
+    return correrOps(ctx, entrada.ops, null);
+  }
+
+  // Reanuda un efecto pausado con la selección del jugador (array de iids o null=cancelar).
+  // Devuelve las marcas acumuladas; deja est.pendiente si requiere otra elección.
+  function resumir(est, seleccion) {
+    const p = est.pendiente; if (!p) return ['manual'];
+    const cont = p.cont; const ctx = construirCtx(est, cont.lado, null, cont);
+    ctx._marcas = cont.marcas || [];
+    // Validar la selección contra las opciones ofrecidas.
+    const validos = {}; (p.opciones || []).forEach(function (op) { validos[op.iid] = true; });
+    let sel = Array.isArray(seleccion) ? seleccion.filter(function (i) { return validos[i]; }) : [];
+    if (sel.length > p.max) sel = sel.slice(0, p.max);
+    if (sel.length < p.min && !p.cancelable) { /* selección insuficiente: ignora, sigue pendiente */ if (sel.length === 0) return ['pendiente']; }
+    est.pendiente = null;
+    return correrOps(ctx, cont.ops, sel);
+  }
+
+  const API = {
+    ejecutar: ejecutar, resumir: resumir, flipDe: flipDe, esEleccion: esEleccion,
+    _evalCondicion: evalCondicion, _cartasObjetivo: cartasObjetivo, _buscarPorIid: buscarPorIid
+  };
   global.EFECTOS_MOTOR = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 

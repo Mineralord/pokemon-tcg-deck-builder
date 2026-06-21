@@ -17,8 +17,11 @@
         'Dangerous Toxwhip': { ops: [{ op: 'estado', objetivo: 'rivalActivo', estado: ['confused', 'poisoned'] }] }
       },
       habilidades: {
-        // Tranquil Flower: curar 60 a 1 Pokémon (requiere elección → Fase 2; aquí queda manual).
-        'Tranquil Flower': { ops: [{ op: 'curar', objetivo: 'elegido', cantidad: 60 }] }
+        // Tranquil Flower: elige 1 de tus Pokémon y cúrale 60 (Fase 2: elegirObjetivo + curar).
+        'Tranquil Flower': { ops: [
+          { op: 'elegirObjetivo', objetivo: 'propioTodos', cuantos: 1, prompt: 'Elige un Pokémon para curar 60' },
+          { op: 'curar', objetivo: 'elegido', cantidad: 60 }
+        ] }
       }
     },
 

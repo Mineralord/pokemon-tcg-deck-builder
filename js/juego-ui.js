@@ -28,6 +28,7 @@
   const SAVE_KEY = 'jv_save';
   let _hist = [];      // historial de estados (para deshacer; local/pase)
   let _zoom = null;    // { side, iid } carta ampliada
+  let _sel = [];       // iids seleccionados para la elección pendiente (Fase 2)
   function histPush() { if (_modo === 'online' || !G) return; try { _hist.push(JSON.stringify(slimG())); if (_hist.length > 25) _hist.shift(); } catch (e) {} }
   function autosave() {
     try {
@@ -307,6 +308,27 @@
       '<button class="jv-btn jv-btn-2" type="button" onclick="jvCancelar()">' + esc(tx('jv_cancel', 'Cancelar')) + '</button></div>';
   }
 
+  // ---------- Overlay de elección (Fase 2: est.pendiente) ----------
+  function eleccionOverlay() {
+    const p = G && G.pendiente; if (!p) return '';
+    if (p.lado !== MI()) {
+      return '<div class="jv-overlay"><div class="jv-overlay-card"><div class="jv-overlay-sub">' +
+        esc(tx('jv_rival_elige', 'El rival está eligiendo…')) + '</div></div></div>';
+    }
+    const ops = (p.opciones || []).map(function (o) {
+      const on = _sel.indexOf(o.iid) >= 0;
+      const img = o.imagen ? '<img src="' + esc(o.imagen) + '" alt="' + esc(o.nombre) + '">' : '<span>' + esc(o.nombre) + '</span>';
+      return '<button type="button" class="jv-pick' + (on ? ' jv-pick-on' : '') + '" onclick="jvSel(\'' + o.iid + '\')">' + img + '</button>';
+    }).join('');
+    const puede = _sel.length >= (p.min || 0);
+    const conf = '<button class="jv-btn" type="button" ' + (puede ? '' : 'disabled ') + 'onclick="jvElegir()">' +
+      esc(tx('jv_confirm', 'Confirmar')) + ' (' + _sel.length + '/' + p.max + ')</button>';
+    const canc = p.cancelable ? '<button class="jv-btn jv-btn-2" type="button" onclick="jvElegirCancelar()">' + esc(tx('jv_skip', 'Pasar')) + '</button>' : '';
+    return '<div class="jv-zoomwrap"><div class="jv-choice"><div class="jv-choice-h">' + esc(p.prompt || tx('jv_elige', 'Elige')) + '</div>' +
+      '<div class="jv-choice-grid">' + (ops || '<div class="jv-choice-empty">' + esc(tx('jv_sin_opciones', 'Sin opciones')) + '</div>') + '</div>' +
+      '<div class="jv-choice-foot">' + conf + canc + '</div></div></div>';
+  }
+
   function renderTablero() {
     const b = boardView();
     const setup = b.enSetup;
@@ -352,7 +374,7 @@
       '</div>' +
       attacksBar() + habilidadesPanel() + manualPanel() +
       '<div class="jv-hand"><div class="jv-hand-inner">' + manoHtml + '</div></div>' +
-      finOverlay() + zoomOverlay();
+      finOverlay() + zoomOverlay() + eleccionOverlay();
   }
 
   // Opciones de render de un Pokémon en juego propio (banca o activo) en fase MAIN.
@@ -435,12 +457,24 @@
         const ya = G.lados[MI()].activo; const idA = ya && ya.iid; const dA = ya ? (ya.danio || 0) : 0;
         if (typeof JUEGO_IA !== 'undefined' && JUEGO_IA.jugarTurno) JUEGO_IA.jugarTurno(G);
         else JUEGO.terminarTurno(G);
+        autoResolverIA();
         const aa = G.lados[MI()].activo;
         let ko = false, dmg = 0;
         if (!aa || aa.iid !== idA) ko = (idA != null); else dmg = (aa.danio || 0) - dA;
         renderJuego();
         if (ko || dmg > 0) fxDefensa(dmg, ko);
       }, 750);
+    }
+  }
+
+  // Auto-resuelve elecciones pendientes del lado IA (local). Heurística básica (Fase 8 la refina).
+  function autoResolverIA() {
+    let guard = 0;
+    while (G && G.pendiente && G.pendiente.lado === OP() && guard++ < 20) {
+      const p = G.pendiente;
+      const n = Math.max(p.min || 0, Math.min(p.max || 1, 1));
+      const sel = (p.opciones || []).slice(0, n).map(function (o) { return o.iid; });
+      JUEGO.resolverEleccion(G, OP(), sel);
     }
   }
 
@@ -580,6 +614,25 @@
   };
   window.jvZoom = function (side, iid) { _zoom = { side: side, iid: iid }; renderJuego(); };
   window.jvZoomClose = function () { _zoom = null; renderJuego(); };
+  // --- Elección pendiente (Fase 2) ---
+  window.jvSel = function (iid) {
+    const p = G && G.pendiente; if (!p) return;
+    const i = _sel.indexOf(iid);
+    if (i >= 0) _sel.splice(i, 1);
+    else if (p.max === 1) _sel = [iid];
+    else if (_sel.length < p.max) _sel.push(iid);
+    snd('button'); renderJuego();
+  };
+  window.jvElegir = function () {
+    const p = G && G.pendiente; if (!p || p.lado !== MI()) return;
+    if (_sel.length < (p.min || 0)) return;
+    const sel = _sel.slice(); _sel = [];
+    JUEGO.resolverEleccion(G, MI(), sel); trasMutar();
+  };
+  window.jvElegirCancelar = function () {
+    const p = G && G.pendiente; if (!p || p.lado !== MI() || !p.cancelable) return;
+    _sel = []; JUEGO.resolverEleccion(G, MI(), []); trasMutar();
+  };
   window.jvReanudar = function () {
     try {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (!s || !s.g) return;
@@ -589,7 +642,7 @@
   };
   window.jvFinTurno = function () { if (G && G.turnoDe === MI() && !G.ganador) { _accion = null; JUEGO.terminarTurno(G); trasMutar(); } };
   function borrarSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
-  window.jvNueva = function () { _accion = null; _handoff = false; _zoom = null; _hist = []; borrarSave(); if (_modo === 'online' && typeof window.salaResetPartida === 'function') window.salaResetPartida(); G = null; _modo = 'local'; renderJuego(); };
+  window.jvNueva = function () { _accion = null; _handoff = false; _zoom = null; _sel = []; _hist = []; borrarSave(); if (_modo === 'online' && typeof window.salaResetPartida === 'function') window.salaResetPartida(); G = null; _modo = 'local'; renderJuego(); };
   window.jvSalir = function () { if (_rivalTimer) { clearTimeout(_rivalTimer); _rivalTimer = null; } _accion = null; _handoff = false; _zoom = null; G = null; _modo = 'local'; window.setVersusMode('fisico'); };
 
   // ---------- Pantalla completa inmersiva (solo overlay CSS) ----------

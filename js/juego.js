@@ -431,7 +431,7 @@
     const reg = EF && EF.EFECTOS && EF.EFECTOS[c.id];
     if (reg && reg.jugar) { try { reg.jugar(est, lado, { carta: c }); } catch (e) {} }
     else {
-      const dsl = EF && EF.resolverDSLJugar && EF.resolverDSLJugar(est, lado, c.id, { fuente: c });
+      const dsl = EF && EF.resolverDSLJugar && EF.resolverDSLJugar(est, lado, c.id, { fuente: c, faseFinal: 'entrenador' });
       if (!dsl || (dsl.length === 1 && dsl[0] === 'manual')) {
         const md = /draw (\d+) cards?/i.exec(c.texto || '');
         if (md) for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift());
@@ -453,7 +453,7 @@
     const reg = EF && EF.EFECTOS && EF.EFECTOS[r.card.id];
     const fn = reg && reg.habilidades && reg.habilidades[h.nombre];
     if (fn) { try { fn(est, lado, { card: r.card }); } catch (e) {} }
-    else if (EF && EF.resolverDSL) { EF.resolverDSL(est, lado, r.card.id, 'habilidades', h.nombre, { at: r.card, fuente: r.card }); }
+    else if (EF && EF.resolverDSL) { EF.resolverDSL(est, lado, r.card.id, 'habilidades', h.nombre, { at: r.card, fuente: r.card, faseFinal: 'habilidad' }); }
     return est;
   }
 
@@ -538,11 +538,12 @@
     const coded = EF && EF.efectoDe && EF.efectoDe(at.id, 'ataques', ataque.nombre);
     if (coded) { try { coded(est, lado, { at: at, def: def, ataque: ataque }); efectos = ['coded']; } catch (e) {} }
     else {
-      const dsl = EF && EF.resolverDSL && EF.resolverDSL(est, lado, at.id, 'ataques', ataque.nombre, { at: at, def: def, fuente: at });
+      const dsl = EF && EF.resolverDSL && EF.resolverDSL(est, lado, at.id, 'ataques', ataque.nombre, { at: at, def: def, fuente: at, faseFinal: 'ataque' });
       if (dsl && !(dsl.length === 1 && dsl[0] === 'manual')) efectos = dsl;
       else efectos = efectoAuto(est, lado, ataque);
     }
     est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg, efectos: efectos };
+    if (est.pendiente) return est;            // efecto a la espera de una elección: el turno NO termina aún
     _koSiProcede(est, op); _koSiProcede(est, lado);
     if (!est.ganador) terminarTurno(est);
     return est;
@@ -602,6 +603,28 @@
     return aplicarCondicion(est, op, cond);
   }
 
+  // ---------- Resolución de elecciones pendientes (Fase 2) ----------
+  // El jugador (o la IA) responde a est.pendiente con `seleccion` (array de iids; null/[]=cancelar).
+  // Reanuda el efecto pausado y, si ya no quedan elecciones, finaliza la acción que lo originó.
+  function resolverEleccion(est, lado, seleccion) {
+    const p = est.pendiente; if (!p || p.lado !== lado) return est;
+    const fase = p.cont && p.cont.faseFinal;
+    const M = global.EFECTOS_MOTOR;
+    if (!M || !M.resumir) { est.pendiente = null; return est; }
+    M.resumir(est, seleccion);
+    if (est.pendiente) return est;            // requiere otra elección
+    _finalizarEfecto(est, fase, lado);
+    return est;
+  }
+  function _finalizarEfecto(est, fase, lado) {
+    if (fase === 'ataque') {
+      const op = lado === 'A' ? 'B' : 'A';
+      _koSiProcede(est, op); _koSiProcede(est, lado);
+      if (!est.ganador) terminarTurno(est);
+    }
+    // 'habilidad' / 'entrenador': se permanece en MAIN; nada que finalizar.
+  }
+
   // Rendirse: el rival gana al instante.
   function rendirse(est, lado) {
     if (est.ganador) return est;
@@ -623,7 +646,7 @@
     crearPartida, colocarActivo, colocarBanca, quitarColocado, confirmarSetup, autoSetup, totalCartasLado,
     terminarTurno, puedeAtacar,
     ponerEnBanca, adjuntarEnergia, evolucionar, retirar, jugarEntrenador, subEntrenador, usarHabilidad,
-    puedePagar, danioEfectivo, atacar, efectoAuto, rendirse,
+    puedePagar, danioEfectivo, atacar, efectoAuto, rendirse, resolverEleccion,
     aplicarCondicion, chequeo, ROTATIVAS,
     manualDanioRival, manualCurar, manualRobar, manualCondicionRival,
     estadoInicial, aplicarAccion
