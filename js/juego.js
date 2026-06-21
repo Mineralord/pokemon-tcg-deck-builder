@@ -431,8 +431,11 @@
     const reg = EF && EF.EFECTOS && EF.EFECTOS[c.id];
     if (reg && reg.jugar) { try { reg.jugar(est, lado, { carta: c }); } catch (e) {} }
     else {
-      const md = /draw (\d+) cards?/i.exec(c.texto || '');
-      if (md) for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift());
+      const dsl = EF && EF.resolverDSLJugar && EF.resolverDSLJugar(est, lado, c.id, { fuente: c });
+      if (!dsl || (dsl.length === 1 && dsl[0] === 'manual')) {
+        const md = /draw (\d+) cards?/i.exec(c.texto || '');
+        if (md) for (let k = 0; k < parseInt(md[1], 10) && L.mazo.length; k++) L.mano.push(L.mazo.shift());
+      }
     }
     L.mano.splice(_buscarMano(L, iid), 1);
     if (sub === 'stadium') { if (L.estadio) L.descarte.push(L.estadio); L.estadio = c; L.estadioUsado = true; }
@@ -450,6 +453,7 @@
     const reg = EF && EF.EFECTOS && EF.EFECTOS[r.card.id];
     const fn = reg && reg.habilidades && reg.habilidades[h.nombre];
     if (fn) { try { fn(est, lado, { card: r.card }); } catch (e) {} }
+    else if (EF && EF.resolverDSL) { EF.resolverDSL(est, lado, r.card.id, 'habilidades', h.nombre, { at: r.card, fuente: r.card }); }
     return est;
   }
 
@@ -528,12 +532,16 @@
     }
     const dmg = danioEfectivo(at, def, ataque);
     if (dmg > 0) def.danio = (def.danio || 0) + dmg;
-    // Efectos: 1) handler codificado por carta (precedencia) 2) auto-intérprete de texto.
+    // Efectos: 1) handler JS legado 2) DSL autorado 3) auto-intérprete de texto.
     let efectos = [];
     const EF = global.JUEGO_EFECTOS;
     const coded = EF && EF.efectoDe && EF.efectoDe(at.id, 'ataques', ataque.nombre);
     if (coded) { try { coded(est, lado, { at: at, def: def, ataque: ataque }); efectos = ['coded']; } catch (e) {} }
-    else efectos = efectoAuto(est, lado, ataque);
+    else {
+      const dsl = EF && EF.resolverDSL && EF.resolverDSL(est, lado, at.id, 'ataques', ataque.nombre, { at: at, def: def, fuente: at });
+      if (dsl && !(dsl.length === 1 && dsl[0] === 'manual')) efectos = dsl;
+      else efectos = efectoAuto(est, lado, ataque);
+    }
     est.ultimoAtaque = { lado: lado, nombre: ataque.nombre, dmg: dmg, efectos: efectos };
     _koSiProcede(est, op); _koSiProcede(est, lado);
     if (!est.ganador) terminarTurno(est);

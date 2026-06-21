@@ -7,7 +7,7 @@
 //    (pasan directas a la red para no servir datos viejos).
 // =============================================================
 // Sube VER en cada deploy que cambie ficheros del shell para forzar limpieza de caché.
-const VER   = '42';
+const VER   = '43';
 const SHELL = 'ptcg-shell-v' + VER;
 const IMGS  = 'ptcg-img-v' + VER;
 const MAX_IMG = 600;
@@ -18,7 +18,8 @@ const SHELL_FILES = [
   './data/cartas-db.js',
   './js/cartas-api.js', './js/energias.js', './js/idiomas.js',
   './js/app.js', './js/generador.js', './js/proxies.js', './js/sala.js',
-  './js/sonido.js', './js/juego.js', './js/juego-efectos.js', './js/juego-ia.js', './js/juego-ui.js',
+  './js/sonido.js', './js/efectos-dsl.js', './js/efectos-motor.js',
+  './js/juego.js', './data/efectos-db.js', './js/juego-efectos.js', './js/juego-ia.js', './js/juego-ui.js',
   './js/firebase-config.js', './js/sync.js',
   './manifest.json', './assets/icon.svg',
   './assets/icon-192.png', './assets/icon-512.png'
