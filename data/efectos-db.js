@@ -47,7 +47,19 @@
     'sv1-198': { jugar: { ops: [{ op: 'barajarManoEnMazo' }, { op: 'robar', cantidad: 5 }] } },  // Joven
     'sv8-173': { jugar: { ops: [{ op: 'barajarManoEnMazo' }, { op: 'robar', cantidad: 4 }, { op: 'robar', cantidad: 4, condicion: { tipo: 'coin' } }] } }, // Drasna
     'sv8-167': { jugar: { ops: [{ op: 'curar', objetivo: 'propioTodos', filtro: { tipo: 'Lightning' }, cantidad: 60 }] } }, // Ingenio de Clavel (Clemont)
-    'sv8-172': { jugar: { ops: [{ op: 'curar', objetivo: 'propioActivo', filtro: { tipo: 'Dragon' }, cantidad: 60 }] } }   // Elixir de Dragón
+    'sv8-172': { jugar: { ops: [{ op: 'curar', objetivo: 'propioActivo', filtro: { tipo: 'Dragon' }, cantidad: 60 }] } },  // Elixir de Dragón
+
+    // ---------- Estadios (pasivos de campo) ----------
+    'sv8-180': { pasivos: [{ mod: 'hpExtra', cantidad: 30, a: 'todos', filtro: { esBasico: true } }] }, // Estadio Animado: +30 PS a Básicos
+    'sv8-177': { pasivos: [{ mod: 'hpExtra', cantidad: -30, a: 'todos', filtro: { etapa: 2 } }] },       // Montaña Gravedad: -30 PS a Fase 2
+
+    // ---------- Herramientas Pokémon (pasivos al portador) ----------
+    'sv3pt5-164': { pasivos: [{ mod: 'noWeakness', a: 'esteP', filtro: { esBasico: true } }] },          // Gafas Protectoras: Básico sin Debilidad
+    'sv3pt5-155': { pasivos: [{ mod: 'costoRetiro', set: 0, a: 'esteP', filtro: { etapa: 2 } }] },        // Gran Globo Aerostático: Fase 2 sin coste de retirada
+    'sv3pt5-165': { pasivos: [{ mod: 'reduceDanio', cantidad: 30, a: 'esteP', filtro: { etapa: 1 } }] },  // Banda Rígida: Fase 1 recibe 30 menos
+
+    // ---------- Recuperación de descarte ----------
+    'sv8-251': { jugar: { ops: [{ op: 'buscarDescarte', cantidad: 1, destino: 'mano', prompt: 'Elige una carta de tu descarte para volver a tu mano' }] } } // Camilla Nocturna
   };
 
   // Validación temprana en desarrollo: avisa si alguna entrada está mal formada.

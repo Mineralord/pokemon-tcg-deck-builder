@@ -15,7 +15,7 @@
     'aLostZone', 'descartarMazo', 'lostMazo', 'barajarManoEnMazo'];
   // Ops reservadas para Fase 2 (requieren elección). Se validan pero el motor de
   // Fase 1 las deja al respaldo manual.
-  const OPS_F2 = ['buscarMazo', 'elegirObjetivo', 'moverEnergia', 'ponerEnBanca',
+  const OPS_F2 = ['buscarMazo', 'buscarDescarte', 'elegirObjetivo', 'moverEnergia', 'ponerEnBanca',
     'cambiarActivo', 'mirarTopN'];
   const OPS = OPS_F1.concat(OPS_F2);
 
@@ -29,7 +29,7 @@
   const PORCADA_OPS = ['cuenta', 'energias', 'contadores', 'caras', 'carasDe', 'carasHastaCruz'];
 
   const MODS = ['reduceDanio', 'hpExtra', 'costoRetiro', 'costoAtaque', 'inmuneEstado',
-    'proveeEnergia', 'aumentaDanio', 'bloqueaHabilidad', 'noRetira'];
+    'proveeEnergia', 'aumentaDanio', 'bloqueaHabilidad', 'noRetira', 'noWeakness'];
 
   const ESTADOS = ['asleep', 'confused', 'paralyzed', 'poisoned', 'burned'];
 

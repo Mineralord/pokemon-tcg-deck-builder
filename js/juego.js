@@ -588,7 +588,9 @@
     let dmg = ataque.danio || 0;
     if (dmg <= 0) return 0;
     const t = (atacante.tipos || [])[0];
-    if (t && defensor.debilidad && defensor.debilidad.tipo === t) {
+    const PAS0 = global.EFECTOS_PASIVOS;
+    const sinDeb = est && PAS0 && PAS0.sinDebilidad && PAS0.sinDebilidad(est, defensor.iid);
+    if (!sinDeb && t && defensor.debilidad && defensor.debilidad.tipo === t) {
       if (defensor.debilidad.mult) dmg *= defensor.debilidad.mult;
       else if (defensor.debilidad.suma) dmg += defensor.debilidad.suma;
     }

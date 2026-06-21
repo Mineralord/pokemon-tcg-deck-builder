@@ -50,7 +50,7 @@
     } else if (card.condiciones.indexOf(cond) < 0) card.condiciones.push(cond);
   }
 
-  const OPS_ELECCION = ['buscarMazo', 'elegirObjetivo', 'cambiarActivo', 'ponerEnBanca', 'mirarTopN'];
+  const OPS_ELECCION = ['buscarMazo', 'buscarDescarte', 'elegirObjetivo', 'cambiarActivo', 'ponerEnBanca', 'mirarTopN'];
   function esEleccion(op) { return OPS_ELECCION.indexOf(op) >= 0; }
 
   // ---------- Resolución de objetivos ----------
@@ -301,6 +301,11 @@
         return { tipo: 'mirarTopN', prompt: o.prompt || 'Mira las cartas de arriba', destino: o.destino || 'mano',
           opciones: top.map(function (c) { return opcionDe(c, 'mazo'); }), min: 0, max: o.cantidad || 1, cancelable: true };
       }
+      case 'buscarDescarte': {
+        const dp = L.descarte.filter(function (c) { return cumpleFiltro(c, o.filtro); });
+        return { tipo: 'buscarDescarte', prompt: o.prompt || 'Elige cartas de tu descarte', destino: o.destino || 'mano',
+          opciones: dp.map(function (c) { return opcionDe(c, 'descarte'); }), min: 0, max: o.cantidad || 1, cancelable: true };
+      }
       case 'elegirObjetivo': {
         const cs = cartasObjetivo(ctx, o.objetivo || 'propioTodos', o.filtro);
         const n = o.cuantos || 1;
@@ -340,6 +345,18 @@
         });
         if (o.op === 'buscarMazo') barajar(L.mazo, rndDe(est)); // barajar tras buscar
         out.push('buscar');
+        break;
+      }
+      case 'buscarDescarte': {
+        const destino = o.destino || 'mano';
+        sel.forEach(function (iid) {
+          const i = L.descarte.findIndex(function (c) { return c.iid === iid; });
+          if (i < 0) return;
+          const c = L.descarte.splice(i, 1)[0];
+          if (destino === 'banca' && L.banca.length < 5) { c.enJuegoDesde = est.turno; L.banca.push(c); }
+          else L.mano.push(c);
+        });
+        out.push('buscarDescarte');
         break;
       }
       case 'elegirObjetivo': {

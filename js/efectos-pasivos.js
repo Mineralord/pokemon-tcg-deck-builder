@@ -56,13 +56,32 @@
     });
   }
 
+  // Localiza una carta en juego por iid (para evaluar filtros de pasivos).
+  function cardPorIid(est, iid) {
+    for (const k in est.lados) { const L = est.lados[k];
+      if (L.activo && L.activo.iid === iid) return L.activo;
+      const arr = L.banca || []; for (let i = 0; i < arr.length; i++) if (arr[i] && arr[i].iid === iid) return arr[i];
+    }
+    return null;
+  }
+  function cumpleFiltroP(card, f) {
+    if (!f) return true; if (!card) return false;
+    if (f.tipo != null && (card.tipos || []).indexOf(f.tipo) < 0) return false;
+    if (f.etapa != null && card.stage !== f.etapa) return false;
+    if (f.esBasico != null && !!card.esBasico !== !!f.esBasico) return false;
+    if (f.supertipo != null && card.supertipo !== f.supertipo) return false;
+    return true;
+  }
+
   // Modificadores agregados que afectan a la carta `iid`.
   function modsCarta(est, iid) {
-    const acc = { reduceDanio: 0, aumentaDanio: 0, hpExtra: 0, retiroSet: null, inmune: false, bloqueaHab: false, noRetira: false };
+    const acc = { reduceDanio: 0, aumentaDanio: 0, hpExtra: 0, retiroSet: null, inmune: false, bloqueaHab: false, noRetira: false, noWeakness: false };
     if (iid == null) return acc;
+    const card = cardPorIid(est, iid);
     forEachFuente(est, function (fLado, fCard, pasivos) {
       pasivos.forEach(function (p) {
         if (setObjetivo(est, fLado, fCard, p.a).indexOf(iid) < 0) return;
+        if (p.filtro && !cumpleFiltroP(card, p.filtro)) return;
         switch (p.mod) {
           case 'reduceDanio': acc.reduceDanio += (p.cantidad || 0); break;
           case 'aumentaDanio': acc.aumentaDanio += (p.cantidad || 0); break;
@@ -71,6 +90,7 @@
           case 'inmuneEstado': acc.inmune = true; break;
           case 'bloqueaHabilidad': acc.bloqueaHab = true; break;
           case 'noRetira': acc.noRetira = true; break;
+          case 'noWeakness': acc.noWeakness = true; break;
         }
       });
     });
@@ -90,6 +110,7 @@
   // ¿La carta es inmune a condiciones especiales?
   function cartaInmune(est, iid) { return modsCarta(est, iid).inmune; }
   function noPuedeRetirar(est, iid) { return modsCarta(est, iid).noRetira; }
+  function sinDebilidad(est, iid) { return modsCarta(est, iid).noWeakness; }
   function ladoInmune(est, lado) { const a = est.lados[lado] && est.lados[lado].activo; return !!a && cartaInmune(est, a.iid); }
   // Daño de ataque ajustado por pasivos del defensor (reduce/aumenta). dmg ya trae debilidad/resist.
   function danioAjustado(est, defCard, dmg) {
@@ -101,7 +122,7 @@
   const API = {
     modsCarta: modsCarta, statsEfectivas: statsEfectivas, hpEf: hpEf, retiroEf: retiroEf,
     cartaInmune: cartaInmune, ladoInmune: ladoInmune, noPuedeRetirar: noPuedeRetirar,
-    danioAjustado: danioAjustado, _setObjetivo: setObjetivo
+    sinDebilidad: sinDebilidad, danioAjustado: danioAjustado, _setObjetivo: setObjetivo
   };
   global.EFECTOS_PASIVOS = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
