@@ -195,10 +195,7 @@
   function closeBtn() {
     return '<button class="jv-close" type="button" aria-label="' + esc(tx('jv_exit', 'Salir')) + '" title="' + esc(tx('jv_exit', 'Salir')) + '" onclick="jvSalir()">' +
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>' +
-      rotBtn() + muteBtn();
-  }
-  function rotBtn() {
-    return '<button class="jv-rot" type="button" aria-label="' + esc(tx('jv_rotate', 'Horizontal')) + '" title="' + esc(tx('jv_rotate', 'Forzar horizontal')) + '" onclick="jvRotar()">⟳</button>';
+      muteBtn();
   }
   function muteBtn() {
     const m = (typeof SONIDO !== 'undefined') && SONIDO.isMuted();
@@ -599,14 +596,9 @@
     if (_modo === 'pase') maybeHandoff(900); // deja ver el impacto antes del relevo
   };
   window.jvMute = function () { if (typeof SONIDO !== 'undefined') { SONIDO.setMute(!SONIDO.isMuted()); if (!SONIDO.isMuted()) snd('button'); renderJuego(); } };
-  // Rotación opcional a horizontal (CSS). Reversible y persistente.
-  window.jvRotar = function () {
-    const on = !document.body.classList.contains('jv-rotar');
-    document.body.classList.toggle('jv-rotar', on);
-    try { localStorage.setItem('jv_rotar', on ? '1' : '0'); } catch (e) {}
-    snd('button');
-  };
-  try { if (localStorage.getItem('jv_rotar') === '1') document.body.classList.add('jv-rotar'); } catch (e) {}
+  // Limpieza: la rotación CSS opcional se retiró (no funcionaba en algunos móviles).
+  try { localStorage.removeItem('jv_rotar'); } catch (e) {}
+  try { document.body.classList.remove('jv-rotar'); } catch (e) {}
   window.jvMD = function (n) { if (G) { JUEGO.manualDanioRival(G, MI(), n); trasMutar(); } };
   window.jvMC = function (n) { if (G) { JUEGO.manualCurar(G, MI(), n); trasMutar(); } };
   window.jvMR = function () { if (G) { JUEGO.manualRobar(G, MI(), 1); trasMutar(); } };
