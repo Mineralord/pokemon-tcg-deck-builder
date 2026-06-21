@@ -86,11 +86,7 @@ function showCardDetail(name){
 function renderCardDetail(d){
   regCard(d);
   currentDetailId = d.id || null;
-  const useEs = !!d.es;
-  const es = d.es || {};
-  const habEs = es.habilidades || [];
-  const atkEs = es.ataques || [];
-  const titulo = (useEs && es.nombre) ? es.nombre : d.nombre;
+  const titulo = nombreLocal(d) || d.nombre;
   document.getElementById('modal-title').textContent = titulo;
   if(typeof enriquecerEnergia === 'function') enriquecerEnergia(d);
   const img = imagenLocal(d, true);
@@ -109,22 +105,20 @@ function renderCardDetail(d){
   if(chipsHtml) html += `<div class="cd-chips">${chipsHtml}</div>`;
   if(d.evolucionaDe) html += `<div class="cd-line">${T('d_evolves')} <b>${esc(d.evolucionaDe)}</b></div>`;
   (d.habilidades||[]).forEach((a, i) => {
-    const nm = (useEs && habEs[i] && habEs[i].name) ? habEs[i].name : (a.name||'');
-    const tx = (useEs && habEs[i] && habEs[i].text != null) ? habEs[i].text : (a.text||'');
-    html += `<div class="cd-block"><div class="cd-h">🟣 ${T('d_ability')}: ${esc(nm)}</div><div class="cd-t">${esc(tx)}</div></div>`;
+    const inf = habInfoEs(d, i);
+    html += `<div class="cd-block"><div class="cd-h">🟣 ${T('d_ability')}: ${esc(inf.nombre)}</div>${inf.texto?('<div class="cd-t">'+esc(inf.texto)+'</div>'):''}</div>`;
   });
   (d.ataques||[]).forEach((a, i) => {
     const cost = (a.cost||[]).map(energyIcon).join('') || '—';
-    const nm = (useEs && atkEs[i] && atkEs[i].name) ? atkEs[i].name : (a.name||'');
-    const tx = (useEs && atkEs[i] && atkEs[i].text != null) ? atkEs[i].text : (a.text||'');
-    html += `<div class="cd-block"><div class="cd-h">${cost} <b>${esc(nm)}</b>${a.damage?(' <span class="cd-dmg">'+esc(a.damage)+'</span>'):''}</div>${tx?('<div class="cd-t">'+esc(tx)+'</div>'):''}</div>`;
+    const inf = atkInfoEs(d, i);
+    html += `<div class="cd-block"><div class="cd-h">${cost} <b>${esc(inf.nombre)}</b>${a.damage?(' <span class="cd-dmg">'+esc(a.damage)+'</span>'):''}</div>${inf.texto?('<div class="cd-t">'+esc(inf.texto)+'</div>'):''}</div>`;
   });
   const wr = [];
   (d.debilidades||[]).forEach(w => wr.push(T('d_weak')+': '+energyIcon(w.type)+' '+esc(trType(w.type))+' '+esc(w.value||'')));
   (d.resistencias||[]).forEach(w => wr.push(T('d_resist')+': '+energyIcon(w.type)+' '+esc(trType(w.type))+' '+esc(w.value||'')));
   if((d.costoRetirada||[]).length) wr.push(T('d_retreat')+': '+d.costoRetirada.map(energyIcon).join(''));
   if(wr.length) html += `<div class="cd-line">${wr.join(' · ')}</div>`;
-  const reglas = (useEs && es.efecto) ? [es.efecto] : (d.reglas||[]).map(trRule);
+  const reglas = reglasEs(d);
   reglas.forEach(r => html += `<div class="cd-rule">${esc(r)}</div>`);
   if(d.descripcionPokedex) html += `<div class="cd-flavor">${esc(d.descripcionPokedex)}</div>`;
   const setn = setNombreLocal(d);
@@ -464,13 +458,37 @@ function ordenarVistas(arr, orderBy){
 }
 
 // ===================== COLECCIÓN (cuadrícula a pantalla completa) =====================
+// Restaura la colección completa desde la base local (data/cartas-db.js), usando
+// la cantidad de cada carta. Repuebla el inventario y sincroniza.
+function restaurarColeccion(){
+  if(typeof bloquearSiInvitado === 'function' && bloquearSiInvitado()) return;
+  const data = (window.CARTAS_DB && window.CARTAS_DB.cartas) || [];
+  if(!data.length){ showToast('No hay base de cartas local', 'error'); return; }
+  let total = 0;
+  data.forEach(c => {
+    const qty = c.cantidad || 1;
+    regCard(c);
+    const ex = inventory.find(x => x.id === c.id);
+    if(ex){ ex.qty = Math.max(ex.qty, qty); }
+    else inventory.push({ id: c.id, name: c.nombre, type: deriveType(c), qty, card: c });
+    total += qty;
+  });
+  save(); renderInventory(); renderLegal();
+  showToast(`Colección restaurada: ${total} cartas`, 'success');
+}
+window.restaurarColeccion = restaurarColeccion;
+
 function renderInventory(){
   const el = document.getElementById('coleccion-grid');
   if(!el){ updateStats(); return; }
   let items = inventory.map(e => ({ e, v: regCard(viewFromEntry(e)) }));
   items = items.filter(o => matchView(o.v, colFiltros));
   items = ordenarVistas(items, colFiltros.orderBy);
-  if(!items.length){ el.innerHTML = `<div class="empty-grid">${T('col_empty')}</div>`; updateStats(); return; }
+  if(!items.length){
+    const vacio = inventory.length === 0;
+    const btn = vacio ? `<div style="margin-top:16px"><button class="btn-add" onclick="restaurarColeccion()">Restaurar mi colección</button></div>` : '';
+    el.innerHTML = `<div class="empty-grid">${T('col_empty')}${btn}</div>`; updateStats(); return;
+  }
   el.innerHTML = items.map(({e, v}) => {
     const nom = nombreLocal(v);
     const img = imagenLocal(v);

@@ -268,14 +268,19 @@ const ES_CACHE_KEY = 'ptcg_es_cache2';
 let _esCache = {};
 try { _esCache = JSON.parse(localStorage.getItem(ES_CACHE_KEY) || '{}'); } catch (e) { _esCache = {}; }
 
+// Fallos en MEMORIA con reintento por TTL: NO se persiste el negativo, así una
+// caída temporal de TCGdex no deja la carta "pegada" en inglés para siempre.
+const _esFail = {};
+const ES_FAIL_TTL = 6 * 60 * 60 * 1000; // 6 h
 async function tcgdexEsLive(id){
   if (!id) return null;
-  if (_esCache[id] !== undefined) return _esCache[id];
+  if (_esCache[id]) return _esCache[id];                       // éxito cacheado (persistido)
+  if (_esFail[id] && (Date.now() - _esFail[id]) < ES_FAIL_TTL) return null; // fallo reciente: no reintentar aún
   const tid = tcgdexId(id);
-  if (!tid) { _esCache[id] = null; return null; }
+  if (!tid) { _esFail[id] = Date.now(); return null; }
   try {
     const res = await fetch(TCGDEX + '/' + tid);
-    if (!res.ok) { _esCache[id] = null; return null; }
+    if (!res.ok) { _esFail[id] = Date.now(); return null; }
     const d = await res.json();
     const es = {
       nombre: d.name,
@@ -289,7 +294,7 @@ async function tcgdexEsLive(id){
     _esCache[id] = es;
     try { localStorage.setItem(ES_CACHE_KEY, JSON.stringify(_esCache)); } catch (e) {}
     return es;
-  } catch (e) { return null; }
+  } catch (e) { _esFail[id] = Date.now(); return null; }
 }
 
 // Asegura el español (nombre + imagen + set) de una lista de vistas y, cuando termina de

@@ -174,12 +174,34 @@ const RULE_TEXT = {
 };
 function trRule(r){ return RULE_TEXT[r] || r; }
 
-// --- Localización de carta (nombre / imagen / set): español, con respaldo al
-//     dato de origen (inglés) solo cuando TCGdex no tiene la versión española. ---
+// --- Localización de carta: ESPAÑOL GARANTIZADO. Nunca se devuelve texto de
+//     efecto en inglés: si no hay traducción, se omite (cadena vacía). ---
+// Energías básicas: siempre en español (no pasan por TCGdex).
+const ENERGIA_ES = {
+  Grass:'Energía Planta', Fire:'Energía Fuego', Water:'Energía Agua', Lightning:'Energía Rayo',
+  Psychic:'Energía Psíquica', Fighting:'Energía Lucha', Darkness:'Energía Oscura', Metal:'Energía Metal',
+  Fairy:'Energía Hada', Dragon:'Energía Dragón', Colorless:'Energía Incolora'
+};
+const _ETIPO_ID = { grass:'Grass', fire:'Fire', water:'Water', lightning:'Lightning', psychic:'Psychic',
+  fighting:'Fighting', darkness:'Darkness', metal:'Metal', fairy:'Fairy', dragon:'Dragon', colorless:'Colorless' };
+// Respaldo curado nombre EN -> ES para huecos puntuales (se completa con el DB).
+const ES_FALLBACK_NOM = {};
+function _tipoEnergiaVista(v){
+  if(v.tipos && v.tipos[0]) return v.tipos[0];
+  const id=(v.id||'').toLowerCase(), nm=(v.nombre||'').toLowerCase();
+  for(const k in _ETIPO_ID){ if(id.indexOf(k)>=0 || nm.indexOf(k)>=0) return _ETIPO_ID[k]; }
+  return null;
+}
+function esEnergiaBasicaVista(v){
+  if(!v) return false;
+  const sup=(v.supertipo||'').toLowerCase(), fase=(v.fase||'').toLowerCase(), id=(v.id||'');
+  return id.indexOf('energy-basic-')===0 || (sup.indexOf('energ')>=0 && fase.indexOf('basic')>=0 && fase.indexOf('special')<0);
+}
 function nombreLocal(v){
   if(!v) return '';
   if(v.es && v.es.nombre) return v.es.nombre;
-  return v.nombre || '';
+  if(esEnergiaBasicaVista(v)){ const t=_tipoEnergiaVista(v); if(t && ENERGIA_ES[t]) return ENERGIA_ES[t]; }
+  return ES_FALLBACK_NOM[v.id] || ES_FALLBACK_NOM[v.nombre] || v.nombre || '';
 }
 function imagenLocal(v, grande){
   if(!v) return null;
@@ -192,6 +214,22 @@ function imagenLocal(v, grande){
 function setNombreLocal(v){
   if(v && v.es && v.es.setNombre) return v.es.setNombre;
   return (v && v.set && v.set.nombre) || '';
+}
+// Ataque/habilidad i en español. texto '' si no hay traducción (NUNCA inglés).
+function atkInfoEs(v, i){
+  const o = (v && v.es && v.es.ataques && v.es.ataques[i]) || {};
+  const orig = (v && v.ataques && v.ataques[i]) || {};
+  return { nombre: o.name || ES_FALLBACK_NOM[orig.name] || orig.name || '', texto: (o.text != null && o.text !== '') ? o.text : '' };
+}
+function habInfoEs(v, i){
+  const o = (v && v.es && v.es.habilidades && v.es.habilidades[i]) || {};
+  const orig = (v && v.habilidades && v.habilidades[i]) || {};
+  return { nombre: o.name || ES_FALLBACK_NOM[orig.name] || orig.name || '', texto: (o.text != null && o.text !== '') ? o.text : '' };
+}
+// Reglas/efecto de carta en español (efecto ES de TCGdex; o reglas conocidas; nunca inglés crudo).
+function reglasEs(v){
+  if(v && v.es && v.es.efecto) return [v.es.efecto];
+  return ((v && v.reglas) || []).map(trRule).filter(function(r){ return r && !/[a-z]{4,}.*\b(your|the|you|this|when|may|of)\b/i.test(r); });
 }
 
 const TYPE_EMOJI = {
