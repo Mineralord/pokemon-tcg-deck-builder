@@ -245,6 +245,7 @@
     const root = document.getElementById('juego-root'); if (!root) return;
     const b = document.createElement('div'); b.className = 'jv-turnbanner'; b.textContent = tx('jv_your_turn', '¡Tu turno!');
     root.appendChild(b); setTimeout(function () { b.remove(); }, 1100);
+    snd('turn');
   }
 
   const TIPO_COLOR = { Grass: '#22c55e', Fire: '#f97316', Water: '#38bdf8', Lightning: '#eab308', Psychic: '#a855f7', Fighting: '#b45309', Darkness: '#1f2937', Metal: '#94a3b8', Fairy: '#ec4899', Dragon: '#ca8a04', Colorless: '#cbd5e1' };

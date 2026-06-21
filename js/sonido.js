@@ -62,17 +62,33 @@
     const c = ac(); if (!c) return;
     freqs.forEach(function (f, i) { tono(f, dur, tipo || 'triangle', vol || 0.16, c.currentTime + i * paso); });
   }
+  // Whoosh: ráfaga de ruido con filtro paso-banda que barre (embestida).
+  function whoosh(f1, f2, dur, vol) {
+    const c = ac(); if (!c) return; const t = c.currentTime;
+    const n = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, n, c.sampleRate); const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.8;
+    f.frequency.setValueAtTime(f1, t); f.frequency.exponentialRampToValueAtTime(Math.max(60, f2), t + dur);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.18, t + dur * 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start();
+  }
 
   const EFECTOS = {
     button: function () { tono(420, 0.06, 'square', 0.08); },
-    draw: function () { tono(660, 0.06, 'triangle', 0.1); },
+    select: function () { tono(560, 0.045, 'sine', 0.07); },
+    draw: function () { whoosh(900, 2200, 0.12, 0.1); tono(660, 0.06, 'triangle', 0.08); },
     energy: function () { barrido(300, 720, 0.18, 'sine', 0.16); },
-    evolve: function () { arpa([440, 660, 880], 0.06, 0.18, 'triangle', 0.15); },
-    attack: function () { barrido(720, 160, 0.18, 'sawtooth', 0.2); },
-    hit: function () { ruido(0.16, 0.3); tono(120, 0.12, 'square', 0.12); },
-    ko: function () { barrido(300, 50, 0.5, 'sawtooth', 0.25); ruido(0.3, 0.25); },
+    evolve: function () { arpa([440, 660, 880, 1100], 0.06, 0.2, 'triangle', 0.15); },
+    attack: function () { whoosh(1400, 300, 0.2, 0.18); barrido(720, 160, 0.18, 'sawtooth', 0.16); },
+    hit: function () { ruido(0.16, 0.3); tono(110, 0.12, 'square', 0.13); },
+    ko: function () { barrido(300, 50, 0.5, 'sawtooth', 0.25); ruido(0.32, 0.26); tono(80, 0.4, 'sine', 0.12); },
     coin: function () { tono(900, 0.05, 'square', 0.1); tono(1200, 0.05, 'square', 0.09, (ctx && ctx.currentTime || 0) + 0.07); },
-    prize: function () { arpa([700, 950], 0.07, 0.14, 'triangle', 0.16); },
+    prize: function () { arpa([700, 950, 1180], 0.06, 0.14, 'triangle', 0.16); },
+    turn: function () { arpa([523, 784, 1047], 0.085, 0.24, 'triangle', 0.17); },
     win: function () { arpa([523, 659, 784, 1047], 0.1, 0.3, 'triangle', 0.2); },
     lose: function () { arpa([440, 349, 262], 0.12, 0.35, 'sawtooth', 0.18); }
   };
