@@ -10,19 +10,22 @@
 (function (global) {
   'use strict';
 
+  // Definiciones reutilizables (mismo efecto en distintos artes/printings).
+  const SOLID = { pasivos: [{ mod: 'reduceDanio', cantidad: 30, a: 'esteP' }] };          // -30 al daño
+  const TRANQUIL = { unaVezPorTurno: true, soloActivo: true, ops: [
+    { op: 'elegirObjetivo', objetivo: 'propioTodos', cuantos: 1, prompt: 'Elige un Pokémon para curar 60' },
+    { op: 'curar', objetivo: 'elegido', cantidad: 60 }
+  ] };
+  const RESTART = { unaVezPorTurno: true, ops: [{ op: 'robarHasta', cantidad: 3 }] };       // roba hasta 3
+  const CALMING = { unaVezPorTurno: true, soloActivo: true, ops: [{ op: 'estado', objetivo: 'rivalActivo', estado: 'asleep' }] };
+
   const EFECTOS_DB = {
     // Venusaur ex (151) — Dangerous Toxwhip: 150, rival Confundido + Envenenado.
     'sv3pt5-3': {
       ataques: {
         'Dangerous Toxwhip': { ops: [{ op: 'estado', objetivo: 'rivalActivo', estado: ['confused', 'poisoned'] }] }
       },
-      habilidades: {
-        // Tranquil Flower: elige 1 de tus Pokémon y cúrale 60 (Fase 2: elegirObjetivo + curar).
-        'Tranquil Flower': { ops: [
-          { op: 'elegirObjetivo', objetivo: 'propioTodos', cuantos: 1, prompt: 'Elige un Pokémon para curar 60' },
-          { op: 'curar', objetivo: 'elegido', cantidad: 60 }
-        ] }
-      }
+      habilidades: { 'Tranquil Flower': TRANQUIL }
     },
 
     // Charizard ex (151) — Brave Wing: 60 (+100 si tiene daño); Explosive Vortex: 330, descarta 3 energías.
@@ -86,12 +89,24 @@
     'sv8-189': { jugar: { ops: [{ op: 'buscarMazo', filtro: { tera: true }, cantidad: 1, destino: 'mano', prompt: 'Busca un Pokémon Tera' }] } }, // Tera Orbe
 
     // ---------- Habilidades (Fase 7) ----------
-    // Blastoise ex — Coraza Sólida: recibe 30 menos de daño (pasivo al portador).
-    'sv3pt5-9': { habilidades: { 'Solid Shell': { pasivos: [{ mod: 'reduceDanio', cantidad: 30, a: 'esteP' }] } } },
     // Dodrio — Robo Veloz: 1 vez por turno, pon 1 contador de daño en este y roba 1.
     'sv3pt5-85': { habilidades: { 'Zooming Draw': { unaVezPorTurno: true, soloActivo: false, ops: [{ op: 'danio', objetivo: 'esteP', cantidad: 10 }, { op: 'robar', cantidad: 1 }] } } },
     // Starmie — Cometa Misterioso: 1 vez por turno, 2 contadores a 1 Pokémon rival elegido.
-    'sv3pt5-121': { habilidades: { 'Mysterious Comet': { unaVezPorTurno: true, ops: [{ op: 'elegirObjetivo', objetivo: 'rivalTodos', cuantos: 1, prompt: 'Elige un Pokémon rival (20 de daño)' }, { op: 'danio', objetivo: 'elegido', cantidad: 20 }] } } }
+    'sv3pt5-121': { habilidades: { 'Mysterious Comet': { unaVezPorTurno: true, ops: [{ op: 'elegirObjetivo', objetivo: 'rivalTodos', cuantos: 1, prompt: 'Elige un Pokémon rival (20 de daño)' }, { op: 'danio', objetivo: 'elegido', cantidad: 20 }] } } },
+
+    // ---------- Habilidades (lote 3: pasivas + activadas, incl. artes alternativos) ----------
+    'sv3pt5-9': { habilidades: { 'Solid Shell': SOLID } },
+    'sv3pt5-184': { habilidades: { 'Solid Shell': SOLID } },
+    'sv3pt5-200': { habilidades: { 'Solid Shell': SOLID } },
+    'sv8-54': { habilidades: { 'Solid Body': SOLID } },     // Cetitan
+    'sv8-201': { habilidades: { 'Solid Body': SOLID } },
+    'sv3pt5-182': { habilidades: { 'Tranquil Flower': TRANQUIL } }, // Venusaur ex (arte alt.)
+    'sv3pt5-198': { habilidades: { 'Tranquil Flower': TRANQUIL } },
+    'sv3pt5-151': { habilidades: { 'Restart': RESTART } },  // Mew ex
+    'sv3pt5-193': { habilidades: { 'Restart': RESTART } },
+    'sv3pt5-205': { habilidades: { 'Restart': RESTART } },
+    'sv8-9': { habilidades: { 'Calming Light': CALMING } }, // Shiinotic: rival Dormido
+    'sv8-194': { habilidades: { 'Calming Light': CALMING } }
   };
 
   // Validación temprana en desarrollo: avisa si alguna entrada está mal formada.

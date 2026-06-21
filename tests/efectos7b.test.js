@@ -65,5 +65,11 @@ ok(!!est.pendiente && est.pendiente.tipo === 'elegirObjetivo', 'pausa para elegi
 J.resolverEleccion(est, 'A', [rb.iid]);
 eq(rb.danio, 20, 'el Pokémon rival elegido recibió 20');
 
+console.log('Mew ex — Reinicio: roba hasta tener 3 en la mano');
+est = partida(); ponerActivoA(est, 'sv3pt5-151');
+est.lados.A.mano = est.lados.A.mano.slice(0, 1); // dejar 1 en mano
+J.usarHabilidad(est, 'A', 'ACT', 0);
+eq(est.lados.A.mano.length, 3, 'robó hasta tener 3');
+
 console.log('\n' + (fail === 0 ? '✓ TODO OK' : '✗ FALLOS') + ' — pass=' + pass + ' fail=' + fail);
 if (fail > 0) process.exit(1);

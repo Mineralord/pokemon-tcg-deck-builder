@@ -274,6 +274,13 @@
         out.push('descartarMano');
         break;
       }
+      case 'robarHasta': {
+        // Roba hasta tener `cantidad` cartas en la mano (p.ej. "Reinicio" de Mew ex).
+        const L = ctx.est.lados[ctx.lado]; const meta = o.cantidad || 0;
+        while (L.mano.length < meta && L.mazo.length) L.mano.push(L.mazo.shift());
+        out.push('robarHasta');
+        break;
+      }
       case 'barajarManoEnMazo': {
         // Baraja toda tu mano dentro del mazo (p.ej. Joven/Drasna antes de robar).
         const L = ctx.est.lados[ctx.lado];
