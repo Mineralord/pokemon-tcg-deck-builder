@@ -223,20 +223,20 @@ function _imgEsUrl(id, grande){
   const n = parseInt(num,10); if(isNaN(n)) return null;
   return 'https://assets.tcgdex.net/es/'+serie+'/'+tset+'/'+String(n).padStart(3,'0')+'/'+(grande?'high':'low')+'.webp';
 }
-function imagenLocal(v, grande){
-  if(!v) return null;
-  if(v.es){
-    const im = grande ? v.es.imagenGrande : v.es.imagenChica;
-    if(im) return im;
-  }
-  // Imagen española ya cacheada (TCGdex) para esta carta — cubre eras no derivables.
-  if(typeof imgEsCache === 'function'){ const c = imgEsCache(v.id, grande); if(c) return c; }
-  const der = _imgEsUrl(v.id, grande);           // imagen ES derivada del id (SV/me)
-  if(der) return der;
-  // Sin español todavía: NO usamos la imagen inglesa. Placeholder hasta que el
-  // top-up (localizarVistasEs) traiga la imagen española.
-  return null;
+// Resuelve la imagen de una carta indicando si la fuente es ESPAÑOLA.
+// Orden: es del dato -> caché ES (TCGdex) -> URL ES derivada (SV/me) -> inglés (marcado).
+function resolverImagen(v, grande){
+  if(!v) return { url:null, es:false };
+  if(v.es){ const im = grande ? v.es.imagenGrande : v.es.imagenChica; if(im) return { url:im, es:true }; }
+  if(typeof imgEsCache === 'function'){ const c = imgEsCache(v.id, grande); if(c) return { url:c, es:true }; }
+  const der = _imgEsUrl(v.id, grande);
+  if(der) return { url:der, es:true };
+  const ing = grande ? (v.imagenGrande || v.imagenChica) : (v.imagenChica || v.imagenGrande);
+  return { url: ing || null, es:false };
 }
+function imagenLocal(v, grande){ return resolverImagen(v, grande).url; }
+// true si la imagen mostrada será española; false si se cae al escaneo inglés.
+function tieneImagenEs(v){ return resolverImagen(v, false).es; }
 function setNombreLocal(v){
   if(v && v.es && v.es.setNombre) return v.es.setNombre;
   return (v && v.set && v.set.nombre) || '';

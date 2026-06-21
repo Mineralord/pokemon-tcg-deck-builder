@@ -952,6 +952,14 @@ header{ flex-wrap:wrap; row-gap:8px; }
 .cardtile-img{ position:relative; cursor:pointer; aspect-ratio:245/342; background:#0b0e15; }
 .cardtile-img img{ width:100%; height:100%; object-fit:contain; display:block; }
 .cardtile-img .noimg{ display:flex; align-items:center; justify-content:center; height:100%; color:#8a93a6; font:600 14px 'Chakra Petch'; text-align:center; padding:10px; }
+/* Indicador "sin imagen en español": puntito rojo (grid y detalle) */
+.no-es-dot{ position:absolute; top:6px; left:6px; width:11px; height:11px; border-radius:50%;
+  background:#ef4444; box-shadow:0 0 0 2px rgba(0,0,0,.45), 0 0 7px rgba(239,68,68,.9); z-index:4; pointer-events:none; }
+.cd-img{ position:relative; }
+.cd-img.no-es .no-es-dot{ top:10px; left:10px; width:13px; height:13px; }
+.no-es-note{ position:absolute; left:10px; bottom:10px; z-index:4;
+  background:rgba(239,68,68,.94); color:#fff; font:600 11px/1 'Chakra Petch',sans-serif;
+  padding:4px 8px; border-radius:6px; letter-spacing:.2px; }
 .qty-badge{
   position:absolute; top:8px; right:8px; background:#A78BFA; color:#0A0D14;
   font:700 13px/1 'Russo One'; padding:4px 8px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.4);

@@ -90,8 +90,9 @@ function renderCardDetail(d){
   document.getElementById('modal-title').textContent = titulo;
   if(typeof enriquecerEnergia === 'function') enriquecerEnergia(d);
   const img = imagenLocal(d, true);
+  const hayEs = tieneImagenEs(d);
   let html = '<div class="card-detail">';
-  if(img) html += `<div class="cd-img"><img src="${esc(img)}" alt="${esc(titulo)}" loading="lazy"></div>`;
+  if(img) html += `<div class="cd-img${hayEs?'':' no-es'}"><img src="${esc(img)}" alt="${esc(titulo)}" loading="lazy">${hayEs?'':'<span class="no-es-dot" title="No existe imagen en español"></span><span class="no-es-note">Sin imagen en español</span>'}</div>`;
   html += '<div class="cd-info">';
   const chips = [];
   if(d.ps) chips.push('❤️ '+d.ps+' '+T('d_ps'));
@@ -528,6 +529,7 @@ function renderInventory(){
   el.innerHTML = items.map(({e, v}) => {
     const nom = nombreLocal(v);
     const img = imagenLocal(v);
+    const noEs = !tieneImagenEs(v);
     const ring = getLegalStatus(e) === 'illegal' ? ' ring-illegal' : '';
     const idq = esc(jsq(e.id));
     const setline = `${esc(setNombreLocal(v))}${v.numeroCarta ? (' · ' + esc(v.numeroCarta)) : ''}`;
@@ -537,6 +539,7 @@ function renderInventory(){
           <button class="tile-act" aria-label="${esc(T('tile_replace'))}" title="${esc(T('tile_replace'))}" onclick="event.stopPropagation();iniciarReemplazo('${idq}')">⇄</button>
           <button class="tile-act del" aria-label="${esc(T('tile_delete'))}" title="${esc(T('tile_delete'))}" onclick="event.stopPropagation();pedirEliminar('${idq}')">✕</button>
         </div>
+        ${noEs ? '<span class="no-es-dot" title="No existe imagen en español (se muestra la inglesa)"></span>' : ''}
         ${img ? `<img src="${esc(img)}" alt="${esc(nom)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">` : `<div class="noimg">${esc(nom)}</div>`}
         <span class="qty-badge">×${e.qty}</span>
       </div>
@@ -1273,10 +1276,12 @@ function renderExploradorGrid(){
   grid.innerHTML = expCards.map(v => {
     const nom = nombreLocal(v);
     const img = imagenLocal(v);
+    const noEs = !tieneImagenEs(v);
     const owned = inventory.find(x => x.id === v.id);
     const idq = esc(jsq(v.id));
     return `<div class="cardtile">
       <div class="cardtile-img" onclick="showCardById('${idq}')">
+        ${noEs ? '<span class="no-es-dot" title="No existe imagen en español (se muestra la inglesa)"></span>' : ''}
         ${img ? `<img src="${esc(img)}" alt="${esc(nom)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">` : `<div class="noimg">${esc(nom)}</div>`}
         ${owned ? `<span class="qty-badge owned">×${owned.qty}</span>` : ''}
       </div>
