@@ -1,5 +1,5 @@
 window.CARTAS_DB = {
-  "generadoEl": "2026-06-15 15:09",
+  "generadoEl": "2026-06-15 15:09 (+es-img 2026-06-21)",
   "totalCartas": 107,
   "cartas": [
     {
@@ -71,7 +71,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/svp/106/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/106/high.webp",
+        "setNombre": "SVP Black Star Promos"
       }
     },
     {
@@ -139,7 +142,10 @@ window.CARTAS_DB = {
             "text": "Lanza 1 moneda. Si sale cara, este ataque hace 20 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/100/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/100/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -221,7 +227,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/101/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/101/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -304,7 +313,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/066/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/066/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -388,7 +400,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/067/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/067/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -458,7 +473,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/svp/109/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/109/high.webp",
+        "setNombre": "SVP Black Star Promos"
       }
     },
     {
@@ -540,7 +558,10 @@ window.CARTAS_DB = {
             "text": "Este ataque hace 30 puntos de daño por cada Herramienta Pokémon unida a cada uno de tus Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv10/077/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv10/077/high.webp",
+        "setNombre": "Rivales Predestinados"
       }
     },
     {
@@ -613,7 +634,10 @@ window.CARTAS_DB = {
             "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv06/075/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv06/075/high.webp",
+        "setNombre": "Mascarada Crepuscular"
       }
     },
     {
@@ -700,7 +724,10 @@ window.CARTAS_DB = {
             "text": "Descarta 1 Energía de este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv06/076/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv06/076/high.webp",
+        "setNombre": "Mascarada Crepuscular"
       }
     },
     {
@@ -779,7 +806,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv05/121/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv05/121/high.webp",
+        "setNombre": "Fuerzas Temporales"
       }
     },
     {
@@ -824,7 +854,10 @@ window.CARTAS_DB = {
         "nombre": "Generador Eléctrico",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Mira las 5 primeras cartas de tu baraja y une hasta 2 cartas de Energía {L} Básica que encuentres entre ellas a tus Pokémon {L} en Banca de la manera que desees. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas."
+        "efecto": "Mira las 5 primeras cartas de tu baraja y une hasta 2 cartas de Energía {L} Básica que encuentres entre ellas a tus Pokémon {L} en Banca de la manera que desees. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/170/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/170/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -869,7 +902,10 @@ window.CARTAS_DB = {
         "nombre": "Super Ball",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Mira las 7 primeras cartas de tu baraja. Puedes enseñar 1 Pokémon que encuentres entre ellas y ponerlo en tu mano. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas."
+        "efecto": "Mira las 7 primeras cartas de tu baraja. Puedes enseñar 1 Pokémon que encuentres entre ellas y ponerlo en tu mano. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/183/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/183/high.webp",
+        "setNombre": "Evoluciones en Paldea"
       }
     },
     {
@@ -914,7 +950,10 @@ window.CARTAS_DB = {
         "nombre": "Cinio",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Busca en tu baraja hasta 2 Pokémon Evolución, enséñalos y ponlos en tu mano. Después, baraja las cartas de tu baraja."
+        "efecto": "Busca en tu baraja hasta 2 Pokémon Evolución, enséñalos y ponlos en tu mano. Después, baraja las cartas de tu baraja.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/175/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/175/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -959,7 +998,10 @@ window.CARTAS_DB = {
         "nombre": "Mencía",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Roba 3 cartas."
+        "efecto": "Roba 3 cartas.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/180/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/180/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1004,7 +1046,10 @@ window.CARTAS_DB = {
         "nombre": "Nido Ball",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Busca en tu baraja 1 Pokémon Básico y ponlo en tu Banca. Después, baraja las cartas de tu baraja."
+        "efecto": "Busca en tu baraja 1 Pokémon Básico y ponlo en tu Banca. Después, baraja las cartas de tu baraja.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/181/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/181/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1049,7 +1094,10 @@ window.CARTAS_DB = {
         "nombre": "Dominguera",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Lanza 1 moneda. Si sale cara, roba 4 cartas. Si sale cruz, roba 2 cartas."
+        "efecto": "Lanza 1 moneda. Si sale cara, roba 4 cartas. Si sale cruz, roba 2 cartas.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/svp/114/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/114/high.webp",
+        "setNombre": "SVP Black Star Promos"
       }
     },
     {
@@ -1094,7 +1142,10 @@ window.CARTAS_DB = {
         "nombre": "Poción",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Cura 30 puntos de daño a uno de tus Pokémon."
+        "efecto": "Cura 30 puntos de daño a uno de tus Pokémon.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/188/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/188/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1139,7 +1190,10 @@ window.CARTAS_DB = {
         "nombre": "Cambio",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Cambia tu Pokémon Activo por uno de tus Pokémon en Banca."
+        "efecto": "Cambia tu Pokémon Activo por uno de tus Pokémon en Banca.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/206/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/206/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -1184,7 +1238,10 @@ window.CARTAS_DB = {
         "nombre": "Joven",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Pon las cartas de tu mano en tu baraja y barájalas todas. Después, roba 5 cartas."
+        "efecto": "Pon las cartas de tu mano en tu baraja y barájalas todas. Después, roba 5 cartas.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/198/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/198/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1201,7 +1258,10 @@ window.CARTAS_DB = {
       "debilidades": [],
       "resistencias": [],
       "costoRetirada": [],
-      "reglas": []
+      "reglas": [],
+      "es": {
+        "nombre": "Energía Rayo"
+      }
     },
     {
       "id": "sv1-128",
@@ -1284,7 +1344,10 @@ window.CARTAS_DB = {
             "text": "Si el Pokémon Activo de tu rival está Envenenado, este ataque hace 120 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/128/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/128/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1371,7 +1434,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/svp/110/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/110/high.webp",
+        "setNombre": "SVP Black Star Promos"
       }
     },
     {
@@ -1453,7 +1519,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/132/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/132/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1535,7 +1604,10 @@ window.CARTAS_DB = {
             "text": "Este Pokémon también se hace 30 puntos de daño a sí mismo."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/133/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/133/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1618,7 +1690,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/134/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/134/high.webp",
+        "setNombre": "Escarlata y Púrpura"
       }
     },
     {
@@ -1706,7 +1781,10 @@ window.CARTAS_DB = {
             "text": "Lanza 1 moneda. Si sale cara, descarta 1 Energía del Pokémon Activo de tu rival."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv06.5/035/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv06.5/035/high.webp",
+        "setNombre": "Fabula Sombría"
       }
     },
     {
@@ -1774,7 +1852,10 @@ window.CARTAS_DB = {
             "text": "Descarta 1 Energía de este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv07/023/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv07/023/high.webp",
+        "setNombre": "Corona Astral"
       }
     },
     {
@@ -1858,7 +1939,10 @@ window.CARTAS_DB = {
             "text": "Descarta 1 Energía de este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv07/024/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv07/024/high.webp",
+        "setNombre": "Corona Astral"
       }
     },
     {
@@ -1940,7 +2024,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv07/127/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv07/127/high.webp",
+        "setNombre": "Corona Astral"
       }
     },
     {
@@ -1985,7 +2072,10 @@ window.CARTAS_DB = {
         "nombre": "Órdenes de Jefes",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo."
+        "efecto": "Cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo.",
+        "imagenChica": "https://assets.tcgdex.net/es/me/me01/114/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/me/me01/114/high.webp",
+        "setNombre": "Megaevolución"
       }
     },
     {
@@ -2002,7 +2092,10 @@ window.CARTAS_DB = {
       "debilidades": [],
       "resistencias": [],
       "costoRetirada": [],
-      "reglas": []
+      "reglas": [],
+      "es": {
+        "nombre": "Energía Oscura"
+      }
     },
     {
       "id": "sv3pt5-3",
@@ -2087,7 +2180,10 @@ window.CARTAS_DB = {
             "text": "El Pokémon Activo de tu rival pasa a estar Confundido y Envenenado."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/003/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/003/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2174,7 +2270,10 @@ window.CARTAS_DB = {
             "text": "Descarta 3 Energías de este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/006/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/006/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2258,7 +2357,10 @@ window.CARTAS_DB = {
             "text": "Descarta hasta 2 cartas de Energía {W} Básica de tu mano. Este ataque hace 140 puntos de daño por cada carta que hayas descartado de esta manera."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/009/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/009/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2345,7 +2447,10 @@ window.CARTAS_DB = {
             "text": "Tu rival descarta 2 cartas de su mano."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/024/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/024/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2430,7 +2535,10 @@ window.CARTAS_DB = {
             "text": "Si tienes la misma cantidad de cartas en tu mano que tu rival, este ataque hace 140 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/038/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/038/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2515,7 +2623,10 @@ window.CARTAS_DB = {
             "text": "Si has jugado una carta de Partidario de tu mano durante este turno, este ataque hace 90 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/040/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/040/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2605,7 +2716,10 @@ window.CARTAS_DB = {
             "text": "Este ataque se puede usar incluso si este Pokémon está en la Banca."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/065/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/065/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2687,7 +2801,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/072/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/072/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2772,7 +2889,10 @@ window.CARTAS_DB = {
             "text": "Lanza 1 moneda hasta que salga cruz. Este ataque hace 90 puntos de daño por cada cara. Si sale cruz en el primer lanzamiento, el Pokémon Activo de tu rival pasa a estar Confundido."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/073/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/073/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2855,7 +2975,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/074/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/074/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -2940,7 +3063,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/075/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/075/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3028,7 +3154,10 @@ window.CARTAS_DB = {
             "text": "El daño de este ataque no se ve afectado por Resistencia."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/076/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/076/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3111,7 +3240,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/077/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/077/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3194,7 +3326,10 @@ window.CARTAS_DB = {
             "text": "Cambia este Pokémon por uno de tus Pokémon en Banca."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/078/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/078/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3282,7 +3417,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/079/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/079/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3371,7 +3509,10 @@ window.CARTAS_DB = {
             "text": "Si este Pokémon ha evolucionado durante este turno, este ataque no hace nada."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/080/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/080/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3453,7 +3594,10 @@ window.CARTAS_DB = {
             "text": "Este Pokémon también se hace 60 puntos de daño a sí mismo."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/081/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/081/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3537,7 +3681,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/082/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/082/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3623,7 +3770,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/083/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/083/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3696,7 +3846,10 @@ window.CARTAS_DB = {
             "text": "Este Pokémon también se hace 10 puntos de daño a sí mismo."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/084/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/084/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3780,7 +3933,10 @@ window.CARTAS_DB = {
             "text": "Este ataque hace 30 puntos de daño más por cada contador de daño en este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/085/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/085/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3849,7 +4005,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/086/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/086/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -3934,7 +4093,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/087/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/087/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4003,7 +4165,10 @@ window.CARTAS_DB = {
             "text": "Durante el próximo turno de tu rival, el Coste de Retirada del Pokémon Defensor es de {C} más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/088/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/088/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4090,7 +4255,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/089/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/089/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4160,7 +4328,10 @@ window.CARTAS_DB = {
             "text": "Durante el próximo turno de tu rival, los ataques hacen 30 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia)."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/090/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/090/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4231,7 +4402,10 @@ window.CARTAS_DB = {
             "text": "Durante el próximo turno de tu rival, los ataques hacen 80 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia)."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/091/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/091/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4304,7 +4478,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/092/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/092/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4389,7 +4566,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/093/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/093/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4474,7 +4654,10 @@ window.CARTAS_DB = {
             "text": "Pon 3 contadores de daño en los Pokémon en Banca de tu rival de la manera que desees."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/094/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/094/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4562,7 +4745,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/095/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/095/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4637,7 +4823,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/096/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/096/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4724,7 +4913,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/097/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/097/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4807,7 +4999,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/098/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/098/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4895,7 +5090,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/099/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/099/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -4964,7 +5162,10 @@ window.CARTAS_DB = {
             "text": "Lanza 1 moneda hasta que salga cruz. Este ataque hace 30 puntos de daño por cada cara."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/102/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/102/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5050,7 +5251,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/103/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/103/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5129,7 +5333,10 @@ window.CARTAS_DB = {
             "text": "Lanza 2 monedas. Este ataque hace 10 puntos de daño por cada cara."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/104/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/104/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5212,7 +5419,10 @@ window.CARTAS_DB = {
             "text": "Durante tu próximo turno, este Pokémon no puede atacar."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/105/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/105/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5296,7 +5506,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/106/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/106/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5376,7 +5589,10 @@ window.CARTAS_DB = {
             "text": "Durante tu próximo turno, el ataque Puño Exaltado de este Pokémon hace 60 puntos de daño más (antes de aplicar Debilidad y Resistencia)."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/107/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/107/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5449,7 +5665,10 @@ window.CARTAS_DB = {
             "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede atacar."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/108/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/108/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5518,7 +5737,10 @@ window.CARTAS_DB = {
             "text": "El Pokémon Activo de tu rival pasa a estar Confundido."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/109/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/109/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5599,7 +5821,10 @@ window.CARTAS_DB = {
             "text": "Este ataque también hace 10 puntos de daño a cada uno de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca)."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/110/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/110/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5685,7 +5910,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/111/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/111/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5772,7 +6000,10 @@ window.CARTAS_DB = {
             "text": "Si has jugado una carta de Carisma de Giovanni de tu mano durante este turno, este ataque hace 140 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/112/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/112/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5854,7 +6085,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/113/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/113/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -5923,7 +6157,10 @@ window.CARTAS_DB = {
             "text": "Si has jugado una carta de Invitación de Erika de tu mano durante este turno, este ataque hace 60 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/114/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/114/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6009,7 +6246,10 @@ window.CARTAS_DB = {
             "text": "Lanza 4 monedas. Este ataque hace 100 puntos de daño por cada cara."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/115/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/115/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6092,7 +6332,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/116/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/116/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6162,7 +6405,10 @@ window.CARTAS_DB = {
             "text": "Durante el próximo turno de tu rival, si el Pokémon Defensor intenta usar un ataque, tu rival lanza 2 monedas. Si sale cruz en alguna de ellas, ese ataque no se lleva a cabo."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/117/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/117/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6244,7 +6490,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/118/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/118/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6328,7 +6577,10 @@ window.CARTAS_DB = {
             "text": "Este ataque hace 30 puntos de daño más por cada Energía {W} unida a este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/119/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/119/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6397,7 +6649,10 @@ window.CARTAS_DB = {
             "text": "El daño de este ataque no se ve afectado por Debilidad o Resistencia, o por ningún efecto en el Pokémon Activo de tu rival."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/120/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/120/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6477,7 +6732,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/121/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/121/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6561,7 +6819,10 @@ window.CARTAS_DB = {
             "text": "Pon 3 contadores de daño en los Pokémon de tu rival de la manera que desees."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/122/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/122/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6642,7 +6903,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/123/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/123/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6730,7 +6994,10 @@ window.CARTAS_DB = {
             "text": "El Pokémon Activo de tu rival pasa a estar Dormido."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/124/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/124/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6813,7 +7080,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/125/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/125/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6897,7 +7167,10 @@ window.CARTAS_DB = {
             "text": "Si Electabuzz está en tu Banca, este ataque hace 80 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/126/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/126/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -6982,7 +7255,10 @@ window.CARTAS_DB = {
             "text": "Si te quedan más cartas de Premio que a tu rival, este ataque hace 90 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/127/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/127/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7065,7 +7341,10 @@ window.CARTAS_DB = {
             "text": "Este ataque hace 10 puntos de daño más por cada contador de daño en este Pokémon."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/128/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/128/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7133,7 +7412,10 @@ window.CARTAS_DB = {
             "text": "Lanza 1 moneda hasta que salga cruz. Por cada cara, roba 1 carta."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/129/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/129/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7218,7 +7500,10 @@ window.CARTAS_DB = {
             "text": "Descarta 1 Energía del Pokémon Activo de tu rival."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/130/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/130/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7301,7 +7586,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/131/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/131/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7380,7 +7668,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/132/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/132/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7461,7 +7752,10 @@ window.CARTAS_DB = {
             "text": null
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/133/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/133/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7545,7 +7839,10 @@ window.CARTAS_DB = {
             "text": "Si el Pokémon Activo de tu rival es un Pokémon ex o un Pokémon V, este ataque hace 90 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/134/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/134/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7626,7 +7923,10 @@ window.CARTAS_DB = {
             "text": "Si el Pokémon Activo de tu rival es un Pokémon ex o un Pokémon V, este ataque hace 90 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/135/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/135/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7710,7 +8010,10 @@ window.CARTAS_DB = {
             "text": "Si el Pokémon Activo de tu rival es un Pokémon ex o un Pokémon V, este ataque hace 90 puntos de daño más."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/136/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/136/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7778,7 +8081,10 @@ window.CARTAS_DB = {
             "text": "Elige el tipo {G}, {R}, {W}, {L}, {P}, {F}, {D}, {M} o {N}. Hasta que el Pokémon Defensor deje el Puesto Activo, su Debilidad pasa a ser de ese tipo. (La cantidad de Debilidad no cambia)."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/137/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/137/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7848,7 +8154,10 @@ window.CARTAS_DB = {
             "text": "Pon 1 Energía unida al Pokémon Activo de tu rival en su mano."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/138/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/138/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -7937,7 +8246,10 @@ window.CARTAS_DB = {
             "text": "Este ataque también hace 90 puntos de daño a uno de los Pokémon en Banca de tu rival que tenga algún contador de daño sobre él. (No apliques Debilidad y Resistencia a los Pokémon en Banca)."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/145/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/145/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -8023,7 +8335,10 @@ window.CARTAS_DB = {
             "text": "Elige uno de los ataques del Pokémon Activo de tu rival y úsalo para este ataque."
           }
         ],
-        "efecto": null
+        "efecto": null,
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/151/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/151/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -8068,7 +8383,10 @@ window.CARTAS_DB = {
         "nombre": "Invitación de Erika",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon Básico que encuentres entre ellas en la Banca de tu rival. Si pones un Pokémon en su Banca de esta manera, cambia ese Pokémon por el Pokémon que esté en el Puesto Activo."
+        "efecto": "Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon Básico que encuentres entre ellas en la Banca de tu rival. Si pones un Pokémon en su Banca de esta manera, cambia ese Pokémon por el Pokémon que esté en el Puesto Activo.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/160/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/160/high.webp",
+        "setNombre": "151"
       }
     },
     {
@@ -8113,7 +8431,10 @@ window.CARTAS_DB = {
         "nombre": "Carisma de Giovanni",
         "habilidades": [],
         "ataques": [],
-        "efecto": "Pon 1 Energía unida al Pokémon Activo de tu rival en su mano. Si lo haces, une 1 carta de Energía de tu mano a tu Pokémon Activo."
+        "efecto": "Pon 1 Energía unida al Pokémon Activo de tu rival en su mano. Si lo haces, une 1 carta de Energía de tu mano a tu Pokémon Activo.",
+        "imagenChica": "https://assets.tcgdex.net/es/sv/sv03.5/161/low.webp",
+        "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03.5/161/high.webp",
+        "setNombre": "151"
       }
     }
   ]

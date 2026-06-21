@@ -304,7 +304,8 @@ async function tcgdexEsLive(id){
 // en re-renders posteriores; junto con el guard de "cambios" evita el bucle infinito de render.
 const _esTried = new Set();
 function localizarVistasEs(views, onReady){
-  const faltan = (views || []).filter(v => v && v.id && !v.es && !_esTried.has(v.id));
+  // Incluye cartas con .es pero SIN imagen española (para que también se traiga el escaneo ES).
+  const faltan = (views || []).filter(v => v && v.id && (!v.es || !v.es.imagenChica) && !_esTried.has(v.id));
   if (!faltan.length) return;
   let i = 0, activos = 0, hechos = 0, disparado = false, cambios = 0;
   const total = faltan.length;
