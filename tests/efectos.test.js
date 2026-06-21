@@ -137,6 +137,19 @@ let r = run(e, { efectoJS: function (ctx) { ctx.def.danio = (ctx.def.danio || 0)
 eq(e.lados.B.activo.danio, 7, 'efectoJS aplicado');
 eq(r[0], 'efectoJS', 'marca efectoJS');
 
+console.log('op aLostZone — energías a la Zona Perdida');
+e = estado({ aActivo: poke({ energias: [energia('Water'), energia('Water'), energia('Water')] }) });
+run(e, { ops: [{ op: 'aLostZone', objetivo: 'esteP', cantidad: 2 }] });
+eq(e.lados.A.activo.energias.length, 1, 'queda 1 energía');
+eq((e.lados.A.lost || []).length, 2, '2 a la Zona Perdida');
+
+console.log('op descartarMazo (mill) y lostMazo');
+e = estado({ aMazo: [poke({ iid: 'd1' }), poke({ iid: 'd2' }), poke({ iid: 'd3' }), poke({ iid: 'd4' })] });
+run(e, { ops: [{ op: 'descartarMazo', cantidad: 1 }, { op: 'lostMazo', cantidad: 2 }] });
+eq(e.lados.A.descarte.length, 1, '1 al descarte');
+eq((e.lados.A.lost || []).length, 2, '2 a la Zona Perdida');
+eq(e.lados.A.mazo.length, 1, 'mazo queda 1');
+
 console.log('entrada vacía -> manual');
 eq(run(estado(), { ops: [] })[0], 'manual', 'ops vacío = manual');
 eq(run(estado(), { ops: [{ op: 'buscarMazo' }] })[0], 'manual', 'op F2 = manual');

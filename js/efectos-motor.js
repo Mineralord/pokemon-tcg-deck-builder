@@ -235,6 +235,30 @@
         out.push('robar');
         break;
       }
+      case 'aLostZone': {
+        // Mueve N energías del objetivo a la Zona Perdida de su dueño.
+        cartasObjetivo(ctx, o.objetivo || 'esteP', o.filtro).forEach(function (c) {
+          const L = dueñoDe(ctx, c); L.lost = L.lost || [];
+          const n = o.todo ? (c.energias || []).length : valorCantidad(ctx, o);
+          for (let k = 0; k < n && (c.energias || []).length; k++) L.lost.push(c.energias.pop());
+        });
+        out.push('aLostZone');
+        break;
+      }
+      case 'descartarMazo': {
+        // Mill: descarta las N cartas superiores de tu mazo.
+        const L = ctx.est.lados[ctx.lado]; const n = o.cantidad || 0;
+        for (let k = 0; k < n && L.mazo.length; k++) L.descarte.push(L.mazo.shift());
+        out.push('descartarMazo');
+        break;
+      }
+      case 'lostMazo': {
+        // Manda las N cartas superiores de tu mazo a la Zona Perdida.
+        const L = ctx.est.lados[ctx.lado]; L.lost = L.lost || []; const n = o.cantidad || 0;
+        for (let k = 0; k < n && L.mazo.length; k++) L.lost.push(L.mazo.shift());
+        out.push('lostMazo');
+        break;
+      }
       case 'descartarMano': {
         const L = ctx.est.lados[ctx.lado];
         const n = o.todo ? L.mano.length : (o.cantidad || 0);
