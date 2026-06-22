@@ -308,6 +308,14 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .juego-root.jv-full-root .jv-board{ padding-top:max(8px, env(safe-area-inset-top)); }
 .juego-root.jv-full-root .jv-side--rival{ padding-top:6px; }
 .juego-root.jv-full-root .jv-side--rival .jv-pbar{ padding-left:56px; padding-right:56px; }
+/* Barras inferiores compactas para que la MANO entre completa (sin recorte) */
+.juego-root.jv-full-root .jv-attacks{ padding:4px 8px 6px; gap:4px; }
+.juego-root.jv-full-root .jv-attacks-h{ margin:0 0 2px; font-size:12px; }
+.juego-root.jv-full-root .jv-atk{ padding:5px 9px; }
+.juego-root.jv-full-root .jv-atk-fx{ display:none; }   /* el texto largo va en el detalle (bottom-sheet) */
+.juego-root.jv-full-root .jv-hand{ min-height:0; padding-top:2px; }
+.juego-root.jv-full-root .jv-hand .jv-card{ width:calc(var(--jv-cw) * 0.92); margin-left:calc(var(--jv-cw) * -0.32); }
+.juego-root.jv-full-root .jv-hand .jv-card:first-child{ margin-left:0; }
 
 /* ---------- Overlay de fin de partida ---------- */
 .jv-overlay{ position:fixed; inset:0; z-index:var(--jv-z-modal); display:flex; align-items:center; justify-content:center;
