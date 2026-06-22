@@ -299,6 +299,12 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 @keyframes jv-sheet-up{ from{ transform:translateY(100%); opacity:.4; } to{ transform:translateY(0); opacity:1; } }
 @media (prefers-reduced-motion: reduce){ .jv-sheet .jv-zoom{ animation:none; } }
 
+/* HUD compacto estilo TCG Live: sin la pista verbosa, cápsula de turno + botones */
+.juego-root.jv-full-root .jv-hint{ display:none; }
+.juego-root.jv-full-root .jv-hud{ gap:8px; flex-wrap:wrap; min-height:0; padding:1px 0; }
+.juego-root.jv-full-root .jv-utils{ gap:6px; margin:0; justify-content:center; }
+.juego-root.jv-full-root .jv-turn{ font-size:12px; padding:5px 12px; }
+
 /* ---------- Overlay de fin de partida ---------- */
 .jv-overlay{ position:fixed; inset:0; z-index:var(--jv-z-modal); display:flex; align-items:center; justify-content:center;
   background:rgba(6,8,13,.78); backdrop-filter:blur(4px); animation:jv-enter .22s var(--jv-ease-out) both; padding:24px; }
