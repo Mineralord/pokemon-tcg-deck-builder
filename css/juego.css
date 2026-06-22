@@ -550,6 +550,18 @@ body.jv-full .views{ padding:0 !important; }
 .juego-root.jv-full-root .jv-bench .jv-badge-hp{ font-size:10px; padding:1px 4px 1px 2px; }
 .juego-root.jv-full-root .jv-bench .jv-badge-hp i{ width:7px; height:7px; }
 
+/* Mazo/Descarte/Premios compactos con look apilado (TCG Live) */
+.juego-root.jv-full-root .jv-pile{ width:calc(var(--jv-cw) * 0.72); }
+.jv-pile .jv-card--back{ position:relative; }
+.jv-pile .jv-card--back::before, .jv-pile .jv-card--back::after{ content:''; position:absolute; inset:0;
+  border-radius:inherit; background:linear-gradient(135deg,#3b2d6b,#241b3d); border:1px solid rgba(255,255,255,.08); z-index:-1; }
+.jv-pile .jv-card--back::before{ transform:translate(2px,2px); }
+.jv-pile .jv-card--back::after{ transform:translate(4px,4px); }
+.jv-pile .jv-count{ background:#fbbf24; color:#1a1206; font-weight:800; }
+.juego-root.jv-full-root .jv-prizes-stack{ grid-template-columns:repeat(3, calc(var(--jv-cw) * .38)); gap:2px; }
+.juego-root.jv-full-root .jv-prizes-stack .jv-mini{ border-color:rgba(250,204,21,.45);
+  background:linear-gradient(135deg,#3a2a08,#221803); }
+
 /* ============================================================
    FASE 11 — Coreografía de combate (animaciones originales)
    ============================================================ */
