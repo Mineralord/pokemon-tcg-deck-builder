@@ -70,9 +70,15 @@
   function cardBadges(c) {
     if (!c) return '';
     let b = '';
+    // HP restante + icono de tipo (estilo TCG Live: el HP va en la carta).
+    if (c.hp) {
+      const tipo = (c.tipos || [])[0] || 'Colorless';
+      const col = TIPO_COLOR[tipo] || '#cbd5e1';
+      const rem = Math.max(0, (c.hp || 0) - (c.danio || 0));
+      b += '<span class="jv-badge jv-badge-hp"' + (c.danio ? ' data-dmg="1"' : '') + ' style="border-color:' + col + '"><i style="background:' + col + '"></i>' + rem + '</span>';
+    }
     const ne = (c.energias || []).length;
     if (ne) b += '<span class="jv-badge jv-badge-e">' + ZAP + ne + '</span>';
-    if (c.danio) b += '<span class="jv-badge jv-badge-d">' + c.danio + '</span>';
     return b ? ('<span class="jv-badges">' + b + '</span>') : '';
   }
   const COND_MAP = { poisoned: ['PSN', '#22c55e'], burned: ['BRN', '#f97316'], asleep: ['SLP', '#38bdf8'], paralyzed: ['PAR', '#eab308'], confused: ['CNF', '#a855f7'] };

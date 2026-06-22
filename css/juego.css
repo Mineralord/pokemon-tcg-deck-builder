@@ -537,6 +537,13 @@ body.jv-full .views{ padding:0 !important; }
 /* Cartas en juego algo más compactas (estilo TCG Live) */
 .juego-root.jv-full-root .jv-active .jv-card{ width:calc(var(--jv-cw) * 1.32); }
 
+/* HP en carta (número + icono de tipo) estilo TCG Live */
+.jv-badge-hp{ display:inline-flex; align-items:center; gap:3px; padding:1px 6px 1px 3px;
+  background:rgba(8,10,16,.92); border:1.5px solid #cbd5e1; border-radius:999px;
+  font:800 12px/1 'Russo One',sans-serif; color:#f1f5f9; box-shadow:0 1px 4px rgba(0,0,0,.6); }
+.jv-badge-hp i{ width:9px; height:9px; border-radius:50%; display:inline-block; box-shadow:0 0 4px rgba(0,0,0,.5); }
+.jv-badge-hp[data-dmg]{ color:#fca5a5; }
+
 /* ============================================================
    FASE 11 — Coreografía de combate (animaciones originales)
    ============================================================ */
