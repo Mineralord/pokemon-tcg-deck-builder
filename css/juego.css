@@ -286,6 +286,19 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .jv-zoom-atk span{ color:#F43F5E; font-family:'JetBrains Mono',monospace; }
 .jv-zoom-t{ font:400 12px/1.4 'Chakra Petch',sans-serif; color:#9aa6bd; margin-top:4px; }
 
+/* Detalle de carta como PANEL INFERIOR (bottom-sheet), estilo TCG Live */
+.jv-zoomwrap.jv-sheet{ align-items:flex-end; justify-content:center; padding:0; background:rgba(6,8,13,.7); }
+.jv-sheet .jv-zoom{ max-width:560px; width:100%; max-height:78dvh; border-radius:20px 20px 0 0;
+  border-bottom:0; padding:16px 16px 22px; gap:10px;
+  flex-direction:row; flex-wrap:wrap; align-items:flex-start;
+  animation:jv-sheet-up .24s var(--jv-ease-out) both; }
+.jv-sheet .jv-zoom-img{ flex:0 0 auto; }
+.jv-sheet .jv-zoom-img img{ width:120px; max-width:34vw; }
+.jv-sheet .jv-zoom-info{ flex:1 1 200px; min-width:0; display:flex; flex-direction:column; gap:7px; }
+.jv-sheet .jv-zoom-hab b{ color:#c4b5fd; }
+@keyframes jv-sheet-up{ from{ transform:translateY(100%); opacity:.4; } to{ transform:translateY(0); opacity:1; } }
+@media (prefers-reduced-motion: reduce){ .jv-sheet .jv-zoom{ animation:none; } }
+
 /* ---------- Overlay de fin de partida ---------- */
 .jv-overlay{ position:fixed; inset:0; z-index:var(--jv-z-modal); display:flex; align-items:center; justify-content:center;
   background:rgba(6,8,13,.78); backdrop-filter:blur(4px); animation:jv-enter .22s var(--jv-ease-out) both; padding:24px; }

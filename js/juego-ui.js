@@ -321,15 +321,24 @@
   function zoomOverlay() {
     if (!_zoom) return '';
     const c = findCard(_zoom.side, _zoom.iid); if (!c) return '';
-    const img = c.imagen ? '<img src="' + esc(c.imagen) + '" alt="' + esc(c.nombre) + '">' : '<div class="jv-zoom-noimg">' + esc(c.nombre) + '</div>';
-    let info = '<div class="jv-zoom-info"><div class="jv-zoom-name">' + esc(c.nombre) + (c.hp ? ' · ' + c.hp + ' HP' : '') + '</div>';
-    (c.ataques || []).forEach(function (a) {
-      info += '<div class="jv-zoom-atk">' + costeHtml(a.coste) + '<b>' + esc(a.nombre) + '</b>' + (a.danioRaw ? ' <span>' + esc(a.danioRaw) + '</span>' : '') +
-        (a.texto ? '<div class="jv-zoom-t">' + esc(a.texto) + '</div>' : '') + '</div>';
+    const nomEs = (c.es && c.es.nombre) || c.nombre || '';
+    const img = c.imagen ? '<img src="' + esc(c.imagen) + '" alt="' + esc(nomEs) + '">' : '<div class="jv-zoom-noimg">' + esc(nomEs) + '</div>';
+    let info = '<div class="jv-zoom-info"><div class="jv-zoom-name">' + esc(nomEs) + (c.hp ? ' · ' + c.hp + ' PS' : '') + '</div>';
+    (c.ataques || []).forEach(function (a, i) {
+      const e = (c.es && c.es.ataques && c.es.ataques[i]) || {};
+      const nm = e.name || a.nombre || '';
+      const tt = (e.text != null && e.text !== '') ? e.text : '';   // español o nada (nunca inglés)
+      info += '<div class="jv-zoom-atk">' + costeHtml(a.coste) + '<b>' + esc(nm) + '</b>' + (a.danioRaw ? ' <span>' + esc(a.danioRaw) + '</span>' : '') +
+        (tt ? '<div class="jv-zoom-t">' + esc(tt) + '</div>' : '') + '</div>';
     });
-    (c.habilidades || []).forEach(function (h) { info += '<div class="jv-zoom-atk"><b>' + esc(h.nombre) + '</b><div class="jv-zoom-t">' + esc(h.texto || '') + '</div></div>'; });
+    (c.habilidades || []).forEach(function (h, i) {
+      const e = (c.es && c.es.habilidades && c.es.habilidades[i]) || {};
+      const nm = e.name || h.nombre || '';
+      const tt = (e.text != null && e.text !== '') ? e.text : '';
+      info += '<div class="jv-zoom-atk jv-zoom-hab"><b>🟣 ' + esc(nm) + '</b>' + (tt ? '<div class="jv-zoom-t">' + esc(tt) + '</div>' : '') + '</div>';
+    });
     info += '</div>';
-    return '<div class="jv-zoomwrap" onclick="jvZoomClose()"><div class="jv-zoom" onclick="event.stopPropagation()">' +
+    return '<div class="jv-zoomwrap jv-sheet" onclick="jvZoomClose()"><div class="jv-zoom" onclick="event.stopPropagation()">' +
       '<button class="jv-zoom-x" type="button" aria-label="' + esc(tx('jv_close', 'Cerrar')) + '" onclick="jvZoomClose()">✕</button>' +
       '<div class="jv-zoom-img">' + img + '</div>' + info + '</div></div>';
   }
