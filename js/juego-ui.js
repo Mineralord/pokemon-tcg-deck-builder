@@ -531,6 +531,58 @@
     }
   }
 
+  // ---------- Arrastre táctil de cartas de la mano (aditivo: el toque sigue valiendo) ----------
+  let _drag = null;
+  function _iidDeCarta(card) { const oc = (card.getAttribute && card.getAttribute('onclick')) || ''; const m = /jvManoClick\('([^']+)'\)/.exec(oc); return m ? m[1] : null; }
+  function dragStart(e) {
+    try {
+      if (_drag || !e.touches || e.touches.length !== 1) return;
+      const card = e.target.closest && e.target.closest('#juego-root .jv-hand .jv-card');
+      if (!card) return;
+      const iid = _iidDeCarta(card); if (!iid) return;
+      const t = e.touches[0];
+      _drag = { iid: iid, card: card, x0: t.clientX, y0: t.clientY, moved: false, ghost: null, w: card.offsetWidth || 70 };
+    } catch (err) { _drag = null; }
+  }
+  function dragMove(e) {
+    if (!_drag || !e.touches || !e.touches.length) return;
+    const t = e.touches[0]; const dx = t.clientX - _drag.x0, dy = t.clientY - _drag.y0;
+    if (!_drag.moved && Math.hypot(dx, dy) > 12) {
+      _drag.moved = true;
+      const g = _drag.card.cloneNode(true);
+      g.className = 'jv-card jv-drag-ghost'; g.style.width = (_drag.w * 1.15) + 'px';
+      document.body.appendChild(g); _drag.ghost = g;
+      _drag.card.style.opacity = '0.25';
+      document.body.classList.add('jv-dragging');
+      snd('select');
+    }
+    if (_drag.moved) {
+      e.preventDefault();
+      _drag.ghost.style.left = t.clientX + 'px'; _drag.ghost.style.top = (t.clientY - 24) + 'px';
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const sobre = el && el.closest && el.closest('.jv-board');
+      document.body.classList.toggle('jv-drop-ok', !!sobre);
+    }
+  }
+  function dragEnd(e) {
+    if (!_drag) return; const d = _drag; _drag = null;
+    if (d.ghost) d.ghost.remove();
+    if (d.card) d.card.style.opacity = '';
+    document.body.classList.remove('jv-dragging'); document.body.classList.remove('jv-drop-ok');
+    if (d.moved) {
+      e.preventDefault(); // evita el "click fantasma"
+      const t = e.changedTouches && e.changedTouches[0];
+      const el = t && document.elementFromPoint(t.clientX, t.clientY);
+      const sobre = el && el.closest && el.closest('.jv-board');
+      if (sobre && typeof window.jvManoClick === 'function') { window.jvManoClick(d.iid); }
+    }
+    // si no se movió: no hacemos preventDefault → el toque normal (onclick) juega la carta.
+  }
+  document.addEventListener('touchstart', dragStart, { passive: true });
+  document.addEventListener('touchmove', dragMove, { passive: false });
+  document.addEventListener('touchend', dragEnd, { passive: false });
+  document.addEventListener('touchcancel', function () { if (_drag) { if (_drag.ghost) _drag.ghost.remove(); if (_drag.card) _drag.card.style.opacity = ''; document.body.classList.remove('jv-dragging', 'jv-drop-ok'); _drag = null; } });
+
   // ---------- Acciones (globales para onclick) ----------
   function cartasDeMazo(deck) {
     return (typeof JUEGO !== 'undefined') ? JUEGO.expandirMazo(deck, resolverCarta) : [];

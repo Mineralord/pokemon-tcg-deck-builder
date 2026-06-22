@@ -7,7 +7,7 @@
 //    (pasan directas a la red para no servir datos viejos).
 // =============================================================
 // Sube VER en cada deploy que cambie ficheros del shell para forzar limpieza de caché.
-const VER   = '87';
+const VER   = '88';
 const SHELL = 'ptcg-shell-v' + VER;
 const IMGS  = 'ptcg-img-v' + VER;
 const MAX_IMG = 600;

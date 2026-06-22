@@ -329,6 +329,16 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .juego-root.jv-full-root .jv-zlabel{ font-size:7px; margin-top:1px; }
 .juego-root.jv-full-root .jv-active::after{ inset:-6px; }
 
+/* Arrastre de carta: fantasma que sigue al dedo */
+.jv-drag-ghost{ position:fixed; left:0; top:0; transform:translate(-50%,-50%) rotate(-3deg) scale(1.06);
+  z-index:9999; pointer-events:none; aspect-ratio:63/88; border-radius:8px; overflow:hidden;
+  box-shadow:0 12px 30px rgba(0,0,0,.6), 0 0 0 2px rgba(110,231,183,.6); opacity:.97; }
+.jv-drag-ghost img{ width:100%; height:100%; object-fit:cover; display:block; }
+body.jv-dragging{ cursor:grabbing; }
+/* Resaltar el tablero como zona de destino al arrastrar */
+body.jv-drop-ok .jv-board{ box-shadow:inset 0 0 0 2px rgba(110,231,183,.6), inset 0 0 60px rgba(0,0,0,.6); }
+@media (prefers-reduced-motion: reduce){ .jv-drag-ghost{ transform:translate(-50%,-50%); } }
+
 /* ---------- Overlay de fin de partida ---------- */
 .jv-overlay{ position:fixed; inset:0; z-index:var(--jv-z-modal); display:flex; align-items:center; justify-content:center;
   background:rgba(6,8,13,.78); backdrop-filter:blur(4px); animation:jv-enter .22s var(--jv-ease-out) both; padding:24px; }
