@@ -317,6 +317,18 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .juego-root.jv-full-root .jv-hand .jv-card{ width:calc(var(--jv-cw) * 0.92); margin-left:calc(var(--jv-cw) * -0.32); }
 .juego-root.jv-full-root .jv-hand .jv-card:first-child{ margin-left:0; }
 
+/* Ajuste fino: cartas más chicas para que cada lado entre en su mitad SIN
+   solaparse con el HUD/centro (el Activo no debe desbordar). */
+.juego-root.jv-full-root{ --jv-cw: min(12.5vw, 5.4dvh); }
+@media (min-width:760px){ .juego-root.jv-full-root{ --jv-cw: min(7vw, 8dvh); } }
+.juego-root.jv-full-root .jv-active .jv-card{ width:calc(var(--jv-cw) * 1.18); }
+.juego-root.jv-full-root .jv-bench .jv-card,
+.juego-root.jv-full-root .jv-bench .jv-slot{ width:calc(var(--jv-cw) * 0.8); }
+.juego-root.jv-full-root .jv-pbar{ font-size:10px; }
+.juego-root.jv-full-root .jv-row--aux .jv-pile{ width:calc(var(--jv-cw) * 0.62); }
+.juego-root.jv-full-root .jv-zlabel{ font-size:7px; margin-top:1px; }
+.juego-root.jv-full-root .jv-active::after{ inset:-6px; }
+
 /* ---------- Overlay de fin de partida ---------- */
 .jv-overlay{ position:fixed; inset:0; z-index:var(--jv-z-modal); display:flex; align-items:center; justify-content:center;
   background:rgba(6,8,13,.78); backdrop-filter:blur(4px); animation:jv-enter .22s var(--jv-ease-out) both; padding:24px; }
