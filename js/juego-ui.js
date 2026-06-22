@@ -267,10 +267,13 @@
     const at = L().activo; if (!at || !at.ataques || !at.ataques.length) return '';
     const btns = at.ataques.map(function (a, i) {
       const pag = JUEGO.puedePagar(at, a.coste);
+      const inf = (at.es && at.es.ataques && at.es.ataques[i]) || {};
+      const nombre = inf.name || a.nombre || '';
+      const texto = (inf.text != null && inf.text !== '') ? inf.text : '';   // español o nada (nunca inglés)
       return '<button class="jv-atk" type="button"' + (pag ? '' : ' disabled') + ' onclick="jvAtacar(' + i + ')">' +
-        '<span class="jv-atk-top">' + costeHtml(a.coste) + '<span class="jv-atk-name">' + esc(a.nombre) + '</span>' +
+        '<span class="jv-atk-top">' + costeHtml(a.coste) + '<span class="jv-atk-name">' + esc(nombre) + '</span>' +
         (a.danioRaw ? '<span class="jv-atk-dmg">' + esc(a.danioRaw) + '</span>' : '') + '</span>' +
-        (a.texto ? '<span class="jv-atk-fx">' + esc(a.texto) + '</span>' : '') + '</button>';
+        (texto ? '<span class="jv-atk-fx">' + esc(texto) + '</span>' : '') + '</button>';
     }).join('');
     return '<div class="jv-attacks"><div class="jv-attacks-h">' + esc(tx('jv_attack', 'Atacar')) + '</div>' + btns + '</div>';
   }

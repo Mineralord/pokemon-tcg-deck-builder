@@ -529,6 +529,13 @@ body.jv-full .views{ padding:0 !important; }
 .juego-root.jv-full-root .jv-center{ min-height:9px; margin:0; }
 .juego-root.jv-full-root .jv-row--aux{ gap:5px; }
 .juego-root.jv-full-root .jv-hand{ margin-top:2px; }
+/* Mitades iguales: rival y tú ocupan el mismo alto, con los Activos hacia el centro */
+.juego-root.jv-full-root .jv-board > .jv-side{ flex:1 1 0; min-height:0; justify-content:space-between; }
+.juego-root.jv-full-root .jv-board > .jv-hud,
+.juego-root.jv-full-root .jv-board > .jv-actionbar,
+.juego-root.jv-full-root .jv-board > .jv-center{ flex:0 0 auto; }
+/* Cartas en juego algo más compactas (estilo TCG Live) */
+.juego-root.jv-full-root .jv-active .jv-card{ width:calc(var(--jv-cw) * 1.32); }
 
 /* ============================================================
    FASE 11 — Coreografía de combate (animaciones originales)
