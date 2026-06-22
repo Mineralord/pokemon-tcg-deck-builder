@@ -505,6 +505,32 @@ body.jv-full .views{ padding:0 !important; }
 .jv-side--yo .jv-active::after{ box-shadow:0 0 30px rgba(96,165,250,.5), inset 0 0 16px rgba(96,165,250,.18); }
 
 /* ============================================================
+   FASE 10e — Ajuste a pantalla SIN scroll (todo cabe en una vista)
+   El contenedor inmersivo es flex-column de altura fija; el campo de juego se
+   reparte el alto disponible y las barras inferiores quedan fijas. overflow
+   oculto => no hay scroll. Cartas dimensionadas por alto para que todo entre.
+   ============================================================ */
+.juego-root.jv-full-root{
+  display:flex; flex-direction:column; height:100dvh; max-height:100dvh;
+  overflow:hidden; touch-action:manipulation;
+  --jv-cw: min(15vw, 6.8dvh);
+}
+@media (min-width:760px){ .juego-root.jv-full-root{ --jv-cw: min(8.5vw, 9dvh); } }
+.juego-root.jv-full-root .jv-board{
+  flex:1 1 auto; min-height:0; height:auto; max-height:100%; overflow:hidden;
+  justify-content:space-between; padding:6px 10px; gap:2px;
+}
+.juego-root.jv-full-root .jv-attacks,
+.juego-root.jv-full-root .jv-manual,
+.juego-root.jv-full-root .jv-hand{ flex:0 0 auto; }
+/* Compactar para que entre todo */
+.juego-root.jv-full-root .jv-side{ gap:2px; padding:5px 8px; }
+.juego-root.jv-full-root .jv-bench{ gap:4px; }
+.juego-root.jv-full-root .jv-center{ min-height:9px; margin:0; }
+.juego-root.jv-full-root .jv-row--aux{ gap:5px; }
+.juego-root.jv-full-root .jv-hand{ margin-top:2px; }
+
+/* ============================================================
    FASE 11 — Coreografía de combate (animaciones originales)
    ============================================================ */
 /* Embestida del atacante hacia el rival y vuelta */
