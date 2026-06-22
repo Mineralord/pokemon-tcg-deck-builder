@@ -544,6 +544,12 @@ body.jv-full .views{ padding:0 !important; }
 .jv-badge-hp i{ width:9px; height:9px; border-radius:50%; display:inline-block; box-shadow:0 0 4px rgba(0,0,0,.5); }
 .jv-badge-hp[data-dmg]{ color:#fca5a5; }
 
+/* Banca como miniaturas (más pequeñas que el Activo), estilo TCG Live */
+.juego-root.jv-full-root .jv-bench .jv-card,
+.juego-root.jv-full-root .jv-bench .jv-slot{ width:calc(var(--jv-cw) * 0.82); }
+.juego-root.jv-full-root .jv-bench .jv-badge-hp{ font-size:10px; padding:1px 4px 1px 2px; }
+.juego-root.jv-full-root .jv-bench .jv-badge-hp i{ width:7px; height:7px; }
+
 /* ============================================================
    FASE 11 — Coreografía de combate (animaciones originales)
    ============================================================ */
