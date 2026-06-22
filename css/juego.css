@@ -23,6 +23,9 @@
 /* Evita el "font boosting" de Chrome móvil (infla el texto y parece zoom). */
 html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 
+/* Sin menú de pulsación larga / selección en el juego (experiencia táctil limpia). */
+.juego-root, .juego-root *{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-user-drag:none; }
+
 /* ---------- Selector de modo (Cartas físicas | Juego virtual) ---------- */
 .vs-mode-switch{
   display:inline-flex; gap:4px; padding:4px; margin-bottom:16px;

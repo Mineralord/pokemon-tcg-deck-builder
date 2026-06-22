@@ -21,6 +21,14 @@ function normName(s){ return (s || '').toLowerCase().trim().replace(/[‘’]/g,
 function getCardData(name){ return CARD_DB[normName(name)] || null; }
 function getCardById(id){ return (id && CARD_BY_ID[id]) || null; }
 function esc(s){ return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Bloquear el menú nativo de pulsación larga (copiar/guardar/abrir imagen) y el
+// arrastre/selección, salvo en campos de texto. Para una experiencia de juego limpia.
+(function () {
+  function enCampo(t){ return t && t.closest && t.closest('input,textarea,[contenteditable=""],[contenteditable="true"]'); }
+  document.addEventListener('contextmenu', function (e) { if (!enCampo(e.target)) e.preventDefault(); }, { passive: false });
+  document.addEventListener('dragstart', function (e) { if (e.target && e.target.tagName === 'IMG') e.preventDefault(); });
+})();
 // energyIcon() y los símbolos de energía están en energias.js
 
 // ===================== REGISTRO DE CARTAS / DETALLE =====================
