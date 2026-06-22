@@ -16,6 +16,10 @@ shot-*.png
 *-neon.png
 preview*.png
 
+# Fotogramas de referencia de TCG Live (uso PRIVADO local; no redistribuir)
+referencias/
+*.mp4
+
 # Sistema operativo
 Thumbs.db
 .DS_Store
