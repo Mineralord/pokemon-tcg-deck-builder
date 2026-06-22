@@ -13,7 +13,10 @@
       "**/*.py",
       "**/*.bat",
       "tools/**",
-      "tests/**"
+      "tests/**",
+      "referencias/**",
+      "**/*.mp4",
+      "docs/**"
     ],
     "rewrites": [
       { "source": "**", "destination": "/index.html" }
