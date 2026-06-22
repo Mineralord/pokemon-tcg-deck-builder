@@ -199,7 +199,7 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .jv-btn-big{ width:100%; min-height:52px; font-size:16px; margin-top:6px; }
 
 /* ---------- Badges de carta (energía / daño) ---------- */
-.jv-badges{ position:absolute; left:2px; bottom:2px; right:2px; display:flex; gap:3px; justify-content:space-between; pointer-events:none; }
+.jv-badges{ position:absolute; top:2px; right:2px; display:flex; flex-direction:column; align-items:flex-end; gap:2px; pointer-events:none; z-index:3; }
 .jv-badge{ display:inline-flex; align-items:center; gap:1px; font:700 9px/1 'JetBrains Mono',monospace;
   padding:2px 4px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.6); }
 .jv-badge-e{ background:rgba(167,139,250,.95); color:#0A0D14; }
@@ -304,6 +304,10 @@ html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .juego-root.jv-full-root .jv-hud{ gap:8px; flex-wrap:wrap; min-height:0; padding:1px 0; }
 .juego-root.jv-full-root .jv-utils{ gap:6px; margin:0; justify-content:center; }
 .juego-root.jv-full-root .jv-turn{ font-size:12px; padding:5px 12px; }
+/* Margen superior para no chocar con la barra de estado / notch, y dejar sitio a los botones */
+.juego-root.jv-full-root .jv-board{ padding-top:max(8px, env(safe-area-inset-top)); }
+.juego-root.jv-full-root .jv-side--rival{ padding-top:6px; }
+.juego-root.jv-full-root .jv-side--rival .jv-pbar{ padding-left:56px; padding-right:56px; }
 
 /* ---------- Overlay de fin de partida ---------- */
 .jv-overlay{ position:fixed; inset:0; z-index:var(--jv-z-modal); display:flex; align-items:center; justify-content:center;
