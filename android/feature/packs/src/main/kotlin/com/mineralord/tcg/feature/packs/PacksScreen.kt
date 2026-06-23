@@ -42,6 +42,12 @@ fun PacksScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    // Animación de apertura a pantalla completa.
+    if (state.opening) {
+        PackRevealOverlay(cards = state.revealed, onDismiss = viewModel::dismissOpening)
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()

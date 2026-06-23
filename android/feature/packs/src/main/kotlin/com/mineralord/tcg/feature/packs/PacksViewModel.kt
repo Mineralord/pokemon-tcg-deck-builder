@@ -29,6 +29,8 @@ data class PacksUiState(
     val revealed: List<RevealedCard> = emptyList(),
     val deniedMessage: String? = null,
     val totalCards: Int = 0,
+    /** true mientras debe mostrarse la animación de apertura a pantalla completa. */
+    val opening: Boolean = false,
 )
 
 /**
@@ -92,9 +94,15 @@ class PacksViewModel : ViewModel() {
                     remainingToday = attempt.remainingToday,
                     revealed = revealed,
                     deniedMessage = null,
+                    opening = true,
                 )
             }
         }
+    }
+
+    /** Cierra la animación de apertura y deja las cartas en la rejilla. */
+    fun dismissOpening() {
+        _state.value = _state.value.copy(opening = false)
     }
 
     /** Día actual como días epoch UTC. */
