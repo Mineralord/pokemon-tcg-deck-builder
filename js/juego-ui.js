@@ -574,7 +574,15 @@
       const t = e.changedTouches && e.changedTouches[0];
       const el = t && document.elementFromPoint(t.clientX, t.clientY);
       const sobre = el && el.closest && el.closest('.jv-board');
-      if (sobre && typeof window.jvManoClick === 'function') { window.jvManoClick(d.iid); }
+      if (sobre && typeof window.jvManoClick === 'function') {
+        // ¿Se soltó sobre un Pokémon en juego concreto? (para adjuntar energía / evolucionar)
+        const tgtCard = el.closest && el.closest('.jv-side .jv-card');
+        let tgtIid = null;
+        if (tgtCard) { const oc = tgtCard.getAttribute('onclick') || ''; const m = /jv(?:JuegoClick|Zoom)\((?:'[^']*',\s*)?'([^']+)'\)/.exec(oc); if (m) tgtIid = m[1]; }
+        window.jvManoClick(d.iid);
+        // Si la carta dejó una acción pendiente de objetivo y soltamos sobre un Pokémon, la aplicamos.
+        if (tgtIid && _accion && typeof window.jvJuegoClick === 'function') { window.jvJuegoClick(tgtIid); }
+      }
     }
     // si no se movió: no hacemos preventDefault → el toque normal (onclick) juega la carta.
   }
