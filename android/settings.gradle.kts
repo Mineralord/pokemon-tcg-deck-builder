@@ -26,7 +26,10 @@ include(":engine:rules")
 include(":data:gacha")
 include(":data:cards")
 
-// Los siguientes módulos se irán añadiendo en sucesivas iteraciones:
+// --- core + feature + app: capa Android/Compose ---
+include(":core:designsystem")
+include(":feature:packs")
+include(":app")
 // include(":core:common")
 // include(":core:designsystem")
 // include(":core:ui")
