@@ -22,6 +22,9 @@ include(":engine:events")
 include(":engine:effects")
 include(":engine:rules")
 
+// --- data: lógica de datos/gacha (Kotlin puro de momento) ---
+include(":data:gacha")
+
 // Los siguientes módulos se irán añadiendo en sucesivas iteraciones:
 // include(":core:common")
 // include(":core:designsystem")
