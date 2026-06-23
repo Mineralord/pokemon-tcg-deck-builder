@@ -6,19 +6,33 @@ plugins {
 
 android {
     namespace = "com.mineralord.tcg.app"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.mineralord.tcg"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        // Fuerza firma v1 (JAR) además de v2 para que el APK sea instalable por
+        // sideload (explorador de archivos) en cualquier teléfono. AGP desactiva
+        // v1 por defecto cuando minSdk>=24, lo que provoca "error al analizar el
+        // paquete" en algunos parsers/OEM.
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
