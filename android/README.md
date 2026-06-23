@@ -12,10 +12,17 @@ Módulos ya andamiados (Kotlin puro JVM — compilables/testeables **sin Android
 |--------|-----------|
 | `:engine:model` | Modelo hiper-categorizado: `Card` (Pokémon/Entrenador/Energía), `PokemonMechanic` (ex/V/VMAX/VSTAR/GX/Tera), DSL de efectos (`EffectOp`), `GameState` inmutable. |
 | `:engine:events` | `GameEvent` sellado (stream para log+animaciones+IA) + `CombatLog` (renderizado ES/EN del "Registro del Combate"). |
+| `:engine:effects` | Intérprete determinista del DSL + `PendingDecision` para ops con elección. |
+| `:engine:rules` | `GameEngine` (turn-loop, ataque, KO/premios/victoria, estados) + arnés de self-play IA-vs-IA. |
+| `:data:gacha` | Apertura de sobres (pool por rareza, plantillas, RNG sembrado) + límite diario. |
+| `:data:cards` | Carga las 487 cartas del dataset (JSON en resources) → `:engine:model`. |
 
-Pendiente (siguientes iteraciones): `:engine:effects` (intérprete), `:engine:rules`
-(máquina de fases + turn-loop), `:data:*`, `:core:*`, `:feature:*`, `:app`,
-`assets-pipeline`.
+Pendiente (siguientes iteraciones): `:data:profile` (DataStore), `:core:*`,
+`:feature:*`, `:app`, `assets-pipeline` — la capa UI requiere el Android SDK.
+
+> **Importante (Windows):** compila siempre a través del *junction* ASCII
+> `C:\tcgdev` → esta carpeta. La ruta real tiene acentos (`POKÉMON`/`COLECCIÓN`)
+> que corrompen el classpath de los workers de test de Gradle.
 
 ## Requisitos de toolchain (NO instalados en esta máquina)
 
