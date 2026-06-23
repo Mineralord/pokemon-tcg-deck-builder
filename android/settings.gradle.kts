@@ -19,10 +19,10 @@ rootProject.name = "pokemon-tcg-live-clone"
 // --- engine: Kotlin puro (JVM), sin dependencias de Android ---
 include(":engine:model")
 include(":engine:events")
+include(":engine:effects")
 include(":engine:rules")
 
 // Los siguientes módulos se irán añadiendo en sucesivas iteraciones:
-// include(":engine:effects")
 // include(":core:common")
 // include(":core:designsystem")
 // include(":core:ui")
