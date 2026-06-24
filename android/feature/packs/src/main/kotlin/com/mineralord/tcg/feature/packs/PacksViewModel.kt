@@ -58,7 +58,9 @@ class PacksViewModel : ViewModel() {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.Default) {
                 val r = CardRepository.load()
-                r to PackPool.from(r.all)
+                // El pool de sobres es SOLO el set 151 (Escarlata y Púrpura): sv3pt5.
+                val pool151 = r.all.filter { it.id.raw.startsWith(SET_151_PREFIX) }
+                r to PackPool.from(pool151)
             }
             repo = loaded.first
             pool = loaded.second
@@ -66,9 +68,13 @@ class PacksViewModel : ViewModel() {
                 loading = false,
                 remainingToday = limiter.remaining(dailyState, today()),
                 maxPerDay = limiter.maxPerDay,
-                totalCards = repo.size,
+                totalCards = pool.totalCards,
             )
         }
+    }
+
+    private companion object {
+        const val SET_151_PREFIX = "sv3pt5-"
     }
 
     fun openPack() {

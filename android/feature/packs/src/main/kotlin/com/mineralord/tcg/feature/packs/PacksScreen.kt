@@ -63,7 +63,7 @@ fun PacksScreen(
         )
         Text(
             text = if (state.loading) "Cargando catálogo…"
-            else "Restantes hoy: ${state.remainingToday}/${state.maxPerDay}  ·  ${state.totalCards} cartas en el pool",
+            else "Restantes hoy: ${state.remainingToday}/${state.maxPerDay}  ·  Set 151 · ${state.totalCards} cartas",
             color = TcgColors.Ink,
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
