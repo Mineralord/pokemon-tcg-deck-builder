@@ -1,14 +1,17 @@
 package com.mineralord.tcg.feature.packs
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mineralord.tcg.data.cards.CardRepository
+import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.data.gacha.DailyPackLimiter
 import com.mineralord.tcg.data.gacha.DailyPackState
 import com.mineralord.tcg.data.gacha.OpenAttempt
 import com.mineralord.tcg.data.gacha.PackOpener
 import com.mineralord.tcg.data.gacha.PackPool
 import com.mineralord.tcg.data.gacha.RarityWeights
+import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,27 +32,24 @@ data class PacksUiState(
     val revealed: List<RevealedCard> = emptyList(),
     val deniedMessage: String? = null,
     val totalCards: Int = 0,
-    /** true mientras debe mostrarse la animación de apertura a pantalla completa. */
     val opening: Boolean = false,
+    val ownedDistinct: Int = 0,
 )
 
 /**
- * ViewModel del slice vertical "abrir sobre". Conecta la UI con la lógica pura:
- * carga el catálogo ([CardRepository]), construye el [PackPool], aplica el tope
- * diario ([DailyPackLimiter]) y abre con [PackOpener].
- *
- * Persistencia: de momento el estado diario vive en memoria; se moverá a
- * DataStore en `:data:profile`. El RNG usa System.nanoTime por apertura (en
- * producción se sembrará desde el perfil/servidor para reproducibilidad).
+ * ViewModel del slice de sobres, ahora con perfil persistente ([ProfileRepository]).
+ * Al primer arranque siembra las cartas de los 3 mazos desbloqueados; el tope
+ * diario y la colección sobreviven al cierre de la app.
  */
-class PacksViewModel : ViewModel() {
+class PacksViewModel(app: Application) : AndroidViewModel(app) {
 
     private val limiter = DailyPackLimiter(maxPerDay = 2)
-    private var dailyState = DailyPackState()
     private val opener = PackOpener()
+    private val profileRepo = ProfileRepository(app)
 
     private lateinit var repo: CardRepository
     private lateinit var pool: PackPool
+    private var daily: DailyPackState = DailyPackState()
 
     private val _state = MutableStateFlow(PacksUiState())
     val state: StateFlow<PacksUiState> = _state.asStateFlow()
@@ -58,35 +58,42 @@ class PacksViewModel : ViewModel() {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.Default) {
                 val r = CardRepository.load()
-                // El pool de sobres es SOLO el set 151 (Escarlata y Púrpura): sv3pt5.
                 val pool151 = r.all.filter { it.id.raw.startsWith(SET_151_PREFIX) }
                 r to PackPool.from(pool151)
             }
             repo = loaded.first
             pool = loaded.second
-            _state.value = PacksUiState(
-                loading = false,
-                remainingToday = limiter.remaining(dailyState, today()),
-                maxPerDay = limiter.maxPerDay,
-                totalCards = pool.totalCards,
-            )
-        }
-    }
 
-    private companion object {
-        const val SET_151_PREFIX = "sv3pt5-"
+            // Siembra la colección inicial con las cartas de los 3 mazos.
+            val seed = StarterDecks.ALL.flatMap { it.expandedCardIds() }.map { it.raw }
+            profileRepo.seedOnce(seed)
+
+            // Observa el perfil persistente.
+            launch {
+                profileRepo.profile.collect { profile ->
+                    daily = profile.daily
+                    _state.value = _state.value.copy(
+                        loading = false,
+                        remainingToday = limiter.remaining(profile.daily, today()),
+                        maxPerDay = limiter.maxPerDay,
+                        totalCards = pool.totalCards,
+                        ownedDistinct = profile.distinctOwned,
+                    )
+                }
+            }
+        }
     }
 
     fun openPack() {
         if (_state.value.loading) return
-        when (val attempt = limiter.tryOpen(dailyState, today())) {
+        when (val attempt = limiter.tryOpen(daily, today())) {
             is OpenAttempt.Denied -> {
                 _state.value = _state.value.copy(
                     deniedMessage = "Ya abriste tus ${limiter.maxPerDay} sobres de hoy. Vuelve mañana.",
                 )
             }
             is OpenAttempt.Allowed -> {
-                dailyState = attempt.newState
+                daily = attempt.newState
                 val opened = opener.open(RarityWeights.STANDARD_PACK, pool, Random(System.nanoTime()))
                 val revealed = opened.map { oc ->
                     val card = repo[oc.id]
@@ -102,6 +109,11 @@ class PacksViewModel : ViewModel() {
                     deniedMessage = null,
                     opening = true,
                 )
+                // Persiste el tope diario y añade las cartas a la colección.
+                viewModelScope.launch {
+                    profileRepo.setDaily(attempt.newState)
+                    profileRepo.addCards(opened.map { it.id.raw })
+                }
             }
         }
     }
@@ -111,6 +123,9 @@ class PacksViewModel : ViewModel() {
         _state.value = _state.value.copy(opening = false)
     }
 
-    /** Día actual como días epoch UTC. */
     private fun today(): Long = System.currentTimeMillis() / 86_400_000L
+
+    private companion object {
+        const val SET_151_PREFIX = "sv3pt5-"
+    }
 }

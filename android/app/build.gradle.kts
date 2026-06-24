@@ -50,10 +50,15 @@ android {
 dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:packs"))
+    implementation(project(":data:cards"))
+    implementation(project(":data:profile"))
+    implementation(project(":engine:model"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)

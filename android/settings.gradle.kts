@@ -25,6 +25,7 @@ include(":engine:rules")
 // --- data: lógica de datos/gacha (Kotlin puro de momento) ---
 include(":data:gacha")
 include(":data:cards")
+include(":data:profile")
 
 // --- core + feature + app: capa Android/Compose ---
 include(":core:designsystem")
