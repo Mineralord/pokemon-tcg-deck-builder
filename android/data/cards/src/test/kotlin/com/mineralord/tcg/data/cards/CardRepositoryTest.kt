@@ -18,8 +18,9 @@ class CardRepositoryTest {
     private val repo = CardRepository.load()
 
     @Test
-    fun `carga las 487 cartas del dataset`() {
-        assertEquals(487, repo.size)
+    fun `carga el dataset completo (487 base + cartas de los mazos)`() {
+        // 487 originales + 29 cartas de Battle Academy + Basic Fire Energy.
+        assertEquals(517, repo.size)
     }
 
     @Test
