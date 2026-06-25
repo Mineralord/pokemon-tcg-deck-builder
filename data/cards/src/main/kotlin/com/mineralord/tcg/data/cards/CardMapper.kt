@@ -8,6 +8,7 @@ import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.Damage
 import com.mineralord.tcg.engine.model.EffectId
+import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyProvision
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.LocalizedText
@@ -110,7 +111,11 @@ object CardMapper {
             types = dto.tipos.map { energyType(it) },
             evolvesFrom = dto.evolucionaDe,
             abilities = dto.habilidades.map {
-                Ability(LocalizedText(it.name, it.name), LocalizedText(it.text ?: "", it.text ?: ""), effect = null)
+                Ability(
+                    LocalizedText(it.name, it.name),
+                    LocalizedText(it.text ?: "", it.text ?: ""),
+                    effect = EffectsDb.abiKey(dto.id, it.name).takeIf { id -> EffectsDb.registry.has(id) },
+                )
             },
             attacks = dto.ataques.mapIndexed { i, a ->
                 val esName = dto.es?.ataques?.getOrNull(i)?.name ?: a.name
@@ -119,7 +124,8 @@ object CardMapper {
                     cost = a.cost.map { energyType(it) },
                     convertedCost = a.convertedEnergyCost,
                     baseDamage = damage(a.damage),
-                    effect = null,           // se enlazará al EffectRegistry en fase de efectos
+                    // Puntero al efecto autorado (clave por id+nombre); null si no hay comportamiento.
+                    effect = EffectsDb.atkKey(dto.id, a.name).takeIf { id -> EffectsDb.registry.has(id) },
                 )
             },
             weaknesses = dto.debilidades.map { TypeModifier(energyType(it.type), it.value) },

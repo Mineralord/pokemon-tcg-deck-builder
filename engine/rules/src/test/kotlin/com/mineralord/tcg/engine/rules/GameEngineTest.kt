@@ -6,6 +6,7 @@ import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.Damage as DamageModel
+import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.LocalizedText
@@ -18,6 +19,7 @@ import com.mineralord.tcg.engine.model.Rarity
 import com.mineralord.tcg.engine.model.SetInfo
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.Stage
+import com.mineralord.tcg.engine.model.Status
 import com.mineralord.tcg.engine.model.TypeModifier
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -133,6 +135,57 @@ class GameEngineTest {
         val result = engine.apply(state, GameIntent.Attack("Caro"))
         assertFalse(result.accepted)
         assertEquals(state, result.state)   // estado intacto
+    }
+
+    @Test
+    fun `ataque con efecto aplica estado al activo rival`() {
+        // El efecto de Heat Wave (Ninetales ex) está registrado en EffectsDb.
+        val heatWave = Attack(
+            LocalizedText("Onda Ígnea", "Heat Wave"), emptyList(), 0, DamageModel.Fixed(10),
+            EffectsDb.atkKey("sv3pt5-38", "Heat Wave"),
+        )
+        val ninetales = mon("sv3pt5-38", 100, EnergyType.FIRE, heatWave)
+        val dummy = Attack(LocalizedText("x", "x"), emptyList(), 0, DamageModel.None, null)
+        val target = mon("tgt", 120, EnergyType.WATER, dummy)
+        val player = PlayerState(
+            Side.PLAYER, active = PokemonInPlay(ninetales),
+            deck = listOf(basicEnergy("d", EnergyType.FIRE)), prizes = (1..6).map { basicEnergy("p$it", EnergyType.FIRE) },
+        )
+        val opp = PlayerState(
+            Side.OPPONENT, active = PokemonInPlay(target),
+            deck = listOf(basicEnergy("od", EnergyType.WATER)), prizes = (1..6).map { basicEnergy("q$it", EnergyType.WATER) },
+        )
+        val state = GameState(player, opp, 2, Side.PLAYER, Phase.MAIN)
+
+        val result = engine.apply(state, GameIntent.Attack("Heat Wave"))
+        assertTrue(result.accepted, result.rejection)
+        assertTrue(result.state.opponent.active?.statuses?.contains(Status.BURNED) == true)
+    }
+
+    @Test
+    fun `ataque con dano extra suma por cada banca rival`() {
+        val mindJack = Attack(
+            LocalizedText("Asalto Mental", "Mind Jack"), emptyList(), 0, DamageModel.Fixed(0),
+            EffectsDb.atkKey("sv3pt5-65", "Mind Jack"),
+        )
+        val alakazam = mon("sv3pt5-65", 100, EnergyType.PSYCHIC, mindJack)
+        val dummy = Attack(LocalizedText("x", "x"), emptyList(), 0, DamageModel.None, null)
+        val target = mon("tgt", 200, EnergyType.DARKNESS, dummy)
+        val player = PlayerState(
+            Side.PLAYER, active = PokemonInPlay(alakazam),
+            deck = listOf(basicEnergy("d", EnergyType.PSYCHIC)), prizes = (1..6).map { basicEnergy("p$it", EnergyType.PSYCHIC) },
+        )
+        val opp = PlayerState(
+            Side.OPPONENT, active = PokemonInPlay(target),
+            bench = listOf(PokemonInPlay(mon("bA", 60, EnergyType.WATER, dummy)), PokemonInPlay(mon("bB", 60, EnergyType.WATER, dummy))),
+            deck = listOf(basicEnergy("od", EnergyType.DARKNESS)), prizes = (1..6).map { basicEnergy("q$it", EnergyType.DARKNESS) },
+        )
+        val state = GameState(player, opp, 2, Side.PLAYER, Phase.MAIN)
+
+        val result = engine.apply(state, GameIntent.Attack("Mind Jack"))
+        assertTrue(result.accepted, result.rejection)
+        // 0 base + 30×2 de banca rival = 60 sobre el Activo rival.
+        assertEquals(60, result.state.opponent.active?.damage)
     }
 
     @Test

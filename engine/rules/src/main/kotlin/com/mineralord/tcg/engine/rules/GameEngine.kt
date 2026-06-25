@@ -1,9 +1,14 @@
 package com.mineralord.tcg.engine.rules
 
+import com.mineralord.tcg.engine.effects.EffectInterpreter
+import com.mineralord.tcg.engine.effects.EffectSource
+import com.mineralord.tcg.engine.effects.PendingDecision
 import com.mineralord.tcg.engine.events.GameEvent
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.EffectRegistry
+import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.Phase
@@ -23,6 +28,12 @@ data class EngineResult(
     val events: List<GameEvent>,
     val accepted: Boolean = true,
     val rejection: String? = null,
+    /**
+     * Decisiones que el efecto del ataque dejó pendientes (elegir objetivo,
+     * buscar en mazo, mover energía). Las ops deterministas ya quedaron aplicadas
+     * en [state]; estas requieren que el jugador/IA elija antes de resolverlas.
+     */
+    val pending: List<PendingDecision> = emptyList(),
 ) {
     companion object {
         fun reject(state: GameState, reason: String) =
@@ -42,7 +53,11 @@ data class EngineResult(
  * por premios/sin-Activo/deck-out, y daño de Veneno/Quemadura entre turnos. Los
  * efectos autorados por carta llegan con `:engine:effects`.
  */
-class GameEngine(private val rng: Rng) {
+class GameEngine(
+    private val rng: Rng,
+    private val effects: EffectRegistry = EffectsDb.registry,
+    private val interpreter: EffectInterpreter = EffectInterpreter(),
+) {
 
     fun apply(state: GameState, intent: GameIntent): EngineResult {
         if (state.isOver) return EngineResult.reject(state, "La partida ha terminado")
@@ -176,13 +191,28 @@ class GameEngine(private val rng: Rng) {
         }
 
         var working = withPlayer(state, newFoe, foeSide)
-        working = handleKnockouts(working, foeSide, events)
 
-        if (working.isOver) return EngineResult(working, events)
+        // Efecto autorado del ataque (estados, daño extra/banca, robar, descartar
+        // energía, recoil…). Las ops deterministas se aplican aquí; las de elección
+        // (objetivo/búsqueda) viajan como [pending] para que el jugador/IA resuelva.
+        var pending = emptyList<PendingDecision>()
+        val effect = effects[atk.effect]
+        if (effect != null) {
+            val res = interpreter.execute(effect, EffectSource(state.activeSide, attacker.card.id), working)
+            working = res.state
+            events += res.events
+            pending = res.pending
+        }
+
+        // KO del rival y, si hubo recoil/auto-daño, también del atacante.
+        working = handleKnockouts(working, foeSide, events)
+        working = handleKnockouts(working, state.activeSide, events)
+
+        if (working.isOver) return EngineResult(working, events, pending = pending)
 
         // Atacar termina el turno.
         val ended = endTurn(working)
-        return EngineResult(ended.state, events + ended.events)
+        return EngineResult(ended.state, events + ended.events, pending = pending)
     }
 
     // --------------------------------------------------------------- KO / fin
