@@ -128,6 +128,9 @@ class GameEngine(
 
     private fun attachEnergy(state: GameState, energyId: CardId, toId: CardId): EngineResult {
         val me = state.activePlayer
+        if (state.energyAttachedThisTurn) {
+            return EngineResult.reject(state, "Ya uniste una energía este turno")
+        }
         val energy = me.hand.firstOrNull { it.id == energyId } as? EnergyCard
             ?: return EngineResult.reject(state, "La energía no está en la mano")
         val target = me.allInPlay.firstOrNull { it.card.id == toId }
@@ -138,7 +141,7 @@ class GameEngine(
             target.copy(attachedEnergy = target.attachedEnergy + energy),
         ).copy(hand = me.hand - (energy as Card))
         return EngineResult(
-            withPlayer(state, updated),
+            withPlayer(state, updated).copy(energyAttachedThisTurn = true),
             listOf(GameEvent.EnergyAttached(state.activeSide, energyId, toId)),
         )
     }
@@ -417,6 +420,7 @@ class GameEngine(
             activeSide = nextSide, turn = nextTurn, phase = Phase.DRAW,
             // Límites por turno se reinician al pasar el turno.
             supporterPlayedThisTurn = false,
+            energyAttachedThisTurn = false,
             abilitiesUsedThisTurn = emptySet(),
         )
         events += GameEvent.TurnStarted(nextSide, nextTurn)
@@ -477,6 +481,81 @@ class GameEngine(
             ps.active?.card?.id == id -> ps.copy(active = replacement)
             else -> ps.copy(bench = ps.bench.map { if (it.card.id == id) replacement else it })
         }
+
+    // ------------------------------------------------------- jugadas legales
+
+    /**
+     * Enumera los intents legales para el lado en turno en [state]. Sirve a la UI
+     * (qué ofrecer al jugador) y a la IA. Con una decisión pendiente devuelve
+     * vacío: solo cabe [GameIntent.ResolveDecision], que se construye aparte a
+     * partir de `state.interaction`.
+     *
+     * Es una aproximación conservadora basada en las mismas condiciones que
+     * validan los handlers; el motor sigue siendo la autoridad (rechaza lo
+     * ilegal), de modo que un falso positivo aquí nunca corrompe el estado.
+     */
+    fun legalIntents(state: GameState): List<GameIntent> {
+        if (state.isOver || state.awaitingDecision) return emptyList()
+        val me = state.activePlayer
+        val intents = mutableListOf<GameIntent>()
+
+        // Poner Básicos en la Banca.
+        if (me.bench.size < BENCH_LIMIT) {
+            me.hand.filterIsInstance<PokemonCard>().filter { it.isBasic }
+                .forEach { intents += GameIntent.PlayBasicToBench(it.id) }
+        }
+
+        // Evolucionar Pokémon en juego que lleven al menos un turno.
+        me.hand.filterIsInstance<PokemonCard>().filter { it.evolvesFrom != null }.forEach { evo ->
+            me.allInPlay.filter {
+                it.turnsInPlay >= 1 &&
+                    (evo.evolvesFrom == it.card.name.en || evo.evolvesFrom == it.card.name.es)
+            }.forEach { target -> intents += GameIntent.Evolve(evo.id, target.card.id) }
+        }
+
+        // Unir energía (una por turno) a cualquier Pokémon propio.
+        if (!state.energyAttachedThisTurn) {
+            me.hand.filterIsInstance<EnergyCard>().forEach { energy ->
+                me.allInPlay.forEach { p -> intents += GameIntent.AttachEnergy(energy.id, p.card.id) }
+            }
+        }
+
+        // Retirarse si hay Activo con energía suficiente y hay Banca.
+        val active = me.active
+        if (active != null && active.attachedEnergyCount >= active.card.retreatCost.size) {
+            me.bench.forEach { intents += GameIntent.Retreat(it.card.id) }
+        }
+
+        // Atacar con ataques pagables.
+        active?.card?.attacks?.filter { active.attachedEnergyCount >= it.convertedCost }
+            ?.forEach { intents += GameIntent.Attack(it.name.es) }
+
+        // Jugar Entrenadores (Apoyo/Objeto) con efecto registrado.
+        me.hand.filterIsInstance<TrainerCard>().forEach { trainer ->
+            val kind = trainer.kind
+            val playable = (kind is TrainerKind.Item) ||
+                (kind is TrainerKind.Supporter && !state.supporterPlayedThisTurn)
+            if (playable && effects[trainer.effect] != null) {
+                intents += GameIntent.PlayTrainer(trainer.id)
+            }
+        }
+
+        // Usar habilidades registradas que pasen activeOnly / oncePerTurn.
+        me.allInPlay.forEach { p ->
+            p.card.abilities.forEach { ability ->
+                val eff = ability.effect?.let { effects[it] }
+                if (eff != null && eff.ops.isNotEmpty() &&   // ops vacías = pasivo: no se "activa"
+                    (!eff.activeOnly || me.active?.card?.id == p.card.id) &&
+                    (!eff.oncePerTurn || p.card.id !in state.abilitiesUsedThisTurn)
+                ) {
+                    intents += GameIntent.UseAbility(p.card.id, ability.name.es)
+                }
+            }
+        }
+
+        intents += GameIntent.EndTurn
+        return intents
+    }
 
     companion object {
         const val BENCH_LIMIT = 5

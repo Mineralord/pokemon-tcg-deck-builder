@@ -63,6 +63,8 @@ data class GameState(
     val interaction: PendingInteraction? = null,
     /** Un Apoyo por turno: se pone a true al jugar uno; se resetea en fin de turno. */
     val supporterPlayedThisTurn: Boolean = false,
+    /** Una energía por turno: se pone a true al unir una; se resetea en fin de turno. */
+    val energyAttachedThisTurn: Boolean = false,
     /** Habilidades 1/turno ya usadas este turno (por id de Pokémon). */
     val abilitiesUsedThisTurn: Set<CardId> = emptySet(),
 ) {

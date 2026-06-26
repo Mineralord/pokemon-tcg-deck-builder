@@ -51,6 +51,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:packs"))
     implementation(project(":feature:decks"))
+    implementation(project(":feature:game"))
     implementation(project(":data:cards"))
     implementation(project(":data:profile"))
     implementation(project(":data:cloud"))

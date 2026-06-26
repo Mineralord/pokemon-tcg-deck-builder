@@ -27,9 +27,10 @@ import androidx.compose.ui.unit.sp
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.core.designsystem.TcgTheme
 import com.mineralord.tcg.feature.decks.DecksScreen
+import com.mineralord.tcg.feature.game.GameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 
-private enum class Screen { HOME, COLLECTION, PACKS, DECKS, PROFILE }
+private enum class Screen { HOME, COLLECTION, PACKS, DECKS, GAME, PROFILE }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +57,11 @@ private fun AppShell() {
             onTienda = { screen = Screen.PACKS },
             onBarajas = { screen = Screen.DECKS },
             onPerfil = { screen = Screen.PROFILE },
-            onJugar = { /* combate: próximamente */ },
+            onJugar = { screen = Screen.GAME },
+        )
+        Screen.GAME -> GameScreen(
+            onExit = { screen = Screen.HOME },
+            modifier = Modifier.fillMaxSize(),
         )
         Screen.COLLECTION -> SubScreen(title = "Colección de cartas", onHome = { screen = Screen.HOME }) {
             CollectionScreen(modifier = Modifier.fillMaxSize())
