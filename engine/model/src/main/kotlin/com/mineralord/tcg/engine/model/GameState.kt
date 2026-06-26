@@ -56,8 +56,20 @@ data class GameState(
     val phase: Phase,
     val stadium: TrainerCard? = null,         // estadio en campo (único, compartido)
     val winner: Side? = null,
+    /**
+     * Efecto en pausa esperando una elección (buscar/objetivo/mover energía).
+     * Mientras no sea null, el motor solo acepta resolver la decisión.
+     */
+    val interaction: PendingInteraction? = null,
+    /** Un Apoyo por turno: se pone a true al jugar uno; se resetea en fin de turno. */
+    val supporterPlayedThisTurn: Boolean = false,
+    /** Habilidades 1/turno ya usadas este turno (por id de Pokémon). */
+    val abilitiesUsedThisTurn: Set<CardId> = emptySet(),
 ) {
     fun sideState(side: Side): PlayerState = if (side == Side.PLAYER) player else opponent
     val activePlayer: PlayerState get() = sideState(activeSide)
     val isOver: Boolean get() = phase == Phase.GAME_OVER || winner != null
+
+    /** Hay una decisión pendiente que el jugador/IA debe resolver antes de seguir. */
+    val awaitingDecision: Boolean get() = interaction != null
 }

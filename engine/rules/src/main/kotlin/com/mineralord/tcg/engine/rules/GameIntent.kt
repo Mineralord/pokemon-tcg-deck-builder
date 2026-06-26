@@ -7,8 +7,8 @@ import com.mineralord.tcg.engine.model.CardId
  * turno. El motor las valida y, si son legales, produce un nuevo estado +
  * eventos. Una acción ilegal se rechaza vía [EngineResult] sin mutar nada.
  *
- * Conjunto mínimo de Fase 1; se ampliará (jugar Entrenador, mover energía,
- * resolver elecciones pendientes, etc.) con el módulo `:engine:effects`.
+ * Mientras haya una decisión pendiente ([GameState.interaction] != null), el
+ * motor solo acepta [ResolveDecision].
  */
 sealed interface GameIntent {
 
@@ -26,6 +26,18 @@ sealed interface GameIntent {
 
     /** El Activo ataca; en el TCG, atacar termina el turno. */
     data class Attack(val attackName: String) : GameIntent
+
+    /**
+     * Juega un Entrenador de la mano (Apoyo o Objeto). Resuelve su efecto
+     * autorado; si éste exige una elección, deja una decisión pendiente.
+     */
+    data class PlayTrainer(val card: CardId) : GameIntent
+
+    /** Activa la habilidad [abilityName] de un Pokémon [pokemon] en juego. */
+    data class UseAbility(val pokemon: CardId, val abilityName: String) : GameIntent
+
+    /** Resuelve la decisión pendiente eligiendo las cartas [chosen]. */
+    data class ResolveDecision(val chosen: List<CardId>) : GameIntent
 
     /** Termina el turno voluntariamente. */
     data object EndTurn : GameIntent

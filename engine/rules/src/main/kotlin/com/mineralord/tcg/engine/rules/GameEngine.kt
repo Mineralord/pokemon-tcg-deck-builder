@@ -2,7 +2,7 @@ package com.mineralord.tcg.engine.rules
 
 import com.mineralord.tcg.engine.effects.EffectInterpreter
 import com.mineralord.tcg.engine.effects.EffectSource
-import com.mineralord.tcg.engine.effects.PendingDecision
+import com.mineralord.tcg.engine.model.PendingDecision
 import com.mineralord.tcg.engine.events.GameEvent
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
@@ -17,6 +17,8 @@ import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.Status
+import com.mineralord.tcg.engine.model.TrainerCard
+import com.mineralord.tcg.engine.model.TrainerKind
 
 /**
  * Resultado de aplicar un intent: nuevo estado + eventos emitidos. Si [accepted]
@@ -61,12 +63,19 @@ class GameEngine(
 
     fun apply(state: GameState, intent: GameIntent): EngineResult {
         if (state.isOver) return EngineResult.reject(state, "La partida ha terminado")
+        // Con una decisión pendiente, solo se puede resolverla.
+        if (state.awaitingDecision && intent !is GameIntent.ResolveDecision) {
+            return EngineResult.reject(state, "Hay una decisión pendiente por resolver")
+        }
         return when (intent) {
             is GameIntent.PlayBasicToBench -> playBasicToBench(state, intent.card)
             is GameIntent.Evolve -> evolve(state, intent.evolution, intent.onto)
             is GameIntent.AttachEnergy -> attachEnergy(state, intent.energy, intent.to)
             is GameIntent.Retreat -> retreat(state, intent.benchTarget)
             is GameIntent.Attack -> attack(state, intent.attackName)
+            is GameIntent.PlayTrainer -> playTrainer(state, intent.card)
+            is GameIntent.UseAbility -> useAbility(state, intent.pokemon, intent.abilityName)
+            is GameIntent.ResolveDecision -> resolveDecision(state, intent.chosen)
             GameIntent.EndTurn -> endTurn(state)
         }
     }
@@ -198,7 +207,12 @@ class GameEngine(
         var pending = emptyList<PendingDecision>()
         val effect = effects[atk.effect]
         if (effect != null) {
-            val res = interpreter.execute(effect, EffectSource(state.activeSide, attacker.card.id), working)
+            // endsTurnOnResolve = true: si el efecto deja una decisión, el turno se
+            // cerrará al resolverla (ver resolveDecision), no aquí.
+            val res = interpreter.execute(
+                effect, EffectSource(state.activeSide, attacker.card.id), working,
+                endsTurnOnResolve = true,
+            )
             working = res.state
             events += res.events
             pending = res.pending
@@ -208,11 +222,124 @@ class GameEngine(
         working = handleKnockouts(working, foeSide, events)
         working = handleKnockouts(working, state.activeSide, events)
 
-        if (working.isOver) return EngineResult(working, events, pending = pending)
+        if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = pending)
+
+        // Si el efecto dejó una decisión pendiente, el turno sigue abierto hasta
+        // que se resuelva; sólo entonces se cierra.
+        if (working.awaitingDecision) return EngineResult(working, events, pending = pending)
 
         // Atacar termina el turno.
         val ended = endTurn(working)
         return EngineResult(ended.state, events + ended.events, pending = pending)
+    }
+
+    // ----------------------------------------------------- entrenador / habilidad
+
+    private fun playTrainer(state: GameState, cardId: CardId): EngineResult {
+        val me = state.activePlayer
+        val card = me.hand.firstOrNull { it.id == cardId }
+            ?: return EngineResult.reject(state, "La carta no está en la mano")
+        if (card !is TrainerCard) return EngineResult.reject(state, "Esa carta no es un Entrenador")
+        val kind = card.kind
+        if (kind !is TrainerKind.Supporter && kind !is TrainerKind.Item) {
+            return EngineResult.reject(state, "Solo se pueden jugar Apoyos u Objetos por ahora")
+        }
+        if (kind is TrainerKind.Supporter && state.supporterPlayedThisTurn) {
+            return EngineResult.reject(state, "Ya jugaste un Apoyo este turno")
+        }
+        val effect = effects[card.effect]
+            ?: return EngineResult.reject(state, "Esta carta aún no tiene efecto implementado")
+
+        // La carta va al descarte al jugarse.
+        val afterPlay = me.copy(hand = me.hand - card, discard = me.discard + card)
+        var working = withPlayer(state, afterPlay, state.activeSide)
+        if (kind is TrainerKind.Supporter) working = working.copy(supporterPlayedThisTurn = true)
+
+        val events = mutableListOf<GameEvent>(GameEvent.TrainerPlayed(state.activeSide, cardId))
+        val res = interpreter.execute(effect, EffectSource(state.activeSide, null), working)
+        working = res.state
+        events += res.events
+
+        working = handleKnockouts(working, state.activeSide.other(), events)
+        working = handleKnockouts(working, state.activeSide, events)
+        if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = res.pending)
+        return EngineResult(working, events, pending = res.pending)
+    }
+
+    private fun useAbility(state: GameState, pokemonId: CardId, abilityName: String): EngineResult {
+        val me = state.activePlayer
+        val mon = me.allInPlay.firstOrNull { it.card.id == pokemonId }
+            ?: return EngineResult.reject(state, "Ese Pokémon no está en juego")
+        val ability = mon.card.abilities.firstOrNull { it.name.es == abilityName || it.name.en == abilityName }
+            ?: return EngineResult.reject(state, "Habilidad desconocida: $abilityName")
+        val effect = ability.effect?.let { effects[it] }
+            ?: return EngineResult.reject(state, "Esta habilidad aún no tiene efecto implementado")
+        if (effect.activeOnly && me.active?.card?.id != pokemonId) {
+            return EngineResult.reject(state, "Esta habilidad solo puede usarla el Activo")
+        }
+        if (effect.oncePerTurn && pokemonId in state.abilitiesUsedThisTurn) {
+            return EngineResult.reject(state, "Esta habilidad ya se usó este turno")
+        }
+        var working = state
+        if (effect.oncePerTurn) {
+            working = working.copy(abilitiesUsedThisTurn = working.abilitiesUsedThisTurn + pokemonId)
+        }
+
+        val events = mutableListOf<GameEvent>()
+        val res = interpreter.execute(effect, EffectSource(state.activeSide, pokemonId), working)
+        working = res.state
+        events += res.events
+
+        working = handleKnockouts(working, state.activeSide.other(), events)
+        working = handleKnockouts(working, state.activeSide, events)
+        if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = res.pending)
+        return EngineResult(working, events, pending = res.pending)
+    }
+
+    private fun resolveDecision(state: GameState, chosen: List<CardId>): EngineResult {
+        val interaction = state.interaction
+            ?: return EngineResult.reject(state, "No hay ninguna decisión pendiente")
+        if (interaction.side != state.activeSide) {
+            return EngineResult.reject(state, "La decisión pendiente no es de quien juega")
+        }
+        validateChoice(interaction.decision, chosen)?.let { return EngineResult.reject(state, it) }
+
+        val endsTurn = interaction.endsTurnOnResolve
+        val res = interpreter.resolve(state, chosen) { rng.shuffle(it) }
+        var working = res.state
+        val events = res.events.toMutableList()
+
+        // El efecto resuelto pudo noquear (daño dirigido a banca, etc.).
+        working = handleKnockouts(working, state.activeSide.other(), events)
+        working = handleKnockouts(working, state.activeSide, events)
+        if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = res.pending)
+
+        // Si encadenó otra decisión, seguimos esperando.
+        if (working.awaitingDecision) return EngineResult(working, events, pending = res.pending)
+
+        // Cadena agotada: si provino de un ataque, ahora se cierra el turno.
+        if (endsTurn) {
+            val ended = endTurn(working)
+            return EngineResult(ended.state, events + ended.events)
+        }
+        return EngineResult(working, events)
+    }
+
+    private fun validateChoice(decision: PendingDecision, chosen: List<CardId>): String? = when (decision) {
+        is PendingDecision.ChooseTargets ->
+            when {
+                chosen.size > decision.count -> "Demasiados objetivos elegidos"
+                !decision.candidates.containsAll(chosen) -> "Objetivo no válido"
+                else -> null
+            }
+        is PendingDecision.SearchCards ->
+            when {
+                chosen.size > decision.count -> "Demasiadas cartas elegidas"
+                !decision.candidates.containsAll(chosen) -> "Carta no encontrada en la zona"
+                else -> null
+            }
+        // MoveEnergy: el intérprete ignora elecciones fuera de rango; validación ligera.
+        is PendingDecision.MoveEnergy -> null
     }
 
     // --------------------------------------------------------------- KO / fin
@@ -286,7 +413,12 @@ class GameEngine(
         // Cambio de turno.
         val nextSide = working.activeSide.other()
         val nextTurn = working.turn + 1
-        working = working.copy(activeSide = nextSide, turn = nextTurn, phase = Phase.DRAW)
+        working = working.copy(
+            activeSide = nextSide, turn = nextTurn, phase = Phase.DRAW,
+            // Límites por turno se reinician al pasar el turno.
+            supporterPlayedThisTurn = false,
+            abilitiesUsedThisTurn = emptySet(),
+        )
         events += GameEvent.TurnStarted(nextSide, nextTurn)
 
         // El jugador entrante roba; sin cartas = deck-out (pierde).

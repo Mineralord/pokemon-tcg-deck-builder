@@ -12,6 +12,7 @@ import com.mineralord.tcg.engine.model.EffectOp
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.LocalizedText
+import com.mineralord.tcg.engine.model.PendingDecision
 import com.mineralord.tcg.engine.model.Phase
 import com.mineralord.tcg.engine.model.PlayerState
 import com.mineralord.tcg.engine.model.PokemonCard
@@ -25,6 +26,8 @@ import com.mineralord.tcg.engine.model.Status
 import com.mineralord.tcg.engine.model.Target
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EffectInterpreterTest {
@@ -112,5 +115,54 @@ class EffectInterpreterTest {
         val d = r.pending.first() as PendingDecision.ChooseTargets
         assertEquals(listOf(CardId("oppBenchA"), CardId("oppBenchB")), d.candidates)
         assertEquals(1, d.count)
+    }
+
+    @Test
+    fun `execute pausa en la op de eleccion y guarda la continuacion`() {
+        // Elige objetivo y luego cura: la pausa debe conservar el Heal pendiente.
+        val eff = Effect(
+            ops = listOf(
+                EffectOp.ChooseTarget(Target.OWN_ALL, 1, LocalizedText("Elige", "Choose")),
+                EffectOp.Heal(Target.CHOSEN, Amount.Fixed(30)),
+            ),
+        )
+        val r = interp.execute(eff, src, state())
+        val interaction = r.state.interaction
+        assertTrue(interaction != null)
+        assertEquals(1, interaction!!.remainingOps.size)
+        assertTrue(interaction.remainingOps.first() is EffectOp.Heal)
+    }
+
+    @Test
+    fun `resolve de ChooseTargets liga CHOSEN y ejecuta el Heal pendiente`() {
+        val eff = Effect(
+            ops = listOf(
+                EffectOp.ChooseTarget(Target.OWN_ALL, 1, LocalizedText("Elige", "Choose")),
+                EffectOp.Heal(Target.CHOSEN, Amount.Fixed(30)),
+            ),
+        )
+        val paused = interp.execute(eff, src, state())
+        // "self" tenía 50 de daño; curar 30 -> 20.
+        val resolved = interp.resolve(paused.state, listOf(CardId("self"))) { it }
+        assertNull(resolved.state.interaction)
+        assertEquals(20, resolved.state.player.active?.damage)
+    }
+
+    @Test
+    fun `resolve de SearchCards mueve la carta del mazo a la mano`() {
+        val eff = Effect(
+            ops = listOf(
+                EffectOp.SearchDeck(
+                    com.mineralord.tcg.engine.model.CardFilter(),
+                    com.mineralord.tcg.engine.model.Zone.HAND, 1,
+                ),
+            ),
+        )
+        val paused = interp.execute(eff, src, state())
+        assertTrue(paused.state.interaction!!.decision is PendingDecision.SearchCards)
+        val resolved = interp.resolve(paused.state, listOf(CardId("d1"))) { it }
+        assertNull(resolved.state.interaction)
+        assertTrue(resolved.state.player.hand.any { it.id == CardId("d1") })
+        assertFalse(resolved.state.player.deck.any { it.id == CardId("d1") })
     }
 }

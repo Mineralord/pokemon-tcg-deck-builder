@@ -3,8 +3,9 @@
 Runbook curado. Solo guía recurrente de alto valor.
 
 ## Build Android (gotchas críticos)
-- **JAVA_HOME no está global.** JDK 17 en `C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot`.
-  Setéalo por comando: `$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"`.
+- **JAVA_HOME ya está seteada a nivel User** → JDK 17 en `C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot`
+  (las terminales nuevas la toman; las ya abiertas, no). Si por algo falta:
+  `$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot"`.
 - **La ruta del repo tiene acentos** (`POKÉMON`/`COLECCIÓN`) → rompe cosas de Gradle de dos formas
   distintas. Existe un junction ASCII `C:\tcgdev` → `...\android`. Regla que funciona:
   - **Tests JVM (`:data:*:test`, `:engine:*:test`) → corre desde `C:\tcgdev`** (la ruta con acentos
@@ -38,6 +39,9 @@ Runbook curado. Solo guía recurrente de alto valor.
 ## Estado / roadmap
 - Hecho: Inicio, Cartadex (binder 151), Sobres (gacha + límite diario), BARAJAS it.1 (gestor: ver,
   marcar activa/favorita; sembrado con 3 starters Battle Academy).
+- Hecho: **EffectsDb** (base de efectos autorados, DSL determinista) cableada al motor y a la
+  resolución de ataques (commit be95478). 49 efectos portados del kit JS; `EffectInterpreter`
+  ejecuta el DSL; `EffectsDbTest` valida registro y cobertura. Pendiente sólo: `git push`.
 - Siguiente natural: **editor de barajas** (añadir/quitar, crear/borrar, FILTROS) y/o **pantalla de
   combate** que cablee `:engine:rules` + `GreedyAgent` al tablero vertical (botón JUGAR sigue TODO).
 - Referencias de vídeo del usuario en `C:\DOCUMENTOS\POKÉMON TCG\TCG LIVE VS MI APP CLON\...` (no
