@@ -17,10 +17,15 @@ import com.mineralord.tcg.engine.rules.GameIntent
 import com.mineralord.tcg.engine.rules.GameSetup
 import com.mineralord.tcg.engine.rules.SeededRng
 import com.mineralord.tcg.engine.rules.SmartAgent
+import com.mineralord.tcg.engine.events.GameEvent
+import com.mineralord.tcg.feature.game.anim.FxCue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -56,6 +61,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _ui = MutableStateFlow(GameUiState())
     val ui: StateFlow<GameUiState> = _ui.asStateFlow()
+
+    /** Señales de animación (número de daño, embate, KO, premios, moneda). */
+    private val _fx = MutableSharedFlow<FxCue>(extraBufferCapacity = 64)
+    val fx: SharedFlow<FxCue> = _fx.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -114,6 +123,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         state = res.state
         res.events.forEach { log += combatLog.render(it) }
         emit()
+        playFx(res.events)
 
         // Turno de la IA (incluye resolver sus propias decisiones). Guarda de
         // progreso por si insistiera en algo ilegal.
@@ -134,9 +144,43 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             state = r.state
             r.events.forEach { log += combatLog.render(it) }
             emit()
+            playFx(r.events)
         }
         _ui.value = _ui.value.copy(aiThinking = false)
     }
+
+    /**
+     * Reemite los eventos del motor como [FxCue] para la UI, espaciando los
+     * golpes para que las animaciones no se solapen (feel de TCG Live).
+     */
+    private suspend fun playFx(events: List<GameEvent>) {
+        for (e in events) {
+            val cue = e.toFxCue() ?: continue
+            _fx.emit(cue)
+            when (cue) {
+                is FxCue.Attack -> delay(220)
+                is FxCue.Damage -> delay(360)
+                is FxCue.Knockout -> delay(420)
+                is FxCue.Prize -> delay(200)
+                is FxCue.Coin -> delay(700)
+                else -> {}
+            }
+        }
+    }
+
+    /** Mapea un [GameEvent] al cue visual, normalizando el lado que muestra el FX. */
+    private fun GameEvent.toFxCue(): FxCue? = when (this) {
+        is GameEvent.Attacked -> FxCue.Attack(side)
+        // El daño lo recibe el rival del atacante.
+        is GameEvent.DamageDealt -> FxCue.Damage(side.other(), amount, weaknessApplied, resistanceApplied)
+        is GameEvent.Healed -> FxCue.Heal(side, amount)
+        is GameEvent.KnockedOut -> FxCue.Knockout(side)
+        is GameEvent.PrizeTaken -> FxCue.Prize(side, count)
+        is GameEvent.CoinFlipped -> FxCue.Coin(side, heads)
+        else -> null
+    }
+
+    private fun Side.other(): Side = if (this == Side.PLAYER) Side.OPPONENT else Side.PLAYER
 
     private fun emit() {
         _ui.value = GameUiState(

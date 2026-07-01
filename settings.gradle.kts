@@ -27,6 +27,7 @@ include(":data:gacha")
 include(":data:cards")
 include(":data:profile")
 include(":data:cloud")
+include(":data:netplay")
 
 // --- core + feature + app: capa Android/Compose ---
 include(":core:designsystem")
