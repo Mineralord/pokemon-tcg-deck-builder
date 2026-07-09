@@ -713,9 +713,13 @@ fun GameScreen(
             } else
             Box(Modifier.align(Alignment.BottomCenter)) {
                 if (decision is PendingDecision.AttachFromRevealed) {
-                    // Generador Eléctrico: bandeja del top 5 con arrastre de Energía a la Banca.
+                    // Bandeja con arrastre de Energía. El ORIGEN depende de la carta: del
+                    // DESCARTE (Mela / Canto Apasionado, fromDiscard) o del MAZO (Generador
+                    // Eléctrico). Antes se buscaba SIEMPRE en el mazo → en Mela la bandeja
+                    // salía vacía (nada que arrastrar) y la carta no hacía nada.
+                    val source = if (decision.fromDiscard) state.player.discard else state.player.deck
                     val revealedCards = decision.revealed.mapNotNull { id ->
-                        state.player.deck.firstOrNull { it.id == id }
+                        source.firstOrNull { it.id == id }
                     }
                     val screenHdp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
                     val trayCardH = (screenHdp * BoardGeometry.BenchCardHFrac).dp
@@ -1415,7 +1419,14 @@ private fun RevealAttachTray(
             color = TcgColors.Parchment, fontWeight = FontWeight.Bold, fontSize = 14.sp,
         )
         Text(
-            "Arrastra las Energía Rayo a un Pokémon Rayo de tu Banca. Toca una asignada para quitarla.",
+            // El subtítulo se ADAPTA a la carta: del descarte (Mela / Canto Apasionado)
+            // se une a CUALQUIER Pokémon tuyo; del mazo (Generador Eléctrico) a un
+            // Pokémon Rayo elegible. Antes estaba fijo al texto del Generador y salía en
+            // Mela ("Energía Rayo… de tu Banca"), que no corresponde a esa carta.
+            if (decision.fromDiscard)
+                "Arrastra la Energía del descarte a uno de tus Pokémon. Toca una asignada para quitarla."
+            else
+                "Arrastra las Energía Rayo a un Pokémon Rayo elegible. Toca una asignada para quitarla.",
             color = TcgColors.Parchment.copy(alpha = 0.7f), fontSize = 10.sp,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

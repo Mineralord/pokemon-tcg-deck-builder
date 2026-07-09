@@ -223,6 +223,14 @@ Jet Wing (no atacar sig. turno), Concentrated Fire (monedas), Flame Cloak/Passio
     Efecto = `AttachEnergyFromDiscard(1,FIRE,OWN_ALL, thenDrawUpTo=6)`. El "**si lo haces** roba hasta 6"
     es ATÓMICO dentro de la op (param `thenDrawUpTo`): solo roba si se unió ≥1 Energía. Si no hay Fuego
     en el descarte, NO engancha y NO roba (verificado en test). Fiel al texto oficial.
+    - **BUG UI de Mela ARREGLADO (9 Jul)** — el motor/efecto SIEMPRE fue correcto; fallaba la
+      bandeja `RevealAttachTray` (GameScreen): (1) `revealedCards` se buscaba SOLO en
+      `state.player.deck` → para `fromDiscard` (Mela/Canto Apasionado) salía VACÍA y no había
+      energía que arrastrar (solo "Listo (no unir nada)") → Mela no hacía nada; ahora el origen
+      es `discard` si `decision.fromDiscard`, si no `deck`. (2) El subtítulo estaba FIJO al texto
+      del Generador Eléctrico ("Energía Rayo… de tu Banca") y aparecía en Mela; ahora se adapta
+      por `fromDiscard` ("Energía del descarte a uno de tus Pokémon"). Verificado por captura del
+      dispositivo (serial 3bf89e4f). APK reinstalado.
   - **Daño puro (correcto sin efecto)**: Houndour, Torkoal Stampede, Larvesta Flare, Volcarona Heat
     Blast, Fuecoco, Crocalor, Charcadet, y los 2º ataques de daño fijo.
   - Tests: 4 en `EffectInterpreterTest`, 1 en `EffectsDbTest`, 3 en `TrainerAbilityTest` (Mela:
