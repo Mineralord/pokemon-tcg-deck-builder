@@ -157,17 +157,13 @@ class OnlineGameController(
         guestDeckPrinted = hello.deck
         guestDeckName = hello.deckName
         // BLINDAJE del mazo del rival: SIEMPRE se arma con el mazo que el invitado
-        // envió en su Hello (nunca con el del host). Si por lo que sea no llegó, se
-        // avisa en vez de arrancar con un rival vacío/erróneo.
+        // envió en su Hello (nunca con el del host). Que ambos elijan la MISMA baraja
+        // es válido (espejo) — no es error. Solo se protege el caso de que no llegue
+        // baraja, para no arrancar con un rival vacío/erróneo.
         if (hello.deck.isEmpty()) {
             core.log += "⚠ ${hello.playerName} no envió su baraja; no se puede iniciar."
             core.emit()
             return
-        }
-        // Aviso claro si AMBAS barajas son idénticas (mismo multiconjunto de cartas):
-        // suele significar perfiles/baraja activa duplicados, no un fallo del reparto.
-        if (hello.deck.sorted() == myDeckPrintedIds.sorted()) {
-            core.log += "⚠ Tu baraja y la de ${hello.playerName} son IDÉNTICAS (misma lista de cartas)."
         }
         val hostCards = buildDeck(myDeckPrintedIds, base = 0)
         val guestCards = buildDeck(hello.deck, base = 100_000)

@@ -266,10 +266,10 @@ Jet Wing (no atacar sig. turno), Concentrated Fire (monedas), Flame Cloak/Passio
   activa DUPLICADOS** (posible sync de perfil por cuenta Google compartida → misma baraja
   activa). Hardening: `NetMessage.Hello` ahora lleva `deckName`; `OnlineGameScreen.loadDeck()`
   devuelve nombre+ids; el controlador **loguea la baraja de cada lado** (host y guest, este
-  vía `onHostHello`) y **AVISA si ambas barajas son idénticas** (`hello.deck.sorted() ==
-  myDeckPrintedIds.sorted()`) + guarda si el rival no envía baraja. El log (visible en el
-  registro) dirá en la próxima prueba si de verdad llegan barajas distintas → confirma si es
-  perfil duplicado o un bug real de estado. Compila; `:data:netplay:test` verde.
+  vía `onHostHello`) + guarda si el rival no envía baraja. **DECISIÓN USUARIO: que ambos elijan
+  la MISMA baraja es VÁLIDO (espejo), NO es error** → nada de avisos de "barajas idénticas". El
+  log (visible en el registro) dirá en la próxima prueba con qué baraja entra cada uno → confirma
+  si es perfil duplicado o un bug real de estado. Compila; `:data:netplay:test` verde.
 Plan aprobado en `C:\Users\pmmt9\.claude\plans\zesty-coalescing-brook.md`. Objetivo: 2 jugadores por
 Internet, **ceremonia completa** (moneda sincro, prep en cada tel, mulligan) e **info oculta** (host
 manda a cada quien su vista censurada). Diseño: HOST corre el motor y manda "fotos"; GUEST pinta y
