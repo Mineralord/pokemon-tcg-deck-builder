@@ -321,6 +321,39 @@ class TrainerAbilityTest {
         assertEquals(20, r.state.opponent.active?.damage)   // 50 - 30
     }
 
+    @Test
+    fun `legalIntents ofrece anclar una Herramienta a cada Pokemon propio sin una`() {
+        val tool = trainer("tool-x", TrainerKind.Tool())
+        val state = baseState(
+            hand = listOf(tool),
+            active = PokemonInPlay(mon("ownActive")),
+            bench = listOf(PokemonInPlay(mon("benchMon"))),
+        )
+        val intents = engine.legalIntents(state).filterIsInstance<GameIntent.AttachTool>()
+        assertEquals(
+            setOf(CardId("ownActive"), CardId("benchMon")),
+            intents.map { it.target }.toSet(),
+        )
+        assertTrue(intents.all { it.tool == CardId("tool-x") })
+    }
+
+    @Test
+    fun `legalIntents no ofrece anclar a un Pokemon que ya tiene Herramienta`() {
+        val tool = trainer("tool-x", TrainerKind.Tool())
+        val occupied = PokemonInPlay(mon("ownActive"), attachedTools = listOf(trainer("tool-y", TrainerKind.Tool())))
+        val state = baseState(hand = listOf(tool), active = occupied)
+        val intents = engine.legalIntents(state).filterIsInstance<GameIntent.AttachTool>()
+        assertTrue(intents.none { it.target == CardId("ownActive") }, intents.toString())
+    }
+
+    @Test
+    fun `SmartAgent ancla la Herramienta al Activo`() {
+        val tool = trainer("tool-x", TrainerKind.Tool())
+        val state = baseState(hand = listOf(tool), active = PokemonInPlay(mon("ownActive")))
+        val decided = SmartAgent(engine).decide(state, Side.PLAYER)
+        assertEquals(GameIntent.AttachTool(CardId("tool-x"), CardId("ownActive")), decided)
+    }
+
     // ---------------------------------------------------------------- Abilities
 
     @Test

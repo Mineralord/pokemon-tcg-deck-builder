@@ -676,6 +676,21 @@ class GameEngine(
             }
         }
 
+        // Anclar Herramientas: a un Pokémon PROPIO sin Herramienta (máx. 1/Pokémon); si
+        // la Herramienta permite ANY, también a los del rival sin Herramienta.
+        me.hand.filterIsInstance<TrainerCard>().forEach { trainer ->
+            val kind = trainer.kind
+            if (kind is TrainerKind.Tool) {
+                me.allInPlay.filter { it.attachedTools.isEmpty() }
+                    .forEach { intents += GameIntent.AttachTool(trainer.id, it.card.id) }
+                if (kind.attachTo == ToolTarget.ANY) {
+                    state.sideState(state.activeSide.other()).allInPlay
+                        .filter { it.attachedTools.isEmpty() }
+                        .forEach { intents += GameIntent.AttachTool(trainer.id, it.card.id) }
+                }
+            }
+        }
+
         // Usar habilidades registradas que pasen activeOnly / oncePerTurn.
         me.allInPlay.forEach { p ->
             p.card.abilities.forEach { ability ->

@@ -9,10 +9,13 @@ PvP = humano vs humano (`OnlineGameController`, host-autoritativo Firestore). Am
 lógica; cualquier fix aplica a ambos).
 
 **Al decir "continuemos", hacer EN ESTE ORDEN:**
-1. **IA (PvE) sabe anclar Herramientas**: añadir `GameIntent.AttachTool` a `GameEngine.legalIntents`
-   (tool en mano × Pokémon propio sin Herramienta) + heurística en `SmartAgent`.
-2. **PvP: log del host → guest** (`NetMessage.LogLine` de los eventos; hoy el guest no ve el registro)
-   y **recompensas por modo** vía el hook ya listo `GameCore.onGameFinished(winner)` (PvE distinto de PvP).
+1. ~~**IA (PvE) sabe anclar Herramientas**~~ **HECHO (9 Jul)**: `GameEngine.legalIntents` genera
+   `AttachTool` (tool en mano × Pokémon propio sin Herramienta; rival solo si `ToolTarget.ANY`).
+   `SmartAgent` la ancla ANTES de atacar (paso 3b, preferente al Activo). Tests en
+   `TrainerAbilityTest` (legalIntents ofrece/excluye + SmartAgent la elige). Suite JVM verde.
+2. **← SIGUIENTE. PvP: log del host → guest** (`NetMessage.LogLine` de los eventos; hoy el guest no ve
+   el registro) y **recompensas por modo** vía el hook ya listo `GameCore.onGameFinished(winner)`
+   (PvE distinto de PvP).
 **DIFERIDO a otro día/semana (NO la próxima sesión):** *probar las Herramientas en partida real*
 = registrar en `EffectsDb` los pasivos de Herramientas concretas de las barajas (Pikachu/Armarouge/
 Darkrai) para ver HP extra / reducción de daño jugando. El usuario lo hará más adelante.

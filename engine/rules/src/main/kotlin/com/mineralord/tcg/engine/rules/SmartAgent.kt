@@ -37,6 +37,14 @@ class SmartAgent(private val engine: GameEngine) : Agent {
             }?.let { return it }
         }
 
+        // 3b) Anclar una Herramienta a un Pokémon propio ANTES de atacar (atacar suele
+        //     cerrar el turno; anclar es gratis y siempre útil: HP/reducción de daño).
+        //     Preferimos el Activo; si no, cualquiera de los nuestros.
+        val myIds = me.allInPlay.map { it.card.id }.toSet()
+        (legal.firstOrNull { it is GameIntent.AttachTool && it.target == active?.card?.id }
+            ?: legal.firstOrNull { it is GameIntent.AttachTool && it.target in myIds })
+            ?.let { return it }
+
         // 4) Atacar con el ataque pagable de mayor coste convertido (más fuerte).
         val bestAttack = active?.card?.attacks
             ?.filter { active.attachedEnergyCount >= it.convertedCost }
