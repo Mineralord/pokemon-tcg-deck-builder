@@ -24,6 +24,8 @@ data class SlotUi(
     val typeLabel: String?,
     /** Imagen en español (null si la carta no tiene versión ES -> punto rojo). */
     val imageEs: String?,
+    /** Imagen HD grande para el visor de detalle (fallback a inglés). */
+    val imageLarge: String,
 ) {
     val hasSpanish: Boolean get() = imageEs != null
 }
@@ -65,6 +67,7 @@ class CollectionViewModel(app: Application) : AndroidViewModel(app) {
                             count = count,
                             typeLabel = (c as? PokemonCard)?.types?.firstOrNull()?.name,
                             imageEs = c.artwork.smallEs,
+                            imageLarge = c.artwork.large(spanish = true),
                         )
                     }
                 }

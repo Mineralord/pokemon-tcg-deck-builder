@@ -151,7 +151,11 @@ private fun SyncStatusRow(syncStatus: SyncStatus, lastSynced: Long, onRetry: () 
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Error de sincronización", color = TcgColors.Parchment, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Toca para reintentar", color = TcgColors.Parchment.copy(alpha = 0.6f), fontSize = 11.sp)
+                    Text(
+                        syncStatus.cause.message ?: "Toca para reintentar",
+                        color = TcgColors.Parchment.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                    )
                 }
                 Text(
                     "Reintentar",

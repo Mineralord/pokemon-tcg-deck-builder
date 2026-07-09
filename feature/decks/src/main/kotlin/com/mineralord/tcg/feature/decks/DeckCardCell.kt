@@ -1,8 +1,9 @@
 package com.mineralord.tcg.feature.decks
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ private val SlotBg = Color(0xFF26303D)
  * existe versión española, nombre + **punto rojo** (patrón del proyecto). Badge
  * inferior con un número (copias en mazo / poseídas) y atenuado si [dim].
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DeckCardCell(
     name: String,
@@ -40,6 +42,7 @@ fun DeckCardCell(
     dim: Boolean = false,
     badgeColor: Color = Color(0xCC000000),
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val hasSpanish = imageEs != null
     Box(
@@ -49,7 +52,14 @@ fun DeckCardCell(
             .alpha(if (dim) 0.4f else 1f)
             .clip(RoundedCornerShape(6.dp))
             .background(SlotBg)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            .then(
+                if (onClick != null || onLongClick != null) {
+                    Modifier.combinedClickable(
+                        onClick = { onClick?.invoke() },
+                        onLongClick = onLongClick,
+                    )
+                } else Modifier,
+            ),
     ) {
         if (hasSpanish) {
             AsyncImage(

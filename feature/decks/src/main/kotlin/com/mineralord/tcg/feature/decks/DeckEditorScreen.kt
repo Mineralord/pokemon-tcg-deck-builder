@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mineralord.tcg.core.designsystem.CardDetailDialog
 import com.mineralord.tcg.core.designsystem.DeckBox
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Supertype
@@ -66,6 +67,7 @@ fun DeckEditorScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    var detailUrl by remember { mutableStateOf<String?>(null) }
 
     if (!state.exists && !state.loading) {
         LaunchedEffect(Unit) { onBack() }
@@ -139,6 +141,7 @@ fun DeckEditorScreen(
                 DeckCardCell(
                     name = c.name, imageEs = c.imageEs, badge = "${c.inDeck}",
                     onClick = { viewModel.removeCard(c.id) },
+                    onLongClick = { detailUrl = c.imageLarge },
                 )
             }
         }
@@ -171,6 +174,7 @@ fun DeckEditorScreen(
                         dim = !c.canAdd && c.inDeck == 0,
                         badgeColor = TcgColors.Red,
                         onClick = { if (c.canAdd) viewModel.addCard(c.id) },
+                        onLongClick = { detailUrl = c.imageLarge },
                     )
                 }
             }
@@ -197,6 +201,10 @@ fun DeckEditorScreen(
             onApply = { f, s -> viewModel.setFilter(f); viewModel.setSort(s); showFilters = false },
             onDismiss = { showFilters = false },
         )
+    }
+
+    detailUrl?.let { url ->
+        CardDetailDialog(imageUrl = url, contentDescription = null, onDismiss = { detailUrl = null })
     }
 }
 

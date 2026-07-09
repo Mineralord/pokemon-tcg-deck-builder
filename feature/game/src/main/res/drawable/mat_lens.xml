@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="360dp"
+    android:height="44dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="120">
+
+    <!-- Banda central translúcida -->
+    <path android:pathData="M0,30 h1080 v60 h-1080 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="0" android:startY="30"
+                android:endX="0" android:endY="90">
+                <item android:offset="0" android:color="#00000000" />
+                <item android:offset="0.5" android:color="#66120C08" />
+                <item android:offset="1" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Líneas doradas superior e inferior -->
+    <path android:strokeColor="#FFE4AB5E" android:strokeWidth="3"
+        android:pathData="M0,36 h1080 M0,84 h1080" />
+
+    <!-- Lente/óvalo dorado central -->
+    <path android:fillColor="#33E4AB5E"
+        android:pathData="M360,60 a180,26 0 1 0 360,0 a180,26 0 1 0 -360,0 z" />
+    <path android:strokeColor="#AAE4AB5E" android:strokeWidth="3"
+        android:pathData="M360,60 a180,26 0 1 0 360,0 a180,26 0 1 0 -360,0 z" />
+</vector>

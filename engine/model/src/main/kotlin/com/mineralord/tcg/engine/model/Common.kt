@@ -36,10 +36,25 @@ enum class Rarity {
     PROMO;
 }
 
-/** Identificador estable de carta (p.ej. "sv3pt5-6"). Value class: cero overhead. */
+/**
+ * Identificador de carta (p.ej. "sv3pt5-6"). Value class: cero overhead.
+ *
+ * Distingue el id **impreso** (la carta del catálogo) de la **instancia física** en
+ * juego: un mazo puede llevar 3 copias de la misma carta impresa y cada una debe ser
+ * INDEPENDIENTE en el tablero (adjuntar energía, evolucionar o descartar una no debe
+ * afectar a las otras). Para ello, al construir la partida cada copia recibe un id de
+ * instancia único con el sufijo `#N` (ver [withInstance]); [printed] recupera el id
+ * impreso (para buscar arte/nombre en el catálogo).
+ */
 @JvmInline
 value class CardId(val raw: String) {
     init { require(raw.isNotBlank()) { "CardId no puede estar en blanco" } }
+
+    /** Id de instancia único derivado del impreso: "sv3pt5-6" → "sv3pt5-6#2". */
+    fun withInstance(n: Int): CardId = CardId("${printed.raw}#$n")
+
+    /** Id IMPRESO (sin el sufijo de instancia): "sv3pt5-6#2" → "sv3pt5-6". */
+    val printed: CardId get() = CardId(raw.substringBefore('#'))
 }
 
 /**

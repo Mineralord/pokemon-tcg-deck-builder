@@ -17,4 +17,16 @@ captures/
 
 # Material de referencia (capturas pesadas, no versionar)
 referencias/
+referencias_live/
 _refcap/
+
+# Tooling Python (salidas y cachés; el código sí se versiona)
+out/
+tools/out/
+tools/**/__pycache__/
+tools/*.egg-info/
+tools/.venv/
+
+# Firebase (credenciales; no versionar)
+app/google-services.json
+.firebase/

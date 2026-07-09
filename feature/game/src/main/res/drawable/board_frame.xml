@@ -1,0 +1,32 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="360dp"
+    android:height="800dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="2400">
+
+    <!-- Trazo exterior dorado grueso -->
+    <path
+        android:strokeWidth="22"
+        android:pathData="M40,40 h1000 a24,24 0 0 1 24,24 v2272 a24,24 0 0 1 -24,24 h-1000 a24,24 0 0 1 -24,-24 v-2272 a24,24 0 0 1 24,-24 z">
+        <aapt:attr name="android:strokeColor">
+            <gradient android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="1080" android:endY="2400">
+                <item android:offset="0" android:color="#FFF4D27A" />
+                <item android:offset="0.5" android:color="#FFC9902F" />
+                <item android:offset="1" android:color="#FFF4D27A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Línea interior fina -->
+    <path android:strokeColor="#AA5A3D12" android:strokeWidth="4"
+        android:pathData="M60,60 h960 a12,12 0 0 1 12,12 v2256 a12,12 0 0 1 -12,12 h-960 a12,12 0 0 1 -12,-12 v-2256 a12,12 0 0 1 12,-12 z" />
+
+    <!-- Rombos ornamentales en las 4 esquinas -->
+    <path android:fillColor="#FFF4D27A"
+        android:pathData="M40,40 l34,0 l-34,34 z M1040,40 l-34,0 l34,34 z M40,2360 l34,0 l-34,-34 z M1040,2360 l-34,0 l34,-34 z" />
+    <path android:strokeColor="#FF8C6420" android:strokeWidth="2"
+        android:pathData="M40,40 l34,0 l-34,34 z M1040,40 l-34,0 l34,34 z M40,2360 l34,0 l-34,-34 z M1040,2360 l-34,0 l34,-34 z" />
+</vector>

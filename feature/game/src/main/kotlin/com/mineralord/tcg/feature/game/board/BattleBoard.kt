@@ -1,11 +1,13 @@
 package com.mineralord.tcg.feature.game.board
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,12 +25,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,7 +42,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.HexagonShape
 import com.mineralord.tcg.core.designsystem.TcgColors
+import com.mineralord.tcg.feature.game.R
 import com.mineralord.tcg.engine.model.BasicEnergy
+import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.EnergyProvision
 import com.mineralord.tcg.engine.model.EnergyType
@@ -83,57 +91,16 @@ fun typeColor(type: EnergyType?): Color = when (type) {
  */
 @Composable
 fun MatBackground(modifier: Modifier = Modifier) {
-    Canvas(modifier.fillMaxSize()) {
-        val w = size.width
-        val h = size.height
-        val mid = h * 0.5f
-        val band = h * 0.03f
-
-        // Mitades base.
-        drawRect(
-            brush = Brush.verticalGradient(listOf(BattleTheme.OppTop, BattleTheme.OppBottom), endY = mid),
-            size = androidx.compose.ui.geometry.Size(w, mid),
-        )
-        drawRect(
-            brush = Brush.verticalGradient(listOf(BattleTheme.MineTop, BattleTheme.MineBottom), startY = mid),
-            topLeft = Offset(0f, mid),
-            size = androidx.compose.ui.geometry.Size(w, h - mid),
-        )
-
-        // Carril central más claro (la "calle" de activos/mazo).
-        val laneL = w * 0.30f
-        val laneR = w * 0.70f
-        drawRect(
-            color = Color(0x22FFFFFF),
-            topLeft = Offset(laneL, 0f),
-            size = androidx.compose.ui.geometry.Size(laneR - laneL, h),
-        )
-
-        // Panal hexagonal (líneas tenues) en todo el tapete.
-        drawHoneycomb(w, h, s = w * 0.045f, color = Color(0x14FFFFFF))
-
-        // Banda/lente dorada central.
-        drawRect(
-            color = BattleTheme.CenterBand.copy(alpha = 0.65f),
-            topLeft = Offset(0f, mid - band),
-            size = androidx.compose.ui.geometry.Size(w, band * 2f),
-        )
-        drawLine(BattleTheme.Gold, Offset(0f, mid - band), Offset(w, mid - band), strokeWidth = 3f)
-        drawLine(BattleTheme.Gold, Offset(0f, mid + band), Offset(w, mid + band), strokeWidth = 3f)
-        drawOval(
-            color = BattleTheme.Gold.copy(alpha = 0.20f),
-            topLeft = Offset(w * 0.32f, mid - band * 1.1f),
-            size = androidx.compose.ui.geometry.Size(w * 0.36f, band * 2.2f),
-        )
-
-        // Marco dorado redondeado del campo.
-        val inset = w * 0.012f
-        drawRoundRect(
-            color = BattleTheme.Gold,
-            topLeft = Offset(inset, inset),
-            size = androidx.compose.ui.geometry.Size(w - inset * 2f, h - inset * 2f),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.05f, w * 0.05f),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.013f),
+    Box(modifier.fillMaxSize()) {
+        // Base del tablero (híbrido): bitmap 1080x2400 derivado de la referencia real
+        // de TCG Live (arena ovalada con rieles dorados curvos, zona rival granate,
+        // carril central gris hexagonal y zona jugador azul marino). Encima se dibujan
+        // las capas dinámicas (cartas/HUD) posicionadas por BoardGeometry.NBox.
+        Image(
+            painter = painterResource(R.drawable.board_mat),
+            contentDescription = null,
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -272,11 +239,7 @@ private fun EnergyIcons(pip: PokemonInPlay) {
     val shown = energies.take(5)
     Row(horizontalArrangement = Arrangement.spacedBy(1.dp), verticalAlignment = Alignment.CenterVertically) {
         shown.forEach { e ->
-            Box(
-                Modifier.size(9.dp).clip(CircleShape)
-                    .background(typeColor(energyTypeOf(e)))
-                    .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape),
-            )
+            com.mineralord.tcg.core.designsystem.EnergySphere(type = energyTypeOf(e), size = 17.dp)
         }
         val extra = energies.size - shown.size
         if (extra > 0) {
@@ -375,12 +338,209 @@ fun PrizeCluster(remaining: Int, mine: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-/** Badge de premios (estilo TCG Live, rojo). */
+/**
+ * Reverso de carta boca abajo por DEFECTO (`card_back_default`), usado en premios, mazo,
+ * descarte y mano rival — y en general en cualquier carta boca abajo del clon. Es el
+ * mismo dorso para ambos lados por ahora (más adelante habrá un editor de dorsos, por eso
+ * [mine] se conserva en la firma aunque de momento no cambie el arte).
+ */
 @Composable
-fun PrizeBadge(count: Int, timer: String, modifier: Modifier = Modifier) {
+fun CardBack(
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    mine: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Image(
+        painter = painterResource(R.drawable.card_back_default),
+        contentDescription = null,
+        contentScale = ContentScale.FillBounds,
+        modifier = modifier.size(width, height).clip(RoundedCornerShape(4.dp)),
+    )
+}
+
+/**
+ * Pestaña numérica (estilo TCG Live): etiqueta redondeada anclada al borde SUPERIOR del
+ * slot con el número de cartas de la pila. Fondo oscuro, borde del color del lado
+ * (azul jugador / granate rival) y número blanco. Es la "pestaña" que llevan todos los
+ * slots de pila del tablero auténtico (premios/mazo/descarte).
+ */
+@Composable
+fun NumericTab(count: Int, mine: Boolean, modifier: Modifier = Modifier) {
+    val accent = if (mine) Color(0xFF2E7BD6) else TcgColors.Red
+    Box(
+        modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFF10151C))
+            .border(1.5.dp, accent, RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 0.dp),
+    ) {
+        Text("$count", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
+    }
+}
+
+/**
+ * Slot de PILA (premios/mazo/descarte) alineado 1:1 a los slots horneados del tablero
+ * auténtico. La carta LLENA el slot usando el aspecto de la CAJA (el lado del rival va
+ * ESCORZADO por la perspectiva 3D, por eso su caja es más ancha y la carta se ve achatada
+ * aunque sea vertical). Lleva una PESTAÑA NUMÉRICA arriba (tapa la pestaña horneada del
+ * mat con el conteo real). El descarte muestra la cara real de la carta superior
+ * ([topCard]); mazo y premios van boca abajo. Con [fan] los premios se apilan solapados
+ * (base abajo, asoman hacia arriba). Slot VACÍO (count==0) => no dibuja nada (se ve el mat).
+ */
+@Composable
+fun PileSlot(
+    count: Int,
+    mine: Boolean,
+    modifier: Modifier = Modifier,
+    topCard: Card? = null,
+    fan: Boolean = false,
+    showTab: Boolean = true,
+) {
+    if (count <= 0) {
+        // Sin cartas: el slot horneado del mat ya muestra la huella vacía; no dibujamos nada.
+        Box(modifier.fillMaxSize())
+        return
+    }
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val cardW = maxWidth
+        val cardH = maxHeight
+        Box(Modifier.fillMaxSize()) {
+            if (fan) {
+                // PREMIOS: 6 dorsos VERTICALES de tamaño real (ancho del slot → alto por
+                // CardAspect, NUNCA deformados), solapados con base abajo y asomando hacia
+                // arriba. El paso se reparte para LLENAR POR COMPLETO el alto del slot con las
+                // 6 posiciones FIJAS: al retirar un premio, las cartas restantes NO se mueven
+                // (sólo desaparece la retirada), porque `step` no depende del conteo actual.
+                val total = 6
+                val n = count.coerceIn(1, total)
+                val pcardH = cardW / BoardGeometry.CardAspect
+                val step = ((cardH - pcardH) / (total - 1)).coerceAtLeast(pcardH * 0.08f)
+                // De atrás (arriba) hacia delante (abajo): el frontal queda encima.
+                for (i in (n - 1) downTo 0) {
+                    Box(Modifier.align(Alignment.BottomCenter).offset(y = -step * i)) {
+                        CardBack(width = cardW, height = pcardH, mine = mine)
+                    }
+                }
+            } else {
+                // MAZO/DESCARTE (RETRATO) como PILA con CANTO 3D. La carta se dibuja con su
+                // ASPECTO EXACTO (CardAspect) — NUNCA se deforma: se ajusta DENTRO del slot por
+                // su lado más restrictivo. El canto de papel apilado asoma como una banda gris
+                // clara detrás, abajo-izquierda (más grueso cuantas más cartas). La carta
+                // superior (dorso en el mazo, cara real en el descarte) queda arriba-derecha.
+                val edge = cardW * (0.04f + 0.06f * (count.coerceIn(0, 60) / 60f))
+                // Alto/ancho de la carta preservando forma, cabiendo en el slot menos el canto.
+                val availW = cardW - edge
+                val availH = cardH - edge
+                val topW = minOf(availW, availH * BoardGeometry.CardAspect)
+                val topH = topW / BoardGeometry.CardAspect
+                Box(
+                    Modifier.align(Alignment.Center).size(topW + edge, topH + edge),
+                ) {
+                    // Cuerpo/canto de la pila (mismo tamaño de carta, desplazado detrás).
+                    Box(
+                        Modifier.align(Alignment.BottomStart).size(topW, topH)
+                            .clip(RoundedCornerShape(6.dp)).background(
+                                Brush.linearGradient(listOf(Color(0xFFDCDFE4), Color(0xFF8B939C))),
+                            ),
+                    )
+                    // Carta superior con forma EXACTA.
+                    Box(
+                        Modifier.align(Alignment.TopEnd).size(topW, topH).clip(RoundedCornerShape(5.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (topCard != null) {
+                            AsyncImage(
+                                model = topCard.artwork.small(true),
+                                contentDescription = topCard.name.es,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            CardBack(width = topW, height = topH, mine = mine)
+                        }
+                    }
+                }
+            }
+            // Pestaña numérica. En los PREMIOS (fan) va CENTRADA sobre el borde superior del
+            // slot (como en TCG Live: bajo el hexágono de chat). En mazo/descarte va arriba-
+            // izquierda, tapando la pestaña horneada del mat.
+            if (showTab) {
+                val tabMod = if (fan) {
+                    // PESTAÑA del slot de premios. En TCG Live la pestaña apunta hacia el centro
+                    // del tablero: el JUGADOR (abajo) la lleva en el borde SUPERIOR del slot; el
+                    // RIVAL (arriba) la lleva en el borde INFERIOR, colgando bajo la última carta.
+                    if (mine) {
+                        Modifier.align(Alignment.TopCenter).offset(x = cardW * 0.30f, y = cardH * 0.04f)
+                    } else {
+                        Modifier.align(Alignment.BottomCenter).offset(x = cardW * 0.19f, y = cardH * 0.12f)
+                    }
+                } else {
+                    Modifier.align(Alignment.TopStart).offset(x = cardW * 0.04f, y = -cardH * 0.14f)
+                }
+                NumericTab(count, mine, tabMod)
+            }
+        }
+    }
+}
+
+/**
+ * Pila de PREMIOS: dorsos solapados restantes ([remaining]) con pestaña numérica.
+ * Llena `MePrizes`/`OppPrizes`.
+ */
+@Composable
+fun PrizeStack(remaining: Int, mine: Boolean, modifier: Modifier = Modifier) {
+    PileSlot(count = remaining, mine = mine, modifier = modifier, fan = true)
+}
+
+/**
+ * MAZO o DESCARTE como slot de pila con pestaña numérica (estilo TCG Live).
+ * El descarte muestra la cara real de su carta superior si [topCard] no es null.
+ */
+@Composable
+fun DeckPile(count: Int, mine: Boolean, label: String, modifier: Modifier = Modifier, topCard: Card? = null, showTab: Boolean = true) {
+    PileSlot(count = count, mine = mine, modifier = modifier, topCard = topCard, showTab = showTab)
+}
+
+/**
+ * Slot de Estadio en el lente central (estilo TCG Live): si hay un Estadio en
+ * juego muestra su arte; si no, un marco vacío tenue con la etiqueta "Estadio".
+ */
+@Composable
+fun StadiumSlot(
+    stadium: com.mineralord.tcg.engine.model.TrainerCard?,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .size(58.dp, 40.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color(0x33000000))
+                .border(1.dp, BattleTheme.Gold.copy(alpha = 0.5f), RoundedCornerShape(5.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (stadium != null) {
+                AsyncImage(
+                    model = stadium.artwork.small(true),
+                    contentDescription = stadium.name.es,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(5.dp)),
+                )
+            } else {
+                Text("Estadio", color = TcgColors.Parchment.copy(alpha = 0.4f), fontSize = 8.sp)
+            }
+        }
+    }
+}
+
+/** Badge de premios del rail (rojo rival / azul jugador, estilo TCG Live). */
+@Composable
+fun PrizeBadge(count: Int, timer: String, mine: Boolean, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(34.dp).clip(RoundedCornerShape(7.dp)).background(TcgColors.Red),
+            Modifier.size(34.dp).clip(RoundedCornerShape(7.dp))
+                .background(if (mine) Color(0xFF1E63B0) else TcgColors.Red),
             contentAlignment = Alignment.Center,
         ) {
             Text("$count", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
@@ -390,25 +550,23 @@ fun PrizeBadge(count: Int, timer: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** Botón hexagonal "ACABAR EL TURNO". */
+/**
+ * Acabar el turno como TEXTO en el rail derecho (estilo TCG Live real, §1.6),
+ * con doble chevron y realce dorado cuando está disponible.
+ */
 @Composable
 fun EndTurnHex(enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val bg = if (enabled) BattleTheme.Gold else BattleTheme.Gold.copy(alpha = 0.35f)
-    Box(
+    val tint = if (enabled) BattleTheme.Gold else BattleTheme.Gold.copy(alpha = 0.4f)
+    Column(
         modifier = modifier
-            .size(86.dp, 58.dp)
-            .clip(HexagonShape(flatTop = false))
-            .background(bg)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
+            .width(52.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            "ACABAR\nEL TURNO",
-            color = Color(0xFF3A2A08),
-            fontWeight = FontWeight.Black,
-            fontSize = 10.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 12.sp,
-        )
+        Text("ACABAR", color = tint, fontWeight = FontWeight.Black, fontSize = 10.sp, textAlign = TextAlign.Center)
+        Text("EL TURNO", color = tint, fontWeight = FontWeight.Black, fontSize = 10.sp, textAlign = TextAlign.Center)
+        Text("»", color = tint, fontWeight = FontWeight.Black, fontSize = 16.sp)
     }
 }

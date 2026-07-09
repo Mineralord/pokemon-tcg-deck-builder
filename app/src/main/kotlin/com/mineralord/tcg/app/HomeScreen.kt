@@ -46,6 +46,7 @@ fun HomeScreen(
     onBarajas: () -> Unit,
     onPerfil: () -> Unit,
     onJugar: () -> Unit,
+    onJugarOnline: () -> Unit,
 ) {
     Column(
         modifier = modifier
@@ -92,7 +93,7 @@ fun HomeScreen(
         Spacer(Modifier.height(8.dp))
 
         // ---------- Navegación hexagonal inferior ----------
-        HomeNav(onCartadex = onCartadex, onTienda = onTienda, onBarajas = onBarajas, onPerfil = onPerfil)
+        HomeNav(onCartadex = onCartadex, onTienda = onTienda, onBarajas = onBarajas, onPerfil = onPerfil, onJugarOnline = onJugarOnline)
     }
 }
 
@@ -216,7 +217,7 @@ private fun PlayButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun HomeNav(onCartadex: () -> Unit, onTienda: () -> Unit, onBarajas: () -> Unit, onPerfil: () -> Unit) {
+private fun HomeNav(onCartadex: () -> Unit, onTienda: () -> Unit, onBarajas: () -> Unit, onPerfil: () -> Unit, onJugarOnline: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -229,7 +230,7 @@ private fun HomeNav(onCartadex: () -> Unit, onTienda: () -> Unit, onBarajas: () 
         Spacer(Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             HexNav("PERFIL", Color(0xFF8E63C0), onPerfil)
-            HexNav("", Color(0xFFBDBDBD), {})
+            HexNav("JUGAR\nONLINE", Color(0xFF66BB6A), onJugarOnline)
             HexNav("TIENDA", Color(0xFF26A69A), onTienda)
         }
     }

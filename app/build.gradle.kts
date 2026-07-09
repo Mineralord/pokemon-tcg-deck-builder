@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -55,6 +56,8 @@ dependencies {
     implementation(project(":data:cards"))
     implementation(project(":data:profile"))
     implementation(project(":data:cloud"))
+    implementation(project(":data:netplay"))
+    implementation(project(":data:netfirestore"))
     implementation(project(":engine:model"))
 
     implementation(libs.androidx.credentials)

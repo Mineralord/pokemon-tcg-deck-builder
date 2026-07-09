@@ -189,6 +189,37 @@ class GameEngineTest {
     }
 
     @Test
+    fun `Cross-Cut suma 50 si el Activo rival es Evolucion y respeta la Debilidad`() {
+        val crossCut = Attack(
+            LocalizedText("Corte Cruzado", "Cross-Cut"), emptyList(), 0, DamageModel.Variable,
+            EffectsDb.atkKey("sv2-137", "Cross-Cut"),
+        )
+        val seviper = mon("sv2-137", 110, EnergyType.DARKNESS, crossCut)
+        val dummy = Attack(LocalizedText("x", "x"), emptyList(), 0, DamageModel.None, null)
+
+        // Defensor BÁSICO, sin debilidad → 50.
+        run {
+            val target = mon("basicDef", 300, EnergyType.PSYCHIC, dummy)
+            val player = PlayerState(Side.PLAYER, active = PokemonInPlay(seviper), deck = listOf(basicEnergy("d", EnergyType.DARKNESS)), prizes = (1..6).map { basicEnergy("p$it", EnergyType.DARKNESS) })
+            val opp = PlayerState(Side.OPPONENT, active = PokemonInPlay(target), deck = listOf(basicEnergy("od", EnergyType.PSYCHIC)), prizes = (1..6).map { basicEnergy("q$it", EnergyType.PSYCHIC) })
+            val r = engine.apply(GameState(player, opp, 2, Side.PLAYER, Phase.MAIN), GameIntent.Attack("Cross-Cut"))
+            assertTrue(r.accepted, r.rejection)
+            assertEquals(50, r.state.opponent.active?.damage)
+        }
+        // Defensor EVOLUCIÓN y DÉBIL a Oscuro (×2) → (50+50)=100 → ×2 = 200.
+        run {
+            val evo = mon("evoDef", 300, EnergyType.PSYCHIC, dummy, weakness = EnergyType.DARKNESS)
+                .copy(stage = Stage.Stage1, evolvesFrom = "Pre")
+            val player = PlayerState(Side.PLAYER, active = PokemonInPlay(seviper), deck = listOf(basicEnergy("d", EnergyType.DARKNESS)), prizes = (1..6).map { basicEnergy("p$it", EnergyType.DARKNESS) })
+            val opp = PlayerState(Side.OPPONENT, active = PokemonInPlay(evo), deck = listOf(basicEnergy("od", EnergyType.PSYCHIC)), prizes = (1..6).map { basicEnergy("q$it", EnergyType.PSYCHIC) })
+            val r = engine.apply(GameState(player, opp, 2, Side.PLAYER, Phase.MAIN), GameIntent.Attack("Cross-Cut"))
+            assertTrue(r.accepted, r.rejection)
+            assertEquals(200, r.state.opponent.active?.damage)
+            assertTrue(r.events.filterIsInstance<GameEvent.DamageDealt>().first().weaknessApplied)
+        }
+    }
+
+    @Test
     fun `veneno inflige dano al final del turno`() {
         val poke = mon("p", 100, EnergyType.GRASS, Attack(LocalizedText("x", "x"), emptyList(), 0, DamageModel.None, null))
         val poisoned = PokemonInPlay(poke, statuses = setOf(com.mineralord.tcg.engine.model.Status.POISONED))

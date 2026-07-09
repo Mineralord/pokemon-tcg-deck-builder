@@ -3,6 +3,7 @@ package com.mineralord.tcg.data.netplay
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.engine.model.Side
+import com.mineralord.tcg.engine.model.withId
 import com.mineralord.tcg.engine.rules.GameIntent
 import com.mineralord.tcg.engine.rules.GameSetup
 import com.mineralord.tcg.engine.rules.SeededRng
@@ -84,6 +85,64 @@ class NetplayRoundTripTest {
             assertTrue(restored is NetMessage.Intent)
             assertEquals(intent, (restored as NetMessage.Intent).intent.toIntent())
         }
+    }
+
+    @Test
+    fun `censored snapshot hides opponent hidden zones but keeps counts and swaps perspective`() {
+        val original = freshState()
+        // Vista del OPONENTE (guest): debe verse a sí mismo como PLAYER (abajo).
+        val dto = original.toDtoFor(Side.OPPONENT)
+
+        // Perspectiva: el 'player' del DTO es el lado OPPONENT real.
+        assertEquals(Side.PLAYER.name, dto.player.side)
+        assertEquals(Side.OPPONENT.name, dto.opponent.side)
+        assertEquals(
+            original.opponent.active?.card?.id?.raw,
+            dto.player.active?.card, // el activo del guest (OPPONENT real) va como 'player'
+        )
+
+        // El rival (host = PLAYER real, ahora 'opponent' del DTO) tiene zonas OCULTAS censuradas.
+        assertTrue(dto.opponent.hand.isEmpty(), "la mano del rival no debe viajar")
+        assertTrue(dto.opponent.deck.isEmpty(), "el mazo del rival no debe viajar")
+        assertTrue(dto.opponent.prizes.isEmpty(), "los premios del rival no deben viajar")
+        // ...pero sí su CONTEO.
+        assertEquals(original.player.hand.size, dto.opponent.handCount)
+        assertEquals(original.player.deck.size, dto.opponent.deckCount)
+
+        // El guest ve su PROPIA mano completa.
+        assertEquals(original.opponent.hand.size, dto.player.hand.size)
+        assertTrue(dto.player.hand.isNotEmpty())
+
+        // Al rehidratar, el rival mantiene el TAMAÑO de la mano (para pintar dorsos).
+        val restored = NetJson.decodeFromString(
+            GameStateDto.serializer(),
+            NetJson.encodeToString(GameStateDto.serializer(), dto),
+        ).toGameState(repo)
+        assertEquals(original.player.hand.size, restored.opponent.hand.size)
+        assertEquals(original.opponent.hand.size, restored.player.hand.size)
+    }
+
+    @Test
+    fun `instance ids survive rehydration (netplay uniquified decks)`() {
+        // Como en netplay: cada copia física recibe un id de INSTANCIA único.
+        val p = StarterDecks.ALL[0].expandedCardIds().mapNotNull { repo[it] }
+            .mapIndexed { i, c -> c.withId(c.id.withInstance(i)) }
+        val o = StarterDecks.ALL[1].expandedCardIds().mapNotNull { repo[it] }
+            .mapIndexed { i, c -> c.withId(c.id.withInstance(100_000 + i)) }
+        val state = GameSetup.start(p, o, SeededRng(7))
+
+        // Debe rehidratar SIN reventar y conservar los ids de INSTANCIA del tablero
+        // (antes `repo[CardId(instancia)]` daba null → error()/crash en el invitado).
+        val restored = state.toDtoFor(Side.PLAYER)
+            .let { NetJson.encodeToString(GameStateDto.serializer(), it) }
+            .let { NetJson.decodeFromString(GameStateDto.serializer(), it) }
+            .toGameState(repo)
+
+        assertEquals(state.player.active?.card?.id, restored.player.active?.card?.id)
+        assertEquals(
+            state.player.bench.map { it.card.id },
+            restored.player.bench.map { it.card.id },
+        )
     }
 
     @Test

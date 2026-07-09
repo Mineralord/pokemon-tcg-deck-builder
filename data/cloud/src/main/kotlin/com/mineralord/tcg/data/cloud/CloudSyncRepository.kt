@@ -1,6 +1,7 @@
 package com.mineralord.tcg.data.cloud
 
 import android.app.Activity
+import android.util.Log
 import androidx.activity.result.IntentSenderRequest
 import com.mineralord.tcg.data.profile.ProfileRepository
 import kotlinx.coroutines.CoroutineScope
@@ -80,7 +81,7 @@ class CloudSyncRepository(
             currentToken = auth.authorizeDriveScope(launcher)
             metadata.setSession(account.email, account.name, account.avatarUrl)
             syncNow(preferCloud = true)
-        }.onFailure { _syncStatus.value = SyncStatus.Error(it) }
+        }.onFailure { Log.w(TAG, "signIn/sync falló", it); _syncStatus.value = SyncStatus.Error(it) }
     }
 
     /** Reenvía el resultado del consentimiento de Drive al gestor de auth. */
@@ -113,9 +114,11 @@ class CloudSyncRepository(
             }
             markSynced()
         } catch (e: TokenExpiredException) {
+            Log.w(TAG, "syncNow: token caducado", e)
             auth.invalidateToken(); currentToken = null
             _syncStatus.value = SyncStatus.Error(e)
         } catch (e: Throwable) {
+            Log.w(TAG, "syncNow falló", e)
             _syncStatus.value = SyncStatus.Error(e)
         }
     }
@@ -149,5 +152,6 @@ class CloudSyncRepository(
 
     private companion object {
         const val DEBOUNCE_MS = 2_000L
+        const val TAG = "CloudSync"
     }
 }

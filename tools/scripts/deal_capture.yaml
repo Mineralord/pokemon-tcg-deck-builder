@@ -1,0 +1,81 @@
+# Timeline "REPARTO DE 7 CARTAS" — captura de la animacion mazo -> abanico.
+#
+# Flujo actual: JUGAR -> matchmaking (~3.5s) -> tablero + tiro de moneda ->
+# elegir CARA -> giro (1.6s) + resultado (2.4s) -> REPARTO animado (~1.8s).
+# Tras el resultado hacemos una rafaga de capturas para muestrear la animacion.
+#
+# Ejecuta:  python -m tcgtools play tools/scripts/deal_capture.yaml
+# Luego revisa los PNG deal_* del run.
+
+steps:
+  - op: relaunch
+    settle: 3.0
+
+  # JUGAR (fallback a la coordenada del boton en 1080x2400).
+  - op: tap_text
+    text: "JUGAR"
+    fallback: [540, 1469]
+    settle: 0.5
+
+  # Matchmaking: spinner ~3.5s + aparicion de tablero/moneda.
+  - op: wait
+    seconds: 5.0
+
+  - op: capture
+    name: 00_coin_choosing
+
+  # Elegir CARA en la hoja inferior del tiro de moneda.
+  - op: tap_text
+    text: "CARA"
+    fallback: [540, 2180]
+    settle: 0.2
+
+  # Giro (1.6s) + resultado (2.4s) antes de que arranque el reparto.
+  - op: wait
+    seconds: 3.85
+
+  # Rafaga durante el reparto (~1.8s). El overhead de screencap espacia los frames.
+  - op: capture
+    name: deal_00
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_01
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_02
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_03
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_04
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_05
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_06
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_07
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_08
+  - op: wait
+    seconds: 0.02
+  - op: capture
+    name: deal_09
+
+  # Estado final: mano repartida antes de la preparacion.
+  - op: wait
+    seconds: 0.8
+  - op: capture
+    name: 99_after_deal

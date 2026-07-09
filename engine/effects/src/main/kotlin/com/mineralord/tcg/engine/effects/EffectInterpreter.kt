@@ -2,6 +2,7 @@ package com.mineralord.tcg.engine.effects
 
 import com.mineralord.tcg.engine.events.GameEvent
 import com.mineralord.tcg.engine.model.Amount
+import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardFilter
 import com.mineralord.tcg.engine.model.CardId
@@ -59,7 +60,9 @@ class EffectInterpreter {
         source: EffectSource,
         state: GameState,
         endsTurnOnResolve: Boolean = false,
-    ): EffectResult = runFrom(effect.ops, source, state, endsTurnOnResolve, chosenIds = emptyList())
+        shuffle: (List<Card>) -> List<Card> = { it },
+        flip: () -> Boolean = { true },
+    ): EffectResult = runFrom(effect.ops, source, state, endsTurnOnResolve, emptyList(), shuffle, flip)
 
     /**
      * Resuelve la [GameState.interaction] en curso con las cartas [chosen]
@@ -69,6 +72,7 @@ class EffectInterpreter {
     fun resolve(
         state: GameState,
         chosen: List<CardId>,
+        flip: () -> Boolean = { true },
         shuffle: (List<Card>) -> List<Card>,
     ): EffectResult {
         val interaction = state.interaction ?: return EffectResult(state, emptyList())
@@ -79,14 +83,22 @@ class EffectInterpreter {
         val applied: EffectResult = when (val d = interaction.decision) {
             is PendingDecision.SearchCards -> applySearch(d, chosen, cleared, shuffle)
             is PendingDecision.MoveEnergy -> applyMoveEnergy(d, chosen, cleared)
+            is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle)
             is PendingDecision.ChooseTargets -> EffectResult(cleared, emptyList())
+            is PendingDecision.CoinFlip -> {
+                // El jugador ya "tiró" la moneda: ahora el motor la lanza (autoritativo),
+                // emite el evento para la animación y roba según el resultado.
+                val heads = flip()
+                val drawn = draw(src.actingSide, if (heads) d.ifHeads else d.ifTails, cleared)
+                EffectResult(drawn.state, listOf(GameEvent.CoinFlipped(src.actingSide, heads)) + drawn.events)
+            }
         }
 
         // 2) Reanudar la continuación; si fue ChooseTargets, ligamos CHOSEN.
         val chosenIds = if (interaction.decision is PendingDecision.ChooseTargets) chosen else emptyList()
         val resumed = runFrom(
             interaction.remainingOps, src, applied.state,
-            interaction.endsTurnOnResolve, chosenIds,
+            interaction.endsTurnOnResolve, chosenIds, shuffle, flip,
         )
         return EffectResult(resumed.state, applied.events + resumed.events, resumed.pending)
     }
@@ -104,6 +116,8 @@ class EffectInterpreter {
         state: GameState,
         endsTurnOnResolve: Boolean,
         chosenIds: List<CardId>,
+        shuffle: (List<Card>) -> List<Card>,
+        flip: () -> Boolean,
     ): EffectResult {
         var working = state
         val events = mutableListOf<GameEvent>()
@@ -123,7 +137,7 @@ class EffectInterpreter {
                 )
                 return EffectResult(working, events, listOf(decision))
             }
-            val step = applyOp(op, src, working, chosenIds)
+            val step = applyOp(op, src, working, chosenIds, shuffle, flip)
             working = step.state
             events += step.events
         }
@@ -135,7 +149,9 @@ class EffectInterpreter {
         when (op) {
             is EffectOp.ChooseTarget -> PendingDecision.ChooseTargets(
                 src.actingSide, op.prompt,
-                candidates = targets(op.from, src, state, emptyList()).map { it.card.id },
+                candidates = targets(op.from, src, state, emptyList())
+                    .filter { !op.onlyDamaged || it.damage > 0 }
+                    .map { it.card.id },
                 count = op.howMany,
             )
             is EffectOp.SearchDeck -> PendingDecision.SearchCards(
@@ -147,6 +163,12 @@ class EffectInterpreter {
                 count = op.count,
                 candidates = matching(state.sideState(src.actingSide).deck, op.filter),
             )
+            is EffectOp.CoinFlipDraw -> PendingDecision.CoinFlip(
+                src.actingSide,
+                LocalizedText("Lanza la moneda", "Flip a coin"),
+                ifHeads = op.ifHeads,
+                ifTails = op.ifTails,
+            )
             is EffectOp.MoveEnergy -> PendingDecision.MoveEnergy(
                 src.actingSide,
                 LocalizedText("Mueve energía", "Move Energy"),
@@ -154,12 +176,64 @@ class EffectInterpreter {
                 toCandidates = targets(op.to, src, state, emptyList()).map { it.card.id },
                 count = op.count,
             )
+            is EffectOp.RevealAttachEnergy -> {
+                val ps = state.sideState(src.actingSide)
+                val revealed = ps.deck.take(op.lookAt)
+                val energies = revealed.filter { it is BasicEnergy && it.type == op.energyType }.map { it.id }
+                val benched = ps.bench.filter { op.benchType == null || op.benchType in it.card.types }.map { it.card.id }
+                // Solo se pausa si HAY algo que unir; si no, es determinista (barajar).
+                if (energies.isEmpty() || benched.isEmpty()) null
+                else PendingDecision.AttachFromRevealed(
+                    src.actingSide,
+                    LocalizedText(
+                        "Une hasta ${op.maxAttach} Energía a tus Pokémon de Banca",
+                        "Attach up to ${op.maxAttach} Energy to your Benched Pokémon",
+                    ),
+                    revealed = revealed.map { it.id },
+                    energyCandidates = energies,
+                    benchCandidates = benched,
+                    maxAttach = op.maxAttach,
+                )
+            }
+            is EffectOp.AttachEnergyFromDiscard -> {
+                // Interactivo solo cuando el destino es "cualquiera de los tuyos" (OWN_ALL);
+                // SELF/OWN_ACTIVE se resuelven deterministas en applyOp.
+                if (op.target != Target.OWN_ALL) null
+                else {
+                    val ps = state.sideState(src.actingSide)
+                    val energies = ps.discard
+                        .filter { it is BasicEnergy && (op.energyType == null || it.type == op.energyType) }
+                        .map { it.id }
+                    val targets = ps.allInPlay.map { it.card.id }
+                    if (energies.isEmpty() || targets.isEmpty()) null
+                    else PendingDecision.AttachFromRevealed(
+                        src.actingSide,
+                        LocalizedText(
+                            "Une hasta ${op.count} Energía del descarte a tus Pokémon",
+                            "Attach up to ${op.count} Energy from your discard to your Pokémon",
+                        ),
+                        revealed = energies,
+                        energyCandidates = energies,
+                        benchCandidates = targets,
+                        maxAttach = op.count,
+                        fromDiscard = true,
+                        thenDrawUpTo = op.thenDrawUpTo,
+                    )
+                }
+            }
             else -> null
         }
 
     // ------------------------------------------------------- ops deterministas
 
-    private fun applyOp(op: EffectOp, src: EffectSource, state: GameState, chosenIds: List<CardId>): EffectResult =
+    private fun applyOp(
+        op: EffectOp,
+        src: EffectSource,
+        state: GameState,
+        chosenIds: List<CardId>,
+        shuffle: (List<Card>) -> List<Card>,
+        flip: () -> Boolean,
+    ): EffectResult =
         when (op) {
             is EffectOp.Damage -> {
                 val n = resolveAmount(op.amount, src, state)
@@ -185,6 +259,124 @@ class EffectInterpreter {
                 draw(src.actingSide, (op.handSize - have).coerceAtLeast(0), state)
             }
             is EffectOp.DiscardEnergy -> discardEnergy(op, src, state, chosenIds)
+            is EffectOp.ShuffleHandIntoDeck -> {
+                val ps = state.sideState(src.actingSide)
+                if (ps.hand.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    val updated = ps.copy(hand = emptyList(), deck = shuffle(ps.deck + ps.hand))
+                    EffectResult(withPlayer(state, updated, src.actingSide), listOf(GameEvent.DeckShuffled(src.actingSide)))
+                }
+            }
+            is EffectOp.SwapActiveWithChosen -> {
+                val ps = state.sideState(src.actingSide)
+                val chosenId = chosenIds.firstOrNull()
+                val benchMon = ps.bench.firstOrNull { it.card.id == chosenId }
+                val active = ps.active
+                if (benchMon == null || active == null) EffectResult(state, emptyList())
+                else {
+                    val updated = ps.copy(
+                        active = benchMon,
+                        bench = ps.bench.map { if (it.card.id == chosenId) active else it },
+                    )
+                    EffectResult(withPlayer(state, updated, src.actingSide), emptyList())
+                }
+            }
+            is EffectOp.SwapOppActiveWithChosen -> {
+                // Órdenes de Jefe (gust): sube al Activo rival el elegido de SU Banca.
+                val foeSide = src.actingSide.other()
+                val foe = state.sideState(foeSide)
+                val chosenId = chosenIds.firstOrNull()
+                val benchMon = foe.bench.firstOrNull { it.card.id == chosenId }
+                val active = foe.active
+                if (benchMon == null || active == null) EffectResult(state, emptyList())
+                else {
+                    val updated = foe.copy(
+                        active = benchMon,
+                        bench = foe.bench.map { if (it.card.id == chosenId) active else it },
+                    )
+                    EffectResult(withPlayer(state, updated, foeSide), emptyList())
+                }
+            }
+            is EffectOp.CoinFlipDraw -> {
+                // Lanza la moneda EMITIENDO el evento (para que la UI anime el giro) y
+                // luego roba según el resultado, continuando el efecto (Dominguera/Picnicker).
+                val heads = flip()
+                val drawn = draw(src.actingSide, if (heads) op.ifHeads else op.ifTails, state)
+                EffectResult(
+                    drawn.state,
+                    listOf(GameEvent.CoinFlipped(src.actingSide, heads)) + drawn.events,
+                )
+            }
+            is EffectOp.NoAttackNextTurn -> {
+                // Marca al Pokémon origen: no podrá atacar en su próximo turno propio
+                // (turn actual + 2; el turno intermedio es del rival).
+                val id = src.sourceId
+                if (id == null) EffectResult(state, emptyList())
+                else EffectResult(
+                    updatePokemon(state, id) { it.copy(cannotAttackOnTurn = state.turn + 2) },
+                    emptyList(),
+                )
+            }
+            is EffectOp.RevealAttachEnergy -> {
+                // Solo llega aquí si pendingFor devolvió null (nada que unir): se miró el
+                // top del mazo y se baraja de vuelta.
+                val ps = state.sideState(src.actingSide)
+                EffectResult(
+                    withPlayer(state, ps.copy(deck = shuffle(ps.deck)), src.actingSide),
+                    listOf(GameEvent.DeckShuffled(src.actingSide)),
+                )
+            }
+            is EffectOp.CoinsPerEnergyDamage -> {
+                // Lanza una moneda por cada Energía [energyType] del origen; el daño al
+                // Activo rival es damagePerHeads × caras. Emite un CoinFlipped por tirada.
+                val self = targets(Target.SELF, src, state, chosenIds).firstOrNull()
+                if (self == null) EffectResult(state, emptyList())
+                else {
+                    val flips = self.attachedEnergy.count { (it as? BasicEnergy)?.type == op.energyType }
+                    val events = mutableListOf<GameEvent>()
+                    var heads = 0
+                    repeat(flips) {
+                        val h = flip()
+                        if (h) heads++
+                        events += GameEvent.CoinFlipped(src.actingSide, h)
+                    }
+                    val dmg = damageTargets(targets(Target.OPP_ACTIVE, src, state, chosenIds), heads * op.damagePerHeads, src.actingSide, state)
+                    EffectResult(dmg.state, events + dmg.events)
+                }
+            }
+            is EffectOp.AttachEnergyFromDiscard -> {
+                // Ruta determinista (SELF/OWN_ACTIVE): une las primeras [count] Energías
+                // Básicas de [energyType] del descarte al Pokémon objetivo. La ruta OWN_ALL
+                // se captura en pendingFor como decisión de arrastre.
+                val ps = state.sideState(src.actingSide)
+                val targetMon = targets(op.target, src, state, chosenIds).firstOrNull()
+                val picked = ps.discard
+                    .filter { it is BasicEnergy && (op.energyType == null || it.type == op.energyType) }
+                    .take(op.count)
+                    .filterIsInstance<EnergyCard>()
+                if (targetMon == null || picked.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    var working = updatePokemon(state, targetMon.card.id) {
+                        it.copy(attachedEnergy = it.attachedEnergy + picked)
+                    }
+                    working = withPlayer(
+                        working,
+                        working.sideState(src.actingSide).copy(discard = ps.discard - picked.toSet()),
+                        src.actingSide,
+                    )
+                    val events: MutableList<GameEvent> =
+                        picked.mapTo(mutableListOf()) { GameEvent.EnergyAttached(src.actingSide, it.id, targetMon.card.id) }
+                    // "Si lo haces, roba hasta N" — atómico: solo porque se unió Energía.
+                    val drawUpTo = op.thenDrawUpTo
+                    if (drawUpTo != null) {
+                        val have = working.sideState(src.actingSide).hand.size
+                        val drawn = draw(src.actingSide, (drawUpTo - have).coerceAtLeast(0), working)
+                        working = drawn.state
+                        events += drawn.events
+                    }
+                    EffectResult(working, events)
+                }
+            }
             // Las ops de elección las captura runFrom/pendingFor: nunca llegan aquí.
             is EffectOp.ChooseTarget, is EffectOp.SearchDeck, is EffectOp.MoveEnergy ->
                 EffectResult(state, emptyList())
@@ -319,6 +511,60 @@ class EffectInterpreter {
         var working = updatePokemon(state, fromId) { it.copy(attachedEnergy = it.attachedEnergy - moved.toSet()) }
         working = updatePokemon(working, toId) { it.copy(attachedEnergy = it.attachedEnergy + moved) }
         return EffectResult(working, emptyList())
+    }
+
+    /**
+     * Une las energías reveladas elegidas a los Pokémon de Banca indicados. [chosen]
+     * viene como PARES intercalados `[energía, destino, …]`. Las energías unidas salen
+     * del mazo; el resto (incluido lo mirado y no unido) se baraja de vuelta.
+     */
+    private fun applyAttachFromRevealed(
+        d: PendingDecision.AttachFromRevealed,
+        chosen: List<CardId>,
+        state: GameState,
+        shuffle: (List<Card>) -> List<Card>,
+    ): EffectResult {
+        val side = d.side
+        val ps = state.sideState(side)
+        // Origen de las energías: mazo (Generador Eléctrico) o descarte (Passionate Singing).
+        val source = if (d.fromDiscard) ps.discard else ps.deck
+        var working = state
+        val events = mutableListOf<GameEvent>()
+        val attached = mutableListOf<Card>()
+        // Recorre pares (energía, destino) respetando el tope y sin reusar energías.
+        var i = 0
+        while (i + 1 < chosen.size && attached.size < d.maxAttach) {
+            val energyId = chosen[i]
+            val benchId = chosen[i + 1]
+            i += 2
+            if (energyId !in d.energyCandidates || benchId !in d.benchCandidates) continue
+            if (attached.any { it.id == energyId }) continue
+            val energy = source.firstOrNull { it.id == energyId } as? EnergyCard ?: continue
+            working = updatePokemon(working, benchId) {
+                it.copy(attachedEnergy = it.attachedEnergy + energy)
+            }
+            attached += energy
+            events += GameEvent.EnergyAttached(side, energyId, benchId)
+        }
+        if (d.fromDiscard) {
+            // Las energías unidas salen del descarte; el resto se queda (no se baraja).
+            val newDiscard = ps.discard - attached.toSet()
+            working = withPlayer(working, working.sideState(side).copy(discard = newDiscard), side)
+            // "Si lo haces, roba hasta N" (Mela): atómico, solo si se unió Energía.
+            val drawUpTo = d.thenDrawUpTo
+            if (drawUpTo != null && attached.isNotEmpty()) {
+                val have = working.sideState(side).hand.size
+                val drawn = draw(side, (drawUpTo - have).coerceAtLeast(0), working)
+                working = drawn.state
+                events += drawn.events
+            }
+        } else {
+            // El mazo mirado se baraja de vuelta, ya sin las energías unidas.
+            val newDeck = shuffle(ps.deck - attached.toSet())
+            working = withPlayer(working, working.sideState(side).copy(deck = newDeck), side)
+            events += GameEvent.DeckShuffled(side)
+        }
+        return EffectResult(working, events)
     }
 
     // ---------------------------------------------------------------- helpers

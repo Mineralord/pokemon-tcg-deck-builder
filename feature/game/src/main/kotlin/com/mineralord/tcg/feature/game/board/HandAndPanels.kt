@@ -17,25 +17,37 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -47,8 +59,8 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.SpecialEnergy
-import kotlin.math.abs
 
 /** Color de fondo para una carta de energía en la mano (null si no es energía). */
 private fun energyCardColor(card: Card): Color? = when (card) {
@@ -110,7 +122,8 @@ fun TurnBanner(text: String, visible: Boolean, mine: Boolean) {
     }
 }
 
-/** Mano en abanico, con cartas ligeramente rotadas y solapadas. */
+/** Mano en abanico, con cartas ligeramente rotadas y solapadas. El tamaño de carta
+ *  se pasa desde el tablero (proporcional a su alto) para respetar la escala 1:1. */
 @Composable
 fun HandFan(
     cards: List<Card>,
@@ -118,38 +131,96 @@ fun HandFan(
     onSelect: (Card) -> Unit,
     modifier: Modifier = Modifier,
     selectedId: CardId? = null,
+    cardW: androidx.compose.ui.unit.Dp = 76.dp,
+    cardH: androidx.compose.ui.unit.Dp = 106.dp,
+    // Arrastre de cartas (energía a un Pokémon, o evolución sobre su pre-evolución).
+    // Posiciones en coords de RAÍZ. `canDrag` decide qué cartas son arrastrables.
+    canDrag: (Card) -> Boolean = { false },
+    onCardDragStart: ((Card, Offset) -> Unit)? = null,
+    onCardDrag: ((Offset) -> Unit)? = null,
+    onCardDragEnd: (() -> Unit)? = null,
+    onCardDragCancel: (() -> Unit)? = null,
 ) {
+    // El gesto de arrastre vive en un `pointerInput(card.id)` que captura sus lambdas
+    // UNA sola vez (la clave no cambia). Sin esto, `onCardDragEnd` quedaba congelado en
+    // la PRIMERA composición —cuando aún no se arrastra nada— y perdía los valores que
+    // el tablero calcula por composición al arrastrar (objetivo de Objeto dirigido/
+    // Herramienta, estado vigente). Resultado: la Poción y demás Objetos dirigidos no se
+    // jugaban al soltarlos. `rememberUpdatedState` mantiene vivas las ÚLTIMAS lambdas.
+    val latestOnDragStart by rememberUpdatedState(onCardDragStart)
+    val latestOnDrag by rememberUpdatedState(onCardDrag)
+    val latestOnDragEnd by rememberUpdatedState(onCardDragEnd)
+    val latestOnDragCancel by rememberUpdatedState(onCardDragCancel)
     val center = (cards.size - 1) / 2f
+    val maxAbs = center.coerceAtLeast(1f)
+    // Solape moderado: cartas separadas y legibles como en TCG Live (ref_0040).
+    val overlap = cardW * 0.24f
     Row(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy((-22).dp, Alignment.CenterHorizontally),
+            .padding(horizontal = 12.dp)
+            .padding(top = 4.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(-overlap, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Bottom,
     ) {
         cards.forEachIndexed { i, card ->
             val delta = i - center
-            val angle = (delta * 4.5f)
-            val baseLift = (abs(delta) * abs(delta) * 1.6f).dp
+            val norm = delta / maxAbs                      // -1 (izq) .. 1 (der)
             val isSel = selectedId != null && card.id == selectedId
-            // La carta seleccionada se eleva, se endereza y pasa al frente.
-            val lift = if (isSel) 0.dp else baseLift
+            // Abanico SUTIL como TCG Live: rotación pequeña con pivote en la BASE, y un
+            // arco muy suave (colina) donde la carta central sube apenas y los extremos
+            // quedan en la línea base (nada se hunde bajo el borde inferior).
+            val angle = if (isSel) 0f else norm * 5f
+            val hill = cardH * (0.05f * (1f - norm * norm))
+            val lift = if (isSel) cardH * 0.16f else hill
+            val cardScale = if (isSel) 1.14f else 1f
             val energyBg = energyCardColor(card)
+            // Cartas arrastrables (energías / evoluciones) según `canDrag`.
+            val draggable = enabled && canDrag(card) && onCardDragStart != null
+            var cardCoords by remember(card.id) { mutableStateOf<LayoutCoordinates?>(null) }
             Box(
                 modifier = Modifier
-                    .zIndex(if (isSel) 1f else 0f)
-                    .padding(top = lift)
-                    .rotate(if (isSel) 0f else angle)
-                    .scale(if (isSel) 1.14f else 1f)
-                    .size(76.dp, 106.dp)
+                    .zIndex(if (isSel) 2f else 0f)
+                    // Rotación/escala como capa de DIBUJO con pivote en la BASE de la carta
+                    // → abanico limpio (bases convergen, puntas se despliegan) sin sumar
+                    // alto de layout ni comprimir/deformar la carta.
+                    .graphicsLayer {
+                        rotationZ = angle
+                        scaleX = cardScale; scaleY = cardScale
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                    }
+                    .offset(y = -lift)
+                    .size(cardW, cardH)
                     .clip(RoundedCornerShape(7.dp))
                     .border(
                         if (isSel) 2.dp else 1.dp,
                         if (isSel) BattleTheme.Gold else BattleTheme.Gold.copy(alpha = 0.5f),
                         RoundedCornerShape(7.dp),
                     )
-                    .clickable(enabled = enabled) { onSelect(card) },
+                    .onGloballyPositioned { cardCoords = it }
+                    // Tocar una carta SIEMPRE la inspecciona (también en el turno del
+                    // rival), para poder leer las cartas de la mano en cualquier momento.
+                    // El arrastre (jugar) sí queda restringido por `enabled`/`draggable`.
+                    .then(
+                        if (draggable) Modifier.pointerInput(card.id) {
+                            // Solo el arrastre VERTICAL (hacia arriba, hacia el tablero)
+                            // levanta la carta; el gesto horizontal NO se consume y lo recibe
+                            // el horizontalScroll de la fila, permitiendo DESLIZAR la mano
+                            // para ojearla sin arrastrar cartas.
+                            detectVerticalDragGestures(
+                                onDragStart = { local ->
+                                    cardCoords?.let { latestOnDragStart?.invoke(card, it.localToRoot(local)) }
+                                },
+                                onVerticalDrag = { change, _ ->
+                                    cardCoords?.let { latestOnDrag?.invoke(it.localToRoot(change.position)) }
+                                },
+                                onDragEnd = { latestOnDragEnd?.invoke() },
+                                onDragCancel = { latestOnDragCancel?.invoke() },
+                            )
+                        } else Modifier,
+                    )
+                    .clickable { onSelect(card) },
             ) {
                 if (energyBg != null) {
                     // Energía: tarjeta de color con el símbolo centrado (estilo TCG Live).
@@ -251,6 +322,39 @@ fun CardDetailSheet(
             ) {
                 Text("✕", color = TcgColors.Parchment, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
+        }
+    }
+}
+
+/**
+ * Visor de carta en HD a pantalla completa: SOLO la carta grande sobre un velo
+ * oscuro, centrada; se toca en cualquier parte para cerrar. Sin texto ni acciones
+ * —pensado para LEER la carta como en TCG Live—. El arte se muestra con su aspecto
+ * exacto de carta (no se deforma) y ocupa casi todo el ancho.
+ */
+@Composable
+fun CardHdViewer(imageUrl: String, onDismiss: () -> Unit) {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(tween(180)),
+        exit = fadeOut(tween(150)),
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color(0xE6000000))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .aspectRatio(BoardGeometry.CardAspect)
+                    .clip(RoundedCornerShape(18.dp)),
+            )
         }
     }
 }

@@ -21,6 +21,12 @@ data class PokemonInPlay(
     /** Pila de evolución debajo de esta carta (de más antigua a más reciente). */
     val evolutionStack: List<PokemonCard> = emptyList(),
     val turnsInPlay: Int = 0,
+    /**
+     * Si no es null, número de turno en el que este Pokémon NO puede atacar
+     * (Jet Wing y similares: "durante tu próximo turno, este Pokémon no puede
+     * atacar"). Se compara contra [GameState.turn] en el motor.
+     */
+    val cannotAttackOnTurn: Int? = null,
 ) {
     val remainingHp: Int get() = (card.hp - damage).coerceAtLeast(0)
     val isKnockedOut: Boolean get() = damage >= card.hp
@@ -67,6 +73,13 @@ data class GameState(
     val energyAttachedThisTurn: Boolean = false,
     /** Habilidades 1/turno ya usadas este turno (por id de Pokémon). */
     val abilitiesUsedThisTurn: Set<CardId> = emptySet(),
+    /**
+     * Lados que tuvieron algún Pokémon Noqueado DURANTE el último turno del rival
+     * (no en el propio, p.ej. por recoil). Habilita cartas condicionales como
+     * Mela ("solo si te noquearon el turno pasado"). Se limpia para un lado
+     * cuando termina SU turno (así refleja siempre el turno rival más reciente).
+     */
+    val koedLastOppTurn: Set<Side> = emptySet(),
 ) {
     fun sideState(side: Side): PlayerState = if (side == Side.PLAYER) player else opponent
     val activePlayer: PlayerState get() = sideState(activeSide)

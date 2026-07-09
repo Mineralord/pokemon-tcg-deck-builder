@@ -31,4 +31,5 @@ dependencies {
     api(libs.compose.material3)
     api(libs.compose.ui.tooling.preview)
     debugApi(libs.compose.ui.tooling)
+    implementation(libs.coil.compose)
 }

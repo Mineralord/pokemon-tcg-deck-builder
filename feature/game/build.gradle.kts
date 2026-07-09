@@ -29,6 +29,8 @@ dependencies {
     implementation(project(":engine:rules"))
     implementation(project(":data:cards"))
     implementation(project(":data:profile"))
+    // Protocolo de red (host-autoritativo): NetMessage/DTOs + interfaz de transporte.
+    implementation(project(":data:netplay"))
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -5,6 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -28,18 +31,36 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.core.designsystem.TcgTheme
 import com.mineralord.tcg.feature.decks.DecksScreen
 import com.mineralord.tcg.feature.game.GameScreen
+import com.mineralord.tcg.feature.game.MatchmakingScreen
+import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 
-private enum class Screen { HOME, COLLECTION, PACKS, DECKS, GAME, PROFILE }
+private enum class Screen { HOME, COLLECTION, PACKS, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Inmersivo GLOBAL (todas las pantallas, actuales y futuras): oculta las barras
+        // de estado y navegación como TCG Live. El tablero ocupa la pantalla completa.
+        hideSystemBars()
         setContent {
             TcgTheme {
                 AppShell()
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Re-oculta al recuperar el foco (tras notificaciones, diálogos o volver de fondo).
+        if (hasFocus) hideSystemBars()
+    }
+
+    private fun hideSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
 }
@@ -57,9 +78,20 @@ private fun AppShell() {
             onTienda = { screen = Screen.PACKS },
             onBarajas = { screen = Screen.DECKS },
             onPerfil = { screen = Screen.PROFILE },
-            onJugar = { screen = Screen.GAME },
+            onJugar = { screen = Screen.MATCHMAKING },
+            onJugarOnline = { screen = Screen.ONLINE },
+        )
+        Screen.MATCHMAKING -> MatchmakingScreen(
+            deckName = "Mega-Charizard X ex",
+            onCancel = { screen = Screen.HOME },
+            onMatched = { screen = Screen.GAME },
+            modifier = Modifier.fillMaxSize(),
         )
         Screen.GAME -> GameScreen(
+            onExit = { screen = Screen.HOME },
+            modifier = Modifier.fillMaxSize(),
+        )
+        Screen.ONLINE -> OnlineGameScreen(
             onExit = { screen = Screen.HOME },
             modifier = Modifier.fillMaxSize(),
         )

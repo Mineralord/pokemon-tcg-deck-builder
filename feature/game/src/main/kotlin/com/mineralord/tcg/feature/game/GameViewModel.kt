@@ -11,22 +11,19 @@ import com.mineralord.tcg.engine.events.CombatLog
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.GameState
+import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.Side
+import com.mineralord.tcg.engine.model.withId
 import com.mineralord.tcg.engine.rules.GameEngine
 import com.mineralord.tcg.engine.rules.GameIntent
 import com.mineralord.tcg.engine.rules.GameSetup
 import com.mineralord.tcg.engine.rules.SeededRng
 import com.mineralord.tcg.engine.rules.SmartAgent
-import com.mineralord.tcg.engine.events.GameEvent
 import com.mineralord.tcg.feature.game.anim.FxCue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,6 +32,15 @@ import kotlinx.coroutines.withContext
 data class GameUiState(
     val loading: Boolean = true,
     val state: GameState? = null,
+    /** No null durante el lanzamiento de moneda inicial (antes de la preparación). */
+    val coinFlip: CoinFlipUiState? = null,
+    /** No null durante el reparto animado de la mano inicial (tras la moneda). */
+    val dealing: DealUiState? = null,
+    /** No null durante la preparación interactiva (elegir Activo/Banca). */
+    val setup: SetupUiState? = null,
+    /** true durante el revelado inicial: el rival voltea sus Pokémon y se reparten
+     *  los premios, antes de ceder el control del primer turno. */
+    val revealing: Boolean = false,
     val log: List<String> = emptyList(),
     /** Mensaje transitorio (acción ilegal, etc.); se limpia en la próxima acción. */
     val message: String? = null,
@@ -43,44 +49,256 @@ data class GameUiState(
 )
 
 /**
- * Orquesta una partida del jugador (lado [Side.PLAYER]) contra la IA
- * ([SmartAgent], lado [Side.OPPONENT]). Construye los mazos desde el perfil
- * (baraja activa) y un mazo inicial rival, arranca con [GameSetup], aplica los
- * intents del jugador y deja que la IA juegue su turno automáticamente.
+ * Estado de la preparación interactiva: la mano repartida del jugador, sus
+ * Básicos elegibles y las elecciones actuales de Activo y Banca. Mientras exista,
+ * la pantalla muestra el overlay de setup en vez del tablero jugable.
  */
-class GameViewModel(app: Application) : AndroidViewModel(app) {
+/** Fase del lanzamiento de moneda inicial (réplica de TCG Live). CHOOSE_ORDER =
+ *  el jugador ganó el volado y elige quién empieza (regla oficial: el ganador decide). */
+enum class CoinPhase { CHOOSING, SPINNING, RESULT, CHOOSE_ORDER }
+
+/**
+ * Estado del reparto animado de la mano inicial: las 7 cartas que salen del mazo
+ * hacia la mano, en orden. La UI las anima (mazo→abanico) y avisa al terminar.
+ */
+data class DealUiState(val hand: List<Card>)
+
+/** Estado del volado de moneda: elección del jugador, resultado y quién empieza. */
+data class CoinFlipUiState(
+    val phase: CoinPhase,
+    /** Elección del jugador: true = cara, false = cruz. */
+    val call: Boolean? = null,
+    /** Resultado del volado: true = cara, false = cruz. */
+    val result: Boolean? = null,
+    val playerWon: Boolean? = null,
+    val message: String? = null,
+)
+
+data class SetupUiState(
+    val hand: List<Card>,
+    val basics: List<PokemonCard>,
+    val activeId: CardId? = null,
+    val benchIds: List<CardId> = emptyList(),
+) {
+    /** ¿Se puede confirmar? Basta con haber elegido Activo. */
+    val canConfirm: Boolean get() = activeId != null
+}
+
+/**
+ * Orquesta una partida del jugador (lado [Side.PLAYER]) contra la IA
+ * ([SmartAgent], lado [Side.OPPONENT]). La lógica de juego COMPARTIDA (estado,
+ * preparación, pipeline de intents, FX, fin de partida) vive en [GameCore]; aquí
+ * solo queda lo específico del modo PvE: construir los mazos, la ceremonia local
+ * (moneda/reparto/revelado) y dejar jugar a la IA. El modo online reutiliza el
+ * mismo [GameCore] desde [OnlineGameController], sin duplicar esa lógica.
+ */
+private const val REVEAL_MS = 2000L
+
+/** Modo de VERIFICACIÓN: arranca el tablero con la Banca llena (5) en ambos lados,
+ *  saltándose moneda/reparto/preparación. Solo para inspeccionar la maquetación del
+ *  panal 3+2. Poner en false para el flujo normal de partida. */
+private const val DEBUG_FULL_BENCH = false
+
+class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
 
     private val profileRepo = ProfileRepository(app)
-    private lateinit var repo: CardRepository
     private lateinit var engine: GameEngine
     private lateinit var agent: SmartAgent
-    private lateinit var combatLog: CombatLog
 
-    private var state: GameState? = null
-    private val log = mutableListOf<String>()
+    /** Núcleo compartido: dueño del estado de UI, la preparación y el pipeline de intents. */
+    private val core = GameCore(viewModelScope)
 
-    private val _ui = MutableStateFlow(GameUiState())
-    val ui: StateFlow<GameUiState> = _ui.asStateFlow()
+    override val ui: StateFlow<GameUiState> = core.ui
+    override val fx: SharedFlow<FxCue> = core.fx
 
-    /** Señales de animación (número de daño, embate, KO, premios, moneda). */
-    private val _fx = MutableSharedFlow<FxCue>(extraBufferCapacity = 64)
-    val fx: SharedFlow<FxCue> = _fx.asSharedFlow()
+    // Repartos guardados hasta que el jugador confirme su preparación.
+    private var playerDealt: GameSetup.DealtSide? = null
+    private var opponentDealt: GameSetup.DealtSide? = null
+    /** Mulligans de cada lado (para la compensación oficial de robo del rival). */
+    private var playerMulligans = 0
+    private var opponentMulligans = 0
+    /** Quién empieza (lo decide el ganador del volado). Se aplica en [confirmSetup]. */
+    private var firstSide: Side = Side.PLAYER
 
     init {
         viewModelScope.launch {
-            repo = withContext(Dispatchers.Default) { CardRepository.load() }
-            combatLog = CombatLog(
+            val repo = withContext(Dispatchers.Default) { CardRepository.load() }
+            core.repo = repo
+            core.combatLog = CombatLog(
                 spanish = true,
-                cardName = { id -> repo[id]?.name?.es ?: id.raw },
+                cardName = { id -> repo[id.printed]?.name?.es ?: id.printed.raw },
                 sideName = { s -> if (s == Side.PLAYER) "Tú" else "Rival" },
             )
+            // Tablero provisional PvE: ambos repartos guardados (rival auto-elegido).
+            core.buildProvisional = provisional@{ activeId, benchIds ->
+                val mine = playerDealt ?: return@provisional null
+                val opp = opponentDealt ?: return@provisional null
+                GameSetup.provisional(
+                    player = mine,
+                    playerActiveId = activeId,
+                    playerBenchIds = benchIds,
+                    opponent = GameSetup.autoChoose(opp),
+                )
+            }
+            // Punto de extensión para recompensas de PvE (aún sin premio concreto).
+            core.onGameFinished = { winner -> onGameFinished(winner) }
+
             val (playerCards, oppCards) = withContext(Dispatchers.Default) { buildDecks() }
             engine = GameEngine(SeededRng(System.nanoTime()))
             agent = SmartAgent(engine)
-            val initial = GameSetup.start(playerCards, oppCards, SeededRng(System.nanoTime()))
-            state = initial
-            log += "¡Comienza el combate! Es tu turno."
-            emit()
+            core.engine = engine
+
+            // MODO DEPURACIÓN: arranca directo en el tablero con la Banca LLENA (5) en
+            // ambos lados, para VERIFICAR la maquetación del panal 3+2 sin jugar la
+            // preparación. Poner en false para el flujo normal (moneda → reparto → prep).
+            if (DEBUG_FULL_BENCH) {
+                core.state = GameSetup.debugFullBench(playerCards, oppCards, SeededRng(System.nanoTime()))
+                core.log += "[DEBUG] Tablero con banca llena (5) para verificación."
+                core.emit()
+                return@launch
+            }
+
+            // Reparto interactivo: ambos lados roban 7. Si un lado no saca ningún
+            // Básico, rebaraja (MULLIGAN) y se cuenta para la compensación oficial.
+            val dealRng = SeededRng(System.nanoTime())
+            val (dealt, pm) = GameSetup.dealCounting(playerCards, dealRng)
+            val (oDealt, om) = GameSetup.dealCounting(oppCards, dealRng)
+            playerDealt = dealt
+            opponentDealt = oDealt
+            playerMulligans = pm
+            opponentMulligans = om
+            // Primero el lanzamiento de moneda inicial; al resolverse pasa a la
+            // preparación (elegir Activo/Banca). Los repartos ya quedaron guardados.
+            core.coinFlip = CoinFlipUiState(CoinPhase.CHOOSING)
+            core.log += "Lanzamiento de moneda inicial: elige cara o cruz."
+            core.emit()
+        }
+    }
+
+    // -------------------------------------------------- lanzamiento de moneda
+
+    /** El jugador elige cara (true) o cruz (false); anima el volado y resuelve. */
+    override fun chooseCoin(heads: Boolean) {
+        val cf = core.coinFlip ?: return
+        if (cf.phase != CoinPhase.CHOOSING) return
+        core.coinFlip = cf.copy(phase = CoinPhase.SPINNING, call = heads)
+        core.emit()
+        viewModelScope.launch {
+            val result = kotlin.random.Random.nextBoolean()
+            core.tryEmitFx(FxCue.Coin(Side.PLAYER, result))
+            delay(1600) // giro de la moneda
+            val won = result == heads
+            if (won) {
+                // Regla oficial: el ganador del volado decide quién empieza.
+                core.coinFlip = CoinFlipUiState(
+                    CoinPhase.CHOOSE_ORDER, call = heads, result = result, playerWon = true,
+                    message = "Has ganado el lanzamiento. ¿Quién empieza?",
+                )
+                core.emit()
+                // Espera a chooseFirst().
+            } else {
+                // El rival gana y decide empezar él (jugarás segundo).
+                firstSide = Side.OPPONENT
+                core.coinFlip = CoinFlipUiState(
+                    CoinPhase.RESULT, call = heads, result = result, playerWon = false,
+                    message = "El rival ha ganado y decide empezar. Jugarás segundo.",
+                )
+                core.emit()
+                delay(2400)
+                beginDeal()
+            }
+        }
+    }
+
+    /** El jugador (que ganó el volado) elige quién toma el primer turno. */
+    override fun chooseFirst(playerFirst: Boolean) {
+        val cf = core.coinFlip ?: return
+        if (cf.phase != CoinPhase.CHOOSE_ORDER) return
+        firstSide = if (playerFirst) Side.PLAYER else Side.OPPONENT
+        core.coinFlip = cf.copy(
+            phase = CoinPhase.RESULT,
+            message = if (playerFirst) "Empiezas tú." else "Cedes el primer turno: empieza el rival.",
+        )
+        core.emit()
+        viewModelScope.launch {
+            delay(1600)
+            beginDeal()
+        }
+    }
+
+    // -------------------------------------------------------------- reparto (7)
+
+    /**
+     * Tras el volado, reparte la mano inicial: la UI anima las 7 cartas saliendo
+     * del mazo hacia el abanico. El reparto (con mulligan) ya se resolvió en init.
+     */
+    private fun beginDeal() {
+        val dealt = playerDealt ?: return
+        core.coinFlip = null
+        core.dealing = DealUiState(dealt.hand)
+        core.log += "Robas tu mano inicial (7 cartas)."
+        core.emit()
+    }
+
+    /** La UI avisa que terminó la animación del reparto; pasa a la preparación. */
+    override fun onDealComplete() {
+        if (core.dealing == null) return
+        core.dealing = null
+        beginSetup()
+    }
+
+    /** Tras el reparto, arranca la preparación interactiva desde el reparto guardado. */
+    private fun beginSetup() {
+        val dealt = playerDealt ?: return
+        core.coinFlip = null
+        core.dealing = null
+        core.setup = SetupUiState(hand = dealt.hand, basics = GameSetup.basicsIn(dealt))
+        core.rebuildProvisional()
+        core.log += "Elige tu Pokémon Activo y coloca tu Banca."
+        core.emit()
+    }
+
+    // ------------------------------------------------------------- preparación
+    // Las mutaciones de preparación son idénticas en ambos modos → viven en [GameCore].
+
+    override fun chooseActive(id: CardId) = core.chooseActive(id)
+
+    override fun clearActive() = core.clearActive()
+
+    override fun toggleBench(id: CardId) = core.toggleBench(id)
+
+    /** Confirma la preparación: resuelve al rival, reparte premios y arranca el combate. */
+    override fun confirmSetup() {
+        val s = core.setup ?: return
+        val activeId = s.activeId ?: return
+        val mine = playerDealt ?: return
+        val opp = opponentDealt ?: return
+        val gs0 = GameSetup.finish(
+            player = GameSetup.SideChoice(mine, activeId, s.benchIds),
+            opponent = GameSetup.autoChoose(opp),
+            firstSide = firstSide,
+        )
+        // Compensación oficial por MULLIGAN: el rival de quien rebarajó roba 1 carta
+        // extra por cada mulligan que hizo el otro.
+        var gs = GameSetup.drawExtra(gs0, Side.OPPONENT, playerMulligans)
+        gs = GameSetup.drawExtra(gs, Side.PLAYER, opponentMulligans)
+        core.setup = null
+        core.state = gs
+        if (playerMulligans > 0) core.log += "Hiciste $playerMulligans mulligan(s): el rival roba $playerMulligans carta(s) extra."
+        if (opponentMulligans > 0) core.log += "El rival hizo $opponentMulligans mulligan(s): robas $opponentMulligans carta(s) extra."
+        // Revelado inicial: el rival voltea sus Pokémon y se reparten los premios.
+        // La UI reproduce el volteo/entrada; al terminar cedemos el primer turno.
+        core.revealing = true
+        core.log += "Ambos entrenadores revelan sus Pokémon."
+        core.emit()
+        viewModelScope.launch {
+            delay(REVEAL_MS)
+            core.revealing = false
+            core.log += if (firstSide == Side.PLAYER) "¡Comienza el combate! Es tu turno."
+                        else "¡Comienza el combate! Empieza el rival."
+            core.emit()
+            // Si empieza el rival, deja que la IA juegue su primer turno hasta cederte el control.
+            if (core.state?.activeSide == Side.OPPONENT) advanceAi()
         }
     }
 
@@ -92,103 +310,88 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             ?: StarterDecks.ALL.first().toDeck()
         val oppStarter = StarterDecks.ALL.firstOrNull { it.id != playerDeck.id }
             ?: StarterDecks.ALL.first()
-        val playerCards = playerDeck.expandedCardIds().mapNotNull { repo[it] }
-        val oppCards = oppStarter.toDeck().expandedCardIds().mapNotNull { repo[it] }
+        // Cada copia física recibe un id de INSTANCIA único, para que copias de la
+        // misma carta impresa sean independientes en juego (energía/evolución/descarte).
+        val playerCards = uniquify(playerDeck.expandedCardIds().mapNotNull { core.repo[it] })
+        val oppCards = uniquify(oppStarter.toDeck().expandedCardIds().mapNotNull { core.repo[it] })
         return playerCards to oppCards
     }
 
+    /** Asigna a cada carta de la lista un id de instancia único (índice global). */
+    private fun uniquify(cards: List<Card>): List<Card> =
+        cards.mapIndexed { i, c -> c.withId(c.id.withInstance(i)) }
+
     /** Nombre legible de una carta (para etiquetas de decisión, etc.). */
-    fun cardName(id: CardId): String = repo[id]?.name?.es ?: id.raw
+    override fun cardName(id: CardId): String = cardNameOf(core.repo, id)
+
+    /** Resuelve la carta por id en cualquier zona del estado (helper compartido). */
+    override fun card(id: CardId): Card? = lookupCard(core.state, core.repo, id)
 
     /** Jugadas legales del lado en turno (vacío si hay decisión pendiente). */
     fun legalIntents(): List<GameIntent> =
-        state?.let { engine.legalIntents(it) } ?: emptyList()
+        core.state?.let { engine.legalIntents(it) } ?: emptyList()
 
     /** Aplica un intent del jugador y, si procede, deja jugar a la IA. */
-    fun onIntent(intent: GameIntent) {
-        val current = state ?: return
+    override fun onIntent(intent: GameIntent) {
+        val current = core.state ?: return
         if (current.isOver) return
-        viewModelScope.launch { applyAndAdvance(current, intent) }
+        viewModelScope.launch { applyAndAdvance(intent) }
     }
 
     /** Resuelve la decisión pendiente con las cartas elegidas. */
-    fun onResolve(chosen: List<CardId>) = onIntent(GameIntent.ResolveDecision(chosen))
+    override fun onResolve(chosen: List<CardId>) = onIntent(GameIntent.ResolveDecision(chosen))
 
-    private suspend fun applyAndAdvance(current: GameState, intent: GameIntent) {
-        val res = engine.apply(current, intent)
-        if (!res.accepted) {
-            _ui.value = _ui.value.copy(message = res.rejection)
-            return
+    /** Juega un Objeto dirigido (Poción…) sobre un Pokémon y luego deja jugar a la IA. */
+    override fun playItemOn(cardId: CardId, targetId: CardId) {
+        val current = core.state ?: return
+        if (current.isOver) return
+        viewModelScope.launch {
+            val results = core.applyItemOnTarget(cardId, targetId)
+            results.forEach { core.playEventFx(it.events) }
+            advanceAi()
         }
-        state = res.state
-        res.events.forEach { log += combatLog.render(it) }
-        emit()
-        playFx(res.events)
+    }
 
-        // Turno de la IA (incluye resolver sus propias decisiones). Guarda de
-        // progreso por si insistiera en algo ilegal.
-        var guard = 0
-        while (!(state?.isOver ?: true) && state?.activeSide == Side.OPPONENT && guard++ < 80) {
-            _ui.value = _ui.value.copy(aiThinking = true)
-            delay(450)
-            val s = state ?: break
-            val ai = agent.decide(s, Side.OPPONENT)
-            val r = engine.apply(s, ai)
-            if (!r.accepted) {
-                val forced = engine.apply(s, GameIntent.EndTurn)
-                state = forced.state
-                forced.events.forEach { log += combatLog.render(it) }
-                emit()
-                continue
-            }
-            state = r.state
-            r.events.forEach { log += combatLog.render(it) }
-            emit()
-            playFx(r.events)
+    private suspend fun applyAndAdvance(intent: GameIntent) {
+        val res = core.applyLocal(intent) ?: return
+        // En modo VERIFICACIÓN, permite arrastrar varias energías por turno (la regla
+        // real es una por turno) para poder probar el arrastre sin ciclar turnos.
+        if (DEBUG_FULL_BENCH && intent is GameIntent.AttachEnergy) {
+            core.state = core.state?.copy(energyAttachedThisTurn = false)
+            core.emit()
         }
-        _ui.value = _ui.value.copy(aiThinking = false)
+        core.playEventFx(res.events)
+        advanceAi()
     }
 
     /**
-     * Reemite los eventos del motor como [FxCue] para la UI, espaciando los
-     * golpes para que las animaciones no se solapen (feel de TCG Live).
+     * Deja jugar a la IA (lado [Side.OPPONENT]) hasta que ceda el turno al jugador
+     * o termine la partida. Incluye resolver sus propias decisiones. Guarda de
+     * progreso por si insistiera en algo ilegal. Reutilizable desde [applyAndAdvance]
+     * y desde [confirmSetup] cuando el rival empieza (ganó/eligió el primer turno).
      */
-    private suspend fun playFx(events: List<GameEvent>) {
-        for (e in events) {
-            val cue = e.toFxCue() ?: continue
-            _fx.emit(cue)
-            when (cue) {
-                is FxCue.Attack -> delay(220)
-                is FxCue.Damage -> delay(360)
-                is FxCue.Knockout -> delay(420)
-                is FxCue.Prize -> delay(200)
-                is FxCue.Coin -> delay(700)
-                else -> {}
+    private suspend fun advanceAi() {
+        var guard = 0
+        while (!(core.state?.isOver ?: true) && core.state?.activeSide == Side.OPPONENT && guard++ < 80) {
+            core.aiThinking = true
+            core.emit()
+            delay(450)
+            val s = core.state ?: break
+            val ai = agent.decide(s, Side.OPPONENT)
+            val r = engine.apply(s, ai)
+            if (!r.accepted) {
+                core.commit(engine.apply(s, GameIntent.EndTurn))
+                continue
             }
+            core.commit(r)
+            core.playEventFx(r.events)
         }
+        core.aiThinking = false
+        core.emit()
     }
 
-    /** Mapea un [GameEvent] al cue visual, normalizando el lado que muestra el FX. */
-    private fun GameEvent.toFxCue(): FxCue? = when (this) {
-        is GameEvent.Attacked -> FxCue.Attack(side)
-        // El daño lo recibe el rival del atacante.
-        is GameEvent.DamageDealt -> FxCue.Damage(side.other(), amount, weaknessApplied, resistanceApplied)
-        is GameEvent.Healed -> FxCue.Heal(side, amount)
-        is GameEvent.KnockedOut -> FxCue.Knockout(side)
-        is GameEvent.PrizeTaken -> FxCue.Prize(side, count)
-        is GameEvent.CoinFlipped -> FxCue.Coin(side, heads)
-        else -> null
-    }
-
-    private fun Side.other(): Side = if (this == Side.PLAYER) Side.OPPONENT else Side.PLAYER
-
-    private fun emit() {
-        _ui.value = GameUiState(
-            loading = false,
-            state = state,
-            log = log.toList(),
-            message = null,
-            aiThinking = _ui.value.aiThinking,
-        )
+    /** Punto de extensión para recompensas de PvE (por ahora sin premio concreto). */
+    private fun onGameFinished(winner: Side) {
+        // TODO(recompensas): otorgar recompensa de PvE cuando winner == Side.PLAYER.
     }
 }

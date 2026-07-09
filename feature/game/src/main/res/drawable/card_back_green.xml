@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="100dp"
+    android:height="140dp"
+    android:viewportWidth="100"
+    android:viewportHeight="140">
+
+    <!-- Base con degradado verde (dorso del jugador en Combate 1) -->
+    <path android:pathData="M0,0 h100 v140 h-100 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="0" android:endY="140">
+                <item android:offset="0" android:color="#FF2E8B57" />
+                <item android:offset="0.55" android:color="#FF1E6E40" />
+                <item android:offset="1" android:color="#FF124A2A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Retícula tenue en diagonal (motivo original) -->
+    <path android:strokeColor="#22FFFFFF" android:strokeWidth="1"
+        android:pathData="M-20,20 L120,-20 M-20,60 L120,20 M-20,100 L120,60 M-20,140 L120,100 M-20,180 L120,140" />
+
+    <!-- Rombo/gema central dorada -->
+    <path android:fillColor="#33E4AB5E"
+        android:pathData="M50,52 L64,70 L50,88 L36,70 z" />
+    <path android:strokeColor="#CCE4AB5E" android:strokeWidth="2"
+        android:pathData="M50,52 L64,70 L50,88 L36,70 z" />
+    <path android:strokeColor="#66E4AB5E" android:strokeWidth="1"
+        android:pathData="M50,58 L58,70 L50,82 L42,70 z" />
+
+    <!-- Marco dorado interior -->
+    <path android:strokeColor="#88E4AB5E" android:strokeWidth="2"
+        android:pathData="M4,4 h92 v132 h-92 z" />
+</vector>

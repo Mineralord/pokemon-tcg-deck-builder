@@ -104,9 +104,14 @@ class ProfileRepository(context: Context) {
      */
     suspend fun seedDecksOnce(initialDecks: List<Deck>) {
         store.edit { prefs ->
-            if (prefs[DECKS_SEEDED] == true) return@edit
+            // Sembrar si nunca se sembró O si el usuario se quedó SIN barajas (p.ej.
+            // tras importar de la nube un snapshot vacío/antiguo, que además marca
+            // DECKS_SEEDED=true). Así los starters siempre reaparecen; no pisa barajas
+            // existentes (si ya hay alguna, no se hace nada).
+            val current = readDecks(prefs)
+            if (prefs[DECKS_SEEDED] == true && current.isNotEmpty()) return@edit
             prefs[DECKS] = json.encodeToString(decksSerializer, initialDecks.map { it.toDto() })
-            initialDecks.firstOrNull()?.let { prefs[ACTIVE_DECK] = it.id }
+            if (prefs[ACTIVE_DECK] == null) initialDecks.firstOrNull()?.let { prefs[ACTIVE_DECK] = it.id }
             prefs[DECKS_SEEDED] = true
             prefs.touch()
         }

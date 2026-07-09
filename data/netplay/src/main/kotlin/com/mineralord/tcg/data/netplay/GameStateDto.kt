@@ -1,7 +1,9 @@
 package com.mineralord.tcg.data.netplay
 
 import com.mineralord.tcg.data.cards.CardRepository
+import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.withId
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.LocalizedText
@@ -34,6 +36,7 @@ data class PokemonInPlayDto(
     val statuses: List<String> = emptyList(),
     val evolutionStack: List<String> = emptyList(),
     val turnsInPlay: Int = 0,
+    val cannotAttackOnTurn: Int? = null,
 )
 
 @Serializable
@@ -47,6 +50,12 @@ data class PlayerStateDto(
     val lostZone: List<String> = emptyList(),
     val prizes: List<String> = emptyList(),
     val prizesRemaining: Int = 0,
+    // Conteos de las zonas OCULTAS. En un snapshot censurado (para el rival) las
+    // listas de ids van vacías y solo viaja el conteo (la UI las pinta como dorsos).
+    // Por defecto = tamaño de la lista, para no alterar el caso local/IA.
+    val handCount: Int = 0,
+    val deckCount: Int = 0,
+    val prizeCount: Int = 0,
 )
 
 /**
@@ -55,7 +64,7 @@ data class PlayerStateDto(
  * autoritativo, único que ejecuta el motor.
  */
 @Serializable
-enum class DecisionKindDto { CHOOSE_TARGETS, SEARCH_CARDS, MOVE_ENERGY }
+enum class DecisionKindDto { CHOOSE_TARGETS, SEARCH_CARDS, MOVE_ENERGY, ATTACH_FROM_REVEALED, COIN_FLIP }
 
 @Serializable
 data class PendingDecisionDto(
@@ -65,6 +74,9 @@ data class PendingDecisionDto(
     val promptEn: String,
     val candidates: List<String>,
     val count: Int,
+    // Solo para COIN_FLIP: cartas a robar según cara/cruz.
+    val ifHeads: Int = 0,
+    val ifTails: Int = 0,
 )
 
 @Serializable
@@ -84,6 +96,7 @@ data class GameStateDto(
 
 // ----------------------------------------------------------------- a DTO
 
+/** Snapshot COMPLETO sin censura (uso local/IA: ambos lados en el mismo dispositivo). */
 fun GameState.toDto(): GameStateDto = GameStateDto(
     player = player.toDto(),
     opponent = opponent.toDto(),
@@ -98,16 +111,52 @@ fun GameState.toDto(): GameStateDto = GameStateDto(
     abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { it.raw },
 )
 
-private fun PlayerState.toDto() = PlayerStateDto(
-    side = side.name,
+/**
+ * Snapshot en el MARCO del [viewer]: el viewer se coloca como [Side.PLAYER] (abajo)
+ * y el rival como [Side.OPPONENT] (arriba), con las zonas OCULTAS del rival
+ * (mano/mazo/premios) censuradas a solo su conteo. Así el receptor reutiliza
+ * `GameScreen` sin espejar y sin recibir información oculta del contrario.
+ * Lo usa el HOST autoritativo para enviar a cada jugador su vista.
+ */
+fun GameState.toDtoFor(viewer: Side): GameStateDto {
+    val other = if (viewer == Side.PLAYER) Side.OPPONENT else Side.PLAYER
+    fun frame(s: Side): Side = if (s == viewer) Side.PLAYER else Side.OPPONENT
+    return GameStateDto(
+        player = sideState(viewer).toDto(frameSide = Side.PLAYER, censorHidden = false),
+        opponent = sideState(other).toDto(frameSide = Side.OPPONENT, censorHidden = true),
+        turn = turn,
+        activeSide = frame(activeSide).name,
+        phase = phase.name,
+        stadium = stadium?.id?.raw,
+        winner = winner?.let { frame(it).name },
+        decision = interaction?.decision?.toDto(::frame),
+        supporterPlayedThisTurn = supporterPlayedThisTurn,
+        energyAttachedThisTurn = energyAttachedThisTurn,
+        abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { it.raw },
+    )
+}
+
+/**
+ * @param frameSide nombre de lado a escribir en el DTO (para reencuadre de perspectiva).
+ * @param censorHidden si true, mano/mazo/premios viajan SOLO como conteo (rival).
+ *   El tablero (activo/banca), el descarte y la zona perdida son públicos: no se censuran.
+ */
+private fun PlayerState.toDto(
+    frameSide: Side = side,
+    censorHidden: Boolean = false,
+) = PlayerStateDto(
+    side = frameSide.name,
     active = active?.toDto(),
     bench = bench.map { it.toDto() },
-    hand = hand.map { it.id.raw },
-    deck = deck.map { it.id.raw },
+    hand = if (censorHidden) emptyList() else hand.map { it.id.raw },
+    deck = if (censorHidden) emptyList() else deck.map { it.id.raw },
     discard = discard.map { it.id.raw },
     lostZone = lostZone.map { it.id.raw },
-    prizes = prizes.map { it.id.raw },
+    prizes = if (censorHidden) emptyList() else prizes.map { it.id.raw },
     prizesRemaining = prizesRemaining,
+    handCount = hand.size,
+    deckCount = deck.size,
+    prizeCount = prizes.size,
 )
 
 private fun PokemonInPlay.toDto() = PokemonInPlayDto(
@@ -118,18 +167,28 @@ private fun PokemonInPlay.toDto() = PokemonInPlayDto(
     statuses = statuses.map { it.name },
     evolutionStack = evolutionStack.map { it.id.raw },
     turnsInPlay = turnsInPlay,
+    cannotAttackOnTurn = cannotAttackOnTurn,
 )
 
-private fun PendingDecision.toDto(): PendingDecisionDto = when (this) {
+private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisionDto = when (this) {
     is PendingDecision.ChooseTargets -> PendingDecisionDto(
-        DecisionKindDto.CHOOSE_TARGETS, side.name, prompt.es, prompt.en, candidates.map { it.raw }, count,
+        DecisionKindDto.CHOOSE_TARGETS, frame(side).name, prompt.es, prompt.en, candidates.map { it.raw }, count,
     )
     is PendingDecision.SearchCards -> PendingDecisionDto(
-        DecisionKindDto.SEARCH_CARDS, side.name, prompt.es, prompt.en, candidates.map { it.raw }, count,
+        DecisionKindDto.SEARCH_CARDS, frame(side).name, prompt.es, prompt.en, candidates.map { it.raw }, count,
     )
     is PendingDecision.MoveEnergy -> PendingDecisionDto(
-        DecisionKindDto.MOVE_ENERGY, side.name, prompt.es, prompt.en,
+        DecisionKindDto.MOVE_ENERGY, frame(side).name, prompt.es, prompt.en,
         (fromCandidates + toCandidates).map { it.raw }, count,
+    )
+    // Render-only: el receptor pinta candidatos; el host conserva la continuación.
+    is PendingDecision.AttachFromRevealed -> PendingDecisionDto(
+        DecisionKindDto.ATTACH_FROM_REVEALED, frame(side).name, prompt.es, prompt.en,
+        (energyCandidates + benchCandidates).map { it.raw }, maxAttach,
+    )
+    is PendingDecision.CoinFlip -> PendingDecisionDto(
+        DecisionKindDto.COIN_FLIP, frame(side).name, prompt.es, prompt.en,
+        emptyList(), 0, ifHeads = ifHeads, ifTails = ifTails,
     )
 }
 
@@ -162,38 +221,70 @@ fun GameStateDto.toGameState(repo: CardRepository): GameState {
     )
 }
 
-private fun PlayerStateDto.toModel(repo: CardRepository) = PlayerState(
-    side = Side.valueOf(side),
-    active = active?.toModel(repo),
-    bench = bench.map { it.toModel(repo) },
-    hand = hand.cards(repo),
-    deck = deck.cards(repo),
-    discard = discard.cards(repo),
-    lostZone = lostZone.cards(repo),
-    prizes = prizes.cards(repo),
-    prizesRemaining = prizesRemaining,
-)
+private fun PlayerStateDto.toModel(repo: CardRepository): PlayerState {
+    // Zonas censuradas (rival): ids vacíos pero conteo>0 → se rellenan con una carta
+    // placeholder (nunca se dibuja su arte: la UI las pinta como dorsos por tamaño).
+    val filler = repo.all.firstOrNull()
+    fun zone(ids: List<String>, count: Int): List<Card> =
+        if (ids.isEmpty() && count > 0 && filler != null) List(count) { filler } else ids.cards(repo)
+    return PlayerState(
+        side = Side.valueOf(side),
+        active = active?.toModel(repo),
+        bench = bench.map { it.toModel(repo) },
+        hand = zone(hand, handCount),
+        deck = zone(deck, deckCount),
+        discard = discard.cards(repo),
+        lostZone = lostZone.cards(repo),
+        prizes = zone(prizes, prizeCount),
+        prizesRemaining = prizesRemaining,
+    )
+}
 
 private fun PokemonInPlayDto.toModel(repo: CardRepository): PokemonInPlay {
-    val pokemon = repo[CardId(card)] as? PokemonCard
+    val pokemon = repo.byInstance(card) as? PokemonCard
         ?: error("Carta de Pokémon desconocida al rehidratar: $card")
     return PokemonInPlay(
         card = pokemon,
         damage = damage,
-        attachedEnergy = attachedEnergy.mapNotNull { repo[CardId(it)] as? EnergyCard },
-        attachedTools = attachedTools.mapNotNull { repo[CardId(it)] as? TrainerCard },
+        attachedEnergy = attachedEnergy.mapNotNull { repo.byInstance(it) as? EnergyCard },
+        attachedTools = attachedTools.mapNotNull { repo.byInstance(it) as? TrainerCard },
         statuses = statuses.map { Status.valueOf(it) }.toSet(),
-        evolutionStack = evolutionStack.mapNotNull { repo[CardId(it)] as? PokemonCard },
+        evolutionStack = evolutionStack.mapNotNull { repo.byInstance(it) as? PokemonCard },
         turnsInPlay = turnsInPlay,
+        cannotAttackOnTurn = cannotAttackOnTurn,
     )
 }
 
-/** Rehidrata como [PendingDecision.ChooseTargets] (render-only: el panel solo usa prompt+candidatos+count). */
-private fun PendingDecisionDto.toModel(): PendingDecision = PendingDecision.ChooseTargets(
-    side = Side.valueOf(side),
-    prompt = LocalizedText(es = promptEs, en = promptEn),
-    candidates = candidates.map { CardId(it) },
-    count = count,
-)
+/**
+ * Resuelve una carta por su id de INSTANCIA (p. ej. `sv1-170#3`): busca la carta
+ * IMPRESA en el repo (indexado por id impreso) y le reaplica el id de instancia,
+ * preservando la identidad única a través del viaje por la red. Sin esto, un
+ * `repo[CardId(instancia)]` devuelve null y la rehidratación reventaba (crash).
+ */
+private fun CardRepository.byInstance(raw: String): Card? {
+    val cid = CardId(raw)
+    return this[cid.printed]?.withId(cid)
+}
 
-private fun List<String>.cards(repo: CardRepository) = mapNotNull { repo[CardId(it)] }
+/**
+ * Rehidrata la decisión para el receptor. La mayoría son RENDER-ONLY como
+ * [PendingDecision.ChooseTargets] (el panel solo usa prompt+candidatos+count),
+ * salvo COIN_FLIP, que necesita su propio tipo para mostrar el lanzamiento
+ * interactivo de la moneda en el invitado.
+ */
+private fun PendingDecisionDto.toModel(): PendingDecision = when (kind) {
+    DecisionKindDto.COIN_FLIP -> PendingDecision.CoinFlip(
+        side = Side.valueOf(side),
+        prompt = LocalizedText(es = promptEs, en = promptEn),
+        ifHeads = ifHeads,
+        ifTails = ifTails,
+    )
+    else -> PendingDecision.ChooseTargets(
+        side = Side.valueOf(side),
+        prompt = LocalizedText(es = promptEs, en = promptEn),
+        candidates = candidates.map { CardId(it) },
+        count = count,
+    )
+}
+
+private fun List<String>.cards(repo: CardRepository) = mapNotNull { repo.byInstance(it) }

@@ -45,3 +45,12 @@ interface MatchTransportFactory {
     /** Se une a una partida existente por [code]. */
     suspend fun join(code: String, playerName: String): MatchTransport
 }
+
+/**
+ * Puente para que capas sin acceso directo al módulo `:app` (p. ej. un ViewModel
+ * en `:feature:game`) obtengan la fábrica de transporte. La `Application` la
+ * implementa y el ViewModel hace `(app as MatchFactoryProvider).matchFactory`.
+ */
+interface MatchFactoryProvider {
+    val matchFactory: MatchTransportFactory
+}

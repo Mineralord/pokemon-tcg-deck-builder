@@ -1,0 +1,33 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="360dp"
+    android:height="400dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="1200">
+
+    <!-- Campo gris liso (lado rival), muestreado de TCG Live real: más oscuro
+         arriba (#9C9E9E) y brillando hacia el centro (#C8C8C8). Sin textura hex. -->
+    <path android:pathData="M0,0 h1080 v1200 h-1080 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="0" android:endY="1200">
+                <item android:offset="0" android:color="#FF8E9092" />
+                <item android:offset="0.30" android:color="#FFAAAAAB" />
+                <item android:offset="1" android:color="#FFC6C6C6" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Brillo radial suave hacia el centro del campo. -->
+    <path android:pathData="M0,0 h1080 v1200 h-1080 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial"
+                android:centerX="540" android:centerY="1180"
+                android:gradientRadius="820">
+                <item android:offset="0" android:color="#26FFFFFF" />
+                <item android:offset="1" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

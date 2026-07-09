@@ -1,12 +1,13 @@
 package com.mineralord.tcg.app
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -23,18 +23,23 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.mineralord.tcg.core.designsystem.CardDetailDialog
 import com.mineralord.tcg.engine.model.Rarity
 
 private val BinderBg = Color(0xFF1B2430)
@@ -48,6 +53,7 @@ fun CollectionScreen(
     viewModel: CollectionViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var detailUrl by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = modifier.fillMaxSize().background(BinderBg)) {
         // Selector de set (pill).
@@ -64,7 +70,7 @@ fun CollectionScreen(
         }
 
         // Chip del set + progreso.
-        SetChip(label = state.setLabel, owned = state.ownedInSet, total = state.totalInSet)
+        SetChip(owned = state.ownedInSet, total = state.totalInSet)
 
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (state.loading) {
@@ -77,7 +83,7 @@ fun CollectionScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(state.slots) { slot -> BinderSlot(slot) }
+                    items(state.slots) { slot -> BinderSlot(slot, onClick = { detailUrl = slot.imageLarge }) }
                 }
             }
         }
@@ -100,46 +106,44 @@ fun CollectionScreen(
             }
         }
     }
+
+    detailUrl?.let { url ->
+        CardDetailDialog(imageUrl = url, contentDescription = null, onDismiss = { detailUrl = null })
+    }
 }
 
 @Composable
-private fun SetChip(label: String, owned: Int, total: Int) {
-    Row(
+private fun SetChip(owned: Int, total: Int) {
+    Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Image(
+            painter = painterResource(R.drawable.sv035_logo_169_es),
+            contentDescription = "Escarlata y Púrpura 151",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxWidth(0.7f),
+        )
+        Spacer(Modifier.height(6.dp))
+        Text("$owned/$total", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(4.dp))
         Box(
-            modifier = Modifier
-                .width(220.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xFF2E5A66), Color(0xFF1E3A44))))
-                .border(2.dp, Color(0xFF4FD1E0), RoundedCornerShape(12.dp))
-                .padding(vertical = 10.dp),
-            contentAlignment = Alignment.Center,
+            Modifier.fillMaxWidth(0.6f).height(6.dp).clip(RoundedCornerShape(50)).background(Color(0x33000000)),
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(label, color = Color(0xFFE53935), fontWeight = FontWeight.Black, fontSize = 30.sp)
-                Text("$owned/$total", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Box(
-                    Modifier.fillMaxWidth(0.8f).height(6.dp).clip(RoundedCornerShape(50)).background(Color(0x33000000)),
-                ) {
-                    val frac = if (total > 0) owned.toFloat() / total else 0f
-                    Box(Modifier.fillMaxWidth(frac).height(6.dp).clip(RoundedCornerShape(50)).background(Color(0xFF7E57C2)))
-                }
-            }
+            val frac = if (total > 0) owned.toFloat() / total else 0f
+            Box(Modifier.fillMaxWidth(frac).height(6.dp).clip(RoundedCornerShape(50)).background(Color(0xFF7E57C2)))
         }
     }
 }
 
 @Composable
-private fun BinderSlot(slot: SlotUi) {
+private fun BinderSlot(slot: SlotUi, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.72f)
             .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
             .background(if (slot.owned) rarityColor(slot.rarity).copy(alpha = 0.22f) else SlotBg)
             .border(
                 1.dp,

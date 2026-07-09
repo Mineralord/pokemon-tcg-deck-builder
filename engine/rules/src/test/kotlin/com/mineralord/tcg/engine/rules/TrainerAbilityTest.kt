@@ -7,8 +7,13 @@ import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.Damage as DamageModel
+import com.mineralord.tcg.engine.model.Effect
 import com.mineralord.tcg.engine.model.EffectId
+import com.mineralord.tcg.engine.model.EffectRegistry
 import com.mineralord.tcg.engine.model.EffectsDb
+import com.mineralord.tcg.engine.model.ModKind
+import com.mineralord.tcg.engine.model.PassiveModifier
+import com.mineralord.tcg.engine.model.Target
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.LocalizedText
@@ -53,6 +58,10 @@ class TrainerAbilityTest {
 
     private fun energy(id: String) = BasicEnergy(
         CardId(id), LocalizedText("Energía", "Energy"), set(), Rarity.COMMON, null, art(), EnergyType.PSYCHIC,
+    )
+
+    private fun fenergy(id: String) = BasicEnergy(
+        CardId(id), LocalizedText("Energía", "Energy"), set(), Rarity.COMMON, null, art(), EnergyType.FIRE,
     )
 
     private fun trainer(id: String, kind: TrainerKind) = TrainerCard(
@@ -153,6 +162,163 @@ class TrainerAbilityTest {
         assertTrue(resolved.accepted, resolved.rejection)
         assertNull(resolved.state.interaction)
         assertEquals(20, resolved.state.player.active?.damage)     // 50 - 30
+    }
+
+    @Test
+    fun `Pocion no se puede jugar si ningun Pokemon tiene dano`() {
+        // Regla oficial: no puedes jugar un Entrenador que no haría nada. Sin Pokémon
+        // dañados, Poción se rechaza y NO se gasta (sigue en la mano, no va al descarte).
+        val pocion = trainer("sv1-188", TrainerKind.Item())
+        val state = baseState(
+            hand = listOf(pocion),
+            active = PokemonInPlay(mon("ownActive")),               // sano (daño 0)
+            bench = listOf(PokemonInPlay(mon("benchMon"))),         // sano (daño 0)
+        )
+
+        val r = engine.apply(state, GameIntent.PlayTrainer(CardId("sv1-188")))
+        assertFalse(r.accepted)
+        assertTrue(r.state.player.hand.any { it.id == CardId("sv1-188") })
+        assertFalse(r.state.player.discard.any { it.id == CardId("sv1-188") })
+    }
+
+    @Test
+    fun `Pocion solo ofrece como objetivo a los Pokemon danados`() {
+        // Activo sano + banca dañada → la elección solo incluye al de la banca.
+        val pocion = trainer("sv1-188", TrainerKind.Item())
+        val state = baseState(
+            hand = listOf(pocion),
+            active = PokemonInPlay(mon("ownActive")),               // sano
+            bench = listOf(PokemonInPlay(mon("benchMon"), damage = 30)),
+        )
+
+        val played = engine.apply(state, GameIntent.PlayTrainer(CardId("sv1-188")))
+        assertTrue(played.accepted, played.rejection)
+        val decision = played.state.interaction!!.decision as PendingDecision.ChooseTargets
+        assertEquals(listOf(CardId("benchMon")), decision.candidates)
+    }
+
+    @Test
+    fun `Mela no se puede jugar si no te noquearon el turno pasado`() {
+        val mela = trainer("sv4-167", TrainerKind.Supporter())
+        val state = baseState(hand = listOf(mela), deck = (1..8).map { energy("d$it") })
+            .copy(koedLastOppTurn = emptySet())
+        val r = engine.apply(state, GameIntent.PlayTrainer(CardId("sv4-167")))
+        assertFalse(r.accepted)
+    }
+
+    @Test
+    fun `Mela une Fuego del descarte y roba hasta 6 si te noquearon`() {
+        val mela = trainer("sv4-167", TrainerKind.Supporter())
+        val state = baseState(hand = listOf(mela), deck = (1..8).map { energy("d$it") })
+            .copy(
+                player = baseState().player.copy(
+                    hand = listOf(mela),
+                    deck = (1..8).map { energy("d$it") },
+                    discard = listOf(fenergy("mf1")),
+                ),
+                koedLastOppTurn = setOf(Side.PLAYER),
+            )
+
+        val played = engine.apply(state, GameIntent.PlayTrainer(CardId("sv4-167")))
+        assertTrue(played.accepted, played.rejection)
+        val d = played.state.interaction!!.decision as PendingDecision.AttachFromRevealed
+        assertTrue(d.fromDiscard)
+
+        val resolved = engine.apply(
+            played.state,
+            GameIntent.ResolveDecision(listOf(CardId("mf1"), CardId("ownActive"))),
+        )
+        assertTrue(resolved.accepted, resolved.rejection)
+        assertNull(resolved.state.interaction)
+        assertEquals(CardId("mf1"), resolved.state.player.active?.attachedEnergy?.firstOrNull()?.id)
+        assertEquals(6, resolved.state.player.hand.size)           // robó hasta tener 6
+    }
+
+    @Test
+    fun `Mela sin Fuego en el descarte no engancha ni roba`() {
+        // Condición cumplida (te noquearon) pero descarte sin Energía Fuego → "si lo
+        // haces" no se cumple: no hay decisión, no roba (mano queda vacía tras descartar Mela).
+        val mela = trainer("sv4-167", TrainerKind.Supporter())
+        val state = baseState().let { s ->
+            s.copy(
+                player = s.player.copy(
+                    hand = listOf(mela),
+                    deck = (1..8).map { energy("d$it") },
+                    discard = listOf(energy("psy1")),   // Psíquica, no Fuego
+                ),
+                koedLastOppTurn = setOf(Side.PLAYER),
+            )
+        }
+        val r = engine.apply(state, GameIntent.PlayTrainer(CardId("sv4-167")))
+        assertTrue(r.accepted, r.rejection)
+        assertNull(r.state.interaction)
+        assertEquals(0, r.state.player.hand.size)       // no robó
+        assertEquals(8, r.state.player.deck.size)       // mazo intacto
+    }
+
+    // ---------------------------------------------------------------- Tools
+
+    private fun hitAttacker(dmg: Int) = PokemonInPlay(
+        mon("attacker").copy(
+            attacks = listOf(Attack(LocalizedText("Golpe", "Hit"), emptyList(), 0, DamageModel.Fixed(dmg), null)),
+        ),
+    )
+
+    @Test
+    fun `anclar una Herramienta a un Pokemon propio`() {
+        val tool = trainer("tool-x", TrainerKind.Tool())
+        val state = baseState(hand = listOf(tool))
+        val r = engine.apply(state, GameIntent.AttachTool(CardId("tool-x"), CardId("ownActive")))
+        assertTrue(r.accepted, r.rejection)
+        assertTrue(r.state.player.active!!.attachedTools.any { it.id == CardId("tool-x") })
+        assertFalse(r.state.player.hand.any { it.id == CardId("tool-x") })   // salió de la mano
+    }
+
+    @Test
+    fun `un Pokemon no admite dos Herramientas`() {
+        val t1 = trainer("tool-a", TrainerKind.Tool())
+        val t2 = trainer("tool-b", TrainerKind.Tool())
+        val state = baseState(hand = listOf(t1, t2))
+        val first = engine.apply(state, GameIntent.AttachTool(CardId("tool-a"), CardId("ownActive")))
+        assertTrue(first.accepted, first.rejection)
+        val second = engine.apply(first.state, GameIntent.AttachTool(CardId("tool-b"), CardId("ownActive")))
+        assertFalse(second.accepted)
+    }
+
+    @Test
+    fun `una Herramienta con HP extra evita el KO`() {
+        val registry = EffectRegistry(
+            mapOf(EffectId("tool-hp") to Effect(passives = listOf(PassiveModifier(ModKind.EXTRA_HP, 30, Target.SELF)))),
+        )
+        val eng = GameEngine(SeededRng(1), registry)
+        val toolCard = trainer("tool-hp", TrainerKind.Tool())
+        val defender = PokemonInPlay(mon("oppActive", hp = 100), attachedTools = listOf(toolCard))
+        val player = PlayerState(Side.PLAYER, active = hitAttacker(100), deck = listOf(energy("d")), prizes = (1..6).map { energy("p$it") })
+        val opp = PlayerState(Side.OPPONENT, active = defender, deck = listOf(energy("od")), prizes = (1..6).map { energy("q$it") })
+        val state = GameState(player, opp, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+
+        val r = eng.apply(state, GameIntent.Attack("Golpe"))
+        assertTrue(r.accepted, r.rejection)
+        // 100 de daño con HP efectivo 130 → NO noqueado (sigue en juego con 100 de daño).
+        assertEquals(100, r.state.opponent.active?.damage)
+        assertFalse(r.state.opponent.active == null)
+    }
+
+    @Test
+    fun `una Herramienta reduce el dano recibido`() {
+        val registry = EffectRegistry(
+            mapOf(EffectId("tool-armor") to Effect(passives = listOf(PassiveModifier(ModKind.REDUCE_DAMAGE, 30, Target.SELF)))),
+        )
+        val eng = GameEngine(SeededRng(1), registry)
+        val toolCard = trainer("tool-armor", TrainerKind.Tool())
+        val defender = PokemonInPlay(mon("oppActive", hp = 100), attachedTools = listOf(toolCard))
+        val player = PlayerState(Side.PLAYER, active = hitAttacker(50), deck = listOf(energy("d")), prizes = (1..6).map { energy("p$it") })
+        val opp = PlayerState(Side.OPPONENT, active = defender, deck = listOf(energy("od")), prizes = (1..6).map { energy("q$it") })
+        val state = GameState(player, opp, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+
+        val r = eng.apply(state, GameIntent.Attack("Golpe"))
+        assertTrue(r.accepted, r.rejection)
+        assertEquals(20, r.state.opponent.active?.damage)   // 50 - 30
     }
 
     // ---------------------------------------------------------------- Abilities

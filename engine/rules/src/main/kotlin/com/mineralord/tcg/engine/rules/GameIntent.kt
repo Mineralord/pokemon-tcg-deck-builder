@@ -21,6 +21,13 @@ sealed interface GameIntent {
     /** Une una carta de energía de la mano a un Pokémon en juego. */
     data class AttachEnergy(val energy: CardId, val to: CardId) : GameIntent
 
+    /**
+     * Ancla una Herramienta (Pokémon Tool) de la mano a un Pokémon en juego. Regla
+     * oficial: como máximo 1 Herramienta por Pokémon; no hay límite de cuántas anclas
+     * por turno. La carta permanece anexada (no va al descarte hasta que el Pokémon lo haga).
+     */
+    data class AttachTool(val tool: CardId, val target: CardId) : GameIntent
+
     /** Retira el Activo a la Banca pagando el coste de retirada. */
     data class Retreat(val benchTarget: CardId) : GameIntent
 

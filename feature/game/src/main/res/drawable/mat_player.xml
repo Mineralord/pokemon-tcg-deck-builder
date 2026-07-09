@@ -1,0 +1,35 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="360dp"
+    android:height="400dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="1200">
+
+    <!-- Lado jugador: campo gris claro (#C6C6C6) que desciende pronto a la zona de
+         banca azul marino (#0A1A31), como en TCG Live real (transición ~y0.58). -->
+    <path android:pathData="M0,0 h1080 v1200 h-1080 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="0" android:endY="1200">
+                <item android:offset="0" android:color="#FFC6C6C6" />
+                <item android:offset="0.10" android:color="#FFBEBEBE" />
+                <item android:offset="0.20" android:color="#FF6E7A88" />
+                <item android:offset="0.30" android:color="#FF17293E" />
+                <item android:offset="1" android:color="#FF0A1A31" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Viñeta azul suave en la zona de banca. -->
+    <path android:pathData="M0,0 h1080 v1200 h-1080 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial"
+                android:centerX="540" android:centerY="900"
+                android:gradientRadius="700">
+                <item android:offset="0" android:color="#1FA9D3FF" />
+                <item android:offset="1" android:color="#00000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

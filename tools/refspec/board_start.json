@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "source": "TABLERO SIN CARTAS.jpg (tablero autentico vacio de TCG Live)",
+    "ref_image": "board_start_ref.png",
+    "ref_w": 1080,
+    "ref_h": 2400,
+    "note": "Cajas normalizadas [x,y,w,h] ancladas a los slots/paneles del tablero AUTENTICO. Origen arriba-izquierda.",
+    "tolerance": { "center": 0.01, "iou": 0.95 }
+  },
+  "elements": {
+    "top_avatar":     { "x": 0.010, "y": 0.038, "w": 0.130, "h": 0.025 },
+    "top_settings":   { "x": 0.865, "y": 0.048, "w": 0.100, "h": 0.035 },
+
+    "opp_hand":       { "x": 0.300, "y": 0.000, "w": 0.400, "h": 0.040 },
+    "opp_prizes":     { "x": 0.000, "y": 0.050, "w": 0.140, "h": 0.140 },
+    "opp_bench":      { "x": 0.190, "y": 0.050, "w": 0.460, "h": 0.160 },
+    "opp_deck":       { "x": 0.680, "y": 0.050, "w": 0.150, "h": 0.070 },
+    "opp_discard":    { "x": 0.680, "y": 0.120, "w": 0.150, "h": 0.070 },
+    "opp_active":     { "x": 0.410, "y": 0.250, "w": 0.180, "h": 0.120 },
+
+    "stadium":        { "x": 0.010, "y": 0.420, "w": 0.130, "h": 0.060 },
+
+    "me_active":      { "x": 0.410, "y": 0.417, "w": 0.180, "h": 0.103 },
+    "me_bench":       { "x": 0.190, "y": 0.490, "w": 0.460, "h": 0.160 },
+    "me_prizes":      { "x": 0.000, "y": 0.550, "w": 0.130, "h": 0.150 },
+    "me_deck":        { "x": 0.720, "y": 0.490, "w": 0.150, "h": 0.070 },
+    "me_discard":     { "x": 0.720, "y": 0.560, "w": 0.150, "h": 0.070 },
+    "me_hand":        { "x": 0.020, "y": 0.800, "w": 0.800, "h": 0.150 },
+
+    "rail_prize_opp": { "x": 0.880, "y": 0.270, "w": 0.115, "h": 0.050 },
+    "rail_endturn":   { "x": 0.815, "y": 0.330, "w": 0.170, "h": 0.055 },
+    "rail_prize_me":  { "x": 0.880, "y": 0.400, "w": 0.115, "h": 0.043 },
+    "rail_log":       { "x": 0.895, "y": 0.450, "w": 0.080, "h": 0.040 },
+
+    "left_cancel":    { "x": 0.020, "y": 0.300, "w": 0.100, "h": 0.050 },
+    "left_emote":     { "x": 0.020, "y": 0.360, "w": 0.100, "h": 0.050 }
+  }
+}

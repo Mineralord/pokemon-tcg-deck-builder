@@ -1,0 +1,48 @@
+# Timeline de "COMBATE COMPLETO 1" — arranque de partida.
+#
+# Porta el flujo de _refcap/board.ps1 (JUGAR -> primer "Activo" -> "¡COMBATIR!")
+# y añade checkpoints de captura para comparación 1:1. Las anclas son los textos
+# reales de la UI en español; si cambian, actualiza aquí.
+#
+# Ejecuta:  python -m tcgtools play tools/scripts/combat_1.yaml
+# El campo `ref` de cada assert_screen apunta al fotograma de referencia
+# (en referencias/) contra el que se comparará ese checkpoint.
+
+steps:
+  - op: relaunch
+    settle: 3.0
+
+  - op: assert_screen
+    name: 01_home
+    ref: scene_0001
+
+  # JUGAR — fallback a la coordenada tuneada de board.ps1 por si no hay bounds.
+  - op: tap_text
+    text: "JUGAR"
+    fallback: [540, 1469]
+    settle: 3.0
+
+  - op: assert_screen
+    name: 02_setup
+    ref: scene_0006
+
+  # Primer chip "Activo" para elegir el Pokémon activo.
+  - op: tap_text
+    text: "Activo"
+    which: 0
+    settle: 0.7
+
+  # "¡COMBATIR!" — subcadena por el signo de apertura invertido.
+  - op: tap_text
+    text: "COMBATIR"
+    substring: true
+    settle: 3.0
+
+  - op: assert_screen
+    name: 03_board
+    ref: scene_0012
+
+  # El tablero queda visible tras este ultimo checkpoint (sin taps posteriores), de
+  # modo que `tcgtools measure` puede volcar la UI y leer los bounds reales por tag.
+  # El bucle completo lo orquesta tools/scripts/tune_loop.ps1
+  # (deploy -> play -> measure -> layout-compare).

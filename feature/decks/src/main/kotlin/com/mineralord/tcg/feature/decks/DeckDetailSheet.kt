@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mineralord.tcg.core.designsystem.CardDetailDialog
 import com.mineralord.tcg.core.designsystem.DeckBox
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Supertype
@@ -54,6 +55,7 @@ fun DeckDetailSheet(
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var detailUrl by remember { mutableStateOf<String?>(null) }
     // Orden de presentación: Pokémon → Entrenador → Energía.
     val ordered = remember(deck) {
         deck.cards.sortedBy {
@@ -110,10 +112,17 @@ fun DeckDetailSheet(
             ) {
                 items(ordered.size) { i ->
                     val c = ordered[i]
-                    DeckCardCell(name = c.name, imageEs = c.imageEs, badge = "${c.count}")
+                    DeckCardCell(
+                        name = c.name, imageEs = c.imageEs, badge = "${c.count}",
+                        onClick = c.imageLarge?.let { url -> { detailUrl = url } },
+                    )
                 }
             }
         }
+    }
+
+    detailUrl?.let { url ->
+        CardDetailDialog(imageUrl = url, contentDescription = null, onDismiss = { detailUrl = null })
     }
 }
 

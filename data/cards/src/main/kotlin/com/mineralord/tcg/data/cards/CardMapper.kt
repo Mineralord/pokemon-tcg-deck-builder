@@ -118,7 +118,10 @@ object CardMapper {
                 )
             },
             attacks = dto.ataques.mapIndexed { i, a ->
-                val esName = dto.es?.ataques?.getOrNull(i)?.name ?: a.name
+                // Nombre ES del dataset (si existe y no está en blanco); si falta, se usa
+                // el mapa de traducción [AttackNames]; como último recurso, el inglés.
+                val rawEs = dto.es?.ataques?.getOrNull(i)?.name?.takeIf { it.isNotBlank() }
+                val esName = rawEs ?: AttackNames.es(a.name)
                 Attack(
                     name = LocalizedText(esName, a.name),
                     cost = a.cost.map { energyType(it) },
@@ -193,4 +196,59 @@ object CardMapper {
             )
         }
     }
+}
+
+/**
+ * Traducción ES de nombres de ataque para las cartas cuyo dataset NO trae el nombre
+ * en español (41 ataques, sobre todo de las barajas de inicio SV1). Se usa como
+ * respaldo en [CardMapper] cuando `es.ataques[i].name` falta o está en blanco, para
+ * que el panel de combate nunca muestre el ataque en inglés. Clave = nombre en inglés.
+ */
+private object AttackNames {
+    private val ES = mapOf(
+        "Armor Cannon" to "Cañón Blindado",
+        "Bite" to "Mordisco",
+        "Blazing Shout" to "Grito Ardiente",
+        "Collect" to "Recolectar",
+        "Concentrated Fire" to "Fuego Concentrado",
+        "Cross-Cut" to "Corte Cruzado",
+        "Cut" to "Corte",
+        "Dark Edge" to "Filo Oscuro",
+        "Elbow Strike" to "Codazo",
+        "Electric Claws" to "Garras Eléctricas",
+        "Electro Ball" to "Bola Eléctrica",
+        "Fire Blast" to "Llamarada",
+        "Flame Cloak" to "Manto Llameante",
+        "Flare" to "Fogonazo",
+        "Gentle Slap" to "Palmada Suave",
+        "Glide" to "Planear",
+        "Headbutt" to "Cabezazo",
+        "Heat Blast" to "Ráfaga de Calor",
+        "Hyper Voice" to "Vozarrón",
+        "Jet Wing" to "Ala a Reacción",
+        "Lightning Ball" to "Bola Rayo",
+        "Linear Attack" to "Ataque Lineal",
+        "Live Coal" to "Brasa",
+        "Mach Bolt" to "Rayo Mach",
+        "Magnum Punch" to "Puño Magnum",
+        "Passionate Singing" to "Canto Apasionado",
+        "Peck" to "Picotazo",
+        "Pierce" to "Perforación",
+        "Poltergeist" to "Poltergeist",
+        "Ram" to "Embestida",
+        "Rolling Tackle" to "Placaje Rodante",
+        "Rollout" to "Rodar",
+        "Scratch" to "Arañazo",
+        "Sharp Fang" to "Colmillo Afilado",
+        "Slicing Blade" to "Hoja Cortante",
+        "Speed Attack" to "Ataque Rápido",
+        "Stampede" to "Estampida",
+        "Steady Firebreathing" to "Aliento Ígneo Constante",
+        "Suffocating Gas" to "Gas Asfixiante",
+        "Take Down" to "Derribo",
+        "Touring" to "Gira",
+    )
+
+    /** Nombre ES del ataque [en] (o el propio inglés si no hay traducción registrada). */
+    fun es(en: String): String = ES[en] ?: en
 }

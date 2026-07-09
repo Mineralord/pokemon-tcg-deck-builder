@@ -57,9 +57,18 @@ class SmartAgent(private val engine: GameEngine) : Agent {
     private fun resolveDecision(decision: PendingDecision): GameIntent = when (decision) {
         is PendingDecision.ChooseTargets ->
             GameIntent.ResolveDecision(decision.candidates.take(decision.count))
+        // Moneda: sin elección; resolver dispara el lanzamiento autoritativo.
+        is PendingDecision.CoinFlip -> GameIntent.ResolveDecision(emptyList())
         is PendingDecision.SearchCards ->
             GameIntent.ResolveDecision(decision.candidates.take(decision.count))
         is PendingDecision.MoveEnergy ->
             GameIntent.ResolveDecision(decision.fromCandidates.take(1) + decision.toCandidates.take(1))
+        is PendingDecision.AttachFromRevealed -> {
+            // Empareja cada energía con un Pokémon de Banca (round-robin), hasta el tope.
+            val energies = decision.energyCandidates.take(decision.maxAttach)
+            val bench = decision.benchCandidates
+            val pairs = energies.flatMapIndexed { i, e -> listOf(e, bench[i % bench.size]) }
+            GameIntent.ResolveDecision(pairs)
+        }
     }
 }

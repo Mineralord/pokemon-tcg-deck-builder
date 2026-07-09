@@ -1,0 +1,52 @@
+<!--
+  PLANTILLA / MOLDE de asset vectorial para el tablero de TCG Live Clone.
+
+  Copia este archivo como punto de partida para nuevos <vector> (contadores de
+  energía, indicadores de estado, iconos que hoy son emoji, etc.). Convenciones:
+
+  · viewportWidth/Height = 1080 x 2400  -> lienzo de referencia device-native,
+    IGUAL que board_frame / mat_* / card_back_*. Todas las medidas de pathData se
+    expresan en estas unidades para que el escalado sea 1:1 con las capturas.
+  · width/height en dp = tamaño mostrado; deja que Compose lo reescale vía Image.
+  · Nombres de archivo por familia:  mat_*  card_*  icon_*  fx_*
+  · Gradiente lineal para superficies planas; radial para viñetas/brillos.
+  · Colores en formato #AARRGGBB tomados (idealmente) del muestreo de referencias/
+    con  python -m tcgtools  (sample_colors) para hacer pixel-lock del color.
+
+  Este drawable dibuja una tarjeta de ejemplo con marco, relleno lineal y viñeta
+  radial: sirve como referencia visual viva de las tres técnicas.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="180dp"
+    android:height="400dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="2400">
+
+    <!-- Relleno base: gradiente LINEAL (superficie plana). -->
+    <path android:pathData="M40,40 h1000 v2320 h-1000 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="0" android:startY="40"
+                android:endX="0" android:endY="2360">
+                <item android:offset="0" android:color="#FF0C2647" />
+                <item android:offset="1" android:color="#FF04152B" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Viñeta: gradiente RADIAL (oscurece esquinas). -->
+    <path android:pathData="M40,40 h1000 v2320 h-1000 z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial"
+                android:centerX="540" android:centerY="1200" android:gradientRadius="1300">
+                <item android:offset="0" android:color="#00000000" />
+                <item android:offset="1" android:color="#66000000" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Marco dorado (hairline). -->
+    <path android:strokeColor="#FFE4AB5E" android:strokeWidth="6"
+        android:pathData="M40,40 h1000 v2320 h-1000 z" />
+</vector>

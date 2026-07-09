@@ -12,7 +12,11 @@ class StarterDecksTest {
     fun `hay tres barajas desbloqueadas`() {
         assertEquals(3, StarterDecks.ALL.size)
         assertEquals(
-            listOf("Pikachu ex", "Armarouge ex", "Darkrai ex"),
+            listOf(
+                "Pikachu ex Academia de Combate 2024",
+                "Armarouge ex Academia de Combate 2024",
+                "Darkrai ex Academia de Combate 2024",
+            ),
             StarterDecks.ALL.map { it.name },
         )
     }

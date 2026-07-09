@@ -33,7 +33,7 @@ object EffectsDb {
     /** Tranquil Flower — 1/turno (solo activo): elige 1 de los tuyos y cúralo 60. */
     private val TRANQUIL = Effect(
         ops = listOf(
-            EffectOp.ChooseTarget(Target.OWN_ALL, 1, prompt("Elige un Pokémon para curar 60", "Choose a Pokémon to heal 60")),
+            EffectOp.ChooseTarget(Target.OWN_ALL, 1, prompt("Elige un Pokémon para curar 60", "Choose a Pokémon to heal 60"), onlyDamaged = true),
             EffectOp.Heal(Target.CHOSEN, Amount.Fixed(60)),
         ),
         oncePerTurn = true,
@@ -96,6 +96,75 @@ object EffectsDb {
                     EffectOp.Damage(Target.CHOSEN, Amount.Fixed(130)),
                 )))
 
+            // ---- Baraja "Pikachu ex Academia de Combate 2024" ----
+            // Pikachu ex — Thunderbolt (120): DAÑO PURO, sin efecto (la carta real trae
+            // texto vacío). El coste de energía es un REQUISITO para atacar, NO se
+            // descarta al usar el ataque. (Antes, por error, se registraba
+            // DiscardEnergy(SELF, MAX) y "gastaba" las 3 energías: retirado para ser fiel.)
+            // Rotom — Linear Attack: 20 a 1 Pokémon rival elegido (sin debilidad/resistencia en banca).
+            put(atkKey("sv1-69", "Linear Attack"),
+                Effect(ops = listOf(
+                    EffectOp.ChooseTarget(Target.OPP_ALL, 1, prompt("Elige un Pokémon rival (20 de daño)", "Choose an opposing Pokémon (20 damage)")),
+                    EffectOp.Damage(Target.CHOSEN, Amount.Fixed(20)),
+                )))
+            // Wattrel — Collect: roba 1 carta.
+            put(atkKey("sv1-77", "Collect"),
+                Effect(ops = listOf(EffectOp.DrawCards(1))))
+            // Kilowattrel — Jet Wing (150): en tu próximo turno, este Pokémon no puede atacar.
+            put(atkKey("sv2-82", "Jet Wing"),
+                Effect(ops = listOf(EffectOp.NoAttackNextTurn)))
+
+            // ---- Baraja "Armarouge ex Academia de Combate 2024" ----
+            // Armarouge ex — Armor Cannon (200): descarta 1 Energía Fuego de sí mismo.
+            put(atkKey("svp-105", "Armor Cannon"),
+                Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 1))))
+            // Houndoom — Fire Blast (150): descarta 1 energía de sí mismo.
+            put(atkKey("sv1-34", "Fire Blast"),
+                Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 1))))
+            // Larvesta — Take Down (40): 10 de daño a sí mismo.
+            put(atkKey("sv3-40", "Take Down"),
+                Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(10)))))
+            // Skeledirge — Blazing Shout (190): 30 de daño a sí mismo.
+            put(atkKey("sv1-38", "Blazing Shout"),
+                Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(30)))))
+            // Volcarona — Flame Cloak (30): une 1 Energía Fuego Básica del descarte a sí mismo.
+            put(atkKey("sv3-41", "Flame Cloak"),
+                Effect(ops = listOf(EffectOp.AttachEnergyFromDiscard(1, EnergyType.FIRE, Target.SELF))))
+            // Skeledirge — Passionate Singing (50): une hasta 2 Energía Básica del descarte a tus Pokémon.
+            put(atkKey("sv1-38", "Passionate Singing"),
+                Effect(ops = listOf(EffectOp.AttachEnergyFromDiscard(2, null, Target.OWN_ALL))))
+            // Torkoal — Concentrated Fire (80×): moneda por cada Energía Fuego; 80 por cara.
+            put(atkKey("sv1-35", "Concentrated Fire"),
+                Effect(ops = listOf(EffectOp.CoinsPerEnergyDamage(EnergyType.FIRE, 80))))
+            // Mela (Partidario) — SOLO si te noquearon el turno pasado: une 1 Energía Fuego
+            // Básica del descarte a 1 de tus Pokémon y roba hasta tener 6 cartas.
+            put(EffectId("sv4-167"), Effect(
+                ops = listOf(
+                    EffectOp.AttachEnergyFromDiscard(1, EnergyType.FIRE, Target.OWN_ALL, thenDrawUpTo = 6),
+                ),
+                requiresOwnKoLastTurn = true,
+            ))
+
+            // ---- Baraja "Darkrai ex Academia de Combate 2024" ----
+            // Seviper — Cross-Cut (50+): +50 si el Activo rival es Pokémon de Evolución.
+            put(atkKey("sv2-137", "Cross-Cut"), Effect(attackDamage = listOf(
+                DamageTerm(50), DamageTerm(50, DamageCondition.IF_DEFENDER_EVOLVED))))
+            // Yveltal — Cross-Cut (30+): +60 si el Activo rival es Pokémon de Evolución.
+            put(atkKey("sv4-118", "Cross-Cut"), Effect(attackDamage = listOf(
+                DamageTerm(30), DamageTerm(60, DamageCondition.IF_DEFENDER_EVOLVED))))
+            // Yveltal — Dark Edge (120): descarta 1 energía de sí mismo.
+            put(atkKey("sv4-118", "Dark Edge"),
+                Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 1))))
+            // Cyclizar — Touring: roba 2 cartas.
+            put(atkKey("sv1-164", "Touring"),
+                Effect(ops = listOf(EffectOp.DrawCards(2))))
+            // Órdenes de Jefe (Ghetsis) — sube al Activo rival 1 Pokémon de su Banca.
+            put(EffectId("sv2-172"), Effect(ops = listOf(
+                EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt(
+                    "Elige un Pokémon de la Banca rival para subirlo a su Activo",
+                    "Choose a Benched Pokémon of your opponent to switch to the Active Spot")),
+                EffectOp.SwapOppActiveWithChosen)))
+
             // ============================ HABILIDADES (listas; corren cuando exista su intent) ============================
 
             // Venusaur ex — Tranquil Flower (incl. artes alternativos).
@@ -140,13 +209,33 @@ object EffectsDb {
             // Bola Ocaso — busca 1 Pokémon a la mano.
             put(EffectId("sv8-175"), Effect(ops = listOf(
                 EffectOp.SearchDeck(CardFilter(supertype = Supertype.POKEMON), Zone.HAND, 1))))
-            // Poción — cura 30 a 1 de los tuyos.
+            // Poción — cura 30 a 1 de los tuyos (solo si tiene daño; si no, no se juega).
             put(EffectId("sv1-188"), Effect(ops = listOf(
-                EffectOp.ChooseTarget(Target.OWN_ALL, 1, prompt("Elige un Pokémon para curarle 30", "Choose a Pokémon to heal 30")),
+                EffectOp.ChooseTarget(Target.OWN_ALL, 1, prompt("Elige un Pokémon para curarle 30", "Choose a Pokémon to heal 30"), onlyDamaged = true),
                 EffectOp.Heal(Target.CHOSEN, Amount.Fixed(30)))))
             // Cinio (Jacq) — busca hasta 2 Pokémon de Evolución a la mano.
             put(EffectId("sv1-175"), Effect(ops = listOf(
                 EffectOp.SearchDeck(CardFilter(supertype = Supertype.POKEMON, isBasic = false), Zone.HAND, 2))))
+            // Cambio (Switch) — intercambia tu Activo con un Pokémon de tu Banca.
+            // MISMA carta en dos printings: sv1-194 (SV base, en la baraja Pikachu) y
+            // sv3pt5-206 (set 151). Mismo efecto para ambos.
+            val switch = Effect(ops = listOf(
+                EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt("Elige un Pokémon de tu Banca para pasar al Activo", "Choose a Benched Pokémon to switch to the Active Spot")),
+                EffectOp.SwapActiveWithChosen))
+            put(EffectId("sv1-194"), switch)
+            put(EffectId("sv3pt5-206"), switch)
+            // Joven (Youngster) — baraja tu mano en el mazo y roba 5.
+            put(EffectId("sv1-198"), Effect(ops = listOf(
+                EffectOp.ShuffleHandIntoDeck, EffectOp.DrawCards(5))))
+            // Excursionista (Picnicker) — lanza una moneda: cara robas 4, cruz robas 2.
+            put(EffectId("svp-114"), Effect(ops = listOf(
+                EffectOp.CoinFlipDraw(4, 2))))
+            // Generador Eléctrico — mira el top 5, une hasta 2 Energía Rayo Básica que
+            // encuentres a tus Pokémon Rayo de Banca; baraja el resto.
+            put(EffectId("sv1-170"), Effect(ops = listOf(
+                EffectOp.RevealAttachEnergy(
+                    lookAt = 5, maxAttach = 2,
+                    energyType = EnergyType.LIGHTNING, benchType = EnergyType.LIGHTNING))))
 
             // ============================ HERRAMIENTAS (pasivos; INERTES hasta fase de pasivos) ============================
             // El motor aún no aplica PassiveModifier; se registran para completar el mapeo.

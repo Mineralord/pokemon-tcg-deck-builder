@@ -68,8 +68,8 @@ class DriveSyncClient {
             .post(body)
             .build()
         client.newCall(req).execute().use { resp ->
-            checkResponse(resp.code, "crear")
             val respBody = resp.body?.string().orEmpty()
+            checkResponse(resp.code, "crear", respBody)
             json.decodeFromString(FileIdDto.serializer(), respBody).id
         }
     }
@@ -82,13 +82,25 @@ class DriveSyncClient {
             .header("Authorization", "Bearer $token")
             .patch(mediaJson.toRequestBody(JSON_MEDIA))
             .build()
-        client.newCall(req).execute().use { resp -> checkResponse(resp.code, "actualizar") }
+        client.newCall(req).execute().use { resp -> checkResponse(resp.code, "actualizar", resp.body?.string().orEmpty()) }
     }
 
-    private fun checkResponse(code: Int, op: String) {
+    private fun checkResponse(code: Int, op: String, body: String = "") {
         if (code == 401) throw TokenExpiredException()
-        if (code !in 200..299) throw IOException("Drive: fallo al $op (HTTP $code)")
+        if (code !in 200..299) {
+            val reason = parseReason(body)
+            if (code == 403 && reason == "storageQuotaExceeded") {
+                throw IOException("No hay espacio en tu Google Drive. Libera espacio y reintenta.")
+            }
+            throw IOException("Drive: fallo al $op (HTTP $code${if (reason != null) " · $reason" else ""})")
+        }
     }
+
+    /** Extrae `error.errors[0].reason` del cuerpo de error de la API de Drive. */
+    private fun parseReason(body: String): String? = runCatching {
+        if (body.isBlank()) return null
+        Regex("\"reason\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)
+    }.getOrNull()
 
     @Serializable
     private data class FileListDto(val files: List<DriveFileDto> = emptyList())

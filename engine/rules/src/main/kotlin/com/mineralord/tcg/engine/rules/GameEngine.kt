@@ -11,12 +11,15 @@ import com.mineralord.tcg.engine.model.EffectRegistry
 import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.GameState
+import com.mineralord.tcg.engine.model.ModKind
+import com.mineralord.tcg.engine.model.PassiveModifier
 import com.mineralord.tcg.engine.model.Phase
 import com.mineralord.tcg.engine.model.PlayerState
 import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.Status
+import com.mineralord.tcg.engine.model.ToolTarget
 import com.mineralord.tcg.engine.model.TrainerCard
 import com.mineralord.tcg.engine.model.TrainerKind
 
@@ -71,6 +74,7 @@ class GameEngine(
             is GameIntent.PlayBasicToBench -> playBasicToBench(state, intent.card)
             is GameIntent.Evolve -> evolve(state, intent.evolution, intent.onto)
             is GameIntent.AttachEnergy -> attachEnergy(state, intent.energy, intent.to)
+            is GameIntent.AttachTool -> attachTool(state, intent.tool, intent.target)
             is GameIntent.Retreat -> retreat(state, intent.benchTarget)
             is GameIntent.Attack -> attack(state, intent.attackName)
             is GameIntent.PlayTrainer -> playTrainer(state, intent.card)
@@ -111,6 +115,12 @@ class GameEngine(
         if (evo.evolvesFrom != target.card.name.en && evo.evolvesFrom != target.card.name.es) {
             return EngineResult.reject(state, "${evo.name.es} no evoluciona de ${target.card.name.es}")
         }
+        // Regla oficial: no se puede evolucionar en el primer turno de la partida.
+        if (state.turn == 1) {
+            return EngineResult.reject(state, "No puedes evolucionar en el primer turno de la partida")
+        }
+        // Regla oficial: no se puede evolucionar un Pokémon el turno en que entró en juego
+        // (turnsInPlay se pone a 0 al colocarlo/evolucionarlo; sube al iniciar tu turno).
         if (target.turnsInPlay < 1) {
             return EngineResult.reject(state, "No se puede evolucionar el mismo turno en que entró")
         }
@@ -118,6 +128,9 @@ class GameEngine(
             card = evo,
             evolutionStack = target.evolutionStack + target.card,
             statuses = emptySet(),       // evolucionar cura condiciones especiales
+            // Recién evolucionado = "acaba de entrar": no puede volver a evolucionar este
+            // turno (evita evolucionar dos veces en el mismo turno). Sube al iniciar tu turno.
+            turnsInPlay = 0,
         )
         val updated = replaceInPlay(me, ontoId, evolved).copy(hand = me.hand - evo)
         return EngineResult(
@@ -144,6 +157,44 @@ class GameEngine(
             withPlayer(state, updated).copy(energyAttachedThisTurn = true),
             listOf(GameEvent.EnergyAttached(state.activeSide, energyId, toId)),
         )
+    }
+
+    /**
+     * Ancla una Herramienta de la mano a un Pokémon. Reglas oficiales (rulebook):
+     * "You can play as many … Pokémon Tool cards as you like" (sin límite por turno) y
+     * un Pokémon "can only have one Pokémon Tool attached" (máx. 1). Se ancla a un
+     * Pokémon PROPIO; si la Herramienta lo permite ([ToolTarget.ANY], p. ej. Team Flare
+     * Hyper Gear) también al RIVAL. La carta queda anexada (se descarta con el Pokémon).
+     */
+    private fun attachTool(state: GameState, toolId: CardId, targetId: CardId): EngineResult {
+        val me = state.activePlayer
+        val card = me.hand.firstOrNull { it.id == toolId }
+            ?: return EngineResult.reject(state, "La carta no está en la mano")
+        if (card !is TrainerCard || card.kind !is TrainerKind.Tool) {
+            return EngineResult.reject(state, "Esa carta no es una Herramienta")
+        }
+        val kind = card.kind as TrainerKind.Tool
+        val foeSide = state.activeSide.other()
+        val targetSide = when {
+            me.allInPlay.any { it.card.id == targetId } -> state.activeSide
+            kind.attachTo == ToolTarget.ANY &&
+                state.sideState(foeSide).allInPlay.any { it.card.id == targetId } -> foeSide
+            else -> return EngineResult.reject(state, "Objetivo no válido para la Herramienta")
+        }
+        val target = state.sideState(targetSide).allInPlay.first { it.card.id == targetId }
+        // Regla oficial: máximo 1 Herramienta por Pokémon.
+        if (target.attachedTools.isNotEmpty()) {
+            return EngineResult.reject(state, "Ese Pokémon ya tiene una Herramienta anexada")
+        }
+        // Saca la carta de la mano del jugador activo y ánclala al objetivo.
+        var working = withPlayer(state, me.copy(hand = me.hand - card), state.activeSide)
+        val ps = working.sideState(targetSide)
+        working = withPlayer(
+            working,
+            replaceInPlay(ps, targetId, target.copy(attachedTools = target.attachedTools + card)),
+            targetSide,
+        )
+        return EngineResult(working, listOf(GameEvent.ToolAttached(state.activeSide, toolId, targetId)))
     }
 
     private fun retreat(state: GameState, benchTargetId: CardId): EngineResult {
@@ -183,6 +234,14 @@ class GameEngine(
             ?: return EngineResult.reject(state, "El rival no tiene Pokémon Activo")
         val atk = attacker.card.attacks.firstOrNull { it.name.es == attackName || it.name.en == attackName }
             ?: return EngineResult.reject(state, "Ataque desconocido: $attackName")
+        // Regla oficial: quien empieza (turno 1) no puede atacar en su primer turno.
+        if (state.turn == 1) {
+            return EngineResult.reject(state, "El jugador que empieza no puede atacar en su primer turno")
+        }
+        // Restricción "no puede atacar este turno" (Jet Wing y similares).
+        if (attacker.cannotAttackOnTurn == state.turn) {
+            return EngineResult.reject(state, "${attacker.card.name.es} no puede atacar este turno")
+        }
         if (attacker.attachedEnergyCount < atk.convertedCost) {
             return EngineResult.reject(state, "Energía insuficiente para ${atk.name.es}")
         }
@@ -190,14 +249,32 @@ class GameEngine(
         val events = mutableListOf<GameEvent>()
         events += GameEvent.Attacked(state.activeSide, attacker.card.id, atk.name.es)
 
-        val base = (atk.baseDamage as? com.mineralord.tcg.engine.model.Damage.Fixed)?.value ?: 0
+        // Daño base: si el efecto autora términos de daño (ataques "X+" con bonus
+        // condicional) se usan ESOS (sumados) para que el bonus pase por Debilidad/
+        // Resistencia; si no, el daño fijo de la carta. En ambos casos, un solo calc.
+        val authored = effects[atk.effect]?.attackDamage.orEmpty()
+        val base = if (authored.isNotEmpty()) {
+            authored.filter { term ->
+                when (term.condition) {
+                    com.mineralord.tcg.engine.model.DamageCondition.ALWAYS -> true
+                    com.mineralord.tcg.engine.model.DamageCondition.IF_DEFENDER_EVOLVED -> !defender.card.isBasic
+                }
+            }.sumOf { it.amount }
+        } else {
+            (atk.baseDamage as? com.mineralord.tcg.engine.model.Damage.Fixed)?.value ?: 0
+        }
         val dmg = Damage.calculate(base, attacker.card.types, defender)
+        // Reducción de daño por Herramientas del defensor, aplicada DESPUÉS de
+        // Debilidad/Resistencia (como manda la regla de "reduce el daño en X").
+        val finalAmount = if (dmg.finalAmount > 0) {
+            (dmg.finalAmount - toolDamageReduction(defender)).coerceAtLeast(0)
+        } else 0
         var newFoe = foe
-        if (dmg.finalAmount > 0) {
-            val damaged = defender.copy(damage = defender.damage + dmg.finalAmount)
+        if (finalAmount > 0) {
+            val damaged = defender.copy(damage = defender.damage + finalAmount)
             newFoe = foe.copy(active = damaged)
             events += GameEvent.DamageDealt(
-                state.activeSide, defender.card.id, dmg.finalAmount,
+                state.activeSide, defender.card.id, finalAmount,
                 dmg.weaknessApplied, dmg.resistanceApplied,
             )
         }
@@ -215,6 +292,7 @@ class GameEngine(
             val res = interpreter.execute(
                 effect, EffectSource(state.activeSide, attacker.card.id), working,
                 endsTurnOnResolve = true,
+                shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
             )
             working = res.state
             events += res.events
@@ -252,6 +330,9 @@ class GameEngine(
         }
         val effect = effects[card.effect]
             ?: return EngineResult.reject(state, "Esta carta aún no tiene efecto implementado")
+        if (effect.requiresOwnKoLastTurn && state.activeSide !in state.koedLastOppTurn) {
+            return EngineResult.reject(state, "Solo puedes jugar ${card.name.es} si te noquearon el turno pasado")
+        }
 
         // La carta va al descarte al jugarse.
         val afterPlay = me.copy(hand = me.hand - card, discard = me.discard + card)
@@ -259,7 +340,15 @@ class GameEngine(
         if (kind is TrainerKind.Supporter) working = working.copy(supporterPlayedThisTurn = true)
 
         val events = mutableListOf<GameEvent>(GameEvent.TrainerPlayed(state.activeSide, cardId))
-        val res = interpreter.execute(effect, EffectSource(state.activeSide, null), working)
+        val res = interpreter.execute(
+            effect, EffectSource(state.activeSide, null), working,
+            shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
+        )
+        // Si el efecto abre una elección de objetivo SIN candidatos (p. ej. Poción sin
+        // ningún Pokémon dañado), la carta no haría nada → rechazar sin gastarla.
+        if (res.pending.any { it is PendingDecision.ChooseTargets && it.candidates.isEmpty() }) {
+            return EngineResult.reject(state, "No hay un objetivo válido para ${card.name.es}")
+        }
         working = res.state
         events += res.events
 
@@ -289,7 +378,15 @@ class GameEngine(
         }
 
         val events = mutableListOf<GameEvent>()
-        val res = interpreter.execute(effect, EffectSource(state.activeSide, pokemonId), working)
+        val res = interpreter.execute(
+            effect, EffectSource(state.activeSide, pokemonId), working,
+            shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
+        )
+        // Igual que en los Entrenadores: una habilidad que solo apunta a Pokémon dañados
+        // (curación) no puede usarse si no hay ninguno con daño.
+        if (res.pending.any { it is PendingDecision.ChooseTargets && it.candidates.isEmpty() }) {
+            return EngineResult.reject(state, "No hay un objetivo válido para esa habilidad")
+        }
         working = res.state
         events += res.events
 
@@ -308,7 +405,7 @@ class GameEngine(
         validateChoice(interaction.decision, chosen)?.let { return EngineResult.reject(state, it) }
 
         val endsTurn = interaction.endsTurnOnResolve
-        val res = interpreter.resolve(state, chosen) { rng.shuffle(it) }
+        val res = interpreter.resolve(state, chosen, shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() })
         var working = res.state
         val events = res.events.toMutableList()
 
@@ -341,11 +438,32 @@ class GameEngine(
                 !decision.candidates.containsAll(chosen) -> "Carta no encontrada en la zona"
                 else -> null
             }
+        // CoinFlip: sin elección de cartas (chosen vacío); el motor lanza al resolver.
+        is PendingDecision.CoinFlip -> null
         // MoveEnergy: el intérprete ignora elecciones fuera de rango; validación ligera.
         is PendingDecision.MoveEnergy -> null
+        // AttachFromRevealed: `chosen` son PARES (energía, destino); el intérprete valida
+        // candidatos y tope. Validación ligera aquí.
+        is PendingDecision.AttachFromRevealed -> null
     }
 
     // --------------------------------------------------------------- KO / fin
+
+    // --------------------------------------------------- pasivos de Herramienta
+    // El motor aplica los PassiveModifier aportados por las Herramientas ancladas a un
+    // Pokémon (HP extra, reducción de daño). Los pasivos de habilidades/energías aún no
+    // se aplican de forma general (deuda documentada); esto se limita a Herramientas.
+
+    private fun toolMods(pip: PokemonInPlay): List<PassiveModifier> =
+        pip.attachedTools.flatMap { effects[it.effect]?.passives.orEmpty() }
+
+    /** HP máximo efectivo = HP impreso + EXTRA_HP de sus Herramientas. */
+    private fun effectiveMaxHp(pip: PokemonInPlay): Int =
+        pip.card.hp + toolMods(pip).filter { it.mod == ModKind.EXTRA_HP }.sumOf { it.amount }
+
+    /** Reducción de daño de ataques aportada por las Herramientas del defensor. */
+    private fun toolDamageReduction(pip: PokemonInPlay): Int =
+        toolMods(pip).filter { it.mod == ModKind.REDUCE_DAMAGE }.sumOf { it.amount }
 
     private fun handleKnockouts(
         state: GameState,
@@ -354,7 +472,8 @@ class GameEngine(
     ): GameState {
         val target = state.sideState(koSide)
         val active = target.active ?: return state
-        if (!active.isKnockedOut) return state
+        // KO por HP EFECTIVO (incluye el HP extra de Herramientas tipo Capa/Amuleto).
+        if (active.damage < effectiveMaxHp(active)) return state
 
         val attackerSide = koSide.other()
         events += GameEvent.KnockedOut(koSide, active.card.id)
@@ -380,6 +499,12 @@ class GameEngine(
         var next = state
             .let { withPlayer(it, attackerAfter, attackerSide) }
             .let { withPlayer(it, targetAfter, koSide) }
+
+        // Registrar KO "durante el turno del rival" (no cuenta el auto-KO por recoil
+        // en el propio turno): habilita cartas condicionales como Mela.
+        if (state.activeSide != koSide) {
+            next = next.copy(koedLastOppTurn = next.koedLastOppTurn + koSide)
+        }
 
         // Victoria por premios.
         if (attackerAfter.prizesRemaining <= 0) {
@@ -422,6 +547,9 @@ class GameEngine(
             supporterPlayedThisTurn = false,
             energyAttachedThisTurn = false,
             abilitiesUsedThisTurn = emptySet(),
+            // El lado que ACABA su turno reinicia su ventana de "KO en turno rival":
+            // durante el turno entrante volverá a poblarse si le noquean algo.
+            koedLastOppTurn = working.koedLastOppTurn - state.activeSide,
         )
         events += GameEvent.TurnStarted(nextSide, nextTurn)
 
@@ -505,12 +633,14 @@ class GameEngine(
                 .forEach { intents += GameIntent.PlayBasicToBench(it.id) }
         }
 
-        // Evolucionar Pokémon en juego que lleven al menos un turno.
-        me.hand.filterIsInstance<PokemonCard>().filter { it.evolvesFrom != null }.forEach { evo ->
-            me.allInPlay.filter {
-                it.turnsInPlay >= 1 &&
-                    (evo.evolvesFrom == it.card.name.en || evo.evolvesFrom == it.card.name.es)
-            }.forEach { target -> intents += GameIntent.Evolve(evo.id, target.card.id) }
+        // Evolucionar Pokémon en juego que lleven al menos un turno (no en el turno 1).
+        if (state.turn > 1) {
+            me.hand.filterIsInstance<PokemonCard>().filter { it.evolvesFrom != null }.forEach { evo ->
+                me.allInPlay.filter {
+                    it.turnsInPlay >= 1 &&
+                        (evo.evolvesFrom == it.card.name.en || evo.evolvesFrom == it.card.name.es)
+                }.forEach { target -> intents += GameIntent.Evolve(evo.id, target.card.id) }
+            }
         }
 
         // Unir energía (una por turno) a cualquier Pokémon propio.
@@ -526,16 +656,22 @@ class GameEngine(
             me.bench.forEach { intents += GameIntent.Retreat(it.card.id) }
         }
 
-        // Atacar con ataques pagables.
-        active?.card?.attacks?.filter { active.attachedEnergyCount >= it.convertedCost }
-            ?.forEach { intents += GameIntent.Attack(it.name.es) }
+        // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
+        // o si el Activo está restringido este turno por Jet Wing y similares).
+        if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn) {
+            active?.card?.attacks?.filter { active.attachedEnergyCount >= it.convertedCost }
+                ?.forEach { intents += GameIntent.Attack(it.name.es) }
+        }
 
         // Jugar Entrenadores (Apoyo/Objeto) con efecto registrado.
         me.hand.filterIsInstance<TrainerCard>().forEach { trainer ->
             val kind = trainer.kind
+            val effect = effects[trainer.effect]
             val playable = (kind is TrainerKind.Item) ||
                 (kind is TrainerKind.Supporter && !state.supporterPlayedThisTurn)
-            if (playable && effects[trainer.effect] != null) {
+            val conditionOk = effect != null &&
+                (!effect.requiresOwnKoLastTurn || state.activeSide in state.koedLastOppTurn)
+            if (playable && conditionOk) {
                 intents += GameIntent.PlayTrainer(trainer.id)
             }
         }

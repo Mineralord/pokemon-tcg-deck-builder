@@ -18,6 +18,18 @@ sealed interface Card {
     val supertype: Supertype
 }
 
+/**
+ * Devuelve una copia de la carta con otro [CardId]. Se usa para dar a cada copia
+ * física de una carta impresa un id de INSTANCIA único al construir la partida, de
+ * modo que las copias sean independientes en juego (ver [CardId.withInstance]).
+ */
+fun Card.withId(newId: CardId): Card = when (this) {
+    is PokemonCard -> copy(id = newId)
+    is TrainerCard -> copy(id = newId)
+    is BasicEnergy -> copy(id = newId)
+    is SpecialEnergy -> copy(id = newId)
+}
+
 // ============================================================
 //  POKÉMON
 // ============================================================

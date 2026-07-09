@@ -28,6 +28,7 @@ include(":data:cards")
 include(":data:profile")
 include(":data:cloud")
 include(":data:netplay")
+include(":data:netfirestore")
 
 // --- core + feature + app: capa Android/Compose ---
 include(":core:designsystem")
