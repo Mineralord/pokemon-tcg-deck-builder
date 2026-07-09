@@ -259,6 +259,17 @@ Jet Wing (no atacar sig. turno), Concentrated Fire (monedas), Flame Cloak/Passio
   cy≈0.628 jugador / 0.207 rival + fila de 2 cy≈0.751 / 0.100; rival más chico por escorzo). NO tocar.
 
 ## 🌐 PARTIDA ONLINE (Firestore, host-autoritativo) — EN CURSO (8 Jul)
+- **BLINDAJE FLUJO DE BARAJAS (9 Jul)** — usuario reportó "el rival juega EXACTAMENTE mi
+  baraja siendo yo anfitrión" (ambos con barajas propias distintas). Trazado: el motor y el
+  transporte son CORRECTOS (host arma el rival desde `hello.deck` del invitado, no del suyo;
+  `h2g`/`g2h` sin loopback; Hello se serializa entero). Sospecha nº1 = **perfiles/baraja
+  activa DUPLICADOS** (posible sync de perfil por cuenta Google compartida → misma baraja
+  activa). Hardening: `NetMessage.Hello` ahora lleva `deckName`; `OnlineGameScreen.loadDeck()`
+  devuelve nombre+ids; el controlador **loguea la baraja de cada lado** (host y guest, este
+  vía `onHostHello`) y **AVISA si ambas barajas son idénticas** (`hello.deck.sorted() ==
+  myDeckPrintedIds.sorted()`) + guarda si el rival no envía baraja. El log (visible en el
+  registro) dirá en la próxima prueba si de verdad llegan barajas distintas → confirma si es
+  perfil duplicado o un bug real de estado. Compila; `:data:netplay:test` verde.
 Plan aprobado en `C:\Users\pmmt9\.claude\plans\zesty-coalescing-brook.md`. Objetivo: 2 jugadores por
 Internet, **ceremonia completa** (moneda sincro, prep en cada tel, mulligan) e **info oculta** (host
 manda a cada quien su vista censurada). Diseño: HOST corre el motor y manda "fotos"; GUEST pinta y

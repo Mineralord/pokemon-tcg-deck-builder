@@ -55,9 +55,15 @@ fun GameIntentDto.toIntent(): GameIntent = when (this) {
  */
 @Serializable
 sealed interface NetMessage {
-    /** Handshake inicial: identidad + mazo elegido (ids de carta expandidos). */
+    /** Handshake inicial: identidad + nombre de la baraja + mazo elegido (ids
+     *  de carta expandidos). [deckName] es solo informativo (log/UI); la partida
+     *  se arma con [deck]. */
     @Serializable
-    data class Hello(val playerName: String, val deck: List<String>) : NetMessage
+    data class Hello(
+        val playerName: String,
+        val deck: List<String>,
+        val deckName: String = "Baraja",
+    ) : NetMessage
 
     /** El invitado solicita una jugada. */
     @Serializable

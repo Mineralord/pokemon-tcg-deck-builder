@@ -69,12 +69,14 @@ fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
 
     DisposableEffect(Unit) { onDispose { controller?.close() } }
 
-    suspend fun loadDeckPrintedIds(): List<String> {
+    // Nombre + cartas de la baraja activa. El nombre solo es informativo (log/UI):
+    // deja ver de un vistazo con qué baraja entra cada jugador y detectar duplicados.
+    suspend fun loadDeck(): Pair<String, List<String>> {
         val profile = ProfileRepository(app).profile.first()
         val deck = profile.decks.firstOrNull { it.id == profile.activeDeckId }
             ?: profile.decks.firstOrNull()
             ?: StarterDecks.ALL.first().toDeck()
-        return deck.expandedCardIds().map { it.raw }
+        return deck.name to deck.expandedCardIds().map { it.raw }
     }
 
     val ctrl = controller
@@ -110,9 +112,9 @@ fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                     phase = LobbyPhase.Connecting
                     scope.launch {
                         runCatching {
-                            val printed = loadDeckPrintedIds()
+                            val (deckName, printed) = loadDeck()
                             val (code, transport) = factoryProvider.matchFactory.host("Anfitrión")
-                            controller = OnlineGameController(app, transport, "Anfitrión", printed)
+                            controller = OnlineGameController(app, transport, "Anfitrión", printed, deckName)
                             phase = LobbyPhase.Hosting(code)
                         }.onFailure { error = it.message ?: "No se pudo crear la partida"; phase = LobbyPhase.Choosing }
                     }
@@ -135,9 +137,9 @@ fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                     phase = LobbyPhase.Connecting
                     scope.launch {
                         runCatching {
-                            val printed = loadDeckPrintedIds()
+                            val (deckName, printed) = loadDeck()
                             val transport = factoryProvider.matchFactory.join(codeInput.trim(), "Invitado")
-                            controller = OnlineGameController(app, transport, "Invitado", printed)
+                            controller = OnlineGameController(app, transport, "Invitado", printed, deckName)
                             phase = LobbyPhase.Playing
                         }.onFailure { error = it.message ?: "No se pudo unir"; phase = LobbyPhase.Joining }
                     }

@@ -49,6 +49,7 @@ class OnlineGameController(
     private val transport: MatchTransport,
     private val playerName: String,
     private val myDeckPrintedIds: List<String>,
+    private val myDeckName: String = "Baraja",
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
 ) : GameController {
 
@@ -76,6 +77,7 @@ class OnlineGameController(
     private var hostChoice: GameSetup.SideChoice? = null
     private var guestChoice: GameSetup.SideChoice? = null
     private var guestDeckPrinted: List<String>? = null
+    private var guestDeckName: String? = null
 
     // Ceremonia (GUEST): su mano repartida (cartas con id de instancia del host).
     private var myDealtHand: List<Card> = emptyList()
@@ -112,8 +114,9 @@ class OnlineGameController(
 
             // Escucha del rival.
             scope.launch { transport.incoming.collect { onMessage(it) } }
-            // Preséntate con tu mazo.
-            send(NetMessage.Hello(playerName, myDeckPrintedIds))
+            // Preséntate con tu mazo (nombre + cartas).
+            send(NetMessage.Hello(playerName, myDeckPrintedIds, myDeckName))
+            core.log += "Tu baraja: «$myDeckName» (${myDeckPrintedIds.size} cartas)."
             core.log += if (isHost) "Esperando a que se una tu rival…" else "Conectando con el anfitrión…"
             core.emit()
         }
@@ -127,7 +130,7 @@ class OnlineGameController(
 
     private fun onMessage(msg: NetMessage) {
         when (msg) {
-            is NetMessage.Hello -> if (isHost) onGuestHello(msg)
+            is NetMessage.Hello -> if (isHost) onGuestHello(msg) else onHostHello(msg)
             is NetMessage.CoinCall -> if (isHost) onGuestCoinCall(msg)
             is NetMessage.CoinResult -> if (!isHost) onCoinResult(msg)
             is NetMessage.ChooseOrder -> if (isHost) onGuestChooseOrder(msg)
@@ -152,16 +155,37 @@ class OnlineGameController(
     private fun onGuestHello(hello: NetMessage.Hello) {
         if (hostDealt != null) return // ya arrancó
         guestDeckPrinted = hello.deck
+        guestDeckName = hello.deckName
+        // BLINDAJE del mazo del rival: SIEMPRE se arma con el mazo que el invitado
+        // envió en su Hello (nunca con el del host). Si por lo que sea no llegó, se
+        // avisa en vez de arrancar con un rival vacío/erróneo.
+        if (hello.deck.isEmpty()) {
+            core.log += "⚠ ${hello.playerName} no envió su baraja; no se puede iniciar."
+            core.emit()
+            return
+        }
+        // Aviso claro si AMBAS barajas son idénticas (mismo multiconjunto de cartas):
+        // suele significar perfiles/baraja activa duplicados, no un fallo del reparto.
+        if (hello.deck.sorted() == myDeckPrintedIds.sorted()) {
+            core.log += "⚠ Tu baraja y la de ${hello.playerName} son IDÉNTICAS (misma lista de cartas)."
+        }
         val hostCards = buildDeck(myDeckPrintedIds, base = 0)
         val guestCards = buildDeck(hello.deck, base = 100_000)
         val (hd, hm) = GameSetup.dealCounting(hostCards, rng)
         val (gd, gm) = GameSetup.dealCounting(guestCards, rng)
         hostDealt = hd; guestDealt = gd; hostMulligans = hm; guestMulligans = gm
-        core.log += "¡${hello.playerName} se unió! Ambos eligen cara o cruz."
+        core.log += "¡${hello.playerName} se unió con «${hello.deckName}» (${hello.deck.size} cartas)! Ambos eligen cara o cruz."
         // Moneda JUSTA: AMBOS llaman cara/cruz; el host lanza UNA moneda compartida
         // cuando tiene las dos llamadas y el ganador del volado elige el orden.
         send(NetMessage.Ceremony("COIN"))
         core.coinFlip = CoinFlipUiState(CoinPhase.CHOOSING, message = "Elige cara o cruz.")
+        core.emit()
+    }
+
+    /** GUEST: registra la baraja del anfitrión (informativo; no arma nada). */
+    private fun onHostHello(hello: NetMessage.Hello) {
+        guestDeckName = hello.deckName // el nombre del rival (host) para el log del guest
+        core.log += "El anfitrión juega «${hello.deckName}» (${hello.deck.size} cartas)."
         core.emit()
     }
 
