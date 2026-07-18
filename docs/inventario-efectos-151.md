@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **220**  ·  Sin registrar: **38**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **174**  ·  totalmente ausentes: **24**.
+- Registradas en `EffectsDb`: **221**  ·  Sin registrar: **37**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **175**  ·  totalmente ausentes: **23**.
 
 ## Efectos únicos SIN implementar
 
@@ -38,7 +38,6 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 
 En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 | Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
-| Pegatinas de Energía (`sv3pt5-159`) | Trainer | Trainer | Lanza 1 moneda. Si sale cara, une 1 carta de Energía Básica de tu pila de descartes a uno de tus Pokémon en Banca. |
 | Invitación de Erika (`sv3pt5-160`) | Trainer | Trainer | Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon Básico que encuentres entre ellas en la Banca de tu rival. Si pones un Pokémon en su Banca de esta manera, cambia ese Pokémon por el Pokémon que esté en el Puesto Activo. |
 | Agarrador Mecánico (`sv3pt5-162`) | Trainer | Trainer | Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon que encuentres entre ellas en la parte inferior de su baraja. |
 

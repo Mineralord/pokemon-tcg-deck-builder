@@ -259,6 +259,12 @@ sealed interface EffectOp {
          * es ATÓMICO con el enganche: solo ocurre si se unió al menos 1 Energía.
          * null = no roba. */
         val thenDrawUpTo: Int? = null,
+        /**
+         * Si es true, el enganche está condicionado a una moneda: al resolver la elección
+         * el motor lanza 1 moneda y solo une la Energía si sale cara (Pegatinas de Energía
+         * sv3pt5-159: "Lanza 1 moneda. Si sale cara, une 1 Energía Básica de tu descarte a
+         * uno de tus Pokémon en Banca"). Emite [GameEvent.CoinFlipped]. */
+        val coinFlip: Boolean = false,
     ) : EffectOp
 
     /**

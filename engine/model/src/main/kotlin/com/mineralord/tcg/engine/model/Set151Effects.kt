@@ -196,6 +196,12 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         put(EffectId("sv3pt5-194"), billsTransfer)
     }
 
+    // Pegatinas de Energía (Energy Sticker, Objeto): lanza 1 moneda; si cara, une 1 Energía
+    // Básica de tu descarte a uno de tus Pokémon en Banca. AttachEnergyFromDiscard con
+    // coinFlip=true (la moneda se resuelve al confirmar la elección de energía+Pokémon).
+    put(EffectId("sv3pt5-159"), Effect(ops = listOf(
+        EffectOp.AttachEnergyFromDiscard(count = 1, energyType = null, target = Target.OWN_BENCH, coinFlip = true))))
+
 
     // ======================= SET 151 (sv3pt5) — Fase 5 de cobertura =======================
     // Daño a la Banca rival (dirigido y "a cada uno") + daño condicional contra ex/V.

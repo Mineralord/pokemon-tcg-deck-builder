@@ -1,5 +1,6 @@
 package com.mineralord.tcg.engine.rules
 
+import com.mineralord.tcg.engine.events.GameEvent
 import com.mineralord.tcg.engine.model.Ability
 import com.mineralord.tcg.engine.model.ArtworkRefs
 import com.mineralord.tcg.engine.model.Attack
@@ -279,6 +280,56 @@ class TrainerAbilityTest {
         assertNull(r.state.interaction)
         assertEquals(0, r.state.player.hand.size)       // no robó
         assertEquals(8, r.state.player.deck.size)       // mazo intacto
+    }
+
+    /** Rng con moneda fija (para el enganche condicionado de Pegatinas de Energía). */
+    private class FixedRng(private val heads: Boolean) : Rng {
+        override fun flipCoin(): Boolean = heads
+        override fun <T> shuffle(list: List<T>): List<T> = list
+        override fun nextInt(untilExclusive: Int): Int = 0
+    }
+
+    private fun energyStickerState(): GameState = baseState().let { s ->
+        s.copy(
+            player = s.player.copy(
+                hand = listOf(trainer("sv3pt5-159", TrainerKind.Item())),
+                bench = listOf(PokemonInPlay(mon("benchMon"))),
+                discard = listOf(energy("disc1")),
+            ),
+        )
+    }
+
+    @Test
+    fun `Pegatinas de Energia con cara une 1 Basica del descarte a un Pokemon de Banca`() {
+        val engine = GameEngine(FixedRng(true))
+        val played = engine.apply(energyStickerState(), GameIntent.PlayTrainer(CardId("sv3pt5-159")))
+        assertTrue(played.accepted, played.rejection)
+        val d = played.state.interaction!!.decision as PendingDecision.AttachFromRevealed
+        assertTrue(d.fromDiscard)
+        assertEquals(listOf(CardId("benchMon")), d.benchCandidates, "solo la Banca es destino")
+
+        val resolved = engine.apply(
+            played.state, GameIntent.ResolveDecision(listOf(CardId("disc1"), CardId("benchMon"))),
+        )
+        assertTrue(resolved.accepted, resolved.rejection)
+        assertTrue(resolved.events.any { it is GameEvent.CoinFlipped && it.heads })
+        val benched = resolved.state.player.bench.first { it.card.id == CardId("benchMon") }
+        assertEquals(CardId("disc1"), benched.attachedEnergy.firstOrNull()?.id, "se unió la Energía")
+        assertFalse(resolved.state.player.discard.any { it.id == CardId("disc1") }, "salió del descarte")
+    }
+
+    @Test
+    fun `Pegatinas de Energia con cruz no une nada`() {
+        val engine = GameEngine(FixedRng(false))
+        val played = engine.apply(energyStickerState(), GameIntent.PlayTrainer(CardId("sv3pt5-159")))
+        val resolved = engine.apply(
+            played.state, GameIntent.ResolveDecision(listOf(CardId("disc1"), CardId("benchMon"))),
+        )
+        assertTrue(resolved.accepted, resolved.rejection)
+        assertTrue(resolved.events.any { it is GameEvent.CoinFlipped && !it.heads })
+        val benched = resolved.state.player.bench.first { it.card.id == CardId("benchMon") }
+        assertTrue(benched.attachedEnergy.isEmpty(), "sin cara no se une Energía")
+        assertTrue(resolved.state.player.discard.any { it.id == CardId("disc1") }, "la Energía sigue en el descarte")
     }
 
     // ---------------------------------------------------------------- Tools

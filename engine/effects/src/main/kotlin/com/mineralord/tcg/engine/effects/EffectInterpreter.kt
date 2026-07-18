@@ -121,7 +121,7 @@ class EffectInterpreter {
             is PendingDecision.SearchCards -> applySearch(d, chosen, cleared, shuffle)
             is PendingDecision.MoveEnergy -> applyMoveEnergy(d, chosen, cleared)
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
-            is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle)
+            is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle, flip)
             is PendingDecision.ChooseTargets -> EffectResult(cleared, emptyList())
             is PendingDecision.ChooseEnergyType -> {
                 // Porygon — Conversión 4: fija el TIPO de Debilidad-override en el Activo rival.
@@ -349,6 +349,7 @@ class EffectInterpreter {
                         maxAttach = op.count,
                         fromDiscard = true,
                         thenDrawUpTo = op.thenDrawUpTo,
+                        coinFlip = op.coinFlip,
                     )
                 }
             }
@@ -1128,13 +1129,22 @@ class EffectInterpreter {
         chosen: List<CardId>,
         state: GameState,
         shuffle: (List<Card>) -> List<Card>,
+        flip: () -> Boolean = { true },
     ): EffectResult {
         val side = d.side
         val ps = state.sideState(side)
+        // Pegatinas de Energía: el enganche se juega a una moneda. Con cruz no se une nada
+        // (la elección ya se hizo; solo emitimos el evento de la tirada para la animación).
+        if (d.coinFlip) {
+            val heads = flip()
+            if (!heads) return EffectResult(state, listOf(GameEvent.CoinFlipped(side, false)))
+        }
         // Origen de las energías: mazo (Generador Eléctrico) o descarte (Passionate Singing).
         val source = if (d.fromDiscard) ps.discard else ps.deck
         var working = state
-        val events = mutableListOf<GameEvent>()
+        // Con moneda (Pegatinas de Energía) ya sabemos que salió cara: registra el evento.
+        val events = if (d.coinFlip) mutableListOf<GameEvent>(GameEvent.CoinFlipped(side, true))
+            else mutableListOf()
         val attached = mutableListOf<Card>()
         // Recorre pares (energía, destino) respetando el tope y sin reusar energías.
         var i = 0

@@ -146,6 +146,12 @@ sealed interface PendingDecision {
          * "Si lo haces, roba hasta tener N cartas" (Mela): tras resolver, si se
          * unió al menos 1 Energía, roba hasta [thenDrawUpTo]. null = no roba. */
         val thenDrawUpTo: Int? = null,
+        /**
+         * Si es true, el enganche se juega a una moneda: al resolver, el motor lanza 1
+         * moneda y solo une la Energía elegida si sale cara (Pegatinas de Energía
+         * sv3pt5-159). La elección (energía + Pokémon) se hace antes de la tirada; el
+         * resultado es idéntico. */
+        val coinFlip: Boolean = false,
     ) : PendingDecision
 }
 
