@@ -267,6 +267,25 @@ class EffectInterpreter {
                     damagePerDiscardToOppActive = op.perCard,
                 )
             }
+            is EffectOp.DiscardOwnToolsForDamage -> {
+                // Candidatos = Herramientas enganchadas a tus Pokémon (Activo + Banca).
+                val tools = state.sideState(src.actingSide).allInPlay.flatMap { it.attachedTools }
+                if (tools.isEmpty()) null   // sin Herramientas: 0 descartadas = 0 bonus
+                else PendingDecision.SearchCards(
+                    src.actingSide,
+                    LocalizedText(
+                        "Descarta Herramientas de tus Pokémon (+${op.perCard} daño por cada una)",
+                        "Discard Pokémon Tools from your Pokémon (+${op.perCard} damage each)",
+                    ),
+                    from = Zone.DISCARD,          // ignorado (fromAttachedTools = true)
+                    filter = CardFilter(),
+                    destination = Zone.DISCARD,
+                    count = tools.size,
+                    candidates = tools.map { it.id },
+                    damagePerDiscardToOppActive = op.perCard,
+                    fromAttachedTools = true,
+                )
+            }
             is EffectOp.CoinFlipSearchToBench -> PendingDecision.CoinFlipThenSearch(
                 src.actingSide,
                 LocalizedText("Lanza ${op.flips} monedas", "Flip ${op.flips} coins"),
@@ -909,7 +928,8 @@ class EffectInterpreter {
             // (RecoverFromDiscard solo cae aquí si el descarte no tenía nada que recuperar).
             is EffectOp.ChooseTarget, is EffectOp.SearchDeck, is EffectOp.MoveEnergy,
             is EffectOp.RecoverFromDiscard, is EffectOp.PlaceCounters,
-            is EffectOp.DiscardFromHandForDamage, is EffectOp.CoinFlipSearchToBench ->
+            is EffectOp.DiscardFromHandForDamage, is EffectOp.CoinFlipSearchToBench,
+            is EffectOp.DiscardOwnToolsForDamage ->
                 EffectResult(state, emptyList())
         }
 
@@ -1008,6 +1028,8 @@ class EffectInterpreter {
         shuffle: (List<Card>) -> List<Card>,
     ): EffectResult {
         val side = d.side
+        // Electrode — Cadena Bum Bum: descarte de Herramientas enganchadas (no de una zona).
+        if (d.fromAttachedTools) return applyDiscardTools(d, chosen, state)
         val ps = state.sideState(side)
         val fromDiscard = d.from == Zone.DISCARD
         val fromHand = d.from == Zone.HAND
@@ -1071,6 +1093,40 @@ class EffectInterpreter {
                 result = dmg.state
                 events += dmg.events
             }
+        }
+        return EffectResult(result, events)
+    }
+
+    /**
+     * Electrode — Cadena Bum Bum: descarta las Herramientas elegidas de tus Pokémon (a la
+     * pila de descartes de su dueño) y hace [d.damagePerDiscardToOppActive] CRUDO al Activo
+     * rival por cada una. Sin elección = 0 descartes = 0 daño extra (el base ya lo aplicó el motor).
+     */
+    private fun applyDiscardTools(
+        d: PendingDecision.SearchCards,
+        chosen: List<CardId>,
+        state: GameState,
+    ): EffectResult {
+        val side = d.side
+        val ps = state.sideState(side)
+        val toDiscard = chosen.filter { it in d.candidates }.toSet()
+        val discarded = ps.allInPlay.flatMap { it.attachedTools }.filter { it.id in toDiscard }
+        if (discarded.isEmpty()) return EffectResult(state, emptyList())
+        fun strip(p: PokemonInPlay) = p.copy(attachedTools = p.attachedTools.filterNot { it.id in toDiscard })
+        val updated = ps.copy(
+            active = ps.active?.let(::strip),
+            bench = ps.bench.map(::strip),
+            discard = ps.discard + discarded,
+        )
+        var result = withPlayer(state, updated, side)
+        val events = mutableListOf<GameEvent>(GameEvent.CardsDiscarded(side, discarded.size))
+        val oppActive = result.sideState(side.other()).active
+        if (oppActive != null) {
+            val dmg = damageTargets(
+                listOf(oppActive), d.damagePerDiscardToOppActive * discarded.size, side, result,
+            )
+            result = dmg.state
+            events += dmg.events
         }
         return EffectResult(result, events)
     }

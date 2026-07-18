@@ -605,6 +605,15 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         EffectOp.DiscardFromHandForDamage(
             CardFilter(supertype = Supertype.ENERGY, type = EnergyType.WATER), maxCount = 2, perCard = 140))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 42: descarte de Herramientas propias que escala el daño -------------------
+
+    // Electrode — Cadena Bum Bum (Bang Boom Chain): 20 base (pasa por Debilidad/Resistencia) y,
+    // antes de infligir daño, puedes descartar cualquier cantidad de Herramientas de TUS Pokémon;
+    // +40 CRUDO por cada una. Base por attackDamage; el bonus lo aplica el efecto tras la elección.
+    put(atkKey("sv3pt5-101", "Bang Boom Chain"), Effect(
+        attackDamage = listOf(DamageTerm(20)),
+        ops = listOf(EffectOp.DiscardOwnToolsForDamage(perCard = 40))))
+
     // ------------------- SET 151 (sv3pt5) — Fase 25: "si tu mano está vacía" (daño + estado) -------------------
 
     // Beedrill — Aguijón Nadir (Nadir Needle): 30 base; si tu mano está vacía, +120 Y

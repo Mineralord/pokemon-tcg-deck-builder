@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **221**  ·  Sin registrar: **37**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **175**  ·  totalmente ausentes: **23**.
+- Registradas en `EffectsDb`: **222**  ·  Sin registrar: **36**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **176**  ·  totalmente ausentes: **22**.
 
 ## Efectos únicos SIN implementar
 
@@ -20,7 +20,6 @@
 | Psyduck (`sv3pt5-54`) | Pokémon | Cavilar | Durante el próximo turno de tu rival, cada vez que este lance una moneda, se considerará que ha salido cruz. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
 | Haunter (`sv3pt5-93`) | Pokémon | Espíritu Retorno | Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes poner 1 carta de Partidario de la pila de descartes de tu rival en su mano. |
-| Electrode (`sv3pt5-101`) | Pokémon | Cadena Bum Bum | Antes de infligir daño, puedes descartar cualquier cantidad de Herramientas Pokémon de tus Pokémon. Este ataque hace 40 puntos de daño más por cada carta que hayas descartado de esta manera. |
 | Chansey (`sv3pt5-113`) | Pokémon | Regalo Fortuito | Si has cogido este Pokémon de entre las cartas de Premio que están boca abajo durante tu turno y tu Banca no está llena, antes de ponerlo en tu mano, puedes ponerlo en tu Banca. Si pones este Pokémon en tu Banca de esta manera, lanza 1 moneda. Si sale cara, coge 1 carta de Premio más. |
 | Seadra (`sv3pt5-117`) | Pokémon | Tinta Cegadora | Durante el próximo turno de tu rival, si el Pokémon Defensor intenta usar un ataque, tu rival lanza 2 monedas. Si sale cruz en alguna de ellas, ese ataque no se lleva a cabo. |
 | Ditto (`sv3pt5-132`) | Pokémon | Inicio Transformador | Una vez durante tu primer turno, si este Pokémon está en el Puesto Activo, puedes buscar en tu baraja y elegir 1 Pokémon Básico que encuentres en ella, excepto Ditto. Si lo haces, descarta este Pokémon y todas las cartas unidas a él, y pon el Pokémon elegido en su lugar. Después, baraja las cartas de tu baraja. |
@@ -81,6 +80,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Dragonite — Habilidad: Travesía Propulsión
 - Eevee — Ataque: Amigos Coloridos
 - Ekans — Ataque: Bomba Ácida
+- Electrode — Ataque: Cadena Bum Bum
 - Electabuzz — Ataque: Combo Eléctrico
 - Exeggcute — Ataque: Rodabola
 - Exeggutor — Ataque: Psíquico

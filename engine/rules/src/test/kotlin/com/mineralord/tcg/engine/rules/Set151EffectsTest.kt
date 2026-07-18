@@ -594,6 +594,60 @@ class Set151EffectsTest {
         assertEquals(140, res.state.opponent.active!!.damage)
     }
 
+    /** Herramienta Pokémon sintética para las pruebas de Cadena Bum Bum. */
+    private fun tool(id: String) = TrainerCard(
+        CardId(id), LocalizedText(id, id), set(),
+        Rarity.COMMON, "G", art(), TrainerKind.Tool(), LocalizedText("", ""), EffectId("none"),
+    )
+
+    @Test
+    fun `FASE 42 - Cadena Bum Bum descarta 2 Herramientas y suma 80 al daño base`() {
+        val a = attack("Bang Boom Chain", 20, EffectsDb.atkKey("sv3pt5-101", "Bang Boom Chain"))
+        val attacker = PokemonInPlay(mon("electrode", 90, EnergyType.LIGHTNING, a),
+            attachedTools = listOf(tool("belt1"), tool("belt2")))
+        val foe = PokemonInPlay(mon("target", 600, EnergyType.WATER, a))   // sin Debilidad a {L}
+
+        val paused = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Bang Boom Chain"))
+        // Base 20 ya aplicado; pausa para elegir Herramientas a descartar.
+        val d = paused.state.interaction!!.decision as PendingDecision.SearchCards
+        assertTrue(d.fromAttachedTools)
+        assertEquals(setOf("belt1", "belt2"), d.candidates.map { it.raw }.toSet())
+        assertEquals(20, paused.state.opponent.active!!.damage)   // base ya aplicada al pausar
+
+        // Descarta las 2 → 20 base + 40*2 = 100 acumulado; el bonus crudo son 80 (eventos de resolución).
+        val res = GameEngine(SeededRng(1)).apply(
+            paused.state, GameIntent.ResolveDecision(listOf(CardId("belt1"), CardId("belt2"))))
+        assertEquals(100, res.state.opponent.active!!.damage)
+        assertEquals(80, res.events.filterIsInstance<GameEvent.DamageDealt>().sumOf { it.amount })
+        assertTrue(res.state.player.discard.map { it.id.raw }.containsAll(listOf("belt1", "belt2")))
+        assertTrue(res.state.player.active!!.attachedTools.isEmpty())
+    }
+
+    @Test
+    fun `FASE 42 - Cadena Bum Bum sin descartar Herramientas hace solo el daño base`() {
+        val a = attack("Bang Boom Chain", 20, EffectsDb.atkKey("sv3pt5-101", "Bang Boom Chain"))
+        val attacker = PokemonInPlay(mon("electrode", 90, EnergyType.LIGHTNING, a),
+            attachedTools = listOf(tool("belt1")))
+        val foe = PokemonInPlay(mon("target", 600, EnergyType.WATER, a))
+
+        val paused = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Bang Boom Chain"))
+        // Elige NO descartar ninguna (chosen vacío): solo el daño base 20.
+        val res = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(emptyList()))
+        assertEquals(20, res.state.opponent.active!!.damage)
+        assertTrue(res.state.player.active!!.attachedTools.map { it.id.raw }.contains("belt1"))
+    }
+
+    @Test
+    fun `FASE 42 - Cadena Bum Bum sin Herramientas en juego no pausa y hace el daño base`() {
+        val a = attack("Bang Boom Chain", 20, EffectsDb.atkKey("sv3pt5-101", "Bang Boom Chain"))
+        val attacker = PokemonInPlay(mon("electrode", 90, EnergyType.LIGHTNING, a))
+        val foe = PokemonInPlay(mon("target", 600, EnergyType.WATER, a))
+
+        val res = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Bang Boom Chain"))
+        assertNull(res.state.interaction)
+        assertEquals(20, res.state.opponent.active!!.damage)
+    }
+
     @Test
     fun `FASE 25 - Aguijon Nadir con mano vacia suma 120 y aplica Veneno+Paralisis`() {
         val a = attack("Nadir Needle", 0, EffectsDb.atkKey("sv3pt5-15", "Nadir Needle"))

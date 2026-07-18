@@ -100,7 +100,7 @@ class EffectsDbTest {
         // Cross-Cut (Seviper/Yveltal): daño autorado con término condicional.
         val sev = registry[EffectsDb.atkKey("sv2-137", "Cross-Cut")]!!
         assertEquals(listOf(50, 50), sev.attackDamage.map { it.amount })
-        assertTrue(sev.attackDamage.any { it.condition == DamageCondition.IF_DEFENDER_EVOLVED })
+        assertTrue(sev.attackDamage.any { it.condition == DamageCondition.IfDefenderEvolved })
         val yv = registry[EffectsDb.atkKey("sv4-118", "Cross-Cut")]!!
         assertEquals(listOf(30, 60), yv.attackDamage.map { it.amount })
         // Dark Edge / Touring: ops existentes.
@@ -112,7 +112,8 @@ class EffectsDbTest {
 
     @Test
     fun `cartas aun no modeladas NO estan registradas`() {
-        // Transferencia de Bill (sv3pt5-156, mirarTopN sin attach) sigue pendiente.
-        assertFalse(registry.has(EffectId("sv3pt5-156")))
+        // Butterfree — Adiós, Vuelo (sv3pt5-12, "Bye-Bye Flight": barajar un Pokémon de Banca
+        // rival + este Pokémon a sus mazos) sigue pendiente de modelar.
+        assertFalse(registry.has(EffectsDb.atkKey("sv3pt5-12", "Bye-Bye Flight")))
     }
 }

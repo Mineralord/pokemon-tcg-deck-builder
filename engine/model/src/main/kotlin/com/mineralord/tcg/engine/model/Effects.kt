@@ -161,6 +161,16 @@ sealed interface EffectOp {
         val perCard: Int,
     ) : EffectOp
     /**
+     * "Antes de infligir daño, puedes descartar cualquier cantidad de Herramientas Pokémon
+     * de TUS Pokémon. Este ataque hace [perCard] de daño más por cada carta descartada"
+     * (Electrode — Cadena Bum Bum sv3pt5-101). Reusa [PendingDecision.SearchCards] con
+     * `fromAttachedTools = true`: candidatos = Herramientas enganchadas a tus Pokémon (Activo
+     * + Banca); al resolver, cada una se descarta a la pila de su dueño y el Activo rival
+     * recibe [perCard] CRUDO por cada una (como el resto del daño por efecto). El daño base
+     * del ataque (que SÍ pasa por Debilidad/Resistencia) va por `attackDamage`. Si no hay
+     * Herramientas en juego, no pausa y el bonus es 0. */
+    data class DiscardOwnToolsForDamage(val perCard: Int) : EffectOp
+    /**
      * Lanza [flips] monedas y busca en tu mazo HASTA (nº de caras) Pokémon que casen
      * [filter] para ponerlos en tu Banca; luego baraja (Parasect — Filamentos Dispersos
      * sv3pt5-47: 2 monedas → Pokémon {G} = caras → Banca). Pausa con [PendingDecision.

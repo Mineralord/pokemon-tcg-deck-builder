@@ -44,6 +44,14 @@ sealed interface PendingDecision {
          * (Blastoise ex — Cañones Gemelos): al resolver (from=HAND, destination=DISCARD),
          * el Activo rival recibe este daño CRUDO por cada carta descartada. */
         val damagePerDiscardToOppActive: Int = 0,
+        /**
+         * true solo para "descarta Herramientas de TUS Pokémon y haz daño por cada una"
+         * (Electrode — Cadena Bum Bum sv3pt5-101). Los [candidates] son las Herramientas
+         * enganchadas a los Pokémon propios (Activo + Banca), no cartas de una zona; al
+         * resolver, cada Herramienta elegida se retira de su portador → descarte del dueño
+         * y el Activo rival recibe [damagePerDiscardToOppActive] CRUDO por cada una. Los
+         * campos [from]/[destination] se ignoran cuando esto es true. */
+        val fromAttachedTools: Boolean = false,
     ) : PendingDecision
 
     /**
