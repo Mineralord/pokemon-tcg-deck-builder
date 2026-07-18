@@ -568,6 +568,21 @@ data class Effect(
      * del Defensor cuando este ataque lo noquea. */
     val extraPrizeIfKo: Boolean = false,
     /**
+     * Habilidad pasiva: si tienes en juego (Activo o Banca) un Pokémon cuyo nombre (ES o EN)
+     * contiene [freeAttackIfAllyNamed], los ataques de este Pokémon no cuestan Energía
+     * (Nidoking — Rey Entusiasta sv3pt5-34: "si tienes a Nidoqueen en juego, ignora todas las
+     * Energías en el coste de los ataques usados por este Pokémon"). La comprueba
+     * [GameEngine.effectiveAttackCost] (respeta el bloqueo de Habilidades). null = no aplica. */
+    val freeAttackIfAllyNamed: String? = null,
+    /**
+     * Habilidad pasiva de un Pokémon en Banca: los ataques de tus Pokémon cuyo nombre (ES o EN)
+     * contiene [boostAlliedAttackerNamed] hacen [boostAlliedAttackerAmount] puntos MÁS al Activo
+     * rival, ANTES de aplicar Debilidad y Resistencia (Cubone — Ovación Ósea sv3pt5-104: "mientras
+     * este Pokémon esté en tu Banca, los ataques usados por tus Marowak hacen 30 más"). La suma
+     * [GameEngine.attack] recorriendo la Banca propia (respeta el bloqueo). null = no aplica. */
+    val boostAlliedAttackerNamed: String? = null,
+    val boostAlliedAttackerAmount: Int = 0,
+    /**
      * Herramienta que cura a su portador AL FINAL de TU turno si está en el Puesto Activo
      * (Restos sv3pt5-163: "al final de tu turno, si el Pokémon al que está unida esta carta
      * está en el Puesto Activo, cúrale 20 puntos de daño"). 0 = no aplica. Lo procesa

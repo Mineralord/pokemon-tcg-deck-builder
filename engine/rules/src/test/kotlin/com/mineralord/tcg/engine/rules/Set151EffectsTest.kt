@@ -1892,6 +1892,54 @@ class Set151EffectsTest {
         assertTrue(done.state.pendingPromotion.isEmpty())
     }
 
+    // ---------------- FASE 36: pasivos condicionados por aliado en juego ----------------
+
+    @Test
+    fun `Rey Entusiasta permite atacar sin Energia si Nidoqueen esta en juego`() {
+        val a = attack("Venomous Impact", 30, EffectId("sv3pt5-none"), cost = 3)
+        val nidoking = PokemonInPlay(
+            mon("nidoking", 170, EnergyType.PSYCHIC, a).copy(
+                abilities = listOf(Ability(
+                    LocalizedText("Rey Entusiasta", "Enthusiastic King"), LocalizedText("", ""),
+                    EffectsDb.abiKey("sv3pt5-34", "Enthusiastic King"))),
+            ),
+        ) // 0 Energía unida
+        val nidoqueen = PokemonInPlay(mon("Nidoqueen", 150, EnergyType.PSYCHIC, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.DARKNESS, a))
+
+        // Con Nidoqueen en Banca → ataca gratis pese a coste 3 y 0 Energía.
+        val withQueen = duel(nidoking, foe).let { it.copy(player = it.player.copy(bench = listOf(nidoqueen))) }
+        val ok = GameEngine(SeededRng(1)).apply(withQueen, GameIntent.Attack("Venomous Impact"))
+        assertTrue(ok.accepted, ok.rejection)
+
+        // Sin Nidoqueen → coste 3 con 0 Energía = rechazado.
+        val rejected = GameEngine(SeededRng(1)).apply(duel(nidoking, foe), GameIntent.Attack("Venomous Impact"))
+        assertFalse(rejected.accepted, "sin Nidoqueen el ataque exige Energía")
+    }
+
+    @Test
+    fun `Ovacion Osea suma 30 al ataque de Marowak si Cubone esta en Banca`() {
+        val cubAttack = attack("Bonemerang", 60, EffectId("sv3pt5-none"))
+        val marowak = PokemonInPlay(mon("marowak", 120, EnergyType.FIGHTING, cubAttack))
+        val cubone = PokemonInPlay(
+            mon("cubone", 70, EnergyType.FIGHTING, cubAttack).copy(
+                abilities = listOf(Ability(
+                    LocalizedText("Ovación Ósea", "Cheering Bone"), LocalizedText("", ""),
+                    EffectsDb.abiKey("sv3pt5-104", "Cheering Bone"))),
+            ),
+        )
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.WATER, cubAttack))
+
+        // Con Cubone en Banca → 60 + 30 = 90.
+        val withCubone = duel(marowak, foe).let { it.copy(player = it.player.copy(bench = listOf(cubone))) }
+        val boosted = GameEngine(SeededRng(1)).apply(withCubone, GameIntent.Attack("Bonemerang"))
+        assertEquals(90, boosted.events.filterIsInstance<GameEvent.DamageDealt>().first().amount)
+
+        // Sin Cubone → 60 pelado.
+        val plain = GameEngine(SeededRng(1)).apply(duel(marowak, foe), GameIntent.Attack("Bonemerang"))
+        assertEquals(60, plain.events.filterIsInstance<GameEvent.DamageDealt>().first().amount)
+    }
+
     // ---------------- FASE 35: efectos al final del turno ----------------
 
     @Test

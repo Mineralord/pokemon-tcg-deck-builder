@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **212**  ·  Sin registrar: **46**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **167**  ·  totalmente ausentes: **31**.
+- Registradas en `EffectsDb`: **214**  ·  Sin registrar: **44**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **169**  ·  totalmente ausentes: **29**.
 
 ## Efectos únicos SIN implementar
 
@@ -16,14 +16,12 @@
 | Pidgeot (`sv3pt5-18`) | Pokémon | Vuelo | Lanza 1 moneda. Si sale cruz, este ataque no hace nada. Si sale cara, durante el próximo turno de tu rival, se evitan todo el daño y todos los efectos de los ataques infligidos a este Pokémon. |
 | Spearow (`sv3pt5-21`) | Pokémon | Ventaja Evolutiva | Si sales en segundo lugar, este Pokémon puede evolucionar durante tu primer turno. |
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
-| Nidoking (`sv3pt5-34`) | Pokémon | Rey Entusiasta | Si tienes a Nidoqueen en juego, ignora todas las Energías en el coste de los ataques usados por este Pokémon. |
 | Zubat (`sv3pt5-41`) | Pokémon | Eco Revelador | Una vez durante tu turno, si este Pokémon está en el Puesto Activo, puedes hacer que tu rival enseñe las cartas de su mano. |
 | Meowth (`sv3pt5-52`) | Pokémon | Ven Aquí Ya | Lanza 1 moneda. Si sale cara, cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo. |
 | Psyduck (`sv3pt5-54`) | Pokémon | Cavilar | Durante el próximo turno de tu rival, cada vez que este lance una moneda, se considerará que ha salido cruz. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
 | Haunter (`sv3pt5-93`) | Pokémon | Espíritu Retorno | Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes poner 1 carta de Partidario de la pila de descartes de tu rival en su mano. |
 | Electrode (`sv3pt5-101`) | Pokémon | Cadena Bum Bum | Antes de infligir daño, puedes descartar cualquier cantidad de Herramientas Pokémon de tus Pokémon. Este ataque hace 40 puntos de daño más por cada carta que hayas descartado de esta manera. |
-| Cubone (`sv3pt5-104`) | Pokémon | Ovación Ósea | Mientras este Pokémon esté en tu Banca, los ataques usados por tus Marowak hacen 30 puntos de daño más al Pokémon Activo de tu rival (antes de aplicar Debilidad y Resistencia). |
 | Chansey (`sv3pt5-113`) | Pokémon | Regalo Fortuito | Si has cogido este Pokémon de entre las cartas de Premio que están boca abajo durante tu turno y tu Banca no está llena, antes de ponerlo en tu mano, puedes ponerlo en tu Banca. Si pones este Pokémon en tu Banca de esta manera, lanza 1 moneda. Si sale cara, coge 1 carta de Premio más. |
 | Seadra (`sv3pt5-117`) | Pokémon | Tinta Cegadora | Durante el próximo turno de tu rival, si el Pokémon Defensor intenta usar un ataque, tu rival lanza 2 monedas. Si sale cruz en alguna de ellas, ese ataque no se lleva a cabo. |
 | Ditto (`sv3pt5-132`) | Pokémon | Inicio Transformador | Una vez durante tu primer turno, si este Pokémon está en el Puesto Activo, puedes buscar en tu baraja y elegir 1 Pokémon Básico que encuentres en ella, excepto Ditto. Si lo haces, descarta este Pokémon y todas las cartas unidas a él, y pon el Pokémon elegido en su lugar. Después, baraja las cartas de tu baraja. |
@@ -78,6 +76,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Clefairy — Ataque: Invitación de Avistamiento Lunar
 - Cloyster — Ataque: Carga Protectora
 - Cubone — Ataque: Doble Redoble
+- Cubone — Habilidad: Ovación Ósea
 - Dewgong — Ataque: Doble Salpicadura
 - Dodrio — Ataque: Pico Balístico
 - Dodrio — Habilidad: Robo Presuroso
@@ -152,6 +151,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Mr. Mime — Habilidad: Barrera Mimética
 - Muk — Ataque: Prisión Viscosa
 - Nidoking — Ataque: Impacto Envenenado
+- Nidoking — Habilidad: Rey Entusiasta
 - Nidoqueen — Ataque: Presión Reina
 - Nidoran♀ — Ataque: Cuerno Veneno
 - Nidorina — Ataque: Buscar a la Familia

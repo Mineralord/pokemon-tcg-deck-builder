@@ -77,12 +77,26 @@ inerte). Tests: `AbilityLockAndStadiumTest` (registry inyectado con efectos sint
 **FUTURO:** cuando se scrapee Path to the Peak/Klefki, registrar su Effect con el `PassiveModifier(BLOCK_ABILITY,
 …)` correspondiente; el motor ya hace el resto. Aún NO hay estadios con efecto ACTIVO 1/turno (Cycling Road).
 
-## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 36 — 17 Jul 2026
+## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 37 — 17 Jul 2026
 **Contexto:** implementando TODOS los efectos del set 151 (`sv3pt5`) por fases. Inventario vivo en
 **`docs/inventario-efectos-151.md`** (regenerar con `python tools/scripts/gen_inventario_151.py`, cruza
 `cards/sv3pt5.json` × `Set151Effects.kt`; textos SIEMPRE del bloque `es` = español impreso, NUNCA inglés).
-Progreso: **167/198 efectos únicos** (Fases 1–35 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
-(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 31.**
+Progreso: **169/198 efectos únicos** (Fases 1–36 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
+(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 29.**
+
+### ✅ FASE 36 HECHA (17 Jul) — pasivos de habilidad condicionados por un aliado en juego (por nombre)
+**Infra nueva:** helper `GameEngine.abilityEffects(state, side, pip): List<Effect>` (espejo de `abilityPassives`
+pero devuelve los `Effect` de las habilidades EFECTIVAS, respetando el bloqueo) + helper `nameMatches(pip, needle)`
+(ES/EN, `contains` ignore-case). Modelados como FLAGS de `Effect` (NO `PassiveModifier`, porque la condición es
+por NOMBRE de aliado). **2 flags nuevos:** `freeAttackIfAllyNamed: String?` (Nidoking) y `boostAlliedAttackerNamed:
+String?` + `boostAlliedAttackerAmount: Int` (Cubone). **Cableado:** (a) `effectiveAttackCost` gana parámetro
+`side: Side` (2 call-sites actualizados: attack ~288 y legalIntents ~1142, ambos `state.activeSide`); si el
+atacante tiene una habilidad con `freeAttackIfAllyNamed` y hay un aliado con ese nombre en juego → coste 0.
+(b) En `attack()`, `allyBoost` = suma sobre `me.bench` de habilidades con `boostAlliedAttackerNamed` que casen el
+nombre del atacante → se suma a `dmgBase + selfBonus + allyBoost` ANTES de Debilidad/Resistencia. **Registrados
+(bloque "Fase 36"):** Nidoking *Rey Entusiasta/Enthusiastic King* 34 (`freeAttackIfAllyNamed="Nidoqueen"`),
+Cubone *Ovación Ósea/Cheering Bone* 104 (`boostAlliedAttackerNamed="Marowak", 30`). 2 tests. **NO toca netplay**
+(el host recalcula coste/daño en su flujo). Nombres EN de habilidad del top-level `habilidades[].name`.
 
 ### ✅ FASE 35 HECHA (17 Jul) — efectos AL FINAL del turno (nuevo hook `applyEndOfTurnEffects`)
 **Infra nueva:** `GameEngine.endTurn` llama a **`applyEndOfTurnEffects(state, activeSide, events)`** JUSTO

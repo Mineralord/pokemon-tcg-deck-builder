@@ -449,6 +449,13 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     // Restos (Leftovers) 163 — Herramienta: al final de tu turno, si está en el Activo, cura 20.
     put(EffectId("sv3pt5-163"), Effect(healSelfEndOfTurnIfActive = 20))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 36: pasivos condicionados por aliado en juego -----
+    // Nidoking — Rey Entusiasta (Enthusiastic King) 34: ataques gratis si tienes Nidoqueen en juego.
+    put(abiKey("sv3pt5-34", "Enthusiastic King"), Effect(freeAttackIfAllyNamed = "Nidoqueen"))
+    // Cubone — Ovación Ósea (Cheering Bone) 104: tus Marowak +30 mientras Cubone esté en tu Banca.
+    put(abiKey("sv3pt5-104", "Cheering Bone"),
+        Effect(boostAlliedAttackerNamed = "Marowak", boostAlliedAttackerAmount = 30))
+
 
     // ------------------- SET 151 (sv3pt5) — Fase 8: BÚSQUEDAS / ROBO -------------------
     // (Las búsquedas a mano/Banca y el descarte de Energía del rival — Call for Family,

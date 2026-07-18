@@ -285,7 +285,7 @@ class GameEngine(
         if (attacker.cannotAttackOnTurn == state.turn) {
             return EngineResult.reject(state, "${attacker.card.name.es} no puede atacar este turno")
         }
-        if (attacker.attachedEnergyCount < effectiveAttackCost(atk, attacker, state)) {
+        if (attacker.attachedEnergyCount < effectiveAttackCost(atk, attacker, state, state.activeSide)) {
             return EngineResult.reject(state, "Energía insuficiente para ${atk.name.es}")
         }
 
@@ -335,10 +335,17 @@ class GameEngine(
         // Bonus "próximo turno este Pokémon +X" (Golem ex Giro Dinámico, Hitmonchan Puño
         // Exaltado): se suma al daño base ANTES de Debilidad/Resistencia. Solo si hay daño.
         val selfBonus = if (dmgBase > 0 && attacker.attackBonusOnTurn == state.turn) attacker.attackBonusAmount else 0
+        // Buff de aliado en Banca (Cubone — Ovación Ósea: tus Marowak +30 mientras Cubone
+        // esté en tu Banca). Se suma ANTES de Debilidad/Resistencia. Respeta el bloqueo.
+        val allyBoost = if (dmgBase > 0) me.bench.sumOf { ally ->
+            abilityEffects(state, state.activeSide, ally)
+                .filter { it.boostAlliedAttackerNamed != null && nameMatches(attacker, it.boostAlliedAttackerNamed!!) }
+                .sumOf { it.boostAlliedAttackerAmount }
+        } else 0
         // "El daño no se ve afectado por Debilidad/Resistencia" (Staryu, Golem ex).
         val ignoresDefEffects = atkEffect?.ignoresDefenderEffects == true
         val dmg = Damage.calculate(
-            dmgBase + selfBonus, attacker.card.types, defender,
+            dmgBase + selfBonus + allyBoost, attacker.card.types, defender,
             ignoreWeakness = atkEffect?.ignoresWeakness == true,
             ignoreResistance = atkEffect?.ignoresResistance == true,
         )
@@ -658,6 +665,23 @@ class GameEngine(
         return active.mapNotNull { it.effect }.flatMap { effects[it]?.passives.orEmpty() }
     }
 
+    /**
+     * Efectos EFECTIVOS de las habilidades de [pip] (respetando el bloqueo de Habilidades).
+     * Usado para pasivos autorados como flags de [Effect] (no como [PassiveModifier]):
+     * Nidoking — Rey Entusiasta (ataque gratis) y Cubone — Ovación Ósea (buff a un aliado).
+     */
+    private fun abilityEffects(
+        state: GameState,
+        side: Side,
+        pip: PokemonInPlay,
+    ): List<com.mineralord.tcg.engine.model.Effect> {
+        val active = pip.card.effectiveAbilities(isAbilityLocked(state, side, pip))
+        return active.mapNotNull { it.effect }.mapNotNull { effects[it] }
+    }
+
+    private fun nameMatches(pip: PokemonInPlay, needle: String): Boolean =
+        pip.card.name.es.contains(needle, true) || pip.card.name.en.contains(needle, true)
+
     // --- Bloqueo de Habilidades (Klefki, Camino hacia la Cima) — solo apaga AbilityKind.ABILITY ---
 
     private data class AbilityLockSource(val side: Side?, val sourceId: CardId?, val mod: PassiveModifier)
@@ -719,7 +743,15 @@ class GameEngine(
         atk: com.mineralord.tcg.engine.model.Attack,
         attacker: PokemonInPlay,
         state: GameState,
+        side: Side,
     ): Int {
+        // Nidoking — Rey Entusiasta: sus ataques no cuestan Energía si hay un aliado con el
+        // nombre requerido (Nidoqueen) en juego. Respeta el bloqueo de Habilidades.
+        val freeByAlly = abilityEffects(state, side, attacker).any { e ->
+            e.freeAttackIfAllyNamed != null &&
+                state.sideState(side).allInPlay.any { nameMatches(it, e.freeAttackIfAllyNamed!!) }
+        }
+        if (freeByAlly) return 0
         val bump = if (attacker.attackCostBumpOnTurn == state.turn) attacker.attackCostBumpAmount else 0
         return atk.convertedCost + bump
     }
@@ -1114,7 +1146,7 @@ class GameEngine(
         // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
         // o si el Activo está restringido este turno por Jet Wing y similares).
         if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn) {
-            active?.card?.attacks?.filter { active.attachedEnergyCount >= effectiveAttackCost(it, active, state) }
+            active?.card?.attacks?.filter { active.attachedEnergyCount >= effectiveAttackCost(it, active, state, state.activeSide) }
                 ?.forEach { intents += GameIntent.Attack(it.name.es) }
         }
 
