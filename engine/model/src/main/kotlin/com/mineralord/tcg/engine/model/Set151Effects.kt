@@ -185,6 +185,17 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     // Ayuda de Dalia (arte alternativo del ya registrado sv3pt5-158): roba 2.
     put(EffectId("sv3pt5-195"), Effect(ops = listOf(EffectOp.DrawCards(2))))
 
+    // Transferencia de Bill (Bill's Transfer, Partidario; 2 printings): mira las 8 primeras
+    // cartas del mazo, enseña cualquier cantidad de Pokémon y ponlos en tu mano; baraja el resto.
+    // SearchDeck con fromTop = 8 (candidatos = Pokémon entre las 8 de arriba; count = 8 = "cualquier
+    // cantidad"; el resto del mazo se baraja como en toda búsqueda).
+    run {
+        val billsTransfer = Effect(ops = listOf(
+            EffectOp.SearchDeck(CardFilter(supertype = Supertype.POKEMON), Zone.HAND, 8, fromTop = 8)))
+        put(EffectId("sv3pt5-156"), billsTransfer)
+        put(EffectId("sv3pt5-194"), billsTransfer)
+    }
+
 
     // ======================= SET 151 (sv3pt5) — Fase 5 de cobertura =======================
     // Daño a la Banca rival (dirigido y "a cada uno") + daño condicional contra ex/V.

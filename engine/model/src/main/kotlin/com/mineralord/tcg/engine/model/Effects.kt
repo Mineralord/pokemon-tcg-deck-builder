@@ -131,6 +131,13 @@ sealed interface EffectOp {
          * (Eevee — Amigos Coloridos sv3pt5-133: "hasta 3 Pokémon de diferentes tipos").
          * El intérprete recorta la selección a un Pokémon por tipo. */
         val distinctTypes: Boolean = false,
+        /**
+         * Si no es null, la búsqueda solo mira las [fromTop] PRIMERAS cartas del mazo
+         * (Transferencia de Bill sv3pt5-156: "mira las 8 primeras cartas… enseña cualquier
+         * cantidad de Pokémon… pon el resto de nuevo en tu baraja y barájalas"). Los
+         * candidatos se limitan a las que casen [filter] dentro de ese tope; el resto se
+         * baraja como en cualquier búsqueda al mazo. null = tutor sobre todo el mazo. */
+        val fromTop: Int? = null,
     ) : EffectOp
     /**
      * Recupera hasta [count] cartas del DESCARTE propio (que casen [filter]) y las

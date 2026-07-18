@@ -138,6 +138,31 @@ class TrainerAbilityTest {
     }
 
     @Test
+    fun `Transferencia de Bill solo ofrece los Pokemon del top 8 y los pasa a la mano`() {
+        val bills = trainer("sv3pt5-156", TrainerKind.Supporter())   // SearchDeck(POKEMON -> HAND, top 8)
+        // Top 8: 2 Pokémon + 6 Energías; un 9º Pokémon (deep) queda FUERA del top 8.
+        val top = listOf(mon("t1"), mon("t2")) + (1..6).map { energy("e$it") }
+        val deep = mon("deep")
+        val state = baseState(hand = listOf(bills), deck = top + deep)
+
+        val played = engine.apply(state, GameIntent.PlayTrainer(CardId("sv3pt5-156")))
+        assertTrue(played.accepted, played.rejection)
+        assertTrue(played.state.awaitingDecision)
+        val decision = played.state.interaction!!.decision as PendingDecision.SearchCards
+        assertEquals(listOf(CardId("t1"), CardId("t2")), decision.candidates, "solo los Pokémon del top 8")
+
+        val resolved = engine.apply(played.state, GameIntent.ResolveDecision(listOf(CardId("t1"), CardId("t2"))))
+        assertTrue(resolved.accepted, resolved.rejection)
+        assertNull(resolved.state.interaction)
+        assertTrue(resolved.state.player.hand.any { it.id == CardId("t1") })
+        assertTrue(resolved.state.player.hand.any { it.id == CardId("t2") })
+        // Los elegidos salen del mazo; el 9º Pokémon sigue en el mazo (nunca fue candidato).
+        assertFalse(resolved.state.player.deck.any { it.id == CardId("t1") || it.id == CardId("t2") })
+        assertTrue(resolved.state.player.deck.any { it.id == CardId("deep") })
+        assertTrue(resolved.state.supporterPlayedThisTurn)
+    }
+
+    @Test
     fun `mientras hay decision pendiente solo se acepta ResolveDecision`() {
         val superBall = trainer("sv2-183", TrainerKind.Item())
         val state = baseState(hand = listOf(superBall), deck = listOf(mon("deckMon")))

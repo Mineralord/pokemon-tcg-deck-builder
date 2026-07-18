@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **217**  ·  Sin registrar: **41**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **172**  ·  totalmente ausentes: **26**.
+- Registradas en `EffectsDb`: **220**  ·  Sin registrar: **38**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **174**  ·  totalmente ausentes: **24**.
 
 ## Efectos únicos SIN implementar
 
@@ -17,7 +17,6 @@
 | Spearow (`sv3pt5-21`) | Pokémon | Ventaja Evolutiva | Si sales en segundo lugar, este Pokémon puede evolucionar durante tu primer turno. |
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
 | Zubat (`sv3pt5-41`) | Pokémon | Eco Revelador | Una vez durante tu turno, si este Pokémon está en el Puesto Activo, puedes hacer que tu rival enseñe las cartas de su mano. |
-| Meowth (`sv3pt5-52`) | Pokémon | Ven Aquí Ya | Lanza 1 moneda. Si sale cara, cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo. |
 | Psyduck (`sv3pt5-54`) | Pokémon | Cavilar | Durante el próximo turno de tu rival, cada vez que este lance una moneda, se considerará que ha salido cruz. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
 | Haunter (`sv3pt5-93`) | Pokémon | Espíritu Retorno | Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes poner 1 carta de Partidario de la pila de descartes de tu rival en su mano. |
@@ -38,7 +37,6 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 | Ámbar Viejo Antiguo (`sv3pt5-154`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
 
 En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
-| Transferencia de Bill (`sv3pt5-156`) | Trainer | Trainer | Mira las 8 primeras cartas de tu baraja. Puedes enseñar cualquier cantidad de Pokémon que encuentres entre ellas y ponerlos en tu mano. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas. |
 | Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
 | Pegatinas de Energía (`sv3pt5-159`) | Trainer | Trainer | Lanza 1 moneda. Si sale cara, une 1 carta de Energía Básica de tu pila de descartes a uno de tus Pokémon en Banca. |
 | Invitación de Erika (`sv3pt5-160`) | Trainer | Trainer | Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon Básico que encuentres entre ellas en la Banca de tu rival. Si pones un Pokémon en su Banca de esta manera, cambia ese Pokémon por el Pokémon que esté en el Puesto Activo. |

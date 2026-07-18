@@ -236,16 +236,23 @@ class EffectInterpreter {
                     cands, op.count,
                 )
             }
-            is EffectOp.SearchDeck -> PendingDecision.SearchCards(
-                src.actingSide,
-                LocalizedText("Busca en tu mazo", "Search your deck"),
-                from = Zone.DECK,
-                filter = op.filter,
-                destination = op.to,
-                count = op.count,
-                candidates = matching(state.sideState(src.actingSide).deck, op.filter),
-                distinctTypes = op.distinctTypes,
-            )
+            is EffectOp.SearchDeck -> {
+                // fromTop != null: solo se miran las N primeras cartas (Transferencia de Bill).
+                val deck = state.sideState(src.actingSide).deck
+                val pool = op.fromTop?.let { deck.take(it) } ?: deck
+                PendingDecision.SearchCards(
+                    src.actingSide,
+                    if (op.fromTop != null)
+                        LocalizedText("Mira las ${op.fromTop} primeras cartas de tu mazo", "Look at the top ${op.fromTop} cards of your deck")
+                    else LocalizedText("Busca en tu mazo", "Search your deck"),
+                    from = Zone.DECK,
+                    filter = op.filter,
+                    destination = op.to,
+                    count = op.count,
+                    candidates = matching(pool, op.filter),
+                    distinctTypes = op.distinctTypes,
+                )
+            }
             is EffectOp.DiscardFromHandForDamage -> {
                 val cands = matching(state.sideState(src.actingSide).hand, op.filter)
                 if (cands.isEmpty()) null   // sin cartas que descartar: 0 descartadas = 0 daño
