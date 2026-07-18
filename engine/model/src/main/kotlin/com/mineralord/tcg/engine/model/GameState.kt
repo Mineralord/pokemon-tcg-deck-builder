@@ -28,6 +28,15 @@ data class PokemonInPlay(
      */
     val cannotAttackOnTurn: Int? = null,
     /**
+     * Si no es null, número de turno durante el cual, si este Pokémon intenta atacar, su
+     * dueño primero lanza [flipsToAttackCount] monedas; si sale cruz en ALGUNA, el ataque
+     * "no se lleva a cabo" (Seadra — Tinta Cegadora sv3pt5-117: "durante el próximo turno de
+     * tu rival, si el Defensor intenta usar un ataque, tu rival lanza 2 monedas…"). Se fija a
+     * [GameState.turn] + 1; lo comprueba [GameEngine.attack]. Auto-expira.
+     */
+    val flipsToAttackOnTurn: Int? = null,
+    val flipsToAttackCount: Int = 0,
+    /**
      * Si no es null, número de turno durante el cual se EVITA todo el daño de
      * ataques a este Pokémon (Refugio/Postura Defensiva/Vuelo: "durante el próximo
      * turno de tu rival, se evita todo el daño…"). Se fija a [GameState.turn] + 1 y

@@ -294,6 +294,18 @@ class GameEngine(
         val events = mutableListOf<GameEvent>()
         events += GameEvent.Attacked(state.activeSide, attacker.card.id, atk.name.es)
 
+        // Seadra — Tinta Cegadora: si el Activo debe lanzar monedas para poder atacar este
+        // turno, se lanzan ahora; si sale cruz en alguna, el ataque "no se lleva a cabo"
+        // (sin daño ni efecto), pero el turno termina igualmente.
+        if (attacker.flipsToAttackOnTurn == state.turn && attacker.flipsToAttackCount > 0) {
+            val flips = (1..attacker.flipsToAttackCount).map { rng.flipCoin() }
+            flips.forEach { events += GameEvent.CoinFlipped(state.activeSide, it) }
+            if (flips.any { !it }) {
+                val ended = endTurn(state)
+                return EngineResult(ended.state, events + ended.events)
+            }
+        }
+
         // Daño base: si el efecto autora términos de daño (ataques "X+" con bonus
         // condicional) se usan ESOS (sumados) para que el bonus pase por Debilidad/
         // Resistencia; si no, el daño fijo de la carta. En ambos casos, un solo calc.

@@ -649,6 +649,17 @@ class EffectInterpreter {
                     EffectResult(working, events)
                 }
             }
+            is EffectOp.RequireCoinsToAttackNextTurn -> {
+                // Marca al objetivo (Seadra: el Activo rival) para tener que lanzar N monedas
+                // si intenta atacar el próximo turno (turn + 1). Lo comprueba GameEngine.attack.
+                var working = state
+                for (r in targets(op.target, src, state, chosenIds)) {
+                    working = updatePokemon(working, r.card.id) {
+                        it.copy(flipsToAttackOnTurn = state.turn + 1, flipsToAttackCount = op.coins)
+                    }
+                }
+                EffectResult(working, emptyList())
+            }
             is EffectOp.ScheduleDelayedDamage -> {
                 // Marca a los objetivos (Victreebel: el Activo rival) para recibir daño diferido
                 // al final de su próximo turno (turn + 1). Lo aplica GameEngine.endTurn.

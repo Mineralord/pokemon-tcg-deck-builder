@@ -614,6 +614,14 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         attackDamage = listOf(DamageTerm(20)),
         ops = listOf(EffectOp.DiscardOwnToolsForDamage(perCard = 40))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 43: moneda para poder atacar (Tinta Cegadora) -------------------
+
+    // Seadra — Tinta Cegadora (Blinding Ink): 50 (daño fijo de la carta). Durante el próximo turno
+    // del rival, si el Defensor intenta atacar, lanza 2 monedas; si sale cruz en alguna, el ataque no
+    // se lleva a cabo. Marca al Activo rival para turn + 1.
+    put(atkKey("sv3pt5-117", "Blinding Ink"), Effect(
+        ops = listOf(EffectOp.RequireCoinsToAttackNextTurn(Target.OPP_ACTIVE, coins = 2))))
+
     // ------------------- SET 151 (sv3pt5) — Fase 25: "si tu mano está vacía" (daño + estado) -------------------
 
     // Beedrill — Aguijón Nadir (Nadir Needle): 30 base; si tu mano está vacía, +120 Y

@@ -416,6 +416,13 @@ sealed interface EffectOp {
     ) : EffectOp
 
     /**
+     * Marca a [target] para que, durante el próximo turno del rival, si intenta atacar deba
+     * lanzar [coins] monedas primero; si sale cruz en ALGUNA, el ataque no se lleva a cabo
+     * (Seadra — Tinta Cegadora sv3pt5-117). Fija [PokemonInPlay.flipsToAttackOnTurn] = turno
+     * actual + 1 y [PokemonInPlay.flipsToAttackCount] = [coins]. Lo comprueba [GameEngine.attack]. */
+    data class RequireCoinsToAttackNextTurn(val target: Target, val coins: Int) : EffectOp
+
+    /**
      * Descarta el Estadio que haya en juego (a la pila de descartes de SU dueño), si lo
      * hay (Charmander — Destrucción Abrasadora). No-op si no hay Estadio. */
     data object DiscardStadium : EffectOp

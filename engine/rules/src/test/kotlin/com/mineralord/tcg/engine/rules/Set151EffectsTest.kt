@@ -649,6 +649,31 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 43 - Tinta Cegadora obliga al Defensor a lanzar 2 monedas para atacar`() {
+        val ink = attack("Blinding Ink", 50, EffectsDb.atkKey("sv3pt5-117", "Blinding Ink"))
+        val foeHit = attack("Foe Hit", 20, EffectId("none"))
+        val seadra = PokemonInPlay(mon("seadra", 80, EnergyType.WATER, ink))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, foeHit))
+
+        // Seadra ataca: 50 de daño y marca al Activo rival para turn + 1 (= 4).
+        val res1 = GameEngine(SeededRng(1)).apply(duel(seadra, foe), GameIntent.Attack("Blinding Ink"))
+        assertEquals(50, res1.state.opponent.active!!.damage)
+        assertEquals(4, res1.state.opponent.active!!.flipsToAttackOnTurn)
+        assertEquals(2, res1.state.opponent.active!!.flipsToAttackCount)
+        assertEquals(4, res1.state.turn)                 // ahora juega el rival
+
+        // Cruz en alguna → el ataque del Defensor no se lleva a cabo (Seadra no recibe daño).
+        val tails = GameEngine(FixedRng(false)).apply(res1.state, GameIntent.Attack("Foe Hit"))
+        assertEquals(0, tails.state.player.active!!.damage)
+        assertTrue(tails.events.filterIsInstance<GameEvent.CoinFlipped>().size == 2)
+        assertEquals(5, tails.state.turn)                // el turno termina igualmente
+
+        // Dos caras → el ataque sí ocurre (Seadra recibe 20).
+        val heads = GameEngine(FixedRng(true)).apply(res1.state, GameIntent.Attack("Foe Hit"))
+        assertEquals(20, heads.state.player.active!!.damage)
+    }
+
+    @Test
     fun `FASE 25 - Aguijon Nadir con mano vacia suma 120 y aplica Veneno+Paralisis`() {
         val a = attack("Nadir Needle", 0, EffectsDb.atkKey("sv3pt5-15", "Nadir Needle"))
         val attacker = PokemonInPlay(mon("beedrill", 120, EnergyType.GRASS, a))
