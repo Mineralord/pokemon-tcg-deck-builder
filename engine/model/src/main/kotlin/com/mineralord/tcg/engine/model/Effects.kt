@@ -204,6 +204,14 @@ sealed interface EffectOp {
     data object SwapOppActiveWithChosen : EffectOp
 
     /**
+     * Gust con moneda: lanza 1 moneda y, SOLO si sale cara, sube al Activo RIVAL el Pokémon de
+     * su Banca elegido por una [ChooseTarget] previa sobre [Target.OPP_BENCH] (Meowth — Ven Aquí
+     * Ya / Come Here Right Meow sv3pt5-52). Si sale cruz (o no hay elegido/Activo), no hace nada.
+     * Emite [GameEvent.CoinFlipped] para la animación. La elección se hace antes que la moneda:
+     * el resultado del juego es idéntico y el atacante ya designó el objetivo. */
+    data object CoinFlipSwapOppActiveWithChosen : EffectOp
+
+    /**
      * "Mueve el Pokémon Activo de tu rival a la Banca. (Tu rival elige el nuevo Pokémon
      * Activo)" — Butterfree Remolino, Rhyhorn Oprimir. El Activo rival pasa a su Banca y se
      * marca `pendingPromotion` para ese lado: el RIVAL elegirá el nuevo Activo (reusa la

@@ -2102,4 +2102,47 @@ class Set151EffectsTest {
         assertTrue(r.state.opponent.bench.none { it.card.id.raw == "foe" }, "el KO no debe estar en la Banca")
         assertTrue(r.state.opponent.discard.any { it.id.raw == "foe" }, "el KO va al descarte")
     }
+
+    // ---------------- Fase 39: gust con moneda (Meowth — Ven Aquí Ya) ----------------
+
+    private fun meowthDuel(): GameState {
+        val a = attack("Come Here Right Meow", 0, EffectsDb.atkKey("sv3pt5-52", "Come Here Right Meow"))
+        val meowth = PokemonInPlay(mon("meowth", 70, EnergyType.COLORLESS, a))
+        val foeActive = PokemonInPlay(mon("foeActive", 90, EnergyType.WATER, a))
+        val foeBench = PokemonInPlay(mon("foeBench", 90, EnergyType.GRASS, a))
+        val player = PlayerState(
+            side = Side.PLAYER, active = meowth,
+            deck = (1..5).map { energy("d$it", EnergyType.LIGHTNING) },
+            prizes = (1..6).map { energy("pz$it", EnergyType.LIGHTNING) },
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = foeActive, bench = listOf(foeBench),
+            deck = (1..5).map { energy("od$it", EnergyType.WATER) },
+            prizes = (1..6).map { energy("opz$it", EnergyType.WATER) },
+        )
+        return GameState(player, opponent, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+    }
+
+    @Test
+    fun `Ven Aqui Ya con cara sube el Pokemon elegido de la Banca rival al Activo`() {
+        val engine = GameEngine(FixedRng(true))
+        val paused = engine.apply(meowthDuel(), GameIntent.Attack("Come Here Right Meow"))
+        assertTrue(paused.accepted, paused.rejection)
+        assertTrue(paused.state.interaction?.decision is PendingDecision.ChooseTargets)
+
+        val res = engine.apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("foeBench"))))
+        assertTrue(res.events.any { it is GameEvent.CoinFlipped && it.heads })
+        assertEquals(CardId("foeBench"), res.state.opponent.active?.card?.id, "el elegido pasó al Activo")
+        assertTrue(res.state.opponent.bench.any { it.card.id.raw == "foeActive" }, "el Activo anterior bajó a la Banca")
+    }
+
+    @Test
+    fun `Ven Aqui Ya con cruz no cambia el Activo rival`() {
+        val engine = GameEngine(FixedRng(false))
+        val paused = engine.apply(meowthDuel(), GameIntent.Attack("Come Here Right Meow"))
+        val res = engine.apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("foeBench"))))
+        assertTrue(res.events.any { it is GameEvent.CoinFlipped && !it.heads })
+        assertEquals(CardId("foeActive"), res.state.opponent.active?.card?.id, "sin cara, el Activo no cambia")
+        assertTrue(res.state.opponent.bench.any { it.card.id.raw == "foeBench" }, "el de Banca sigue en Banca")
+    }
 }

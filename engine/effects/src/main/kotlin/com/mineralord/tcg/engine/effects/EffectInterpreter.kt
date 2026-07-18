@@ -441,6 +441,28 @@ class EffectInterpreter {
                     EffectResult(withPlayer(state, updated, foeSide), emptyList())
                 }
             }
+            is EffectOp.CoinFlipSwapOppActiveWithChosen -> {
+                // Meowth — Ven Aquí Ya: lanza la moneda (emite el evento para la animación);
+                // solo con cara sube al Activo rival el elegido de SU Banca.
+                val heads = flip()
+                val ev = listOf(GameEvent.CoinFlipped(src.actingSide, heads))
+                if (!heads) EffectResult(state, ev)
+                else {
+                    val foeSide = src.actingSide.other()
+                    val foe = state.sideState(foeSide)
+                    val chosenId = chosenIds.firstOrNull()
+                    val benchMon = foe.bench.firstOrNull { it.card.id == chosenId }
+                    val active = foe.active
+                    if (benchMon == null || active == null) EffectResult(state, ev)
+                    else {
+                        val updated = foe.copy(
+                            active = benchMon,
+                            bench = foe.bench.map { if (it.card.id == chosenId) active else it },
+                        )
+                        EffectResult(withPlayer(state, updated, foeSide), ev)
+                    }
+                }
+            }
             is EffectOp.GustDefenderChooseNewActive -> {
                 // Remolino/Oprimir: el Activo rival pasa a su Banca y el RIVAL elige el nuevo
                 // Activo (reusa `pendingPromotion`). Si ya quedó Noqueado por el daño de este

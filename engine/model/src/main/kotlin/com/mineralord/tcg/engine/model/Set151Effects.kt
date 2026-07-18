@@ -884,6 +884,20 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
             EffectOp.SwapOppActiveWithChosen)))
 
 
+    // ------------------- SET 151 (sv3pt5) — Fase 39: GUST CON MONEDA -------------------
+    // Op nueva CoinFlipSwapOppActiveWithChosen: elige (ChooseTarget OPP_BENCH) y luego, SOLO con
+    // cara, sube ese Pokémon al Activo rival. Sin daño base.
+
+    // Meowth — Ven Aquí Ya (Come Here Right Meow): lanza 1 moneda; si cara, cambia 1 de la Banca
+    // rival por su Activo. Con cruz (o banca vacía) no pasa nada.
+    put(atkKey("sv3pt5-52", "Come Here Right Meow"),
+        Effect(ops = listOf(
+            EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt(
+                "Elige un Pokémon de la Banca rival para subirlo a su Activo si sale cara",
+                "Choose a Benched Pokémon of your opponent to switch to the Active Spot if heads"), optional = true),
+            EffectOp.CoinFlipSwapOppActiveWithChosen)))
+
+
     // ------------------- SET 151 (sv3pt5) — Fase 12: REPARTIR CONTADORES DE DAÑO -------------------
     // Op nueva PlaceCounters(count, target): pausa con PendingDecision.PlaceCounters para
     // repartir [count] contadores de 10 de daño "como quieras". Sin candidatos → se salta.
