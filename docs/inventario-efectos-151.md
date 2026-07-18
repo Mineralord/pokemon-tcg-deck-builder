@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **214**  ·  Sin registrar: **44**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **169**  ·  totalmente ausentes: **29**.
+- Registradas en `EffectsDb`: **215**  ·  Sin registrar: **43**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **170**  ·  totalmente ausentes: **28**.
 
 ## Efectos únicos SIN implementar
 
@@ -27,7 +27,6 @@
 | Ditto (`sv3pt5-132`) | Pokémon | Inicio Transformador | Una vez durante tu primer turno, si este Pokémon está en el Puesto Activo, puedes buscar en tu baraja y elegir 1 Pokémon Básico que encuentres en ella, excepto Ditto. Si lo haces, descarta este Pokémon y todas las cartas unidas a él, y pon el Pokémon elegido en su lugar. Después, baraja las cartas de tu baraja. |
 | Porygon (`sv3pt5-137`) | Pokémon | Conversión 4 | Elige el tipo {G}, {R}, {W}, {L}, {P}, {F}, {D}, {M} o {N}. Hasta que el Pokémon Defensor deje el Puesto Activo, su Debilidad pasa a ser de ese tipo. (La cantidad de Debilidad no cambia). |
 | Kabutops (`sv3pt5-141`) | Pokémon | Modo Ancestral | Aplica una Debilidad de x 4 al Pokémon Activo de tu rival. |
-| Aerodactyl (`sv3pt5-142`) | Pokémon | Rayo Involutivo | Si el Pokémon Activo de tu rival es un Pokémon evolucionado, involuciónalo poniendo la carta de Evolución de fase más alta que tenga sobre él en la mano de tu rival. |
 | Mew ex (`sv3pt5-151`) | Pokémon | Hackeo Genoma | Elige uno de los ataques del Pokémon Activo de tu rival y úsalo para este ataque. |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Pokémon | Domed Armor |  |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
@@ -49,6 +48,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 
 ## Efectos con al menos un printing implementado
 
+- Aerodactyl — Ataque: Rayo Involutivo
 - Alakazam ex — Ataque: Levantamente
 - Arbok ex — Ataque: Amarrar
 - Arbok ex — Ataque: Colmillos Amenazantes

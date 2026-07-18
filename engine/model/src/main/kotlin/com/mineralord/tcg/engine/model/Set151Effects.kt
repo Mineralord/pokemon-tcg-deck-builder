@@ -456,6 +456,12 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(abiKey("sv3pt5-104", "Cheering Bone"),
         Effect(boostAlliedAttackerNamed = "Marowak", boostAlliedAttackerAmount = 30))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
+    // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
+    // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).
+    put(atkKey("sv3pt5-142", "Devolution Ray"),
+        Effect(ops = listOf(EffectOp.DeEvolveDefender)))
+
 
     // ------------------- SET 151 (sv3pt5) — Fase 8: BÚSQUEDAS / ROBO -------------------
     // (Las búsquedas a mano/Banca y el descarte de Energía del rival — Call for Family,

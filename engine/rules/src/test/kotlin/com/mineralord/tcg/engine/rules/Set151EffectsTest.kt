@@ -1892,6 +1892,46 @@ class Set151EffectsTest {
         assertTrue(done.state.pendingPromotion.isEmpty())
     }
 
+    // ---------------- FASE 37: des-evolución del Activo rival ----------------
+
+    @Test
+    fun `Rayo Involutivo involuciona al Activo rival y devuelve la carta de fase alta a su mano`() {
+        val a = attack("Devolution Ray", 100, EffectsDb.atkKey("sv3pt5-142", "Devolution Ray"), cost = 2)
+        val aerodactyl = PokemonInPlay(
+            mon("aerodactyl", 120, EnergyType.COLORLESS, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.COLORLESS), energy("e2", EnergyType.COLORLESS)),
+        )
+        val basic = mon("charmander", 260, EnergyType.FIRE, a) // PS altos: 100 no noquea tras involucionar
+        val evolved = mon("charmeleon", 260, EnergyType.FIRE, a).copy(stage = Stage.Stage1, evolvesFrom = "charmander")
+        val defender = PokemonInPlay(evolved, evolutionStack = listOf(basic))
+        val r = GameEngine(SeededRng(1)).apply(duel(aerodactyl, defender), GameIntent.Attack("Devolution Ray"))
+
+        assertTrue(r.accepted, r.rejection)
+        assertEquals("charmander", r.state.opponent.active!!.card.id.raw, "el Activo rival volvió a su fase Básica")
+        assertEquals(100, r.state.opponent.active!!.damage, "el daño permanece tras involucionar")
+        assertTrue(r.state.opponent.hand.any { it.id.raw == "charmeleon" }, "la carta de fase más alta vuelve a la mano")
+        assertTrue(r.state.opponent.active!!.evolutionStack.isEmpty())
+        assertTrue(r.events.any { it is GameEvent.DeEvolved })
+    }
+
+    @Test
+    fun `Rayo Involutivo puede noquear si los PS de la fase inferior ya no aguantan el dano`() {
+        val a = attack("Devolution Ray", 100, EffectsDb.atkKey("sv3pt5-142", "Devolution Ray"), cost = 2)
+        val aerodactyl = PokemonInPlay(
+            mon("aerodactyl", 120, EnergyType.COLORLESS, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.COLORLESS), energy("e2", EnergyType.COLORLESS)),
+        )
+        val basic = mon("weedle", 60, EnergyType.GRASS, a) // 60 PS < 100 daño → KO tras involucionar
+        val evolved = mon("kakuna", 260, EnergyType.GRASS, a).copy(stage = Stage.Stage1, evolvesFrom = "weedle")
+        val defender = PokemonInPlay(evolved, evolutionStack = listOf(basic))
+        val r = GameEngine(SeededRng(1)).apply(duel(aerodactyl, defender), GameIntent.Attack("Devolution Ray"))
+
+        assertTrue(r.events.any { it is GameEvent.DeEvolved })
+        assertTrue(r.events.any { it is GameEvent.KnockedOut }, "la fase Básica (60 PS) no aguanta 100 de daño")
+        assertTrue(r.state.opponent.hand.any { it.id.raw == "kakuna" }, "la fase alta vuelve a la mano")
+        assertTrue(r.state.opponent.discard.any { it.id.raw == "weedle" }, "la fase Básica noqueada va al descarte")
+    }
+
     // ---------------- FASE 36: pasivos condicionados por aliado en juego ----------------
 
     @Test

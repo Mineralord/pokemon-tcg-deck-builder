@@ -20,16 +20,20 @@ class CombatLog(
         is GameEvent.TurnStarted -> "Turno de ${sideName(e.side)}"
         is GameEvent.TurnEnded -> "${sideName(e.side)} ha terminado su turno."
         is GameEvent.CardsDrawn -> "${sideName(e.side)} ha robado ${cards(e.count)}."
+        is GameEvent.CardsDiscarded -> "${sideName(e.side)} ha descartado ${cards(e.count)}."
         is GameEvent.DeckShuffled -> "${sideName(e.side)} ha barajado su mazo."
         is GameEvent.PokemonPlayed ->
             "${sideName(e.side)} ha jugado ${cardName(e.card)}" +
                 if (e.toBench) " en la Banca." else " en el Puesto Activo."
         is GameEvent.Evolved -> "${sideName(e.side)} ha hecho que ${cardName(e.from)} evolucione a ${cardName(e.to)}."
+        is GameEvent.DeEvolved -> "${sideName(e.side)} ha involucionado ${cardName(e.from)} a ${cardName(e.to)}."
         is GameEvent.EnergyAttached -> "${sideName(e.side)} ha unido ${cardName(e.energy)} a ${cardName(e.to)}."
         is GameEvent.ToolAttached -> "${sideName(e.side)} ha unido ${cardName(e.tool)} a ${cardName(e.to)}."
         is GameEvent.TrainerPlayed -> "${sideName(e.side)} ha jugado ${cardName(e.card)}."
         is GameEvent.StadiumPlayed -> "${sideName(e.side)} ha jugado el Estadio ${cardName(e.card)}."
+        is GameEvent.StadiumDiscarded -> "${sideName(e.side)} ha descartado el Estadio en juego."
         is GameEvent.Retreated -> "${sideName(e.side)} ha retirado ${cardName(e.from)} por ${cardName(e.to)}."
+        is GameEvent.Promoted -> "${sideName(e.side)} ha subido ${cardName(e.pokemon)} al Puesto Activo."
         is GameEvent.Attacked -> "${cardName(e.attacker)} de ${sideName(e.side)} ha usado ${e.attackName}."
         is GameEvent.DamageDealt -> buildString {
             append("${cardName(e.target)} ha recibido ${e.amount} puntos de daño")
@@ -50,16 +54,20 @@ class CombatLog(
         is GameEvent.TurnStarted -> "${sideName(e.side)}'s turn"
         is GameEvent.TurnEnded -> "${sideName(e.side)} ended their turn."
         is GameEvent.CardsDrawn -> "${sideName(e.side)} drew ${e.count} card(s)."
+        is GameEvent.CardsDiscarded -> "${sideName(e.side)} discarded ${e.count} card(s)."
         is GameEvent.DeckShuffled -> "${sideName(e.side)} shuffled their deck."
         is GameEvent.PokemonPlayed ->
             "${sideName(e.side)} played ${cardName(e.card)}" +
                 if (e.toBench) " to the Bench." else " to the Active Spot."
         is GameEvent.Evolved -> "${sideName(e.side)} evolved ${cardName(e.from)} into ${cardName(e.to)}."
+        is GameEvent.DeEvolved -> "${sideName(e.side)} devolved ${cardName(e.from)} into ${cardName(e.to)}."
         is GameEvent.EnergyAttached -> "${sideName(e.side)} attached ${cardName(e.energy)} to ${cardName(e.to)}."
         is GameEvent.ToolAttached -> "${sideName(e.side)} attached ${cardName(e.tool)} to ${cardName(e.to)}."
         is GameEvent.TrainerPlayed -> "${sideName(e.side)} played ${cardName(e.card)}."
         is GameEvent.StadiumPlayed -> "${sideName(e.side)} played Stadium ${cardName(e.card)}."
+        is GameEvent.StadiumDiscarded -> "${sideName(e.side)} discarded the Stadium in play."
         is GameEvent.Retreated -> "${sideName(e.side)} retreated ${cardName(e.from)} for ${cardName(e.to)}."
+        is GameEvent.Promoted -> "${sideName(e.side)} promoted ${cardName(e.pokemon)} to the Active Spot."
         is GameEvent.Attacked -> "${sideName(e.side)}'s ${cardName(e.attacker)} used ${e.attackName}."
         is GameEvent.DamageDealt -> buildString {
             append("${cardName(e.target)} took ${e.amount} damage")

@@ -77,12 +77,38 @@ inerte). Tests: `AbilityLockAndStadiumTest` (registry inyectado con efectos sint
 **FUTURO:** cuando se scrapee Path to the Peak/Klefki, registrar su Effect con el `PassiveModifier(BLOCK_ABILITY,
 …)` correspondiente; el motor ya hace el resto. Aún NO hay estadios con efecto ACTIVO 1/turno (Cycling Road).
 
-## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 37 — 17 Jul 2026
+## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 38 — 17 Jul 2026
 **Contexto:** implementando TODOS los efectos del set 151 (`sv3pt5`) por fases. Inventario vivo en
 **`docs/inventario-efectos-151.md`** (regenerar con `python tools/scripts/gen_inventario_151.py`, cruza
 `cards/sv3pt5.json` × `Set151Effects.kt`; textos SIEMPRE del bloque `es` = español impreso, NUNCA inglés).
-Progreso: **169/198 efectos únicos** (Fases 1–36 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
-(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 29.**
+Progreso: **170/198 efectos únicos** (Fases 1–37 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
+(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 28.**
+
+### ✅ FASE 37 HECHA (17 Jul) — des-evolución del Activo rival
+**Op nueva** `EffectOp.DeEvolveDefender` (data object, patrón `GiovanniCharisma`): apunta al Activo rival; si
+está evolucionado (`evolutionStack` no vacía), su carta actual (fase más alta) vuelve a la mano de su dueño y el
+Pokémon pasa a ser la carta inferior (`evolutionStack.last()`), CONSERVANDO daño/Energía/Herramientas/estados;
+si no está evolucionado, no-op. Como los PS bajan a los de la fase inferior, el `handleKnockouts` posterior al
+ataque puede noquearlo (probado). **Evento nuevo** `GameEvent.DeEvolved(side, from, to)` + ramas ES/EN en
+`CombatLog` (único `when` exhaustivo sobre GameEvent; no hay otros). **Registrado (bloque "Fase 37"):** Aerodactyl
+*Rayo Involutivo/Devolution Ray* 142 (base 100 puro + `DeEvolveDefender`). 2 tests (involución normal; KO porque la
+fase Básica de 60 PS no aguanta 100 de daño). **NO toca netplay** (el host aplica todo en el flujo del ataque; el
+evento es solo log). OJO: `updatePokemon` localiza el pip por el id ANTES de cambiar `card`; el nuevo `card.id`
+queda en juego y la carta vieja va a la mano.
+
+### ⏭️ SIGUIENTE (FASE 38) — candidatos y DEUDAS (faltan 28)
+**Cluster "manipulación de Debilidad" (DIFERIDO — requiere subsistema de override de Debilidad por-instancia con
+RESET al dejar el Activo):** Kabutops *Modo Ancestral* 141 (Debilidad ×4 — OJO texto ambiguo sobre a qué tipo),
+Porygon *Conversión 4* 137 (cambia el TIPO de Debilidad al elegido, "hasta que deje el Activo" → decisión de tipo +
+campo `weaknessOverride` + reset en retirada/promoción/gust). **Bounded sin sistema nuevo grande:** Meowth *Ven
+Aquí Ya* 52 (moneda → el ATACANTE elige un Banca rival que pasa a Activo = decisión sobre zona rival + coin-gate),
+Electrode *Cadena Bum Bum* 101 (descarta Herramientas propias EN JUEGO para +40 c/u = decisión de descarte sobre
+tools en juego). **DEUDAS del napkin (más abajo, sección ⚠️):** #1 Haunter *Espíritu Retorno* 93 (Partidario del
+descarte RIVAL → su mano, al evolucionar; manipular zona rival), #2 HP máx. en la BARRA de la UI (cosmético,
+feature/game lee `card.hp` impreso; exponer `effectiveMaxHp`), #3 Kakuna *Cubierta de Capullo* 14 (evitar EFECTOS
+—no daño— de ataques: gate por-op del efecto del ataque según objetivo). **Mini-sistemas grandes:** Mew ex *Hackeo
+Genoma* 151 (copiar ataque rival), Alakazam ex *Mano Dimensional* 65 (atacar desde Banca), Fósiles 152/153/154
+(jugar como Pokémon Básico). Método de siempre: query python → DSL → registro → tests → suite → inventario.
 
 ### ✅ FASE 36 HECHA (17 Jul) — pasivos de habilidad condicionados por un aliado en juego (por nombre)
 **Infra nueva:** helper `GameEngine.abilityEffects(state, side, pip): List<Effect>` (espejo de `abilityPassives`

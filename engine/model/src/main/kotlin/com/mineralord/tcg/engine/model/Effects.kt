@@ -322,6 +322,15 @@ sealed interface EffectOp {
     data class ScheduleDelayedDamage(val target: Target, val amount: Int) : EffectOp
 
     /**
+     * Involuciona el Activo rival si es un Pokémon evolucionado (Aerodactyl — Rayo Involutivo
+     * sv3pt5-142: "pon la carta de Evolución de fase más alta que tenga sobre él en la mano de
+     * tu rival"). La carta superior de la pila de evolución vuelve a la mano de su dueño y el
+     * Pokémon pasa a ser la carta inmediatamente inferior (conserva daño, Energía, Herramientas
+     * y estados). Si no está evolucionado, no hace nada. El posible KO (si el daño ya supera los
+     * PS de la fase inferior) lo resuelve el motor tras el ataque. */
+    data object DeEvolveDefender : EffectOp
+
+    /**
      * Devuelve [count] Energía(s) unida(s) al Activo RIVAL a la mano de su dueño
      * (Omanyte — Retorno Tentacular). Toma las primeras disponibles (cualquier copia
      * básica es equivalente). Si no hay Energía unida, no hace nada. */

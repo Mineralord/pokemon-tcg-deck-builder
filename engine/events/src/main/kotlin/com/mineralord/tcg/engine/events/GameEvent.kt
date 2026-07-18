@@ -28,18 +28,26 @@ sealed interface GameEvent {
 
     // --- Cartas / mano / mazo ---
     data class CardsDrawn(override val side: Side, val count: Int) : GameEvent
+    data class CardsDiscarded(override val side: Side, val count: Int) : GameEvent
     data class DeckShuffled(override val side: Side) : GameEvent
 
     // --- Despliegue ---
     data class PokemonPlayed(override val side: Side, val card: CardId, val toBench: Boolean) : GameEvent
     data class Evolved(override val side: Side, val from: CardId, val to: CardId) : GameEvent
+    /** Se involuciona un Pokémon (Aerodactyl — Rayo Involutivo): la carta [from] (fase más alta)
+     *  vuelve a la mano de su dueño y el Pokémon pasa a ser [to]. */
+    data class DeEvolved(override val side: Side, val from: CardId, val to: CardId) : GameEvent
     data class EnergyAttached(override val side: Side, val energy: CardId, val to: CardId) : GameEvent
     data class ToolAttached(override val side: Side, val tool: CardId, val to: CardId) : GameEvent
     data class TrainerPlayed(override val side: Side, val card: CardId) : GameEvent
     data class StadiumPlayed(override val side: Side, val card: CardId) : GameEvent
+    /** Se descarta el Estadio en juego por un efecto (Charmander — Destrucción Abrasadora). */
+    data class StadiumDiscarded(override val side: Side) : GameEvent
 
     // --- Combate ---
     data class Retreated(override val side: Side, val from: CardId, val to: CardId) : GameEvent
+    /** Un Pokémon de la Banca sube al puesto Activo tras un KO (promoción elegida). */
+    data class Promoted(override val side: Side, val pokemon: CardId) : GameEvent
     data class Attacked(override val side: Side, val attacker: CardId, val attackName: String) : GameEvent
     data class DamageDealt(
         override val side: Side,

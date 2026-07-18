@@ -583,6 +583,23 @@ class EffectInterpreter {
                 }
                 EffectResult(working, emptyList())
             }
+            is EffectOp.DeEvolveDefender -> {
+                // Involuciona el Activo rival: la carta de fase más alta (la actual) vuelve a la
+                // mano de su dueño; el Pokémon pasa a ser la carta inferior de la pila de evolución.
+                val foeSide = src.actingSide.other()
+                val foe = state.sideState(foeSide)
+                val defender = foe.active
+                val topCard = defender?.card
+                val below = defender?.evolutionStack?.lastOrNull()
+                if (defender == null || topCard == null || below == null) EffectResult(state, emptyList())
+                else {
+                    var working = updatePokemon(state, defender.card.id) {
+                        it.copy(card = below, evolutionStack = it.evolutionStack.dropLast(1))
+                    }
+                    working = withPlayer(working, working.sideState(foeSide).copy(hand = foe.hand + topCard), foeSide)
+                    EffectResult(working, listOf(GameEvent.DeEvolved(foeSide, topCard.id, below.id)))
+                }
+            }
             is EffectOp.ScheduleReflectDamageNextTurn -> {
                 // Marca al Pokémon que usa el ataque (Activo propio) para reflejar el daño
                 // recibido durante el próximo turno del rival (turn + 1).
