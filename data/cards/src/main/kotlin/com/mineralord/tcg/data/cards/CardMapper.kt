@@ -1,6 +1,8 @@
 package com.mineralord.tcg.data.cards
 
 import com.mineralord.tcg.engine.model.Ability
+import com.mineralord.tcg.engine.model.AbilityKind
+import com.mineralord.tcg.engine.model.AncientTrait
 import com.mineralord.tcg.engine.model.ArtworkRefs
 import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.BasicEnergy
@@ -110,11 +112,22 @@ object CardMapper {
             hp = dto.ps?.toIntOrNull() ?: 0,
             types = dto.tipos.map { energyType(it) },
             evolvesFrom = dto.evolucionaDe,
-            abilities = dto.habilidades.map {
+            abilities = dto.habilidades.mapIndexed { i, it ->
+                // Nombre/texto ES del dataset (bloque `es.habilidades`) si existe; si no, el inglés.
+                val esa = dto.es?.habilidades?.getOrNull(i)
+                val esName = esa?.name?.takeIf { s -> s.isNotBlank() } ?: it.name
+                val esText = esa?.text?.takeIf { s -> s.isNotBlank() } ?: (it.text ?: "")
                 Ability(
-                    LocalizedText(it.name, it.name),
-                    LocalizedText(it.text ?: "", it.text ?: ""),
+                    name = LocalizedText(esName, it.name),
+                    text = LocalizedText(esText, it.text ?: ""),
                     effect = EffectsDb.abiKey(dto.id, it.name).takeIf { id -> EffectsDb.registry.has(id) },
+                    kind = abilityKind(it.type),
+                )
+            },
+            ancientTrait = dto.rasgoAntiguo?.let {
+                AncientTrait(
+                    name = LocalizedText(it.nombreEs?.takeIf { s -> s.isNotBlank() } ?: it.name, it.name),
+                    text = LocalizedText(it.textoEs ?: it.text ?: "", it.text ?: ""),
                 )
             },
             attacks = dto.ataques.mapIndexed { i, a ->
@@ -138,6 +151,19 @@ object CardMapper {
         )
     }
 
+    /**
+     * Clasifica el poder impreso por su etiqueta de época. Acepta variantes de acento
+     * y guion del scraper. Ausente/desconocido = [AbilityKind.ABILITY] (SV moderno).
+     */
+    fun abilityKind(raw: String?): AbilityKind {
+        val s = raw?.trim()?.lowercase()?.replace("é", "e")?.replace("-", " ") ?: return AbilityKind.ABILITY
+        return when {
+            "poke power" in s || "pokemon power" in s -> AbilityKind.POKE_POWER
+            "poke body" in s -> AbilityKind.POKE_BODY
+            else -> AbilityKind.ABILITY
+        }
+    }
+
     private fun stageOf(tokens: List<String>): Stage = when {
         tokens.any { it.startsWith("Stage 2") } -> Stage.Stage2
         tokens.any { it.startsWith("Stage 1") } -> Stage.Stage1
@@ -155,11 +181,18 @@ object CardMapper {
     private fun trainer(dto: CardDto): TrainerCard {
         val fase = dto.fase ?: ""
         val ace = fase.contains("ACE SPEC", ignoreCase = true)
+        // Reconoce el subtipo tanto en INGLÉS (fuente tcgdex habitual) como en ESPAÑOL, por si
+        // una carta se añade a mano con el `fase` localizado. Un subtipo DESCONOCIDO falla-rápido
+        // (error) en vez de degradar silenciosamente a Objeto: así una expansión futura con un
+        // valor inesperado se detecta en carga/tests, no se clasifica mal sin avisar.
+        val f = fase.trimStart()
+        fun startsAny(vararg prefixes: String) = prefixes.any { f.startsWith(it, ignoreCase = true) }
         val kind = when {
-            fase.startsWith("Supporter") -> TrainerKind.Supporter(ace)
-            fase.startsWith("Stadium") -> TrainerKind.Stadium(ace)
-            fase.startsWith("Pokémon Tool") -> TrainerKind.Tool(ToolTarget.OWN_POKEMON, ace)
-            else -> TrainerKind.Item(ace)   // "Item" / "Item, ACE SPEC"
+            startsAny("Supporter", "Partidario") -> TrainerKind.Supporter(ace)
+            startsAny("Stadium", "Estadio") -> TrainerKind.Stadium(ace)
+            startsAny("Pokémon Tool", "Pokemon Tool", "Herramienta") -> TrainerKind.Tool(ToolTarget.OWN_POKEMON, ace)
+            startsAny("Item", "Objeto") -> TrainerKind.Item(ace)
+            else -> error("Subtipo de Entrenador desconocido: '$fase' (${dto.id})")
         }
         val text = dto.reglas.firstOrNull() ?: ""
         return TrainerCard(
