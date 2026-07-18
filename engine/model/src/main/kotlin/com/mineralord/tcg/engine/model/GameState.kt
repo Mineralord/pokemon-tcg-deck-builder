@@ -27,6 +27,79 @@ data class PokemonInPlay(
      * atacar"). Se compara contra [GameState.turn] en el motor.
      */
     val cannotAttackOnTurn: Int? = null,
+    /**
+     * Si no es null, número de turno durante el cual se EVITA todo el daño de
+     * ataques a este Pokémon (Refugio/Postura Defensiva/Vuelo: "durante el próximo
+     * turno de tu rival, se evita todo el daño…"). Se fija a [GameState.turn] + 1 y
+     * se compara contra [GameState.turn] al recibir daño. Auto-expira.
+     */
+    val preventDamageOnTurn: Int? = null,
+    /**
+     * Si no es null, número de turno durante el cual se EVITA el daño a este Pokémon SOLO
+     * de ataques de Pokémon BÁSICOS (Nidoqueen — Prensa Real: "durante el próximo turno de
+     * tu rival, se evita todo el daño infligido a este Pokémon por ataques de Pokémon
+     * Básicos"). Se fija a [GameState.turn] + 1; se comprueba en [GameEngine.attack] mirando
+     * si el atacante es Básico. Auto-expira. Es independiente de [preventDamageOnTurn].
+     */
+    val preventBasicDamageOnTurn: Int? = null,
+    /**
+     * Si no es null, número de turno durante el cual este Pokémon "refleja" el daño: si
+     * resulta dañado por un ataque rival (incluso si queda Fuera de Combate), el Atacante
+     * recibe daño crudo igual al infligido a este Pokémon (Mewtwo — Barrera Reflectante).
+     * Se fija a [GameState.turn] + 1; lo dispara [GameEngine] en applyDefenderRetaliation.
+     * Auto-expira.
+     */
+    val reflectDamageOnTurn: Int? = null,
+    /**
+     * Si no es null, número de turno durante el cual este Pokémon NO puede retirarse
+     * (Amarrar/Rumble: "durante el próximo turno de tu rival, el Defensor no puede
+     * retirarse"). Se fija a [GameState.turn] + 1 y se compara en el retiro.
+     */
+    val cannotRetreatOnTurn: Int? = null,
+    /**
+     * Si no es null, número de turno durante el cual los ataques hacen [damageReductionAmount]
+     * puntos MENOS de daño a este Pokémon (Endurecimiento/Presión Caparazón/Carga Protectora:
+     * "durante el próximo turno de tu rival, los ataques hacen X menos a este Pokémon, después
+     * de aplicar Debilidad y Resistencia"). Se fija a [GameState.turn] + 1; se resta en
+     * [GameEngine.attack] tras Debilidad/Resistencia (como la reducción de Herramientas). Auto-expira.
+     */
+    val damageReductionOnTurn: Int? = null,
+    val damageReductionAmount: Int = 0,
+    /**
+     * Si no es null, número de turno durante el cual los ataques de ESTE Pokémon hacen
+     * [attackBonusAmount] puntos MÁS de daño al Activo rival (Golem ex — Giro Dinámico,
+     * Hitmonchan — Puño Exaltado: "durante tu próximo turno, los ataques de este Pokémon
+     * hacen X más, antes de aplicar Debilidad y Resistencia"). Se fija a [GameState.turn] + 2
+     * (el próximo turno PROPIO), se suma al daño base en [GameEngine.attack] ANTES de
+     * Debilidad/Resistencia. Auto-expira.
+     */
+    val attackBonusOnTurn: Int? = null,
+    val attackBonusAmount: Int = 0,
+    /**
+     * Si no es null, número de turno durante el cual el Coste de Retirada de este Pokémon
+     * es [retreatCostBumpAmount] MÁS (Grimer — Presión Pegajosa, Muk — Prisión Viscosa:
+     * "durante el próximo turno de tu rival, el Coste de Retirada del Defensor es de {C} más").
+     * Se fija a [GameState.turn] + 1; se suma en `effectiveRetreatCost`. Auto-expira.
+     */
+    val retreatCostBumpOnTurn: Int? = null,
+    val retreatCostBumpAmount: Int = 0,
+    /**
+     * Si no es null, número de turno durante el cual los ataques de este Pokémon cuestan
+     * [attackCostBumpAmount] Energía {C} MÁS (Muk — Prisión Viscosa). Se fija a
+     * [GameState.turn] + 1; se suma al coste convertido en `GameEngine.attack`/`legalIntents`.
+     * Auto-expira.
+     */
+    val attackCostBumpOnTurn: Int? = null,
+    val attackCostBumpAmount: Int = 0,
+    /**
+     * Si no es null, número de turno AL FINAL del cual se ponen [delayedDamageAmount] puntos
+     * de daño en este Pokémon (Victreebel — Ácido de Acción Lenta: "al final del próximo turno
+     * de tu rival, pon 12 contadores de daño en el Pokémon Defensor"). Se fija a
+     * [GameState.turn] + 1 (el próximo turno del dueño de este Pokémon); lo aplica
+     * [GameEngine.endTurn] cuando ese jugador termina su turno. Auto-expira.
+     */
+    val delayedDamageOnTurn: Int? = null,
+    val delayedDamageAmount: Int = 0,
 ) {
     val remainingHp: Int get() = (card.hp - damage).coerceAtLeast(0)
     val isKnockedOut: Boolean get() = damage >= card.hp
@@ -61,6 +134,7 @@ data class GameState(
     val activeSide: Side,
     val phase: Phase,
     val stadium: TrainerCard? = null,         // estadio en campo (único, compartido)
+    val stadiumOwner: Side? = null,           // quién lo jugó (para descartarlo a SU pila al reemplazarlo)
     val winner: Side? = null,
     /**
      * Efecto en pausa esperando una elección (buscar/objetivo/mover energía).
@@ -71,6 +145,12 @@ data class GameState(
     val supporterPlayedThisTurn: Boolean = false,
     /** Una energía por turno: se pone a true al unir una; se resetea en fin de turno. */
     val energyAttachedThisTurn: Boolean = false,
+    /**
+     * Nombres (ES y EN) de las cartas de Entrenador jugadas ESTE turno por el jugador
+     * activo. Habilita ataques "si jugaste [tal carta] este turno, +X daño" (Rhydon —
+     * Taladro Carismático [Carisma de Giovanni], Tangela — Enredo Sutil [Invitación de
+     * Erika]). Se resetea en fin de turno. */
+    val trainerNamesPlayedThisTurn: Set<String> = emptySet(),
     /** Habilidades 1/turno ya usadas este turno (por id de Pokémon). */
     val abilitiesUsedThisTurn: Set<CardId> = emptySet(),
     /**
@@ -80,6 +160,14 @@ data class GameState(
      * cuando termina SU turno (así refleja siempre el turno rival más reciente).
      */
     val koedLastOppTurn: Set<Side> = emptySet(),
+    /**
+     * Lados cuyo Pokémon Activo fue Noqueado y que DEBEN promover uno de su Banca al
+     * puesto Activo antes de que el juego continúe. Fiel a TCG Live: el jugador ELIGE
+     * su nuevo Activo (arrastrando la carta de la Banca al centro), no se auto-sube el
+     * primero. Mientras no esté vacío, el motor solo acepta [GameIntent.PromoteActive]
+     * de un lado que esté aquí; el resto de acciones se rechazan.
+     */
+    val pendingPromotion: Set<Side> = emptySet(),
 ) {
     fun sideState(side: Side): PlayerState = if (side == Side.PLAYER) player else opponent
     val activePlayer: PlayerState get() = sideState(activeSide)
@@ -87,4 +175,7 @@ data class GameState(
 
     /** Hay una decisión pendiente que el jugador/IA debe resolver antes de seguir. */
     val awaitingDecision: Boolean get() = interaction != null
+
+    /** Hay al menos un lado que debe elegir su nuevo Pokémon Activo tras un KO. */
+    val awaitingPromotion: Boolean get() = pendingPromotion.isNotEmpty()
 }

@@ -2,6 +2,811 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## 🗂️ ARQUITECTURA POR EXPANSIÓN (16 Jul 2026) — datos y efectos SEPARADOS por set
+**REGLA:** cada expansión vive AISLADA; añadir un set nuevo NO toca los datos/efectos de otro.
+**Cartas (datos):** ya NO existe el monolito `cartas-db.json` (borrado). Ahora jerarquía
+**`cards/<serie-slug>/<expansion-slug>.json`** (1 archivo por expansión), p.ej.
+`cards/scarlet-violet/151.json` (sv3pt5, 207), `cards/scarlet-violet/surging-sparks.json` (sv8, 252),
+… + `cards/mega-evolution/mega-evolution.json`. Energías básicas (8 tipos) en **`cards/energies.json`**
+(NO es expansión). Índice `cards/index.json` = `{sets:[{code,officialCode,serie,expansion,file}], energies}`.
+**Los `id` internos de las cartas NO cambian** (siguen `sv3pt5-39`, etc. — son claves de efectos/barajas/holo);
+el `officialCode` (MEW=151, SSP=Surging Sparks, SVI/PAL/OBF/PAR/TEF/TWM/SFA/SCR/DRI/SVP…) es SOLO metadato.
+`CardRepository.load()` lee el índice y fusiona `sets[].file` + `energies` (fallback al monolito legado).
+Reorganizar tras un scrape: `python tools/scripts/reorg_cards.py` (tabla `SETS` code→serie/exp/oficial adentro).
+**Expansiones FUTURAS: agregarlas con su código oficial.** `CardIndexDto`/`CardSetRefDto` en CardDto.kt.
+La app tiene 13 expansiones pero solo **151 está completa**; el resto (sobre todo sv8 Surging Sparks=252)
+son las cartas de donde salen las barajas "Academia de Combate 2024".
+**Efectos:** `EffectsDb.kt` es ahora un AGREGADOR delgado (`registry = buildMap { registerAcademiaDecks();
+registerSet151() }`). Los registros de 151 viven en **`Set151Effects.kt`** (`registerSet151()`), los de las
+barajas Academia en `AcademiaDecksEffects.kt`. Helpers de clave (`atkKey`/`abiKey`/`prompt`) y los `Effect`
+compartidos entre sets (`SOLID`/`TRANQUIL`/`RESTART`/`CALMING`/`switch`) están top-level `internal` en
+**`EffectKeys.kt`** (mismo paquete → sin cualificar). `EffectsDb.atkKey/abiKey` siguen públicos (tests).
+**Añadir un set futuro:** crear `SetXXXEffects.kt` con `fun MutableMap<EffectId,Effect>.registerSetXXX(){…}`
++ una línea en el `buildMap` de EffectsDb. El inventario lee TODOS los `.kt` del paquete model (glob).
+
+## ⚠️ REGLA PERMANENTE — EL DAÑO **NO** ES UN EFECTO (siempre, en todo el motor)
+Un ataque de Pokémon tiene DOS cosas separadas: **(1) daño** (el número, sin texto) y **(2) efecto** (el
+texto). **El daño NUNCA es un efecto.** Consecuencias que hay que respetar SIEMPRE al modelar/implementar:
+- Un ataque "con daño" (solo número, sin texto) NO necesita `Effect` registrado — el motor calcula el daño base.
+- Un ataque "con efecto" es el texto (estados, robar, buscar, mover Energía, snipe…). El daño extra/condicional
+  del propio texto SÍ es daño, no "efecto de prevención".
+- **Prevención/escudos:** "se evita el DAÑO" (Barrera Mímica, `preventDamageOnTurn`) ≠ "se evitan los EFECTOS"
+  (Cubierta de Capullo). Kakuna evita EFECTOS pero el daño le sigue entrando; Mr. Mime evita DAÑO. Son gates
+  distintos: uno frena el número, otro frena las ops de texto.
+- `Effect.ignoresDefenderEffects` = el ataque ignora prevención/reducción/Herramientas del Defensor (afecta al
+  DAÑO). NO confundir con ignorar el texto del defensor.
+
+## 🧬 MECÁNICAS POR ÉPOCA + CATÁLOGO DE ATAQUES/HABILIDADES (17 Jul 2026)
+**Objetivo:** la app tendrá TODAS las series/expansiones jugables con las reglas de SU época.
+**Modelo de "poderes" (Card.kt):** una Habilidad ya NO es solo "Ability". `enum AbilityKind{ABILITY,
+POKE_POWER, POKE_BODY}` con `suppressibleByAbilityLock` (=true SOLO para ABILITY). `Ability.kind`
+(default ABILITY = cartas modernas SV). Poké-Power (activo) / Poké-Body (pasivo) son PRE-2011 y un
+bloqueo moderno de Habilidades ("los Pokémon no tienen Habilidades", p.ej. Camino hacia la Cima/Klefki)
+**NO** los apaga. **Rasgo Antiguo (Ancient Trait, era XY):** tipo `AncientTrait` + campo
+`PokemonCard.ancientTrait` (SEPARADO de `abilities` a propósito → inmune a bloqueos de ataque/Habilidad
+por construcción). Helper `PokemonCard.effectiveAbilities(abilityLockActive)` filtra las apagables cuando
+haya bloqueo (lista para cuando se implemente `ModKind.BLOCK_ABILITY`, que HOY aún no se aplica en el motor).
+**DTO/Mapper:** `AbilityDto.type` (etiqueta impresa) → `CardMapper.abilityKind()` (tolera acentos/guiones);
+`EsDto.habilidades`/`EsAbilityDto` → nombres/textos ES de habilidades (antes la habilidad se mostraba en
+inglés); `CardDto.rasgoAntiguo`/`AncientTraitDto` (forward-compat, SV no los trae). La clave de efecto
+(`abiKey(id, nombreEN)`) SIGUE usando el nombre EN top-level → sin cambios en registros.
+**CATÁLOGO separado de ataques/habilidades (worklist, NO lo carga la app):** `python tools/scripts/
+gen_mechanics_db.py [code…]` genera `docs/mechanics/<serie>/<expansion>.json` = `{code, officialCode, serie,
+expansion, counts, attacks[]{cardId,en,es,text,impl}, abilities[]{cardId,en,es,text,kind,impl}}` cruzando
+el dataset × claves autoradas en el paquete model (mismo regex que el inventario). Sirve para saber, por
+expansión, qué falta implementar. Regenerar tras autorar efectos o scrapear un set nuevo.
+
+### 🚫 BLOQUEO DE HABILIDADES + ESTADIOS (17 Jul 2026) — fiel al TCG
+**Rule Box:** `PokemonMechanic.hasRuleBox` (Normal=false; ex/EX/V/VMAX/VSTAR/GX/Radiant/Tera=true). Lo usa
+Camino hacia la Cima ("los Pokémon CON caja de regla no tienen Habilidades").
+**Bloqueo (`ModKind.BLOCK_ABILITY`, YA aplicado en el motor):** `PassiveModifier` gana `blockBothSides`
+(default true = ambos lados; false = solo el lado rival del origen) y `blockOnlyRuleBox` (Path to the Peak).
+GameEngine: `abilityLockSources(state)` recolecta fuentes del **Estadio** (`effects[stadium.effect].passives`)
+y de habilidades/Herramientas en juego (Klefki). `isAbilityLocked(state, side, pip)`: el propio origen queda
+exento, un Pokémon que él mismo aporta bloqueo NUNCA se bloquea, respeta alcance y caja de regla. Solo apaga
+`AbilityKind.ABILITY` (vía `PokemonCard.effectiveAbilities`) → Poké-Power/Body y Rasgos Antiguos INMUNES.
+Cableado en: `useAbility` (rechaza), `legalIntents` (no enumera), y `abilityPassives(state, side, pip)` — el
+lector de pasivos AHORA filtra por bloqueo (antes `abilityPassives(pip)`; existe `abilityPassivesRaw` sin
+filtrar SOLO para detectar fuentes, evita recursión). Los 3 llamadores (retirada) pasan state+side.
+**Estadios (slot `GameState.stadium` + `stadiumOwner: Side?`, YA existían/añadido):** `playTrainer` despacha
+`TrainerKind.Stadium` → `playStadium`: rechaza mismo-nombre en campo, descarta el anterior a la pila de SU
+dueño, la carta NUEVA sale de la mano y ocupa el slot (NO va al descarte). `legalIntents` enumera Estadios
+jugables (no requieren efecto registrado). Espejado en netplay (`GameStateDto.stadiumOwner`, framing incluido).
+**151:** Camino de Bicis (sv3pt5-157) ya se coloca (su efecto 1/turno de robar aún NO implementado = estadio
+inerte). Tests: `AbilityLockAndStadiumTest` (registry inyectado con efectos sintéticos de bloqueo).
+**FUTURO:** cuando se scrapee Path to the Peak/Klefki, registrar su Effect con el `PassiveModifier(BLOCK_ABILITY,
+…)` correspondiente; el motor ya hace el resto. Aún NO hay estadios con efecto ACTIVO 1/turno (Cycling Road).
+
+## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 36 — 17 Jul 2026
+**Contexto:** implementando TODOS los efectos del set 151 (`sv3pt5`) por fases. Inventario vivo en
+**`docs/inventario-efectos-151.md`** (regenerar con `python tools/scripts/gen_inventario_151.py`, cruza
+`cards/sv3pt5.json` × `Set151Effects.kt`; textos SIEMPRE del bloque `es` = español impreso, NUNCA inglés).
+Progreso: **167/198 efectos únicos** (Fases 1–35 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
+(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 31.**
+
+### ✅ FASE 35 HECHA (17 Jul) — efectos AL FINAL del turno (nuevo hook `applyEndOfTurnEffects`)
+**Infra nueva:** `GameEngine.endTurn` llama a **`applyEndOfTurnEffects(state, activeSide, events)`** JUSTO
+después de `applyBetweenTurns` (Veneno/Quemadura) y ANTES de `handleKnockouts` → procesa el Activo del jugador
+que TERMINA su turno. Hace 2 cosas: (a) **daño diferido** — si `active.delayedDamageOnTurn == state.turn`,
+suma `delayedDamageAmount` de daño y limpia los campos (el KO lo resuelve el `handleKnockouts` posterior);
+(b) **curación de Herramientas** — suma `Effect.healSelfEndOfTurnIfActive` de las Herramientas ancladas y
+reduce el daño (cap 0), emite `GameEvent.Healed`. **Campos/ops nuevos:** `PokemonInPlay.delayedDamageOnTurn:
+Int?` + `delayedDamageAmount: Int` (GameState.kt, espejados en netplay `GameStateDto` decl+toDto+toModel);
+op `EffectOp.ScheduleDelayedDamage(target, amount)` (el intérprete la fija a `turn+1` en el/los target);
+flag `Effect.healSelfEndOfTurnIfActive: Int` (Herramientas). **Registrados (bloque "Fase 35"):** Victreebel
+*Ácido de Acción Lenta/Slow-Acting Acid* 71 (base 120 puro + `ScheduleDelayedDamage(OPP_ACTIVE, 120)`),
+Restos/Leftovers 163 (Herramienta → `EffectId("sv3pt5-163")`, `healSelfEndOfTurnIfActive=20`). 2 tests
+(FASE 35). OJO: las Herramientas/Entrenadores se registran con `EffectId(dto.id)` directo (NO atkKey/abiKey).
+
+### ✅ FASE 34 HECHA (17 Jul) — "el ataque no hace nada si…" + premio extra al noquear
+**3 flags nuevos en `Effect`, evaluados en `GameEngine.attack`:** (a) `noEffectUnlessSelfConfused` y (b)
+`noEffectIfEvolvedThisTurn` → juntos forman `attackFizzles`; si true, `dmgBase = 0` (nuevo val, NO shadowea
+`base`) Y el efecto NO se ejecuta (`if (effect != null && !attackFizzles)`). "No hace nada" cubre daño+efecto
+(recordar: el daño NO es un efecto, pero "no hace nada" anula ambos). Slowbro se detecta con
+`attacker.turnsInPlay == 0` (evolucionar/colocar resetea el contador; un Fase 1 activo con 0 turnos evolucionó
+este turno). (c) `extraPrizeIfKo` → `attack` calcula `extraPrizes = 1` si el ataque hizo daño y lo pasa a
+`handleKnockouts(foeSide, …, extraPrizes)` (param NUEVO, default 0), que lo suma a `prizesToTake`
+(`coerceAtMost` los premios restantes). **Registrados (bloque "Fase 34"):** Primeape *Golpe Rabioso/Raging
+Smash* 57 (`noEffectUnlessSelfConfused`), Slowbro *Placaje Relajado/Laid-Back Tackle* 80
+(`noEffectIfEvolvedThisTurn`), Clefable *Más Luna/More Moon* 36 (`extraPrizeIfKo`). NO toca netplay (todo lo
+resuelve el host en el flujo del ataque). 3 tests. OJO: el motor NO implementa la moneda de Confusión al
+atacar, así que un Primeape Confundido pega directo (test sin moneda).
+
+### ✅ FASE 33 HECHA (17 Jul) — KO-triggers en handleKnockouts (sobrevivir-KO / absorber Energía)
+**Infra:** `GameEngine.handleKnockouts` gana parámetro `byAttack: Boolean = false`; SOLO los 2 call-sites del
+ATAQUE (`attack()`, líneas ~389-390) pasan `byAttack = true` → así los KO por Veneno/Quemadura/retroceso no
+disparan estos triggers (fiel a "por el daño de un ataque"). **2 flags nuevos en `Effect`:**
+`survivesKoWithCoin` (Machamp) y `pullsEnergyFromKoAllyType: EnergyType?` (Raichu).
+**Machamp — Agallas/Guts 68:** al inicio de `handleKnockouts` (tras confirmar KO por HP efectivo), si `byAttack`
+y el Activo tiene la habilidad (no bloqueada), lanza `rng.flipCoin()`; con cara NO queda KO y sus PS restantes
+pasan a 10 (`damage = maxHp - 10`) → `return` temprano con el superviviente. Con cruz sigue el flujo normal de KO.
+**Raichu — Toma de Tierra/Electrical Grounding 26:** si `byAttack` y `state.activeSide != koSide` (= el KO lo
+causó el ataque del RIVAL), busca en la Banca del lado noqueado un Pokémon con `pullsEnergyFromKoAllyType`; si lo
+hay y el Activo noqueado tiene 1 Energía Básica de ese tipo, la mueve del noqueado a ese Pokémon de Banca ANTES
+del descarte (emite `EnergyAttached`). Auto (el "puedes" siempre conviene). **NO toca netplay** (el host aplica
+todo en el flujo del ataque; sin decisión ni campo nuevo de estado). 2 tests (bloque FASE 33). Nombres EN de
+habilidad del top-level `habilidades[].name` (Machamp="Guts", Raichu="Electrical Grounding").
+
+### ✅ FASE 32 HECHA (17 Jul) — "contragolpe" del Defensor + reflejo de daño diferido
+**Hook nuevo** `GameEngine.applyDefenderRetaliation(state, defenderSide, receivedDamage, events)` — corre en
+`attack()` DESPUÉS del efecto del ataque y ANTES de `handleKnockouts` (el Activo dañado aún está en juego, así
+"incluso si queda KO" funciona). Dispara habilidades del Activo defensor con `actingSide = DEFENSOR` → sus ops
+`OPP_ACTIVE` apuntan al ATACANTE. Respeta bloqueo de Habilidades. **Flags nuevos en `Effect`:**
+`triggerOnActiveDamaged` (Hitmonchan) y `triggerOnActiveKO` (solo si el daño lo dejó KO; Weezing). Estas
+habilidades NO se activan a mano (no van en legalIntents/useAbility). **Op nueva** `CoinFlipKnockOutTarget(target,
+coinFlip)` (Weezing: cara → noquea al Atacante). **Registrados:** Hitmonchan *Contragolpe/Counterattack* 107
+(`triggerOnActiveDamaged` + `Damage(OPP_ACTIVE, 30)`), Weezing *A Pasarlo Bomba/Let's Have a Blast* 110
+(`triggerOnActiveKO` + `CoinFlipKnockOutTarget(OPP_ACTIVE)`).
+**Reflejo DIFERIDO (Mewtwo *Barrera Reflectante/Reflective Barrier* 150 — es un ATAQUE, base 20):** op nueva
+`ScheduleReflectDamageNextTurn` (data object) → el intérprete fija `PokemonInPlay.reflectDamageOnTurn = turn+1`
+en el Activo propio. En `applyDefenderRetaliation`, si `active.reflectDamageOnTurn == state.turn`, el Atacante
+recibe daño CRUDO = `receivedDamage` (el daño de ESTE ataque; se aplica vía `withPlayer`, emite `DamageDealt`).
+Campo espejado en netplay `GameStateDto` (decl + toDto + toModel). 4 tests (bloque FASE 32).
+**DIFERIDOS de la familia (hooks distintos, NO en Fase 32):** Machamp *Agallas* 68 (moneda para NO ser
+Noqueado, PS→10 = hook "evitar-KO" en `handleKnockouts`), Raichu *Toma de Tierra* 26 (al ser Noqueado un
+Pokémon TUYO por ataque rival, mueve 1 {L} del KO a Raichu = hook KO de Banca + mover Energía antes del
+descarte). Requieren cada uno su propia maquinaria.
+
+### ⚠️ DEUDA PENDIENTE (NO OLVIDAR) — arrastrada desde Fase 29/30/31
+1. **Haunter *Spirit Return* (sv3pt5-93)** — habilidad interactiva al evolucionar: "pon 1 Partidario del
+   descarte del RIVAL en su mano". DIFERIDA porque requiere maquinaria NUEVA de selección/movimiento sobre
+   ZONAS DEL RIVAL (hoy `SearchCards`/`applySearch` operan sobre las zonas del lado que actúa). Es su propio
+   mini-subsistema, no encaja en la familia `AttachFromRevealed`. Retomar cuando se aborde ese sistema.
+2. **HP máximo en la UI (cosmético)** — el motor YA aplica el HP extra de habilidades condicionales en
+   `effectiveMaxHp(state, side, pip)` (KO correcto), pero la BARRA DE VIDA de la UI (feature/game) muestra el
+   HP IMPRESO → Wigglytuff ex *Cuerpo Expansivo* (+100 con Energía Especial) no se refleja visualmente. Falta
+   exponer el HP efectivo al render. Buscar dónde la UI lee `card.hp` para la barra y usar el efectivo.
+3. **Prevención de EFECTOS de ataque (subsistema nuevo)** — Kakuna *Cubierta de Capullo* (sv3pt5-14, "se evitan
+   todos los EFECTOS de los ataques rivales a este Pokémon; el daño NO es un efecto"). Requiere gatear la
+   APLICACIÓN de ops de ataque por-objetivo (hoy las ops de efecto no consultan un "escudo de efectos" del
+   defensor). Distinto de `preventDamageOnTurn` (que solo frena daño). Diferido hasta montar ese gate.
+   ✅ **RESUELTO (17 Jul, parte de esta deuda):** Mr. Mime *Barrera Mímica* (sv3pt5-122/-179) — como solo evita
+   DAÑO (no efectos), se hizo con el flag `Effect.preventsDamageIfEnergyParity` comprobado en `GameEngine.attack`
+   (escudo pasivo: `energyParityShield` si el Defensor tiene la habilidad no bloqueada y ambos Activos tienen
+   igual nº de Energías → suma a `damagePrevented`; se salta con `ignoresDefenderEffects`). 1 test. NO tocó netplay.
+
+### ✅ FASE 31 HECHA (17 Jul) — descartar Estadio + prevención condicional a atacante Básico
+**Infra:** (a) op nueva `EffectOp.DiscardStadium` (data object) — el intérprete descarta el `state.stadium` a
+la pila de su `stadiumOwner` (no-op si no hay), emite `GameEvent.StadiumDiscarded(side)` (evento NUEVO +
+ramas ES/EN en `CombatLog`). (b) `PreventDamageNextTurn` gana flag `onlyFromBasic: Boolean` → el intérprete
+fija un campo NUEVO `PokemonInPlay.preventBasicDamageOnTurn` (en vez de `preventDamageOnTurn`). En
+`GameEngine.attack` el `finalAmount` ahora calcula `damagePrevented = preventDamageOnTurn==turn ||
+(preventBasicDamageOnTurn==turn && attacker.card.isBasic)` (ambas se saltan si el ataque `ignoresDefenderEffects`).
+Campo espejado en netplay `GameStateDto` (decl + toDto + toModel). **Registrados (bloque "Fase 31"):** Charmander
+*Blazing Destruction* 4 y reprint 168 (`DiscardStadium`, sin daño base); Nidoqueen *Queen Press* 31 (90 +
+`PreventDamageNextTurn(SELF, onlyFromBasic=true)`). 2 tests (Estadio→descarte del dueño; Básico hace 0 pero
+Evolucionado sí daña). OJO: `GameEvent` es sellado → un `when` exhaustivo nuevo obligaría rama; hoy solo CombatLog.
+
+### ✅ FASE 30 HECHA (17 Jul) — pasivos propios condicionales (HP / retirada)
+**Infra:** `PassiveModifier` gana `requiresSpecialEnergy: Boolean` (≥1 Energía Especial unida). `effectiveMaxHp`
+AHORA toma `(state, side, pip)` y suma EXTRA_HP de HERRAMIENTAS **y de HABILIDADES** condicionales (respeta el
+bloqueo vía `abilityPassives`); nuevo helper `passiveEnergyConditionMet(pip, mod)` (evalúa `requiresEnergyType`
++ `requiresSpecialEnergy`). Único call-site actualizado: `handleKnockouts` (pasa `state, koSide`). **Registrados
+(bloque "Fase 30"):** Wigglytuff ex *Cuerpo Expansivo/Expanding Body* 40 y reprint 187 (`EXTRA_HP 100, SELF,
+requiresSpecialEnergy`); Zapdos ex *Flotación Voltaica/Voltaic Float* 192 y reprint 202 (`RETREAT_COST 0, SELF,
+requiresEnergyType=LIGHTNING` — funcionó con solo registrar porque `effectiveRetreatCost` ya leía pasivos de
+habilidad). 2 tests (Wigglytuff: 100 daño NO noquea con Especial / SÍ sin ella; Zapdos: retira con 1 {L} pese a
+coste impreso 2, sin descartar Energía). OJO: `PassiveModifier` sigue con args NOMBRADOS en todos los call-sites.
+
+### ✅ FASE 29 HECHA (17 Jul) — habilidades INTERACTIVAS al evolucionar
+**BUG CRÍTICO corregido:** `GameEngine.evolve` DESCARTABA `res.pending` del efecto de evolución → ninguna
+habilidad de evolución interactiva podía funcionar. Ahora, si el trigger deja `pending`, se devuelve
+`EngineResult(working, events, pending=res.pending)` ANTES de `handleKnockouts` (NO cierra turno:
+`endsTurnOnResolve` queda false, a diferencia de un ataque). **Op generalizado** `RevealAttachEnergy`:
+`energyType` ahora NULLABLE (null = cualquier Básica) + flag `includeActive` (destino = Banca + Activo, "a tus
+Pokémon"). El intérprete filtra energías con `energyType==null || type==` y usa `allInPlay` si `includeActive`.
+Reusa la decisión `AttachFromRevealed` (ya existente, sin cambios en resolución ni netplay). **Registrados
+(bloque "Fase 29"):** Gloom *Semi-Blooming Energy* 44 (`RevealAttachEnergy(3,3,null,null,includeActive=true)`),
+Vileplume *Fully Blooming Energy* 45 (lookAt/maxAttach=8). 2 tests (pausa con la decisión correcta; resuelve
+uniendo energía + rebaraja). Los call-sites previos de `RevealAttachEnergy` (Generador Eléctrico, tests)
+compilan sin cambios (pasan `EnergyType` no-null a un `EnergyType?`).
+
+### ✅ FASE 28 HECHA (17 Jul) — HOOK de habilidades "al evolucionar desde la mano" (AUTO, no interactivas)
+**Infra nueva:** flag `Effect.triggerOnEvolve: Boolean` (Effects.kt). En `GameEngine.evolve` (tras construir el
+`evolved`/`withPlayer`), se busca la habilidad del Pokémon evolucionado cuyo Effect tenga `triggerOnEvolve` y se
+ejecuta AUTOMÁTICAMENTE vía `interpreter.execute(EffectSource(side, evoId), …)` + `handleKnockouts`. Estas
+habilidades **NO** se activan a mano: excluidas de `legalIntents` (guard `!eff.triggerOnEvolve` junto a
+activeOnly/oncePerTurn) y `useAbility` las RECHAZA. **Solo casos NO interactivos por ahora** (sin decisión/pending).
+**Registrados (bloque "Fase 28" en Set151Effects.kt):** Gyarados *Indomable/Untamed One* 130
+(`DiscardTopDeck(5, own=true)`), Hypno *Toma Hipnosis/Here for Hypnosis* 97 (`ApplyStatus(OPP_ACTIVE,[ASLEEP])`;
+el "puedes" se aplica siempre = sin desventaja). 2 tests nuevos (bloque "FASE 28": el evo card se arma con
+`mon(...).copy(stage=Stage1, evolvesFrom="Magikarp", abilities=[Ability(..., abiKey(id,EN))])`, Activo con
+`turnsInPlay=1`, mano con la evolución, `GameIntent.Evolve(evoId, ontoId)`). **OJO netplay:** no tocado — el
+efecto lo aplica el host autoritativo tras el intent Evolve (sin pending, sin DTO nuevo). Nombres EN de habilidad
+del TOP-LEVEL `habilidades[].name` (Gyarados="Untamed One", Hypno="Here for Hypnosis").
+
+### ⏭️ SIGUIENTE (FASE 29) — barrido (151/198, faltan 47)
+**Diferido del propio mini-sistema evolve-trigger (INTERACTIVOS):** Gloom 44 / Vileplume 45 (mira top 3/8, une
+Energías Básicas encontradas a tus Pokémon → decisión al evolucionar), Haunter 93 (Partidario del descarte rival
+→ su mano). Requieren emitir una `PendingDecision` DESDE `evolve` (hoy el hook solo corre ops auto; hay que
+propagar `res.pending` como interacción, igual que en attack/useAbility). **KO-triggers** (nuevo hook en
+`handleKnockouts`): Machamp *Agallas* 68 (moneda para no ser Noqueado, PS→10), Raichu *Toma de Tierra* 26 (mueve 1
+{L} del KO a Raichu), Weezing 110 (moneda→KO al atacante), Hitmonchan *Contragolpe* 107 (3 contadores al atacante),
+Mewtwo *Barrera Reflectante* 150 (contadores = daño recibido, próximo turno). **Simples sin sistema:** Kabutops
+*Modo Ancestral* 141 (Debilidad ×4 al Activo rival), Wigglytuff ex *Cuerpo Expansivo* 40 (+100 PS si Energía
+Especial unida), Charmander *Destrucción Abrasadora* 4 (descarta 1 Estadio), condicionales "no hace nada si"
+(Primeape 57 si no Confundido, Slowbro 80 si evolucionó este turno). Método de siempre: query python → DSL →
+registro (bloque "Fase 29") → tests → suite → regenerar inventario.
+
+### ✅ FASE 27 HECHA (17 Jul) — moneda → busca Pokémon a la Banca (ENCADENADO)
+**Patrón nuevo reutilizable "coin-gated interactivo":** una decisión que, al resolver, LANZA la moneda y
+ENCADENA otra decisión. Op `CoinFlipSearchToBench(flips, filter)` + decisión `CoinFlipThenSearch(side, prompt,
+flips, filter, searchPrompt)`. `pendingFor` emite la moneda (sin candidatos). En `interpreter.resolve()` un
+EARLY-RETURN especial la detecta: lanza `flips` monedas con `flip()` (emite `CoinFlipped`), cuenta caras y —si
+≥1 cara y hay candidatos en el mazo— MONTA a mano una `PendingInteraction` con una `SearchCards(from=DECK,
+dest=BENCH, count=caras)` como nueva `interaction`, preservando `remainingOps`/`endsTurnOnResolve`. GameEngine ya
+soportaba el encadenado (`working.awaitingDecision`, línea ~474). **Netplay:** `CoinFlipThenSearch.toDto` → kind
+`COIN_FLIP` (render-only; el guest ve el botón de moneda, el host lanza+encadena; la SearchCards resultante viaja
+normal). **UI:** botón "¡LANZAR MONEDA!" en `CombatDecisions` (nueva) y `CoinTossOverlay` en `GameScreen` (clásica);
+`decisionCount`/`DecisionPanel` con rama 0. **SmartAgent** resuelve con `ResolveDecision(emptyList())`.
+**Registrado (bloque "Fase 27"):** Parasect *Filamentos Dispersos/Spread Filaments* 47 (`CoinFlipSearchToBench(2,
+CardFilter(POKEMON, GRASS))`). 2 tests (2 caras → SearchCards count=2 y el {G} va a Banca; 0 caras → sin búsqueda).
+**Aplica también a `applySearch` DECK→BENCH:** ya crea `PokemonInPlay` por cada PokemonCard y baraja el mazo.
+
+### ⏭️ SIGUIENTE (FASE 28) — barrido (149/198, faltan 49)
+Ya NO quedan candidatos "fáciles con op nueva pequeña" obvios: lo que resta son sobre todo **mini-sistemas**
+diferidos. (a) **Habilidades "al evolucionar desde la mano"** (Gloom/Vileplume/Haunter/Hypno/Gyarados) = trigger
+al momento de evolucionar (nuevo hook en `GameEngine.evolve` que dispare el efecto de la habilidad). (b) **KO-
+triggers** (Machamp *Agallas*, Raichu *Conexión a Tierra*, Weezing, Hitmonchan *Contragolpe*, Mewtwo *Barrera
+Reflectante*) = efectos al ser Noqueado (hook en `handleKnockouts`). Antes de codear, **regenerar inventario y
+auditar** los 49 restantes con python por si quedan reimpresiones/daños-condicionales simples sin registrar.
+Método de siempre: query python → DSL → registro (bloque "Fase 28") → tests → suite → regenerar inventario.
+
+### ✅ FASE 26 HECHA (17 Jul) — descarte de la mano que ESCALA el daño
+**Infra:** op nueva `DiscardFromHandForDamage(filter, maxCount, perCard)` (Effects.kt). REUSA la decisión
+`PendingDecision.SearchCards` con `from=HAND, destination=DISCARD` + campo nuevo `damagePerDiscardToOppActive`.
+`pendingFor` la emite (candidatos = `matching(hand, filter)`; si vacío no pausa → 0 descartadas = 0 daño).
+`applySearch` GENERALIZADO para soportar `from=HAND` (antes solo DECK/DISCARD; añadido `fromHand`/`fromDeck`):
+quita las elegidas de la mano, las manda al descarte y hace `perCard * nº descartadas` de daño CRUDO al Activo
+rival (como el resto de daño por efecto: NO pasa por Debilidad/Resistencia; el motor resuelve el KO). **Netplay
+INTACTO:** SearchCards ya viaja como render-only (`SEARCH_CARDS` → el guest lo reconstruye como ChooseTargets);
+el descarte+daño los aplica el host autoritativo, así que el campo nuevo NO va en el DTO. **UI INTACTA:** el
+panel de `SearchCards` (`SelectGrid`, `allowNone=true`) ya deja elegir de 0 a `count` de cualquier zona (la mano
+incluida vía `cardOf`). AI (`SmartAgent`) toma `candidates.take(count)` → descarta el máximo (más daño).
+**Registrado (bloque "Fase 26"):** Blastoise ex *Cañones Gemelos/Twin Cannons* 9 (base 0 +
+`DiscardFromHandForDamage(CardFilter(ENERGY, WATER), 2, 140)`). 2 tests (2 {W}→280; 1 {W}→140).
+
+### ⏭️ SIGUIENTE (FASE 27) — barrido (148/198, faltan 50)
+**Parasect *Filamentos Dispersos/Spread Filaments* 47** (2 monedas → busca N Pokémon {G} = nº caras → Banca):
+sigue diferido por el escollo "coin-gated interactivo" — el flip debe ocurrir ANTES de emitir la decisión de
+búsqueda y `pendingFor` NO recibe `rng` (solo `applyOp`/`resolve` lo tienen). Posible enfoque: una decisión tipo
+`CoinFlip` que, al resolver (donde SÍ hay `flip()`), calcule las caras y ENCADENE una `SearchCards` a Banca con
+`count=caras` como continuación. **Diferido clásico (mini-sistemas al final):** habilidades "al evolucionar desde
+la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados) y KO-triggers (Machamp *Agallas*, Raichu, Weezing, Hitmonchan
+*Contragolpe*, Mewtwo *Barrera Reflectante*). Método de siempre: query python → DSL → registro → tests → suite.
+
+### ✅ FASE 25 HECHA (17 Jul) — "si tu mano está vacía" (daño + estado)
+**Infra:** op nueva `ApplyStatusIfEmptyHand(target, states)` (Effects.kt) — el intérprete aplica los estados
+SOLO si la mano del jugador que ataca está vacía; si no, no-op. Reusa `applyStatus`. NO toca netplay.
+**Registrado (bloque "Fase 25"):** Beedrill *Aguijón Nadir/Nadir Needle* 15 — `attackDamage = [DamageTerm(30),
+DamageTerm(120, IfEmptyHand)]` (reusa la condición existente) + `ApplyStatusIfEmptyHand(OPP_ACTIVE,
+[POISONED, PARALYZED])`. 2 tests nuevos (mano vacía → 150 + estados; con cartas → 30 sin estado).
+
+### ⏭️ SIGUIENTE (FASE 26) — barrido (147/198, faltan 51)
+**Diferidos con DECISIÓN (mini-sistemas):** **Blastoise ex *Cañones Gemelos/Twin Cannons* 9** (descarta
+HASTA 2 {W} Básicas de la mano, 140 por descartada → decisión de descarte que ESCALA el daño; nuevo op +
+PendingDecision). **Parasect *Filamentos Dispersos/Spread Filaments* 47** (2 monedas → busca N Pokémon {G} =
+nº caras → Banca; el flip debe ocurrir ANTES de emitir la decisión y `pendingFor` no recibe `rng` → mismo
+escollo "coin-gated interactivo" ya anotado). **Diferido clásico:** habilidades "al evolucionar desde la mano"
+(Gloom/Vileplume/Haunter/Hypno/Gyarados) y KO-triggers (Machamp *Agallas*, Raichu, Weezing, Hitmonchan
+*Contragolpe*, Mewtwo *Barrera Reflectante*) = mini-sistemas al final. Método de siempre.
+
+### ✅ FASE 24 HECHA (16 Jul) — Gust "el rival elige el nuevo Activo"
+**Infra:** op nueva `GustDefenderChooseNewActive` (data object, Effects.kt). El intérprete mueve el Activo rival
+a SU Banca (`active=null`, `bench+=active`) y añade el lado rival a `state.pendingPromotion` → REUSA la
+maquinaria de promoción tras KO: al terminar el ataque, `endTurn` pasa el turno al rival y el guard de
+`apply()` (`awaitingPromotion` → solo `PromoteActive`) lo obliga a elegir su nuevo Activo (misma DIFERENCIA
+que el KO: la promoción se difiere al inicio de su turno; fiel en la práctica). **GUARDA CLAVE:** si el Activo
+ya quedó Noqueado por el daño base del ataque (`active.isKnockedOut`), el gust NO lo toca → lo procesa
+`handleKnockouts` (va al descarte, no a la Banca). Netplay YA soportaba `pendingPromotion` (KO en PvP) → sin
+cambios de red. **Registrados (bloque "Fase 24"):** Butterfree *Remolino/Whirlwind* 12 (60 + gust), Rhyhorn
+*Oprimir/Push Down* 111 (20 + gust). 2 tests nuevos (gust normal + guarda de KO→descarte).
+
+### ⏭️ SIGUIENTE (FASE 25) — barrido (146/198, faltan 52)
+Candidatos: **Blastoise ex *Cañones Gemelos* 9** (descarta hasta 2 {W} de la mano, 140 c/u) = op con decisión
+de descarte que escala daño. **Beedrill *Aguijón Nadir* 15** (+120 si mano vacía [reusa `IfEmptyHand`] +
+Envenenado/Paralizado condicional a mano vacía → op de estado condicional). **Parasect *Filamentos Dispersos*
+47** (2 monedas → busca N Pokémon {G} = nº caras → Banca). **Diferido:** habilidades "al evolucionar desde la
+mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados), KO-triggers (Machamp *Agallas*, Raichu, Weezing, Hitmonchan
+*Contragolpe*, Mewtwo *Barrera Reflectante*) = mini-sistemas al final. Método de siempre.
+
+### ✅ FASE 23 HECHA (16 Jul) — recargo de Coste de Retirada / de ataque al Defensor
+**Infra (patrón Fase 16):** 4 campos nuevos en `PokemonInPlay` (GameState.kt): `retreatCostBumpOnTurn/Amount`
+y `attackCostBumpOnTurn/Amount`. 2 ops nuevas: `BumpDefenderRetreatCostNextTurn(amount)` y
+`BumpDefenderAttackCostNextTurn(amount)` → el intérprete las fija al Activo rival (`turn+1`). En GameEngine:
+`effectiveRetreatCost` suma el recargo de retirada (base+bump, salvo Flotación/Travesía que anulan);
+NUEVO helper `effectiveAttackCost(atk, attacker, state)` = `convertedCost + bump` usado en `attack()` (chequeo
+de energía) y en `legalIntents` (enum de ataques). OJO: `Attack` NO está importado por nombre simple en
+GameEngine → usar `com.mineralord.tcg.engine.model.Attack` calificado. Espejado en netplay `GameStateDto`
+(4 campos + toDto + toModel). **Registrados (bloque "Fase 23"):** Grimer *Presión Pegajosa/Gummy Press* 88
+(10 + retirada +1), Muk *Prisión Viscosa/Sticky Jail* 89 (30 + ataque +1 Y retirada +1). 4 tests nuevos.
+
+### ⏭️ SIGUIENTE (FASE 24) — barrido (144/198, faltan 54)
+Candidatos: **Gust "el rival elige"** (Butterfree *Remolino* 12, Rhyhorn *Oprimir* 111) = mover Activo rival a
+Banca y que el RIVAL promueva → reusar maquinaria `pendingPromotion`/`awaitingPromotion`+`promoteActive` (mover
+active a banca y añadir el lado rival a `pendingPromotion`). **Blastoise ex *Cañones Gemelos* 9** (descarta hasta
+2 {W} de la mano, 140 c/u) = op con decisión de descarte que escala daño. **Beedrill *Aguijón Nadir* 15** (+120
+si mano vacía [reusa `IfEmptyHand`] + Envenenado/Paralizado condicional a mano vacía). **Diferido:** habilidades
+"al evolucionar desde la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados), KO-triggers (Machamp *Agallas*, Raichu,
+Weezing, Hitmonchan *Contragolpe*, Mewtwo *Barrera Reflectante*) = mini-sistemas al final. Método de siempre.
+
+### ✅ FASE 22 HECHA (16 Jul) — bonus de daño "tu próximo turno +X"
+**Infra (patrón Fase 16):** 2 campos nuevos en `PokemonInPlay` (GameState.kt): `attackBonusOnTurn: Int?` +
+`attackBonusAmount: Int`. Op nueva `SelfAttackBonusNextTurn(amount)` (Effects.kt) → el intérprete fija ambos
+al Pokémon origen (`turn+2` = próximo turno PROPIO). En `GameEngine.attack`, `selfBonus` se SUMA al daño base
+ANTES de `Damage.calculate` (antes de Debilidad/Resistencia) si `attacker.attackBonusOnTurn == state.turn` y
+`base>0`. Auto-expira. Espejado en netplay `GameStateDto` (campos + toDto + toModel). **Registrados (bloque
+"Fase 22"):** Golem ex *Giro Dinámico/Dynamic Roll* 76 (50 + `SelfAttackBonusNextTurn(120)`), Hitmonchan
+*Puño Exaltado/Excited Punch* 107 (60 + `SelfAttackBonusNextTurn(60)`; el bonus es específico de ese ataque
+pero es el ÚNICO de daño de Hitmonchan → equivalente en la práctica). 2 tests nuevos (FASE 22).
+
+### ⏭️ SIGUIENTE (FASE 23) — barrido (142/198, faltan 56)
+Candidatos: **Gust "el rival elige"** (Butterfree *Remolino* 12, Rhyhorn *Oprimir* 111) = decisión del RIVAL
+(sistema nuevo). **Blastoise ex *Cañones Gemelos* 9** (descarta hasta 2 {W} de la mano, 140 c/u) = op con
+decisión de descarte que escala daño. **Beedrill *Aguijón Nadir* 15** (+120 si mano vacía [reusa `IfEmptyHand`]
++ Envenenado/Paralizado condicional a mano vacía → op de estado condicional). **Grimer *Presión Pegajosa* 88
+/ Muk 89** (Coste de Retirada +{C} al Defensor el próximo turno = campo nuevo). **Diferido:** habilidades "al
+evolucionar desde la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados), KO-triggers (Machamp *Agallas*, Raichu,
+Weezing, Hitmonchan *Contragolpe*, Mewtwo *Barrera Reflectante*) = mini-sistemas al final. Método de siempre.
+
+### ✅ FASE 21 HECHA (16 Jul) — moneda cara/cruz + búsqueda de tipos distintos
+**Infra:** (a) Op nueva `CoinFlipDamageOrRecoil(bonusToOpp, recoilToSelf)` (Effects.kt) — cara: daño crudo
+extra al Activo rival; cruz: rebote a SELF. Interpretada en `applyOp` (emite `CoinFlipped`). NO toca netplay.
+(b) `EffectOp.SearchDeck.distinctTypes: Boolean` + `PendingDecision.SearchCards.distinctTypes` — el
+intérprete `applySearch` recorta `picked` a UN Pokémon por tipo primario (`types.firstOrNull()`) cuando está
+activo. `pendingFor` lo propaga. NETPLAY intacto: la búsqueda es render-only host-autoritativo, el recorte
+lo hace el intérprete del host (el guest no corre applySearch), así que el flag NO viaja en el DTO. **Registrados
+(bloque "Fase 21"):** Mankey *Saña/Thrash* 56 (20 base + `CoinFlipDamageOrRecoil(20,20)`), Eevee *Amigos
+Coloridos/Colorful Friends* 133 (`SearchDeck(CardFilter(supertype=POKEMON), HAND, 3, distinctTypes=true)`).
+2 tests nuevos (FASE 21). OJO: importar `EnergyType` en EffectInterpreter (faltaba).
+
+### ⏭️ SIGUIENTE (FASE 22) — barrido (140/198, faltan 58)
+Candidatos: **Gust "el rival elige"** (Butterfree *Remolino* 12, Rhyhorn *Oprimir* 111) = decisión del RIVAL
+(sistema nuevo: mover Activo rival a Banca y que el RIVAL promueva). **Blastoise ex *Cañones Gemelos* 9**
+(descarta hasta 2 {W} de la mano, 140 c/u) = op con decisión de descarte que escala daño. **Beedrill *Aguijón
+Nadir* 15** (+120 si mano vacía [reusa `IfEmptyHand`] + Envenenado/Paralizado condicional a mano vacía).
+**Buffs "próximo turno de este Pokémon +X"** (Golem ex *Giro Dinámico* 76, Hitmonchan *Puño Exaltado* 107) =
+campo nuevo tipo `selfAttackBonusOnTurn`. **Diferido:** habilidades "al evolucionar desde la mano"
+(Gloom/Vileplume/Haunter/Hypno/Gyarados), KO-triggers (Machamp *Agallas*, Raichu, Weezing, Hitmonchan
+*Contragolpe*, Mewtwo *Barrera Reflectante*) = mini-sistemas al final. Método de siempre.
+
+### ✅ FASE 20 HECHA (16 Jul) — ignorar Debilidad/Resistencia + curar-al-atacar
+**Infra:** 3 flags nuevos en `Effect` (Effects.kt): `ignoresWeakness`, `ignoresResistance`,
+`ignoresDefenderEffects`. `Damage.calculate` acepta `ignoreWeakness`/`ignoreResistance` (saltan esos
+modificadores). En `GameEngine.attack` se lee `atkEffect=effects[atk.effect]`, se pasan los flags a
+`calculate`, y si `ignoresDefenderEffects` el `finalAmount` NO resta prevención/reducción/Herramientas
+(usa `dmg.finalAmount` crudo). NO toca netplay (sin decisión). **Registrados (bloque "Fase 20"):**
+Staryu *Swift/Meteoros* 120 (30, los 3 flags true), Golem ex *Rock Blaster/Explosión Roca* 76 (180,
+`ignoresResistance`), Kabutops *Draining Blade/Cuchilla Drenadora* 141 (100 + `Heal(SELF,Fixed(30))`,
+reuso). 3 tests nuevos (FASE 20). OJO: `mon()` helper solo tiene param `weakness`; para Resistencia usar
+`.copy(resistances=listOf(TypeModifier(tipo,"-30")))`.
+
+### ⏭️ SIGUIENTE (FASE 21) — barrido (138/198, faltan 60)
+Candidatos: **Gust "el rival elige"** (Butterfree *Remolino* 12, Rhyhorn *Oprimir* 111) = decisión del RIVAL
+(sistema nuevo). **Eevee *Amigos Coloridos* 133** (busca 3 Pokémon de tipos DISTINTOS→mano) = SearchDeck con
+lógica de tipos distintos. **Blastoise ex *Cañones Gemelos* 9** (descarta hasta 2 {W} de la mano, 140 c/u) =
+op nueva con decisión. **Mankey *Saña* 56** (moneda: cara +20 daño / cruz 20 a sí mismo). **Diferido:** habilidades
+"al evolucionar desde la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados), KO-triggers (Machamp *Agallas*,
+Raichu, Weezing, Hitmonchan *Contragolpe*, Mewtwo *Barrera Reflectante*) = mini-sistemas al final. Método de siempre.
+
+### ✅ FASE 19 HECHA (16 Jul) — daño por energía de tipo + KO por estado
+**Infra:** (a) `Amount.PerCount.energyType: EnergyType?` (Effects.kt) — si `of==ENERGY_ATTACHED` y no es null,
+`resolveAmount` cuenta solo Energías Básicas de ese tipo unidas al target (resto de contadores lo ignoran).
+(b) Op nueva `KoIfStatus(target, status)` (Effects.kt) — si el target tiene el estado, `applyOp` le inflige
+daño CRUDO = sus PS impresos (`(card as PokemonCard).hp` vía `damageTargets`), el motor resuelve KO/premios;
+si no lo tiene, no-op. NO toca netplay (sin decisión). **Registrados (bloque "Fase 19" en Set151Effects.kt):**
+Seaking *Aqua Horn* 119 (60 base + `ExtraDamage(PerCount(ENERGY_ATTACHED, SELF, 30, energyType=WATER))`),
+Jynx ex *Heart-Stopping Kiss* 124 y 191 (`KoIfStatus(OPP_ACTIVE, ASLEEP)`). 2 tests nuevos (KO → asertar
+`GameEvent.KnockedOut`; energía filtrada → `sumOf{amount}` porque ExtraDamage emite evento aparte del base).
+
+### ⏭️ SIGUIENTE (FASE 20) — barrido de lo que queda (136/198, faltan 62)
+Candidatos: **Gust "el rival elige"** (Butterfree *Whirlwind* 12, Rhyhorn *Oprimir* 111) = decisión del rival
+(sistema nuevo por ataque). **Eevee *Amigos Coloridos* 133** (busca 3 Pokémon de tipos DISTINTOS→mano) = op
+SearchDeck con lógica de tipos distintos. **Blastoise ex *Cañones Gemelos* 9** (descarta hasta 2 {W} de la mano,
+140 por descartada) = op nueva con decisión. **Staryu *Meteoros* 120** (ignora Debilidad/Resistencia) = modelar
+como `Damage(OPP_ACTIVE, Fixed(base))` crudo con base 0. **Coin-gated interactivo** (Meowth *Ven Aquí Ya* 52,
+Pegatinas de Energía 159): OJO el flip debe ocurrir ANTES de emitir la decisión y `pendingFor` no recibe `flip`
+→ requiere repensar el orden. **Diferido:** Victreebel 71, Nidoqueen 31, habilidades "al evolucionar desde la
+mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados) = mini-sistema, al final. Método de siempre.
+
+### ✅ FASE 18 HECHA (16 Jul) — buscar Partidario/Objeto, Energía a Banca, snipe
+**Infra nueva pequeña:** (a) `CardFilter.trainerKind: TrainerCategory?` (enum nuevo `TrainerCategory{SUPPORTER,ITEM,
+STADIUM,TOOL}` en Effects.kt) + `matching()` en EffectInterpreter lo casa vía `trainerCategoryOf(kind)` (mapea el
+sellado `TrainerKind.*` → categoría). Así SearchDeck/RecoverFromDiscard distinguen Partidario vs Objeto.
+(b) `AttachEnergyFromDiscard` con `target=OWN_BENCH`: `pendingFor` ahora también dispara en OWN_BENCH (candidatos =
+`ps.bench`, no `allInPlay`) → decisión `AttachFromRevealed` fromDiscard. **Registrados (bloque "Fase 18" en EffectsDb):**
+Jigglypuff *Lead* 39 (`SearchDeck(CardFilter(trainerKind=SUPPORTER), HAND, 1)`), Magneton *Junk Magnet* 82
+(`RecoverFromDiscard(CardFilter(trainerKind=ITEM), 2)`), Scyther *Helpful Slash* 123 (20 base +
+`AttachEnergyFromDiscard(1, GRASS, OWN_BENCH)`), Jolteon *Linear Attack* 135 (snipe 30, `ChooseTarget(OPP_ALL,1,
+optional)+Damage(CHOSEN,30)`) y *Fighting Lightning* 135 (90+90 si ex/V, reusa `IfDefenderExOrV`). 5 tests nuevos
+(bloque "FASE 18"; helper `supporter(id,name)` local). OJO: nombres EN top-level del JSON (Jigglypuff="Lead" no
+"Liderazgo"; Magneton="Junk Magnet"; Scyther="Helpful Slash").
+
+### ⏭️ SIGUIENTE (FASE 19) — barrido de lo que queda (134/198, faltan 64)
+Candidatos: **Gust "el rival elige"** (Butterfree *Whirlwind* 12, Rhyhorn *Oprimir* 111 = mueve Activo rival a
+Banca, el RIVAL elige nuevo Activo) = decisión del rival (sistema nuevo tipo `pendingPromotion` por ataque).
+**Eevee *Amigos Coloridos* 133** (busca 3 Pokémon de tipos DISTINTOS→mano) = SearchDeck con lógica de tipos
+distintos. **Seadra *Cuerno Aqua* 117** (+30 por Energía {W} unida) = PerCount filtrado por tipo (hoy
+ENERGY_ATTACHED cuenta TODA la energía). **Blastoise ex *Cañones Gemelos* 9** (descarta hasta 2 {W} de la mano,
+140 por descartada) = op nueva con decisión. **Diferido:** Victreebel 71, Nidoqueen 31 (prevención condicional al
+tipo de atacante), habilidades "al evolucionar desde la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados) = al final.
+
+### ✅ FASE 17 HECHA (16 Jul) — "+X si jugaste tal carta este turno"
+2 DamageCondition nuevas (boolean, en `GameEngine.attack`, van con `attackDamage`): `IfSupporterPlayedThisTurn`
+(reusa el `state.supporterPlayedThisTurn` ya existente) e `IfPlayedTrainerThisTurn(name)` (casa por `.contains`
+ES/EN). Infra: nuevo `GameState.trainerNamesPlayedThisTurn: Set<String>` — se puebla en `GameEngine.playTrainer`
+(añade `card.name.es` + `.en`) y se RESETEA en `endTurn` (junto a supporterPlayedThisTurn/energyAttached/abilities).
+NO tocado netplay (es estado del host autoritativo; se recalcula en el flujo, no viaja como decisión). **Registrados:**
+Wigglytuff ex *Friend Tackle* 40/187 (90 + 90 si Partidario), Rhydon *Charismatic Drill* 112 (40 + 140 si
+"Giovanni"), Tangela *Tactful Tangling* 114/178 (10 + 60 si "Erika"). 2 tests nuevos (con `.copy(...)` del flag/set).
+
+### ⏭️ SIGUIENTE (FASE 18) — barrido de lo que queda (130/198, faltan 68)
+Candidatos: **Buscar al mazo→mano** (Jigglypuff *Liderazgo* 39 = 1 Partidario, Eevee *Amigos Coloridos* 133 = 3
+Pokémon de tipos distintos) → SearchDeck a HAND; OJO `CardFilter` NO distingue Partidario de Objeto — para Jigglypuff
+añadir `trainerKind` a CardFilter (o usar nameContains si el mazo lo permite); Eevee "tipos distintos" necesita
+lógica especial. **Gust "el rival elige"** (Butterfree *Whirlwind* 12, Rhyhorn *Oprimir* 111 = mueve Activo rival a
+Banca, el RIVAL elige nuevo Activo) = decisión del rival (sistema nuevo, como `pendingPromotion` pero por ataque).
+**Curación/energía sueltas** y varios daños-condicionales que queden. **Diferido/programado:** Victreebel 71
+(contadores al final del turno rival), Nidoqueen 31 (prevención condicional al tipo de atacante), habilidades "al
+evolucionar desde la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados) = mini-sistema, al final. Método de siempre.
+
+### ✅ FASE 16 HECHA (16 Jul) — reducción PARCIAL de daño el próximo turno
+Op nueva `ReduceDamageNextTurn(amount)` (Effects.kt) + 2 campos nuevos en `PokemonInPlay`:
+`damageReductionOnTurn: Int?` y `damageReductionAmount: Int` (GameState.kt). El intérprete fija ambos al
+Pokémon origen (`turn+1`, amount). En `GameEngine.attack`, `selfReduction` se RESTA tras Debilidad/Resistencia
+junto a `toolDamageReduction` (mismo punto, misma regla). Auto-expira (se compara con `state.turn`). Espejado en
+netplay `GameStateDto` (campos + toDto + toModel). **Registrados:** Geodude *Stiffen* 74 (30, sin daño base),
+Shellder *Shell Press* 90 (30 base + reduce 30), Cloyster *Protect Charge* 91 (80 base + reduce 80); y Squirtle
+*Withdraw* printing 170 (`PreventDamageNextTurn(SELF, coinFlip=true)`, reuso — el 7/11 base ya estaban). 2 tests
+nuevos. **Diferido:** Nidoqueen *Queen Press* 31 (evita daño SOLO de atacantes Básicos = prevención condicional
+al tipo/fase del atacante, variante nueva).
+
+### ⏭️ SIGUIENTE (FASE 17) — barrido de lo que queda (127/198, faltan 71)
+Candidatos: **"+X si jugaste carta Y este turno"** (Wigglytuff ex *Friend Tackle* 40/187 Partidario, Rhydon
+*Charismatic Drill* 112 Giovanni, Tangela *Sutil Enredo* 114/178 Erika) → rastrear cartas jugadas este turno
+(nuevo `GameState.playedTrainerNamesThisTurn`? resetear al pasar turno) + condición `IfPlayedThisTurn(name)`.
+**Buscar al mazo→mano** (Jigglypuff *Liderazgo* 39 = 1 Partidario, Eevee *Amigos Coloridos* 133 = 3 Pokémon de
+tipos distintos) → SearchDeck a HAND (OJO: CardFilter NO distingue Partidario de Objeto → quizá añadir
+`trainerKind` a CardFilter). **Gust "el rival elige"** (Butterfree *Whirlwind* 12, Rhyhorn *Oprimir* 111 = mueve
+Activo rival a Banca, el RIVAL elige el nuevo Activo) = decisión del rival, sistema nuevo. **Diferido/programado**
+Victreebel 71 (contadores al final del turno rival), Nidoqueen 31 (prevención condicional). Método de siempre.
+
+### ✅ FASE 15 HECHA (16 Jul) — condicionales +X, reusos de ops y 3 ops nuevas
+**3 DamageCondition nuevas** (boolean, evaluadas en `GameEngine.attack`, van con `attackDamage`/DamageTerm):
+`IfSameHandSizeAsOpponent` (Ninetales ex *Mirrored Flames* 38/186 = 80+140), `IfMorePrizesThanOpponent`
+(Pinsir *Reckless Throw* 127 = 90+90), `IfSelfBenchHasName(name)` (Electabuzz *Electro Combo* 125 +40 si Magmar,
+Magmar *Flare Combo* 126 +80 si Electabuzz — casa por nombre ES/EN `.contains`). **3 ops nuevas** en Effects.kt
+(inline en EffectInterpreter, sin decisiones → netplay intacto): `BounceOppActiveEnergyToHand(count)` (Omanyte
+*Tentacular Return* 138/180, Energía del Activo rival→su mano), `DamagePerOppHandTrainer(per)` (Gengar
+*Poltergeist* 94, 50 crudo × Entrenadores en mano rival — cuenta `Supertype.TRAINER`), `DiscardTopDeckDamagePerRetreat(count,
+retreatEquals,per)` (Onix *Thumpalanche* 95, descarta 5 propias + 80 × Pokémon con `retreatCost.size==4`).
+**Reusos (ops existentes) para reimpresiones/simples:** Charizard ex *Brave Wing* 183/199 (60+100 IfSelfHasDamage);
+Alakazam ex *Mind Jack* 188/201 (90 + `ExtraDamage(PerCount(BENCH_COUNT,OPP_BENCH,30))` → OJO: ExtraDamage emite un
+DamageDealt APARTE del base, en tests `sumOf{amount}` no `.first()`); Poliwhirl *Frog Hop* 176 (`CoinFlipDamage(1,60)`);
+Kangaskhan ex 190 (`CoinFlipDamage(4,100)`); Arbok ex *Menacing Fangs* 185 (`OpponentDiscardsHand(2)`); Pikachu
+*Charge* 173 (`SearchEnergyAttachSelf(LIGHTNING,1)`); Charmeleon *Fire Blast* 169 / Charizard *Explosive Vortex* 199
+(`DiscardEnergy(SELF,n)`); Mr. Mime *Psypower* 179 (`PlaceCounters(3,OPP_ALL)`); Wartortle *Free Diving* 171
+(`RecoverFromDiscard({W} básica,3)`). **OJO reimpresiones:** cada printing es un `id` distinto → hay que registrar
+el `atkKey(id,nombreEN)` de CADA una (ej. Psypower 122 Y 179). GREP dups: `grep -oE 'atkKey\("sv3pt5-[0-9]+", "[^"]+"\)'
+... | sort | uniq -d` (183 Explosive Vortex ya estaba en Fase 8→NO duplicar; 79 Sea Bathing tiene un dup PREEXISTENTE
+inofensivo). 8 tests nuevos (bloque "FASE 15"; helper `trainer(id,name)`).
+
+### ⏭️ SIGUIENTE (FASE 16) — barrido de lo que queda (124/198, faltan 74)
+Candidatos: **reducción de daño el próximo turno del rival** ("los ataques hacen X menos a este Pokémon") — Geodude
+74 (30), Shellder 90 (30), Cloyster 91 (80) → op/campo tipo `preventDamageOnTurn` pero PARCIAL (reduce, no evita) →
+nuevo `damageReductionOnTurn(amount, turn)` en PokemonInPlay + resta en `GameEngine.attack` tras Debilidad/Resistencia
+(donde ya se resta `toolDamageReduction`); espejar en GameStateDto. **Gust/switch rival:** Butterfree *Whirlwind* 12 /
+Rhyhorn *Oprimir* 111 ("mueve el Activo rival a la Banca, el rival elige") = decisión del RIVAL. **"+X si jugaste
+carta Y este turno"** (Wigglytuff 40/187 Partidario, Rhydon 112 Giovanni, Tangela 114/178 Erika) → necesita rastrear
+cartas jugadas este turno (`GameState.playedThisTurn`?). **Buscar Pokémon/Partidario al mazo→mano** (Eevee 133,
+Jigglypuff 39) = SearchDeck a HAND. **Diferido/programado** Victreebel 71 (contadores al final del turno rival).
+Método: query python → DSL → EffectsDb (bloque "Fase 16") → tests → suite → regenerar inventario.
+
+### ✅ FASE 14 HECHA (16 Jul) — moneda-hasta-cruz + mill + daño-antes-del-base
+3 ops nuevas en Effects.kt + 3 branches inline en EffectInterpreter (NINGUNA pausa/decisión → netplay NO
+tocado): **`CoinUntilTailsDamage(perHeads, confuseIfFirstTails=false)`** (Graveler *Rock Cannon* 75=40,
+Exeggcute *Ball Roll* 102=30, Tentacruel *Tentacular Panic* 73=90 con `confuseIfFirstTails=true`); daño crudo
+al Activo rival, emite CoinFlipped por tirada. **`CoinUntilTailsDraw`** (Magikarp *Splashy Splash* 129, roba 1
+por cara). **`DiscardTopDeck(count, own)`** mill al descarte del dueño (Machop 66/Machoke 67,177/Kingler 99 =1
+rival, Machamp 68 =2 rival, Dragonite *Dragon Pulse* 149 =2 propias). **Daño-antes-del-base:** campo nuevo
+**`DamageTerm.perDefenderCounter`** (Effects.kt) sumado en `GameEngine.attack` como `amount + perDefenderCounter
+* (defender.damage/10)` — se mide ANTES del daño base (no snowballea, a diferencia de ExtraDamage) → Rattata
+*Gnaw the Wound* 19 (20+10/cont) y Raticate *Second Bite* 20 (30+30/cont) YA NO diferidos. 7 tests nuevos
+(bloque "FASE 14", con `SeqRng(List<Boolean>)` para monedas — OJO `FixedRng(true)` haría BUCLE INFINITO en
+moneda-hasta-cruz). **OJO test:** tras atacar el turno pasa y el rival roba → NO asertar `deck.size` tras un
+mill (asertar `discard.size`). **DIFERIDO:** Onix *Thumpalanche* 95 (descarta 5 propias + 80 por cada Pokémon
+con Coste de Retirada EXACTO 4 descartado así) — necesita inspeccionar las cartas descartadas + daño condicional.
+
+### ⏭️ SIGUIENTE (FASE 15) — barrido de lo que queda (117/198)
+Auditar inventario (81 únicos faltan). Candidatos: Onix 95 (arriba); Poltergeist (Gengar, daño ×Entrenadores
+en mano rival → op que mira la mano rival); Victreebel *Slow-Acting Acid* 71 (contadores al FINAL del próximo
+turno rival → efecto diferido/programado, sistema nuevo); habilidades "al evolucionar desde la mano"
+(Gloom/Vileplume/Haunter/Hypno/Gyarados) = mini-sistema, al final. Método: query python → DSL → EffectsDb
+(bloque "Fase 15") → tests → suite → regenerar inventario.
+
+### ✅ FASE 13 HECHA (15 Jul) — DAÑO ESCALADO + varios (solo ops EXISTENTES)
+Registrados con ops ya creadas (bloque "Fase 13" en EffectsDb): **daño +X por contador PROPIO** (Dodrio
+*Ballistic Beak* 85 = `ExtraDamage(PerCount(DAMAGE_COUNTERS, SELF, 30))`, Tauros *Rage* 128 = ×10 SELF);
+**+30 por Energía del Activo rival** (Exeggutor *Psychic* 103 = `ExtraDamage(PerCount(ENERGY_ATTACHED,
+OPP_ACTIVE, 30))`); **monedas fijas** (Kangaskhan ex *Incessant Punching* 115 = `CoinFlipDamage(4, 100)`);
+**unir Energía del descarte a sí mismo** (Arcanine *Torrid Torrent* 59 = `AttachEnergyFromDiscard(2, FIRE,
+SELF)`); **gust** (Clefable *Follow Me* 36 = `ChooseTarget(OPP_BENCH,1,optional)+SwapOppActiveWithChosen`).
+4 tests nuevos. **GOTCHA importante (bola de nieve):** `ExtraDamage(PerCount(DAMAGE_COUNTERS, OPP_ACTIVE))`
+NO es fiel: en `GameEngine.attack` el daño BASE se aplica ANTES de correr el efecto, así que los contadores
+del Activo rival se cuentan de MÁS. Por eso quedan **DIFERIDOS** Rattata *Gnaw the Wound* (19) y Raticate
+*Second Bite* (20) — necesitan medir los contadores ANTES del daño base (nuevo DamageTerm por-cuenta
+evaluado en attack()). El "+X por contador PROPIO" o "+X por Energía rival" NO snowballean (el daño al
+rival no cambia esos conteos) → esos sí van con ExtraDamage. Ops útiles ya existentes para el barrido:
+`ExtraDamage(Amount.PerCount(Counter.{BENCH_COUNT|ENERGY_ATTACHED|DAMAGE_COUNTERS}, target, mult))`,
+`CoinFlipDamage(flips, perHeads)`, `AttachEnergyFromDiscard(count, type, target)`, `SwapOppActiveWithChosen`,
+`DiscardEnergy`, `SearchDeck(CardFilter(supertype/isBasic/type/nameContains), zona, count)`, `PlaceCounters`.
+**OJO CardFilter** solo tiene supertype/isBasic/type/nameContains (NO distingue Partidario vs Objeto).
+
+### ⏭️ SIGUIENTE (FASE 14) — barrido de lo que queda (106/198)
+Auditar el inventario. Candidatos con OPS NUEVAS pequeñas y de alto impacto (aparecen mucho en el set):
+(a) **"lanza 1 moneda hasta que salga cruz, X daño por cara"** — Graveler 75, Exeggcute 102, Tentacruel 73,
+Magikarp 129 (roba por cara) → op `CoinFlipUntilTailsDamage(perHeads)` / `...Draw`. (b) **"descarta las N
+primeras cartas de la baraja del rival/tuya"** (mill) — Machop/Machoke/Kingler (1), Machamp (2), Dragonite
+149 (2 propias), Onix 95 (5 propias + daño condicional) → op `DiscardTopDeck(side, n)`. (c) **daño medido
+ANTES del daño base** (Rattata/Raticate, arriba). (d) habilidades "al evolucionar desde la mano"
+(Gloom/Vileplume/Haunter/Hypno/Gyarados) = mini-sistema aparte, dejar al final. Método de siempre: query
+python → extender DSL si hace falta → EffectsDb (bloque "Fase 14") → tests → suite → regenerar inventario.
+
+### ✅ FASE 12 HECHA (15 Jul) — REPARTIR CONTADORES DE DAÑO (op `PlaceCounters`)
+Op nueva `EffectOp.PlaceCounters(count, target)` (Effects.kt) + `PendingDecision.PlaceCounters(side,
+prompt, candidates, count)` (PendingDecision.kt). `pendingFor` la emite (salta si no hay candidatos, como
+`optional`); resolución en `applyPlaceCounters` (EffectInterpreter): `chosen` REPITE el id de cada Pokémon
+UNA vez por contador (2 en A, 1 en B → `[A,A,B]`); agrupa por id y aplica `hits*10` de daño CRUDO (sin
+Debilidad/Resistencia, evento `DamageDealt`); los KO los resuelve luego GameEngine. Cableado exhaustivo:
+`GameEngine.validateChoice` (≤count, candidatos), `SmartAgent.resolveDecision` (round-robin sobre candidatos,
+menos-HP primero en Master), netplay `DecisionKindDto.PLACE_COUNTERS` + `toDto`/`toModel` (rehidrata como
+PlaceCounters real, no fallback), UI: `CombatDecisions.CounterSpread` (tocar Pokémon = +1 contador, badge
+"+10/+20", confirmar exige repartir los N) y `GameScreen.DecisionPanel`/`decisionCount` (picker simple).
+**Registrados:** Mr. Mime *Psypower* (sv3pt5-122, `PlaceCounters(3, OPP_ALL)`) y Gengar *Hollow Dive*
+(sv3pt5-94, `PlaceCounters(3, OPP_BENCH)`). 3 tests nuevos. **Gengar aclarado (VERIFICADO en la carta
+impresa 094/165):** Hollow Dive hace 110 de daño al Activo **Y ADEMÁS** pone 3 contadores en la Banca
+rival — la carta hace las DOS cosas; el 110 lo aplica el motor desde `Attack.damage`, el efecto solo añade
+los contadores → NO hay doble conteo. (La "contradicción" de la BD no lo era.) Poltergeist (Gengar
+ataque 1) = daño por Entrenadores en la mano rival = otra op condicional aparte, aún sin hacer.
+
+### ⏭️ SIGUIENTE (FASE 13) — barrido de lo que queda (99/198)
+Regenerar inventario y auditar los ~99 efectos únicos que faltan. Candidatos probables: Poltergeist
+(daño ×nº de Entrenadores en la mano rival → op nueva que mira la mano rival), habilidades "al evolucionar
+desde la mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados, cada una un mini-sistema), y demás Entrenadores/
+habilidades sueltas. Método de siempre: query python de candidatos → extender DSL si hace falta → registrar
+en EffectsDb (bloque "Fase 13") → tests en `Set151EffectsTest` → correr suite → regenerar inventario.
+
+### ✅ FASE 11 HECHA (15 Jul) — BUG DE ALTITUD arreglado + snipe/switch-self desbloqueados
+**El arreglo del bug de altitud:** nuevo campo `EffectOp.ChooseTarget.optional: Boolean = false`
+(Effects.kt). En `EffectInterpreter.pendingFor` (~línea 150), si los candidatos están vacíos **y**
+`optional==true` → devuelve `null` (SALTA la op) en vez de dejar una decisión vacía que congelaba el
+turno. El ataque hace su daño base igual; la parte dirigida se omite. **OJO:** NO se tocó `attack()` ni
+`playTrainer()`/`useAbility()` en GameEngine — esos siguen rechazando `ChooseTargets` vacíos SIN
+optional (correcto para Poción/Órdenes de Jefe). Marcados `optional=true` en los snipe existentes
+(Multishot Lightning sv3pt5-145, Obsidian sv8-119, Blazing Flight sv3pt5-146, Bone Throw sv3pt5-105).
+**Nota clave (gotcha):** los nombres EN de los ataques viven en `ataques[].name` (TOP-LEVEL) del JSON;
+el bloque `es.ataques[].name` es SOLO español. Varios nombres supuestos estaban mal (Golbat="Skill Dive"
+no "Dive Bomb"; Dewgong="Dual Splash"; Omastar="Aqua Split" [ES=Isoaqua]; Kadabra="Teleportation Attack";
+Hitmonlee="Twister Kick"). SIEMPRE sacar el nombre EN del top-level antes de `atkKey`.
+**Registrados (bloque "Fase 11" en EffectsDb):** snipe con `optional=true` — Golbat *Skill Dive* (42,
+`ChooseTarget(OPP_ALL,1)+Damage(CHOSEN,40)`), Dewgong *Dual Splash* (87, OPP_ALL×2, 50), Omastar
+*Aqua Split* (139, 90 base + OPP_BENCH×2 de 30); switch-self con `optional=true` — Kadabra *Teleportation
+Attack* (64), Rapidash *Mach Turn* (78), Hitmonlee *Twister Kick* (106, +10 a cada rival vía
+`Damage(OPP_ALL,10)` antes del switch). Todos `ChooseTarget(...,optional=true)+SwapActiveWithChosen`
+(que hace no-op si no hay elegido). 4 tests nuevos en Set151EffectsTest (Fase 11).
+
+### ⏭️ SIGUIENTE (FASE 12) — repartir contadores de daño (op nueva `PlaceCounters`)
+Quedan diferidos **Gengar 94 *Embestida Hueca*** ("pon 3 contadores en los Pokémon en Banca del rival a
+repartir") y **Mr. Mime 122 *Psicopoder*** ("3 contadores en los Pokémon del rival a repartir"). Necesitan
+op nueva `PlaceCounters(count, target)` + una `PendingDecision` de REPARTO (distribuir N contadores de 10
+entre varios Pokémon) con su UI y su espejo en netplay (DecisionKindDto). Es un mini-sistema nuevo (no solo
+un registro): elegir cuántos contadores a cada objetivo, no solo "cuáles". Pensar bien la decisión antes de
+codear. Poltergeist (Gengar ataque 1) = daño por cartas de Entrenador en la mano rival = otra op condicional
+aparte. Método de siempre: query python de candidatos → extender DSL si hace falta → registrar en EffectsDb
+(bloque "Fase 12") → tests en `Set151EffectsTest` → correr suite → `python tools/scripts/gen_inventario_151.py`.
+**FASE 10 HECHA (15 Jul, ESTADOS/RESTRICCIONES/CURA):** op nueva `DefenderCannotAttackNextTurn`
+(clon de DefenderCannotRetreatNextTurn; fija `cannotAttackOnTurn` del Activo rival = turno+1). Registros
+(ops existentes salvo esa): Slowbro *Big Yawn* (80, ambos Activos Dormidos = ApplyStatus SELF+OPP_ACTIVE),
+Nidoking *Venomous Impact* alt 174 (Envenenado), Venusaur ex *Dangerous Toxwhip* alt 198
+(Confundido+Envenenado), Marowak *Boundless Power* (105) / Dragonair *Aqua Slash* (148,181) = NoAttackNextTurn,
+Bellsprout *Bind Down* (69,185) = DefenderCannotRetreatNextTurn, Lickitung *Tongue-Tied* (108) =
+DefenderCannotAttackNextTurn, Leech Seed alt 166/167 = Heal(SELF,20), Leaf Munch alt 172 = daño +30 si {G}.
+3 tests nuevos. **Regla de altitud viva:** ataques con `ChooseTarget(OPP_BENCH/OWN_BENCH)` se RECHAZAN
+enteros si no hay candidatos (banca vacía) — por eso se difieren switch-self, snipe a banca y "spread
+counters" hasta resolver ese caso (que el ataque siga haciendo su daño base aunque no haya objetivo).
+**FASE 9 HECHA (15 Jul, RECUPERAR DEL DESCARTE):** op nueva `EffectOp.RecoverFromDiscard(filter,count)`
+(Effects.kt) → pausa con `PendingDecision.SearchCards(from=Zone.DISCARD, destination=HAND)`. El
+intérprete: `pendingFor` filtra el DESCARTE (null si no hay candidatos, no pausa); `applySearch`
+ahora respeta `d.from` (descarte = NO baraja, quita de discard, sin evento DeckShuffled); `matching`
+extendido para casar `BasicEnergy.type` (antes solo tipos de Pokémon). Registrados: Golduck *Aquatic
+Rescue* (55, hasta 4 Pokémon), Wartortle *Free Diving* (8, hasta 3 Energía {W} Básica), Snorlax
+*Voraciousness*/Glotonería (habilidad 143, oncePerTurn, hasta 2 "Restos"). Netplay NO tocado: la
+decisión es render-only y el descarte es zona pública (el host es autoritativo). 4 tests nuevos.
+**FASE 8 HECHA (15 Jul, monedas fijas + curación):** bloque "Fase 8" en EffectsDb — Clefairy
+*Moon-Viewing Invitation* (35, `SearchDeck(nameContains="Clefairy")→BENCH,3`), Ponyta *Collect* (77,
+`DrawCards(1)`), Jigglypuff *Stompy Stomp* (39) / Goldeen *Triple Strike* (118) / Cubone *Hit Twice*
+(104) / Kabuto *Double Scratch* (140) = `CoinFlipDamage(flips,perHeads)`, Ivysaur *Leech Seed* (2,
+`Heal(SELF,20)`) y Slowpoke *Sea Bathing* (79, `Heal(SELF,30)+RemoveStatus(SELF)`). **OJO gordo
+descubierto:** el bloque "Fase 3" (líneas ~258-283 de EffectsDb) YA registraba Call for Family/Beak
+Catch/Fetch Family/Gather the Crew/Hop on My Back/Hyper Beam/Acid Spray/Destructive Flame → antes de
+registrar un ataque, GREP en EffectsDb.kt para no duplicar. `switch-self` (Kadabra/Rapidash) OMITIDO:
+`ChooseTarget(OWN_BENCH)` rechaza el ataque entero con banca vacía (bug de altitud). 5 tests nuevos.
+**FASE 7 HECHA (15 Jul, HABILIDADES de retirada + Persian):** registradas en EffectsDb (bloque
+"Fase 7: HABILIDADES") — Persian *Rocket Call* (sv3pt5-53, `SearchDeck(nameContains="Giovanni")→HAND`,
+oncePerTurn); Flotación Glacial/Voltaica/Ígnea (Articuno 144 {W} / Zapdos ex 145 {L} / Moltres 146 {R})
+y Dragonite *Jet Cruise* (149) = pasivo `RETREAT_COST` (coste de retirada 0); Omastar *Primordial
+Tentacles* (139) = pasivo `NO_RETREAT`/OPP_ACTIVE. **Infra nueva:** `PassiveModifier.requiresEnergyType`
+(pasivo condicional a tener ≥1 Energía del tipo); GameEngine cablea pasivos de HABILIDAD al retiro
+(`abilityPassives`, `hasEnergyOfType`, `effectiveRetreatCost`, `retreatBlockedByOpponent`) en `retreat()`
+y `legalIntents` (antes solo se aplicaban pasivos de Herramienta). 5 tests en `Set151EffectsTest`.
+**Inventario:** regenerar con `python tools/scripts/gen_inventario_151.py` (cruza cartas-db × EffectsDb,
+textos del bloque `es`, dedup de artes alternativos → 207 printings / 258 entradas / 198 únicos).
+**Dónde vive todo:** ops del DSL en `engine/model/Effects.kt`; intérprete en
+`engine/effects/EffectInterpreter.kt` (applyOp); daño condicional (`DamageCondition` sellada) evaluado en
+`GameEngine.attack()` (~línea 262); registros en `engine/model/EffectsDb.kt` (secciones "SET 151 — Fase N");
+campos temporales de Pokémon en `GameState.kt` (`cannotAttackOnTurn`/`preventDamageOnTurn`/`cannotRetreatOnTurn`)
+espejados en `data/netplay/GameStateDto.kt`; tests en `engine/rules/.../Set151EffectsTest.kt` (helpers `mon()`,
+`attack()`, `duel()`, `FixedRng`). Comando: `./gradlew :engine:model:test :engine:events:test
+:engine:effects:test :engine:rules:test :data:netplay:test :data:cards:test` (JDK 17 en PATH). OJO
+`EffectsDbTest` asume qué está/no registrado. OJO gotcha: tras atacar el turno pasa y el rival ROBA 1 al
+empezar su turno (no asertar tamaño de mano rival tras un descarte; asertar descarte + evento).
+**Ops ya creadas (Fases 1–6):** CoinFlipDamage, CoinFlipStatus, OpponentDiscardsHand, PreventDamageNextTurn,
+DefenderCannotRetreatNextTurn, SearchEnergyAttachSelf, GiovanniCharisma; `DiscardEnergy` con
+`energyType`/`coinFlip`; `DamageCondition`: IfDefenderEvolved/HasDamage, IfSelfHasDamage, IfEmptyHand,
+IfDefenderType(tipo), IfDefenderExOrV.
+**(histórico) FASE 7 — HABILIDADES (ya HECHA, ver arriba).** VERIFICADO que `UseAbility` está TOTALMENTE cableado: motor
+`GameEngine.useAbility()` (~línea 384; respeta `activeOnly`/`oncePerTurn`, corre el intérprete con flip/shuffle)
+y `legalIntents` lo enumera (~línea 744). O sea: una habilidad registrada en `EffectsDb` con `abiKey(id,nombreEN)`
+que quepa en las ops FUNCIONA sin tocar el motor. Candidatas del set (query ya hecha):
+- **FÁCIL YA (op existente):** Persian *Rocket Call* (sv3pt5-53) = `SearchDeck(CardFilter(nameContains="Giovanni"),
+  Zone.HAND, 1)`, oncePerTurn. (Verificar que `nameContains` casa el nombre ES "Carisma de Giovanni").
+- **Necesitan op/soporte nuevo:** coste de retirada 0 condicional a energía de un tipo (Articuno *Ice Float*
+  {W} sv3pt5-144, Zapdos ex *Voltaic Float* {L} 145, Moltres *Flare Float* {R} 146) y Dragonite *Jet Cruise*
+  (149, a todos tus Pokémon) → PassiveModifier RETREAT_COST=0 condicional; el motor aplica pasivos de
+  Herramienta (REDUCE_DAMAGE/EXTRA_HP) pero NO pasivos de HABILIDAD todavía → hay que cablear eso en el
+  cálculo de retiro. Omastar *Primordial Tentacles* (139, el Activo rival no puede retirarse mientras esté
+  activo) = pasivo continuo similar. Snorlax *Voraciousness* (143, hasta 2 Restos del descarte a la mano) =
+  op "buscar en descarte a la mano" (no existe; SearchDeck es solo mazo).
+- **Complejas (una-carta):** Machamp *Guts* (moneda al ser noqueado), Raichu *Electrical Grounding* (mover
+  energía al ser KO), Kakuna *Cocoon Cover* (evita efectos de ataque), habilidades "al evolucionar desde la
+  mano" (Gloom/Vileplume/Haunter/Hypno/Gyarados) → cada una un mini-sistema; dejar para el final.
+**Recordatorio de proceso:** cada fase = identificar candidatos con python, extender DSL si hace falta,
+registrar en EffectsDb, tests en Set151EffectsTest, correr suite, regenerar inventario. Aplica a PvE **y** PvP.
+
+## 🤖 IA PvE — rediseño de dificultad (15 Jul 2026)
+Antes TODA dificultad era trivial: `SmartAgent` solo bajaba 1 Básico (si banca vacía), **atacaba
+antes de desarrollar** (y atacar cierra el turno) → nunca construía tablero, no se retiraba, unía 1
+energía a ciegas al Activo. Rediseño (`engine/rules/SmartAgent.kt`, tests verdes): el ataque va casi
+al FINAL del orden de prioridad para las gamas altas, así primero desarrollan. Rasgos por dificultad:
+Ultra+ = `developsBench` (LLENA la banca), `evolves`, `usesTrainers` (juega Entrenadores antes de
+atacar), `usesTools`, `smartEnergy` (une la energía al Pokémon que saca MÁS daño tras recibirla, no
+al Activo a ciegas). Master añade `retreats` (si el Activo no puede atacar pero un banca sí, se retira
+y promueve a ese atacante) + Noqueo letal (elige el ataque letal más barato) + arrastre al objetivo de
+menos HP. Pokéball/Súperball se quedan fáciles (banca solo si vacía, ataque flojo/cualquiera). El
+driver `GameViewModel.advanceAi()` llama `decide()` en bucle (guard<120, delay 450ms/acción) hasta que
+el turno pasa → el reorden funciona. La IA SOLO corre en PvE (PvP es humano vs humano, sin IA).
+Default `PveConfig.difficulty = ULTRABALL`. PENDIENTE: la IA aún NO usa habilidades activables
+(`UseAbility`) por seguridad (riesgo de bucle si no fueran oncePerTurn).
+
+## 🚨 REGLA ABSOLUTA — TODO cambio aplica a PvE **Y** PvP (15 Jul 2026)
+Cualquier cambio que el usuario pida se aplica SIEMPRE a los DOS modos: PvE (vs IA,
+`GameViewModel`/`SmartAgent`) y PvP (online, `OnlineGameController`). Nunca a uno solo.
+Ambos comparten `GameCore` + motor, y la UI de combate (`combat/CombatScreen`) es la misma para
+los dos → verificar que el cambio llega a ambos caminos. ÚNICA excepción: si el usuario dice
+literalmente "activa el modo prueba/desarrollador/experimentación".
+
+## ⏩⏩ RETOMAR AQUÍ (PRIORIDAD ACTUAL) — REBUILD PANTALLA DE COMBATE — 12 Jul 2026
+**Qué es:** rediseño TOTAL de la pantalla de combate, por CAPAS y sin fondo horneado, hecho
+EN PARALELO a la clásica. Vive en `feature/game/src/main/kotlin/.../combat/`. Flag
+**`USE_NEW_COMBAT_UI` (CombatScreen.kt) = true** → `MainActivity` (Screen.GAME) usa la nueva;
+`false` = la clásica `GameScreen`. Contrato intacto: solo lee `GameController.ui` y emite por
+sus métodos; NO toca motor/reglas/ViewModels.
+**Archivos nuevos:** `combat/CombatScreen.kt` (orquestador + capas + jugar/atacar/retirar +
+overlays), `CombatMat.kt` (tapete ORIGINAL dibujado en Compose: zona rival granate, LENTE
+central curva con panal + rieles dorados usando arcos medidos 0.2594/0.2894 y 0.5635/0.5365,
+zona jugador azul — sin bitmap `board_mat`), `CombatFields.kt` (OpponentField/PlayerField/
+BenchStrip/PokemonSlot), `CombatComponents.kt` (CombatCard/CardBack/HpBar/StatusRow/EnergyBadge/
+ZonePill/EmptySlot), `CombatDecisions.kt` (DecisionPanel: ChooseTargets/SearchCards/CoinFlip/
+AttachFromRevealed pairing/MoveEnergy mínimo).
+**Layout 1:1:** zonas colocadas por `BoardGeometry.NBox` (Modifier.place local = offset+size),
+mismas cajas que la clásica (activos/banca panal 3+2/premios/mazo/descarte/mano). Mano = REUSA
+`board.HandFan`+`HandFilterBar`+`sortedHandCards`/`handCatOf` (abanico, agrupación de copias con
+contador, orden por supertipo, scroll, filtros por tipo).
+**Interacción (como TCG Live):** TOCAR carta = VER A DETALLE (tu `CardDetailDialog` con holo+tilt
+3D+zoom; se le añadió param opcional `bottomBar`). JUGAR = ARRASTRAR (energía→Pokémon, evolución→
+pre-evolución, Básico→hueco Banca/Activo en setup, Entrenador→panel central, Objeto dirigido
+Poción→Pokémon vía `playItemOn`, Herramienta→Pokémon vía `AttachTool`; reusa
+`itemTargetChoose/toolAttachScope/cardTargetsPokemon` de GameControllerShared, `internal` mismo
+módulo). ATACAR + RETIRARSE viven en el `bottomBar` del detalle del Activo propio (`ActiveActions`):
+botones de ataque coloreados por TIPO del Pokémon (`typeColor`, texto por luminancia) con coste
+en `EnergySphere` (esferas oficiales ya empaquetadas) + daño; RETIRARSE arrastra un Pokémon de
+Banca sobre el Activo (`Retreat`). Promoción tras KO = tocar banca. En el detalle del Activo la
+carta va ARRIBA y las acciones DEBAJO (no la tapan; zoom solo en visor sin acciones).
+**Dorsos:** `CombatComponents.CardBack` usa `R.drawable.card_back_default` (reverso ya en el
+proyecto) en TODO lo boca abajo. Cambiar el diseño = sustituir ese drawable.
+**Info oculta:** el jugador NO inspecciona su mazo ni sus premios; SÍ su descarte y el del rival.
+**PENDIENTES (guardados):**
+1. **FX de combate** en CombatScreen (tarea #7): daño flotante+shake, embate, KO, moneda, premio,
+   curación, consumiendo `vm.fx`/`FxCue`. La lógica ya existe en `GameScreen` (FloatingNumber/
+   shake/lunge/ko/coin) → PORTAR/adaptar. No bloquea el juego.
+2. **MoveEnergy** en `DecisionPanel` (hoy solo "Continuar" con lista vacía).
+3. Pulido fino del tapete/HUD (curvatura/sombras) según feedback visual.
+4. Herramientas por TOQUE (hoy solo por arrastre); objeto dirigido por toque va vía panel central+decisión.
+**Build/deploy:** `$env:JAVA_HOME=Adoptium jdk-17`; `& C:\DOCUMENTOS\TCG-Live-Clone\gradlew.bat -p
+C:\DOCUMENTOS\TCG-Live-Clone :app:assembleDebug` (ruta con ACENTOS, no el junction); instalar con
+`C:\Users\pmmt9\AppData\Local\Android\Sdk\platform-tools\adb.exe install -r ...\app-debug.apk`.
+**Análisis PTCG Sim (referencia UX):** `analysis/knowledge-base.yaml` (KB completa).
+
+## ⏩⏩ RETOMAR AQUÍ (motor holo/foil) — HOLO EN TODAS LAS CARTAS — 14 Jul 2026
+**OBJETIVO del usuario:** todas las cartas (presentes Y futuras) indistinguibles de físicas en
+holo, **en todas partes** (colección, mano, tablero, visor) pero **sin giroscopio salvo en el
+visor a pantalla completa**. Máscaras reales de malie (uso personal). NO revertir TEMPORALes
+(151 desbloqueado se queda). Compila (`:app:compileDebugKotlin` verde). FALTA build APK + prueba
+en dispositivo (rendimiento y fidelidad).
+**Lo NUEVO (Fases 1–4 hechas):**
+1. **Resolver DINÁMICO (adiós manifiestos a mano)** — `tilt/MalieCatalog.kt`: dado `set.code`+número,
+   baja UNA vez (cacheada en disco `cacheDir/holo/catalog/`) el `index.json` y el export es-ES del
+   set de malie, y parsea por número las **impresiones** (front/foil/etch URLs REALES + `FoilType_
+   FoilMask` leídos de `ext.tcgl.longFormID`). El export TRAE las URLs directas (`images.tcgl.png.
+   {front,foil,etch}`), no hay que construirlas. `malieKey()` traduce interno→malie (`sv3pt5`→`sv3-5`,
+   `svp`→`svbsp` [CONJETURA, verificar], resto `pt`→`-`). → cualquier set que malie tenga funciona
+   solo; sets futuros = automáticos.
+2. **`HoloAssets.resolve(ctx, appSetCode, number, rarity)`** usa el catálogo, **elige impresión por
+   rareza** (`pickPrinting`: común=plana sin brillo; rara=holo/etched, nunca reverse), baja bitmaps
+   (caché LRU 150MB). Fallback al manifiesto empaquetado del 151 si la red falla / set fuera de malie.
+   El `load(ctx,"151",...)` viejo se conserva como fallback.
+3. **`Modifier.holoAmbient(...)`** (HoloShader.kt): MISMO shader AGSL, brillo movido por barrido de
+   TIEMPO elíptico (sin giroscopio). Para rejilla/mano/tablero. El visor sigue con `holoOverlay`+tilt.
+4. **`HoloCardImage`** (core/designsystem, composable compartido): resuelve foil por set+número y
+   pinta front real+`holoAmbient`; mientras baja (o si no hay foil) pinta arte plano por `imageUrl`.
+   Params `enabled` (para limitar cuántas animan) e `intensity`.
+5. **Cableado:** `CollectionScreen.BinderSlot` (rejilla, `setCode="sv3pt5"`, intensity .85). Combate:
+   `CombatCard` ahora acepta `card: Card?` opcional → si viene y no es dorso usa `HoloCardImage`
+   (número = `card.id.printed.raw.substringAfterLast('-')`); cableados activos/banca (CombatFields),
+   slot+mano+detalle (CombatScreen). `CardDetailDialog` gana param `setCode` (default sv3pt5).
+**PENDIENTE:**
+1. **Build APK + probar en dispositivo**: rendimiento con MUCHAS cartas holo a la vez (LazyGrid/mano)
+   — puede fundir GPU; Fase 5 = limitar shaders activos (solo visibles/tocada), downscale máscaras.
+2. Verificar `svp`→`svbsp` y otros sets no-151 (probar carta de sv1/sv2).
+3. Afinar patrón geométrico fino (SunPillar/Cosmos) — sigue aproximado.
+4. Licencia: assets TCGL = uso personal; si se publica, generar máscaras propias.
+
+## (histórico) MOTOR HOLO/FOIL — 11 Jul 2026
+**Qué se construyó:** motor de acabados holográficos con giroscopio, aplicado SOLO en el
+visor de carta a pantalla completa (`core/designsystem/CardDetailDialog.kt`), decisión
+"solo carta activa". Compila; APK instalado en `3bf89e4f` (API 34, AGSL OK).
+**Archivos nuevos** en `core/designsystem/src/main/kotlin/.../tilt/`:
+- `Tilt.kt`, `TiltSensor.kt` (`rememberTilt()` giroscopio+spring, calibración base; seguro minSdk 26),
+  `TiltModifier.kt` (`Modifier.tiltParallax`).
+- `HoloShader.kt` (`Modifier.holoOverlay`, **AGSL/RuntimeShader API 33+**): muestrea el arte
+  (`uContent`) + máscara real (`uMask`) + capa etch (`uEtch`); color/patrón por `uProfile`
+  (finish) y `uFoilType` (0 flat_silver,1 sun_pillar,2 sv_holo,3 sv_ultra). Mezcla **screen**
+  (no blanquea texto). `uTime` (shimmer con `withFrameNanos`).
+- `Finish.kt` (`Finish` enum + `resolveFinish(rarity)` y `resolveFinish(rarity,foilType,foilMask)`
+  — foil real manda; corrige comunes/infrecuentes reverse).
+- `HoloAssets.kt` (**descarga bajo demanda + caché LRU 150MB**): lee `assets/holo/151/manifest.json`
+  (41 KB, solo URLs → APK NO crece, sigue ~23,6 MB), baja front+mask(+etch) de `cdn.malie.io` y
+  cachea en `cacheDir/holo/`. `HoloBitmaps(front,mask,etch,finish,foilCode)`.
+**Datos:** `app/src/main/assets/holo/151/manifest.json` (207 cartas foil; campos f/m/e/t/k).
+Regenerar con python sobre el JSON de malie: índice `cdn.malie.io/file/malie-io/tcgl/export/index.json`
+→ set `v0.1.9.12/sv3-5.es-ES.json`. **curl funciona con `-H "User-Agent: Mozilla/5.0"`** (urllib da 403).
+**Cableado:** `CardDetailDialog(rarity,cardNumber)` resuelve finish+assets async (`produceState`).
+`CollectionScreen` pasa `rarity`+`number`; **filtro de rareza PROVISIONAL** (`RarityFilterBar`).
+`CollectionViewModel`: **`owned=true` TEMPORAL** (set 151 desbloqueado) — REVERTIR a `count>0`.
+**Estado exactitud 151:** ✅ máscara real (dónde brilla) + reverse comunes + capa etch + color por
+foil.type. ⚠️ patrón geométrico fino (SunPillar/Cosmos exactos) sigue aproximado.
+**PENDIENTE / a decidir:**
+1. Confirmar legibilidad/nivel de brillo (último ajuste bajó intensidad + screen blend; Blastoise ex
+   184 quedaba ilegible por los "rombos"=cross-hatch metálico, ya suavizado).
+2. Revertir TEMPORALes: `owned=true` en `CollectionViewModel`; decidir si el filtro se queda.
+3. **Licencia**: las capas foil son assets de **TCG Live** (uso personal/experimental). Si el proyecto
+   se hace público → NO usarlos (volver a máscara procedimental o generar propias).
+4. Opcional: afinar geometría de patrones por foil.type.
+**Build/deploy:** `$env:JAVA_HOME=Adoptium jdk-17`; `.\gradlew.bat :app:assembleDebug`; adb en
+`C:\Users\pmmt9\AppData\Local\Android\Sdk\platform-tools\adb.exe`. Screencap: `screencap -p /sdcard/x.png`
++ `pull` (NO `exec-out > file` en PowerShell). Análisis previo (repos pokemon-cards-css/pokebox/PTCG Sim)
+en `C:\Users\pmmt9\.claude\plans\act-a-como-un-arquitecto-jolly-wirth.md`.
+
 ## ⏩ RETOMAR AQUÍ (al decir "continuemos"/"continua") — actualizado 9 Jul 2026, 08:50
 **Terminología (confirmada por el usuario):** PvE = vs IA (`GameViewModel` + `SmartAgent`);
 PvP = humano vs humano (`OnlineGameController`, host-autoritativo Firestore). Ambos comparten
@@ -344,6 +1149,15 @@ manda `Intent`.
   - Fase 7: build APK (ruta con acentos), instalar en 2 dispositivos, jugar partida entera.
 - **Ojo build**: `google-services.json` es obligatorio para el plugin; ya está. El compile NO necesita
   la API de Firestore (eso es runtime).
+
+## 📌 REGLA — "REPLICAR" TCG Live (skill `replicar-tcglive`, 10 Jul 2026)
+Al pedir **"replicar"** un comportamiento de TCG Live, seguir la skill **`replicar-tcglive`**
+(`.claude/skills/replicar-tcglive/SKILL.md`): fuente única = videos Combate Completo 1/2
+(conjunto activo = **Combate 1**; Combate 2 solo si el usuario lo pide). No grabar pantalla en
+vivo. Consumir los mp4 con **`tools/scripts/vidref.py`** (`index` → hojas de contactos para
+localizar TODAS las ocurrencias; `burst` → frames full-res para analizar). Analizar (reglas,
+estados, transiciones, ritmo/animaciones, marcar incertidumbre) ANTES de codear; aplicar directo
+al código, sin docs aparte; fidelidad 1:1 salvo variación pedida (que mantenga el estilo visual).
 
 ## (histórico) ⏩ RETOMAR AQUÍ — 2 Jul 2026, 08:20
 **Réplica 1:1 del ciclo de combate de TCG Live.** Vamos construyendo por orden cronológico

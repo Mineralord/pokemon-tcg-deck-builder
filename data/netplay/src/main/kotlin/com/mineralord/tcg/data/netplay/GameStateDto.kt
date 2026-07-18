@@ -37,6 +37,20 @@ data class PokemonInPlayDto(
     val evolutionStack: List<String> = emptyList(),
     val turnsInPlay: Int = 0,
     val cannotAttackOnTurn: Int? = null,
+    val preventDamageOnTurn: Int? = null,
+    val preventBasicDamageOnTurn: Int? = null,
+    val reflectDamageOnTurn: Int? = null,
+    val cannotRetreatOnTurn: Int? = null,
+    val damageReductionOnTurn: Int? = null,
+    val damageReductionAmount: Int = 0,
+    val attackBonusOnTurn: Int? = null,
+    val attackBonusAmount: Int = 0,
+    val retreatCostBumpOnTurn: Int? = null,
+    val retreatCostBumpAmount: Int = 0,
+    val attackCostBumpOnTurn: Int? = null,
+    val attackCostBumpAmount: Int = 0,
+    val delayedDamageOnTurn: Int? = null,
+    val delayedDamageAmount: Int = 0,
 )
 
 @Serializable
@@ -64,7 +78,7 @@ data class PlayerStateDto(
  * autoritativo, único que ejecuta el motor.
  */
 @Serializable
-enum class DecisionKindDto { CHOOSE_TARGETS, SEARCH_CARDS, MOVE_ENERGY, ATTACH_FROM_REVEALED, COIN_FLIP }
+enum class DecisionKindDto { CHOOSE_TARGETS, SEARCH_CARDS, MOVE_ENERGY, ATTACH_FROM_REVEALED, COIN_FLIP, PLACE_COUNTERS }
 
 @Serializable
 data class PendingDecisionDto(
@@ -87,11 +101,14 @@ data class GameStateDto(
     val activeSide: String,
     val phase: String,
     val stadium: String? = null,
+    val stadiumOwner: String? = null,
     val winner: String? = null,
     val decision: PendingDecisionDto? = null,
     val supporterPlayedThisTurn: Boolean = false,
     val energyAttachedThisTurn: Boolean = false,
     val abilitiesUsedThisTurn: List<String> = emptyList(),
+    /** Lados que deben promover un nuevo Activo tras un KO (en el marco del receptor). */
+    val pendingPromotion: List<String> = emptyList(),
 )
 
 // ----------------------------------------------------------------- a DTO
@@ -104,11 +121,13 @@ fun GameState.toDto(): GameStateDto = GameStateDto(
     activeSide = activeSide.name,
     phase = phase.name,
     stadium = stadium?.id?.raw,
+    stadiumOwner = stadiumOwner?.name,
     winner = winner?.name,
     decision = interaction?.decision?.toDto(),
     supporterPlayedThisTurn = supporterPlayedThisTurn,
     energyAttachedThisTurn = energyAttachedThisTurn,
     abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { it.raw },
+    pendingPromotion = pendingPromotion.map { it.name },
 )
 
 /**
@@ -128,11 +147,13 @@ fun GameState.toDtoFor(viewer: Side): GameStateDto {
         activeSide = frame(activeSide).name,
         phase = phase.name,
         stadium = stadium?.id?.raw,
+        stadiumOwner = stadiumOwner?.let { frame(it).name },
         winner = winner?.let { frame(it).name },
         decision = interaction?.decision?.toDto(::frame),
         supporterPlayedThisTurn = supporterPlayedThisTurn,
         energyAttachedThisTurn = energyAttachedThisTurn,
         abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { it.raw },
+        pendingPromotion = pendingPromotion.map { frame(it).name },
     )
 }
 
@@ -168,6 +189,20 @@ private fun PokemonInPlay.toDto() = PokemonInPlayDto(
     evolutionStack = evolutionStack.map { it.id.raw },
     turnsInPlay = turnsInPlay,
     cannotAttackOnTurn = cannotAttackOnTurn,
+    preventDamageOnTurn = preventDamageOnTurn,
+    preventBasicDamageOnTurn = preventBasicDamageOnTurn,
+    reflectDamageOnTurn = reflectDamageOnTurn,
+    cannotRetreatOnTurn = cannotRetreatOnTurn,
+    damageReductionOnTurn = damageReductionOnTurn,
+    damageReductionAmount = damageReductionAmount,
+    attackBonusOnTurn = attackBonusOnTurn,
+    attackBonusAmount = attackBonusAmount,
+    retreatCostBumpOnTurn = retreatCostBumpOnTurn,
+    retreatCostBumpAmount = retreatCostBumpAmount,
+    attackCostBumpOnTurn = attackCostBumpOnTurn,
+    attackCostBumpAmount = attackCostBumpAmount,
+    delayedDamageOnTurn = delayedDamageOnTurn,
+    delayedDamageAmount = delayedDamageAmount,
 )
 
 private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisionDto = when (this) {
@@ -190,6 +225,15 @@ private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisi
         DecisionKindDto.COIN_FLIP, frame(side).name, prompt.es, prompt.en,
         emptyList(), 0, ifHeads = ifHeads, ifTails = ifTails,
     )
+    // Render-only: el invitado ve un lanzamiento de moneda; el host lanza y encadena la
+    // búsqueda a Banca (autoritativo). La SearchCards resultante viaja luego normalmente.
+    is PendingDecision.CoinFlipThenSearch -> PendingDecisionDto(
+        DecisionKindDto.COIN_FLIP, frame(side).name, prompt.es, prompt.en, emptyList(), 0,
+    )
+    // count = nº de contadores a repartir; candidates = Pokémon elegibles.
+    is PendingDecision.PlaceCounters -> PendingDecisionDto(
+        DecisionKindDto.PLACE_COUNTERS, frame(side).name, prompt.es, prompt.en, candidates.map { it.raw }, count,
+    )
 }
 
 // ----------------------------------------------------------------- de DTO
@@ -211,6 +255,7 @@ fun GameStateDto.toGameState(repo: CardRepository): GameState {
         activeSide = Side.valueOf(activeSide),
         phase = Phase.valueOf(phase),
         stadium = stadium?.let { repo[CardId(it)] as? TrainerCard },
+        stadiumOwner = stadiumOwner?.let { Side.valueOf(it) },
         winner = winner?.let { Side.valueOf(it) },
         interaction = decisionModel?.let {
             PendingInteraction(decision = it, remainingOps = emptyList(), side = it.side, sourceId = null)
@@ -218,6 +263,7 @@ fun GameStateDto.toGameState(repo: CardRepository): GameState {
         supporterPlayedThisTurn = supporterPlayedThisTurn,
         energyAttachedThisTurn = energyAttachedThisTurn,
         abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { CardId(it) }.toSet(),
+        pendingPromotion = pendingPromotion.map { Side.valueOf(it) }.toSet(),
     )
 }
 
@@ -252,6 +298,19 @@ private fun PokemonInPlayDto.toModel(repo: CardRepository): PokemonInPlay {
         evolutionStack = evolutionStack.mapNotNull { repo.byInstance(it) as? PokemonCard },
         turnsInPlay = turnsInPlay,
         cannotAttackOnTurn = cannotAttackOnTurn,
+        preventDamageOnTurn = preventDamageOnTurn,
+        preventBasicDamageOnTurn = preventBasicDamageOnTurn,
+        cannotRetreatOnTurn = cannotRetreatOnTurn,
+        damageReductionOnTurn = damageReductionOnTurn,
+        damageReductionAmount = damageReductionAmount,
+        attackBonusOnTurn = attackBonusOnTurn,
+        attackBonusAmount = attackBonusAmount,
+        retreatCostBumpOnTurn = retreatCostBumpOnTurn,
+        retreatCostBumpAmount = retreatCostBumpAmount,
+        attackCostBumpOnTurn = attackCostBumpOnTurn,
+        attackCostBumpAmount = attackCostBumpAmount,
+        delayedDamageOnTurn = delayedDamageOnTurn,
+        delayedDamageAmount = delayedDamageAmount,
     )
 }
 
@@ -278,6 +337,12 @@ private fun PendingDecisionDto.toModel(): PendingDecision = when (kind) {
         prompt = LocalizedText(es = promptEs, en = promptEn),
         ifHeads = ifHeads,
         ifTails = ifTails,
+    )
+    DecisionKindDto.PLACE_COUNTERS -> PendingDecision.PlaceCounters(
+        side = Side.valueOf(side),
+        prompt = LocalizedText(es = promptEs, en = promptEn),
+        candidates = candidates.map { CardId(it) },
+        count = count,
     )
     else -> PendingDecision.ChooseTargets(
         side = Side.valueOf(side),
