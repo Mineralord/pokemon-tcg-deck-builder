@@ -256,6 +256,8 @@ class GameEngine(
             active = newActive,
             bench = me.bench - benchMon + active.copy(
                 attachedEnergy = active.attachedEnergy - toDiscard.toSet(),
+                // Deja el Puesto Activo → expira el override de Debilidad (Porygon — Conversión 4).
+                weaknessOverrideType = null,
             ),
             discard = me.discard + toDiscard,
         )
@@ -344,10 +346,17 @@ class GameEngine(
         } else 0
         // "El daño no se ve afectado por Debilidad/Resistencia" (Staryu, Golem ex).
         val ignoresDefEffects = atkEffect?.ignoresDefenderEffects == true
+        // Override de Debilidad: Porygon (tipo, persistente en el Defensor) y Kabutops (multiplicador
+        // ×4 aportado por una habilidad en juego del ATACANTE, respeta el bloqueo).
+        val weaknessMultOverride = me.allInPlay.firstNotNullOfOrNull { pip ->
+            abilityEffects(state, state.activeSide, pip).firstNotNullOfOrNull { it.overridesDefenderWeaknessMultiplier }
+        }
         val dmg = Damage.calculate(
             dmgBase + selfBonus + allyBoost, attacker.card.types, defender,
             ignoreWeakness = atkEffect?.ignoresWeakness == true,
             ignoreResistance = atkEffect?.ignoresResistance == true,
+            weaknessTypeOverride = defender.weaknessOverrideType,
+            weaknessMultiplierOverride = weaknessMultOverride,
         )
         // Reducción de daño por Herramientas del defensor, aplicada DESPUÉS de
         // Debilidad/Resistencia (como manda la regla de "reduce el daño en X").
@@ -607,6 +616,13 @@ class GameEngine(
         // AttachFromRevealed: `chosen` son PARES (energía, destino); el intérprete valida
         // candidatos y tope. Validación ligera aquí.
         is PendingDecision.AttachFromRevealed -> null
+        // ChooseEnergyType: exactamente 1 tipo, y debe estar entre los candidatos.
+        is PendingDecision.ChooseEnergyType ->
+            when {
+                chosen.size != 1 -> "Debes elegir exactamente 1 tipo"
+                chosen.single() !in decision.candidateIds -> "Tipo no válido"
+                else -> null
+            }
     }
 
     // --------------------------------------------------------------- KO / fin

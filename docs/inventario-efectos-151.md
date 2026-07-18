@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **215**  ·  Sin registrar: **43**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **170**  ·  totalmente ausentes: **28**.
+- Registradas en `EffectsDb`: **217**  ·  Sin registrar: **41**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **172**  ·  totalmente ausentes: **26**.
 
 ## Efectos únicos SIN implementar
 
@@ -25,8 +25,6 @@
 | Chansey (`sv3pt5-113`) | Pokémon | Regalo Fortuito | Si has cogido este Pokémon de entre las cartas de Premio que están boca abajo durante tu turno y tu Banca no está llena, antes de ponerlo en tu mano, puedes ponerlo en tu Banca. Si pones este Pokémon en tu Banca de esta manera, lanza 1 moneda. Si sale cara, coge 1 carta de Premio más. |
 | Seadra (`sv3pt5-117`) | Pokémon | Tinta Cegadora | Durante el próximo turno de tu rival, si el Pokémon Defensor intenta usar un ataque, tu rival lanza 2 monedas. Si sale cruz en alguna de ellas, ese ataque no se lleva a cabo. |
 | Ditto (`sv3pt5-132`) | Pokémon | Inicio Transformador | Una vez durante tu primer turno, si este Pokémon está en el Puesto Activo, puedes buscar en tu baraja y elegir 1 Pokémon Básico que encuentres en ella, excepto Ditto. Si lo haces, descarta este Pokémon y todas las cartas unidas a él, y pon el Pokémon elegido en su lugar. Después, baraja las cartas de tu baraja. |
-| Porygon (`sv3pt5-137`) | Pokémon | Conversión 4 | Elige el tipo {G}, {R}, {W}, {L}, {P}, {F}, {D}, {M} o {N}. Hasta que el Pokémon Defensor deje el Puesto Activo, su Debilidad pasa a ser de ese tipo. (La cantidad de Debilidad no cambia). |
-| Kabutops (`sv3pt5-141`) | Pokémon | Modo Ancestral | Aplica una Debilidad de x 4 al Pokémon Activo de tu rival. |
 | Mew ex (`sv3pt5-151`) | Pokémon | Hackeo Genoma | Elige uno de los ataques del Pokémon Activo de tu rival y úsalo para este ataque. |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Pokémon | Domed Armor |  |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
@@ -122,6 +120,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Jynx ex — Ataque: Viento Hielo
 - Kabuto — Ataque: Arañazo Doble
 - Kabutops — Ataque: Cuchilla Drenaje
+- Kabutops — Habilidad: Modo Ancestral
 - Kadabra — Ataque: Ataque Teleportador
 - Kangaskhan ex — Ataque: Triple Robo
 - Kangaskhan ex — Ataque: Puñetazo Incesante
@@ -172,6 +171,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Poliwrath — Ataque: Rayo Burbuja
 - Poliwrath — Ataque: Puño Heroico
 - Ponyta — Ataque: Coleccionar
+- Porygon — Ataque: Conversión 4
 - Primeape — Ataque: Despotricar
 - Primeape — Ataque: Golpe Rabioso
 - Raichu — Ataque: Trueno

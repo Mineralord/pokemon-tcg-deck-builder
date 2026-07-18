@@ -331,6 +331,13 @@ sealed interface EffectOp {
     data object DeEvolveDefender : EffectOp
 
     /**
+     * Elige un tipo y, hasta que el Activo rival deje el Puesto Activo, su Debilidad pasa a ser
+     * de ese tipo (Porygon — Conversión 4 sv3pt5-137). Emite una decisión [PendingDecision.ChooseEnergyType]
+     * (el atacante elige); al resolver, el intérprete fija [PokemonInPlay.weaknessOverrideType] en el
+     * Activo rival. La cantidad de Debilidad no cambia. */
+    data object OverrideDefenderWeaknessType : EffectOp
+
+    /**
      * Devuelve [count] Energía(s) unida(s) al Activo RIVAL a la mano de su dueño
      * (Omanyte — Retorno Tentacular). Toma las primeras disponibles (cualquier copia
      * básica es equivalente). Si no hay Energía unida, no hace nada. */
@@ -591,6 +598,13 @@ data class Effect(
      * [GameEngine.attack] recorriendo la Banca propia (respeta el bloqueo). null = no aplica. */
     val boostAlliedAttackerNamed: String? = null,
     val boostAlliedAttackerAmount: Int = 0,
+    /**
+     * Habilidad pasiva: mientras este Pokémon está en juego, la Debilidad del Activo RIVAL (visto
+     * desde el lado de este Pokémon = el Pokémon al que ataca su dueño) se aplica como ×[este valor]
+     * en vez de su multiplicador impreso (Kabutops — Modo Ancestral sv3pt5-141: "aplica la Debilidad
+     * del Activo de tu rival como ×4"). La lee [GameEngine.attack]: si el ATACANTE tiene en juego un
+     * Pokémon con esta habilidad (no bloqueada), pasa el multiplicador a [Damage.calculate]. null = no aplica. */
+    val overridesDefenderWeaknessMultiplier: Int? = null,
     /**
      * Herramienta que cura a su portador AL FINAL de TU turno si está en el Puesto Activo
      * (Restos sv3pt5-163: "al final de tu turno, si el Pokémon al que está unida esta carta

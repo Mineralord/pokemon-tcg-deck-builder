@@ -3,6 +3,7 @@ package com.mineralord.tcg.data.netplay
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.withId
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.GameState
@@ -51,6 +52,7 @@ data class PokemonInPlayDto(
     val attackCostBumpAmount: Int = 0,
     val delayedDamageOnTurn: Int? = null,
     val delayedDamageAmount: Int = 0,
+    val weaknessOverrideType: String? = null,
 )
 
 @Serializable
@@ -78,7 +80,7 @@ data class PlayerStateDto(
  * autoritativo, único que ejecuta el motor.
  */
 @Serializable
-enum class DecisionKindDto { CHOOSE_TARGETS, SEARCH_CARDS, MOVE_ENERGY, ATTACH_FROM_REVEALED, COIN_FLIP, PLACE_COUNTERS }
+enum class DecisionKindDto { CHOOSE_TARGETS, SEARCH_CARDS, MOVE_ENERGY, ATTACH_FROM_REVEALED, COIN_FLIP, PLACE_COUNTERS, CHOOSE_ENERGY_TYPE }
 
 @Serializable
 data class PendingDecisionDto(
@@ -203,6 +205,7 @@ private fun PokemonInPlay.toDto() = PokemonInPlayDto(
     attackCostBumpAmount = attackCostBumpAmount,
     delayedDamageOnTurn = delayedDamageOnTurn,
     delayedDamageAmount = delayedDamageAmount,
+    weaknessOverrideType = weaknessOverrideType?.name,
 )
 
 private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisionDto = when (this) {
@@ -233,6 +236,10 @@ private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisi
     // count = nº de contadores a repartir; candidates = Pokémon elegibles.
     is PendingDecision.PlaceCounters -> PendingDecisionDto(
         DecisionKindDto.PLACE_COUNTERS, frame(side).name, prompt.es, prompt.en, candidates.map { it.raw }, count,
+    )
+    // candidates = tipos elegibles codificados como CardId centinela ("energytype:XXX").
+    is PendingDecision.ChooseEnergyType -> PendingDecisionDto(
+        DecisionKindDto.CHOOSE_ENERGY_TYPE, frame(side).name, prompt.es, prompt.en, candidateIds.map { it.raw }, 1,
     )
 }
 
@@ -311,6 +318,7 @@ private fun PokemonInPlayDto.toModel(repo: CardRepository): PokemonInPlay {
         attackCostBumpAmount = attackCostBumpAmount,
         delayedDamageOnTurn = delayedDamageOnTurn,
         delayedDamageAmount = delayedDamageAmount,
+        weaknessOverrideType = weaknessOverrideType?.let { EnergyType.valueOf(it) },
     )
 }
 
@@ -343,6 +351,11 @@ private fun PendingDecisionDto.toModel(): PendingDecision = when (kind) {
         prompt = LocalizedText(es = promptEs, en = promptEn),
         candidates = candidates.map { CardId(it) },
         count = count,
+    )
+    DecisionKindDto.CHOOSE_ENERGY_TYPE -> PendingDecision.ChooseEnergyType(
+        side = Side.valueOf(side),
+        prompt = LocalizedText(es = promptEs, en = promptEn),
+        candidates = candidates.mapNotNull { PendingDecision.decodeType(CardId(it)) },
     )
     else -> PendingDecision.ChooseTargets(
         side = Side.valueOf(side),

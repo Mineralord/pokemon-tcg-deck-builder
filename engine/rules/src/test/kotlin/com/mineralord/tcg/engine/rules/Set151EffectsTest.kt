@@ -1892,6 +1892,66 @@ class Set151EffectsTest {
         assertTrue(done.state.pendingPromotion.isEmpty())
     }
 
+    // ---------------- FASE 38: override de Debilidad (Kabutops / Porygon) ----------------
+
+    @Test
+    fun `Modo Ancestral aplica la Debilidad del Activo rival como x4`() {
+        val a = attack("Punch", 30, EffectId("sv3pt5-none"))
+        val hitter = PokemonInPlay(mon("hitter", 200, EnergyType.FIRE, a))
+        val foe = PokemonInPlay(mon("foe", 400, EnergyType.WATER, a, weakness = EnergyType.FIRE)) // débil ×2 a Fuego
+        val kabutops = PokemonInPlay(
+            mon("kabutops", 120, EnergyType.FIGHTING, a).copy(
+                abilities = listOf(Ability(
+                    LocalizedText("Modo Ancestral", "Ancient Way"), LocalizedText("", ""),
+                    EffectsDb.abiKey("sv3pt5-141", "Ancient Way"))),
+            ),
+        )
+        // Con Kabutops en juego → 30 ×4 = 120.
+        val withK = duel(hitter, foe).let { it.copy(player = it.player.copy(bench = listOf(kabutops))) }
+        val boosted = GameEngine(SeededRng(1)).apply(withK, GameIntent.Attack("Punch"))
+        assertEquals(120, boosted.events.filterIsInstance<GameEvent.DamageDealt>().first().amount)
+
+        // Sin Kabutops → Debilidad normal ×2 = 60.
+        val plain = GameEngine(SeededRng(1)).apply(duel(hitter, foe), GameIntent.Attack("Punch"))
+        assertEquals(60, plain.events.filterIsInstance<GameEvent.DamageDealt>().first().amount)
+    }
+
+    @Test
+    fun `Conversion 4 pide un tipo y fija el override de Debilidad en el Activo rival`() {
+        val a = attack("Conversion 4", 0, EffectsDb.atkKey("sv3pt5-137", "Conversion 4"), cost = 2)
+        val porygon = PokemonInPlay(
+            mon("porygon", 90, EnergyType.COLORLESS, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.COLORLESS), energy("e2", EnergyType.COLORLESS)),
+        )
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a, weakness = EnergyType.FIGHTING))
+        val started = GameEngine(SeededRng(1)).apply(duel(porygon, foe), GameIntent.Attack("Conversion 4"))
+        assertTrue(started.state.awaitingDecision, "debe pausar para elegir tipo")
+        assertTrue(started.state.interaction!!.decision is PendingDecision.ChooseEnergyType)
+
+        val resolved = GameEngine(SeededRng(1)).apply(
+            started.state,
+            GameIntent.ResolveDecision(listOf(PendingDecision.encodeType(EnergyType.WATER))),
+        )
+        assertEquals(EnergyType.WATER, resolved.state.opponent.active!!.weaknessOverrideType)
+    }
+
+    @Test
+    fun `el override de tipo hace que un atacante de ese tipo aplique Debilidad`() {
+        val a = attack("Splash", 40, EffectId("sv3pt5-none"))
+        val waterAttacker = PokemonInPlay(mon("staryu", 200, EnergyType.WATER, a))
+        // Defensor con Debilidad impresa a Fuego, pero override a Agua → el atacante Agua pega ×2.
+        val foe = PokemonInPlay(
+            mon("foe", 400, EnergyType.PSYCHIC, a, weakness = EnergyType.FIRE),
+        ).copy(weaknessOverrideType = EnergyType.WATER)
+        val overridden = GameEngine(SeededRng(1)).apply(duel(waterAttacker, foe), GameIntent.Attack("Splash"))
+        assertEquals(80, overridden.events.filterIsInstance<GameEvent.DamageDealt>().first().amount)
+
+        // Sin override, un atacante Agua NO es debilidad (solo lo era Fuego) → 40.
+        val noOverride = PokemonInPlay(mon("foe", 400, EnergyType.PSYCHIC, a, weakness = EnergyType.FIRE))
+        val plain = GameEngine(SeededRng(1)).apply(duel(waterAttacker, noOverride), GameIntent.Attack("Splash"))
+        assertEquals(40, plain.events.filterIsInstance<GameEvent.DamageDealt>().first().amount)
+    }
+
     // ---------------- FASE 37: des-evolución del Activo rival ----------------
 
     @Test

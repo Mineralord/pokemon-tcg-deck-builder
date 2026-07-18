@@ -100,6 +100,12 @@ data class PokemonInPlay(
      */
     val delayedDamageOnTurn: Int? = null,
     val delayedDamageAmount: Int = 0,
+    /**
+     * Si no es null, el TIPO de la Debilidad de este Pokémon queda sustituido por este tipo
+     * (la CANTIDAD no cambia) hasta que deje el Puesto Activo (Porygon — Conversión 4 sv3pt5-137).
+     * Lo fija el intérprete al resolver la elección de tipo y lo LEE [GameEngine.attack] al calcular
+     * el daño (vía [Damage.calculate]). Se REINICIA (null) cuando el Pokémon pasa de Activo a Banca. */
+    val weaknessOverrideType: EnergyType? = null,
 ) {
     val remainingHp: Int get() = (card.hp - damage).coerceAtLeast(0)
     val isKnockedOut: Boolean get() = damage >= card.hp

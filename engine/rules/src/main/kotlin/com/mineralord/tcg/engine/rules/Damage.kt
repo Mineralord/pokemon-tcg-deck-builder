@@ -26,6 +26,12 @@ object Damage {
         baseDamage: Int,
         attackerTypes: List<EnergyType>,
         defender: PokemonInPlay,
+        ignoreWeakness: Boolean = false,
+        ignoreResistance: Boolean = false,
+        /** Porygon — Conversión 4: sustituye el TIPO de la Debilidad del defensor (mantiene la cantidad). */
+        weaknessTypeOverride: EnergyType? = null,
+        /** Kabutops — Modo Ancestral: aplica la Debilidad del defensor como ×[este valor] en vez del impreso. */
+        weaknessMultiplierOverride: Int? = null,
     ): DamageResult {
         if (baseDamage <= 0) return DamageResult(0, false, false)
 
@@ -33,13 +39,23 @@ object Damage {
         var weakness = false
         var resistance = false
 
-        defender.card.weaknesses.firstOrNull { it.type in attackerTypes }?.let { w ->
-            amount = applyModifier(amount, w.value, isWeakness = true)
-            weakness = true
+        if (!ignoreWeakness) {
+            // La Debilidad efectiva parte de la impresa; Porygon puede cambiar su TIPO.
+            val printed = defender.card.weaknesses.firstOrNull()
+            val effType = weaknessTypeOverride ?: printed?.type
+            if (effType != null && effType in attackerTypes && (printed != null || weaknessMultiplierOverride != null)) {
+                amount = when {
+                    weaknessMultiplierOverride != null -> amount * weaknessMultiplierOverride
+                    else -> applyModifier(amount, printed!!.value, isWeakness = true)
+                }
+                weakness = true
+            }
         }
-        defender.card.resistances.firstOrNull { it.type in attackerTypes }?.let { r ->
-            amount = applyModifier(amount, r.value, isWeakness = false)
-            resistance = true
+        if (!ignoreResistance) {
+            defender.card.resistances.firstOrNull { it.type in attackerTypes }?.let { r ->
+                amount = applyModifier(amount, r.value, isWeakness = false)
+                resistance = true
+            }
         }
 
         return DamageResult(amount.coerceAtLeast(0), weakness, resistance)

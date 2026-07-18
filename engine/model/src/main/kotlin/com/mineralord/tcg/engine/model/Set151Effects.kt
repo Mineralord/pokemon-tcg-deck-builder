@@ -462,6 +462,16 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(atkKey("sv3pt5-142", "Devolution Ray"),
         Effect(ops = listOf(EffectOp.DeEvolveDefender)))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 38: override de Debilidad -----
+    // Porygon — Conversión 4 (Conversion 4) 137: elige un tipo; la Debilidad del Defensor pasa a
+    // ser de ese tipo (misma cantidad) hasta que deje el Activo. Sin daño base.
+    put(atkKey("sv3pt5-137", "Conversion 4"),
+        Effect(ops = listOf(EffectOp.OverrideDefenderWeaknessType)))
+    // Kabutops — Modo Ancestral (Ancient Way) 141: habilidad pasiva → la Debilidad del Activo
+    // rival se aplica como ×4 cuando el lado de Kabutops ataca.
+    put(abiKey("sv3pt5-141", "Ancient Way"),
+        Effect(overridesDefenderWeaknessMultiplier = 4))
+
 
     // ------------------- SET 151 (sv3pt5) — Fase 8: BÚSQUEDAS / ROBO -------------------
     // (Las búsquedas a mano/Banca y el descarte de Energía del rival — Call for Family,

@@ -123,6 +123,17 @@ class EffectInterpreter {
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
             is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle)
             is PendingDecision.ChooseTargets -> EffectResult(cleared, emptyList())
+            is PendingDecision.ChooseEnergyType -> {
+                // Porygon — Conversión 4: fija el TIPO de Debilidad-override en el Activo rival.
+                val type = chosen.firstNotNullOfOrNull { PendingDecision.decodeType(it) }
+                val foeSide = src.actingSide.other()
+                val foeActive = cleared.sideState(foeSide).active
+                if (type == null || foeActive == null) EffectResult(cleared, emptyList())
+                else EffectResult(
+                    updatePokemon(cleared, foeActive.card.id) { it.copy(weaknessOverrideType = type) },
+                    emptyList(),
+                )
+            }
             // Ya manejada arriba con early-return; rama inalcanzable para exhaustividad.
             is PendingDecision.CoinFlipThenSearch -> EffectResult(cleared, emptyList())
             is PendingDecision.CoinFlip -> {
@@ -195,6 +206,22 @@ class EffectInterpreter {
                 // el ataque ya hizo su daño base, solo se omite la parte dirigida.
                 if (cands.isEmpty() && op.optional) null
                 else PendingDecision.ChooseTargets(src.actingSide, op.prompt, cands, op.howMany)
+            }
+            is EffectOp.OverrideDefenderWeaknessType -> {
+                // Porygon — Conversión 4: elige 1 tipo (los 9 del texto). Solo pausa si hay Activo rival.
+                if (state.sideState(src.actingSide.other()).active == null) null
+                else PendingDecision.ChooseEnergyType(
+                    src.actingSide,
+                    LocalizedText(
+                        "Elige el nuevo tipo de Debilidad del Pokémon Defensor",
+                        "Choose the Defending Pokémon's new Weakness type",
+                    ),
+                    candidates = listOf(
+                        EnergyType.GRASS, EnergyType.FIRE, EnergyType.WATER, EnergyType.LIGHTNING,
+                        EnergyType.PSYCHIC, EnergyType.FIGHTING, EnergyType.DARKNESS, EnergyType.METAL,
+                        EnergyType.DRAGON,
+                    ),
+                )
             }
             is EffectOp.PlaceCounters -> {
                 val cands = targets(op.target, src, state, emptyList()).map { it.card.id }
@@ -423,7 +450,8 @@ class EffectInterpreter {
                 val active = foe.active
                 if (active == null || active.isKnockedOut) EffectResult(state, emptyList())
                 else {
-                    val updated = foe.copy(active = null, bench = foe.bench + active)
+                    // Deja el Puesto Activo → expira el override de Debilidad (Porygon).
+                    val updated = foe.copy(active = null, bench = foe.bench + active.copy(weaknessOverrideType = null))
                     val moved = withPlayer(state, updated, foeSide)
                     EffectResult(moved.copy(pendingPromotion = moved.pendingPromotion + foeSide), emptyList())
                 }
@@ -583,6 +611,10 @@ class EffectInterpreter {
                 }
                 EffectResult(working, emptyList())
             }
+            is EffectOp.OverrideDefenderWeaknessType ->
+                // Interactiva: se resuelve vía la decisión ChooseEnergyType. Solo llega aquí si
+                // no había Activo rival al que aplicar (pendingFor devolvió null) → no-op.
+                EffectResult(state, emptyList())
             is EffectOp.DeEvolveDefender -> {
                 // Involuciona el Activo rival: la carta de fase más alta (la actual) vuelve a la
                 // mano de su dueño; el Pokémon pasa a ser la carta inferior de la pila de evolución.

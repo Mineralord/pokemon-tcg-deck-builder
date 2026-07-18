@@ -1,10 +1,11 @@
 package com.mineralord.tcg.feature.game
 
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import com.mineralord.tcg.core.designsystem.motion.AnimationCurves
+import com.mineralord.tcg.core.designsystem.motion.AnimationDurations
+import com.mineralord.tcg.core.designsystem.motion.AnimationSpecs
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -92,7 +95,11 @@ import com.mineralord.tcg.feature.game.board.CountPile
 import com.mineralord.tcg.feature.game.board.EndTurnHex
 import com.mineralord.tcg.feature.game.board.FieldPokemon
 import com.mineralord.tcg.feature.game.board.GameOverOverlay
+import com.mineralord.tcg.feature.game.board.HandCat
 import com.mineralord.tcg.feature.game.board.HandFan
+import com.mineralord.tcg.feature.game.board.HandFilterBar
+import com.mineralord.tcg.feature.game.board.handCatOf
+import com.mineralord.tcg.feature.game.board.sortedHandCards
 import com.mineralord.tcg.feature.game.board.MatBackground
 import com.mineralord.tcg.feature.game.board.PrizeBadge
 import com.mineralord.tcg.feature.game.board.SheetAction
@@ -161,12 +168,24 @@ fun GameScreen(
     // Cartas recién buscadas y llevadas a la mano (Cinio/Super Ball…): se REVELAN en
     // un overlay para que veas qué agarraste (fiel al "enséñalos" de la carta).
     var searchReveal by remember { mutableStateOf<List<Card>?>(null) }
+    // Descarte abierto en panel (título + cartas en orden de colocación). Al tocar una
+    // carta del panel se abre su detalle HD (`inspect`), que se dibuja por encima.
+    var discardPanel by remember { mutableStateOf<Pair<String, List<Card>>?>(null) }
     // Posición del dedo (coords de raíz) mientras se ARRASTRA el Activo propio hacia la
     // Banca para retirarse; null si no se está arrastrando.
     var activeDragPos by remember { mutableStateOf<Offset?>(null) }
-    // En el detalle del Activo: true cuando se pulsó "RETIRARSE" y se está eligiendo a
-    // qué Pokémon de la Banca promover.
-    var retreatPick by remember { mutableStateOf(false) }
+    // Posición del dedo (coords de raíz) mientras se ARRASTRA un Pokémon de la Banca hacia
+    // el Puesto Activo (para PROMOVER tras un KO, o para RETIRAR el Activo). null si no.
+    var promoteDragPos by remember { mutableStateOf<Offset?>(null) }
+    // Carta de Banca que se está arrastrando (para dibujar su FANTASMA siguiendo el dedo).
+    var benchDragCard by remember { mutableStateOf<Card?>(null) }
+    // Tras pulsar "RETIRARSE" en el detalle del Activo: modo de arrastre de un Pokémon de
+    // la Banca al Puesto Activo para completar la retirada (sin panel de selección).
+    var retreatMode by remember { mutableStateOf(false) }
+    // true mientras se muestra el diálogo de confirmación para ABANDONAR la partida.
+    var confirmExit by remember { mutableStateOf(false) }
+    // Filtro por tipo activo en la mano (chip de la barra inferior); null = sin filtro.
+    var handFilter by remember { mutableStateOf<HandCat?>(null) }
 
     // ---- Revelado inicial: el rival voltea sus Pokémon y entran los premios ----
     val revealing = ui.revealing
@@ -176,7 +195,7 @@ fun GameScreen(
         if (revealing) {
             revealFlip.snapTo(0f)
             delay(350)
-            revealFlip.animateTo(1f, androidx.compose.animation.core.tween(520))
+            revealFlip.animateTo(1f, tween(AnimationDurations.RevealFlip, easing = AnimationCurves.EmphasizedDecelerate))
         } else {
             revealFlip.snapTo(1f)
         }
@@ -336,6 +355,17 @@ fun GameScreen(
         // En PREPARACIÓN: arrastrar un Básico de la mano al slot de Activo (aunque esté
         // vacío) lo pone como Activo; sobre un slot de Banca vacío, lo añade a la Banca.
         val setupActiveHot = inSetup && draggingBasic && activeSlotBounds?.contains(dragPos) == true
+        // Tras un KO propio: debo ELEGIR mi nuevo Activo arrastrando un Pokémon de la Banca
+        // al centro. Vale aunque no sea mi turno (me pudieron noquear en el turno rival).
+        val mustPromote = !inSetup && Side.PLAYER in state.pendingPromotion
+        // ¿La retirada del Activo es legal ahora mismo? (mi turno, sin decisión, energía y Banca).
+        val retreatLegal = !inSetup && myTurn && state.interaction == null &&
+            state.player.bench.isNotEmpty() &&
+            (state.player.active?.let { it.attachedEnergyCount >= it.card.retreatCost.size } ?: false)
+        // Arrastre Banca→Activo habilitado: por promoción (KO) o por retirada (botón pulsado).
+        val benchToActiveDrag = mustPromote || (retreatMode && retreatLegal)
+        // El slot de Activo se ilumina mientras arrastro un Pokémon de Banca sobre él.
+        val promoteActiveHot = benchToActiveDrag && promoteDragPos?.let { activeSlotBounds?.contains(it) } == true
 
         // ---- Tablero proporcional 1:1 (posicionado por BoardGeometry.NBox) ----
         // Cada zona se coloca y dimensiona con su caja normalizada, anclada a un área
@@ -354,9 +384,7 @@ fun GameScreen(
                 boardH = availH; boardW = availH * BoardGeometry.Aspect
             }
 
-            val canRetreat = myTurn && state.interaction == null &&
-                state.player.bench.isNotEmpty() &&
-                (state.player.active?.let { it.attachedEnergyCount >= it.card.retreatCost.size } ?: false)
+            val canRetreat = retreatLegal
 
             Box(Modifier.size(boardW, boardH).align(Alignment.Center)) {
                 // --- Zona de soltado de ENTRENADORES: panel gris central (captura sus
@@ -381,8 +409,28 @@ fun GameScreen(
                 Box(Modifier.place(BoardGeometry.TopAvatar, boardW, boardH, "top_avatar")) {
                     OpponentNameplate("Rival")
                 }
-                // Engranaje horneado en el mat: hit-target transparente (salida por ahora).
-                Box(Modifier.place(BoardGeometry.TopSettings, boardW, boardH, "top_settings").clickable { onExit() })
+                // Botón de ajustes/salida DIBUJADO en la esquina (el engranaje del mat está
+                // horneado y queda tapado por el descarte, así que ponemos uno propio, nítido).
+                // Al tocarlo pide CONFIRMACIÓN antes de abandonar la partida (no sale de golpe).
+                Box(
+                    Modifier.place(BoardGeometry.TopSettings, boardW, boardH, "top_settings"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val squareShape = RoundedCornerShape(5.dp)
+                    Box(
+                        Modifier
+                            .fillMaxHeight()
+                            .aspectRatio(1f)
+                            .clip(squareShape)
+                            // Fondo OPACO para cubrir por completo el engranaje horneado.
+                            .background(Color(0xFF14233D))
+                            .border(1.5.dp, BattleTheme.Gold.copy(alpha = 0.7f), squareShape)
+                            .clickable { confirmExit = true },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("⚙", fontSize = 13.sp, color = TcgColors.Parchment)
+                    }
+                }
 
                 // --- Mano del rival (boca abajo) ---
                 Box(
@@ -402,7 +450,11 @@ fun GameScreen(
                 // Descarte (arriba del slot) y mazo (abajo, sobre la pestaña). El contador del
                 // mazo se dibuja aparte bajo el mazo; el descarte no lleva contador (como el azul).
                 Box(
-                    Modifier.place(BoardGeometry.OppDiscard, boardW, boardH, "opp_discard"),
+                    Modifier
+                        .place(BoardGeometry.OppDiscard, boardW, boardH, "opp_discard")
+                        .clickable(enabled = state.opponent.discard.isNotEmpty()) {
+                            discardPanel = "Descarte del rival" to state.opponent.discard
+                        },
                     contentAlignment = Alignment.Center,
                 ) { com.mineralord.tcg.feature.game.board.DeckPile(state.opponent.discard.size, mine = false, "Descarte", topCard = state.opponent.discard.lastOrNull(), showTab = false) }
                 Box(
@@ -456,7 +508,7 @@ fun GameScreen(
                             state.player.active?.card?.id?.let { targetBounds[it] = r }
                         }
                         .dropGlow(
-                            setupActiveHot ||
+                            setupActiveHot || promoteActiveHot ||
                                 (dropHoverTarget != null && dropHoverTarget == state.player.active?.card?.id),
                         ),
                     contentAlignment = Alignment.Center,
@@ -467,9 +519,11 @@ fun GameScreen(
                         onTap = {
                             when {
                                 inSetup -> vm.clearActive()
+                                // Sin Activo (KO pendiente de promoción): no hay panel que abrir.
+                                state.player.active == null -> {}
                                 // En mi turno y sin decisión pendiente: panel de acción
                                 // (ataques + energías). Si no, inspección HD de solo lectura.
-                                myTurn && state.interaction == null -> { retreatPick = false; actionSheet = state.player.active }
+                                myTurn && state.interaction == null -> { retreatMode = false; actionSheet = state.player.active }
                                 else -> inspect = state.player.active?.card
                             }
                         },
@@ -489,18 +543,34 @@ fun GameScreen(
                     Box(
                         Modifier
                             .place(BoardGeometry.MePrizes, boardW, boardH, "me_prizes")
-                            .graphicsLayer { alpha = revealFlip.value },
+                            .graphicsLayer { alpha = revealFlip.value }
+                            // Capa PTCG Sim: tocar tus premios los abre para OJEARLOS (afordancia
+                            // "mirar premios"). Solo tus propios premios; los del rival siguen ocultos.
+                            .clickable(enabled = state.player.prizes.isNotEmpty()) {
+                                discardPanel = "Tus premios" to state.player.prizes
+                            },
                         contentAlignment = Alignment.Center,
                     ) { com.mineralord.tcg.feature.game.board.PrizeStack(state.player.prizesRemaining, mine = true) }
                 }
                 // Mazo (arriba del slot, sin pestaña interna) y descarte (debajo). El contador
                 // del mazo se dibuja aparte, centrado sobre el "0" horneado del mat.
                 Box(
-                    Modifier.place(BoardGeometry.MeDeck, boardW, boardH, "me_deck"),
+                    Modifier
+                        .place(BoardGeometry.MeDeck, boardW, boardH, "me_deck")
+                        // Capa de interacción tipo PTCG Sim: tocar el mazo lo abre para
+                        // inspeccionarlo (afordancia "mirar mazo"). Solo lectura; el motor
+                        // sigue siendo la autoridad (no reordena ni roba desde aquí).
+                        .clickable(enabled = state.player.deck.isNotEmpty()) {
+                            discardPanel = "Tu mazo" to state.player.deck
+                        },
                     contentAlignment = Alignment.Center,
                 ) { com.mineralord.tcg.feature.game.board.DeckPile(state.player.deck.size, mine = true, "Mazo", showTab = false) }
                 Box(
-                    Modifier.place(BoardGeometry.MeDiscard, boardW, boardH, "me_discard"),
+                    Modifier
+                        .place(BoardGeometry.MeDiscard, boardW, boardH, "me_discard")
+                        .clickable(enabled = state.player.discard.isNotEmpty()) {
+                            discardPanel = "Tu descarte" to state.player.discard
+                        },
                     contentAlignment = Alignment.Center,
                 ) { com.mineralord.tcg.feature.game.board.DeckPile(state.player.discard.size, mine = true, "Descarte", topCard = state.player.discard.lastOrNull(), showTab = false) }
                 Box(
@@ -515,6 +585,25 @@ fun GameScreen(
                     else { id -> inspect = state.player.bench.firstOrNull { it.card.id == id }?.card },
                     onBounds = { id, rect -> targetBounds[id] = rect },
                     highlightId = dropHoverTarget ?: retreatHover,
+                    // Arrastrar un Pokémon de la Banca al Puesto Activo: lo PROMUEVE tras un KO,
+                    // o completa la RETIRADA del Activo (si se pulsó "RETIRARSE").
+                    dragEnabled = benchToActiveDrag,
+                    onDragStart = { id, pos ->
+                        benchDragCard = state.player.bench.firstOrNull { it.card.id == id }?.card
+                        promoteDragPos = pos
+                    },
+                    onDrag = { pos -> promoteDragPos = pos },
+                    onDragEnd = { id ->
+                        val dropped = promoteDragPos
+                        if (dropped != null && activeSlotBounds?.contains(dropped) == true) {
+                            when {
+                                mustPromote -> vm.onIntent(GameIntent.PromoteActive(id))
+                                retreatMode -> { vm.onIntent(GameIntent.Retreat(id)); retreatMode = false }
+                            }
+                        }
+                        promoteDragPos = null
+                        benchDragCard = null
+                    },
                 )
                 // Slots de Banca VACÍOS: capturan sus límites (para soltar un Básico) y se
                 // iluminan mientras se arrastra un Básico sobre ellos. También en la
@@ -536,8 +625,11 @@ fun GameScreen(
                 val handCardW = handCardH * BoardGeometry.CardAspect
                 Box(Modifier.place(BoardGeometry.MeHand, boardW, boardH, "me_hand")) {
                     HandFan(
-                        cards = state.player.hand,
+                        cards = sortedHandCards(state.player.hand),
                         enabled = inSetup || (myTurn && state.interaction == null),
+                        emphasize = handFilter
+                            ?.takeIf { f -> state.player.hand.any { handCatOf(it) == f } }
+                            ?.let { f -> { c: Card -> handCatOf(c) == f } },
                         cardW = handCardW,
                         cardH = handCardH,
                         onSelect = {
@@ -620,7 +712,7 @@ fun GameScreen(
                     Box(
                         Modifier.place(BoardGeometry.RailEndTurn, boardW, boardH, "rail_endturn"),
                         contentAlignment = Alignment.Center,
-                    ) { EndTurnHex(enabled = myTurn && state.interaction == null) { vm.onIntent(GameIntent.EndTurn) } }
+                    ) { EndTurnHex(enabled = myTurn && state.interaction == null && !mustPromote) { vm.onIntent(GameIntent.EndTurn) } }
                 }
                 Box(
                     Modifier.place(BoardGeometry.RailPrizeMe, boardW, boardH, "rail_prize_me"),
@@ -645,6 +737,19 @@ fun GameScreen(
             }
         }
 
+        // ---- Barra de la mano: contador total + chips de filtro por tipo (Pokémon/
+        //      Entrenador/Energía), estilo TCG Live (ref_0040). Toca un chip para resaltar
+        //      ese grupo en la mano; tócalo de nuevo para quitar el filtro. ----
+        if (!inSetup && !revealing && state.player.hand.isNotEmpty()) {
+            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp)) {
+                HandFilterBar(
+                    cards = state.player.hand,
+                    active = handFilter,
+                    onToggle = { cat -> handFilter = if (handFilter == cat) null else cat },
+                )
+            }
+        }
+
         // ---- Banner de turno ----
         Box(Modifier.align(Alignment.Center)) {
             TurnBanner(
@@ -652,6 +757,32 @@ fun GameScreen(
                 visible = bannerVisible,
                 mine = bannerMine,
             )
+        }
+
+        // ---- Aviso de PROMOCIÓN (KO) o de RETIRADA por arrastre: instrucción en la parte
+        //      superior. En modo retirada, tocar el aviso CANCELA. ----
+        if (mustPromote || (retreatMode && retreatLegal)) {
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 96.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xF21B2A45))
+                    .border(1.5.dp, BattleTheme.Gold.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
+                    .clickable(enabled = !mustPromote) { retreatMode = false }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    if (mustPromote)
+                        "Tu Pokémon Activo fue Noqueado.\nArrastra un Pokémon de tu Banca al centro."
+                    else
+                        "Retirada: arrastra un Pokémon de tu Banca al Puesto Activo.\n(Toca aquí para cancelar)",
+                    color = TcgColors.Parchment,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
         }
 
         // ---- Preparación: hoja de colocación del Básico tocado (Activo / Banca) ----
@@ -683,32 +814,19 @@ fun GameScreen(
             }
         }
 
-        // ---- Fantasma de la carta que se está arrastrando (sigue el dedo) ----
-        dragCard?.let { card ->
-            BoxWithConstraints(Modifier.fillMaxSize()) {
-                val gh = maxHeight * BoardGeometry.HandCardHFrac
-                val gw = gh * BoardGeometry.CardAspect
-                val density = androidx.compose.ui.platform.LocalDensity.current
-                val gwPx = with(density) { gw.toPx() }
-                val ghPx = with(density) { gh.toPx() }
-                AsyncImage(
-                    model = card.artwork.small(true),
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                    modifier = Modifier
-                        .offset { IntOffset((dragPos.x - gwPx / 2f).toInt(), (dragPos.y - ghPx / 2f).toInt()) }
-                        .size(gw, gh)
-                        .graphicsLayer { alpha = 0.92f }
-                        .clip(RoundedCornerShape(8.dp)),
-                )
-            }
-        }
+        // ---- Fantasma de la carta que se está arrastrando (sigue el dedo). Se muestra en
+        //      TODOS los arrastres: carta de la mano, Activo→Banca (retirada por arrastre del
+        //      Activo) y Banca→Activo (promoción tras KO o retirada). ----
+        dragCard?.let { DragGhost(it, dragPos) }
+        activeDragPos?.let { pos -> state.player.active?.let { DragGhost(it.card, pos) } }
+        promoteDragPos?.let { pos -> benchDragCard?.let { DragGhost(it, pos) } }
 
         // ---- Panel de decisión pendiente ----
         if (awaitingMine) {
             val decision = state.interaction!!.decision
-            if (decision is PendingDecision.CoinFlip) {
-                // La Dominguera y similares: TIRA la moneda y DESPUÉS ocurre el efecto.
+            if (decision is PendingDecision.CoinFlip || decision is PendingDecision.CoinFlipThenSearch) {
+                // La Dominguera / Parasect: TIRA la moneda y DESPUÉS ocurre el efecto
+                // (en Parasect, el host encadena la búsqueda a Banca según las caras).
                 CoinTossOverlay(prompt = decision.prompt.es) { vm.onResolve(emptyList()) }
             } else
             Box(Modifier.align(Alignment.BottomCenter)) {
@@ -796,7 +914,7 @@ fun GameScreen(
         //      seleccionables ahí mismo (bug: no se podían usar ataques). ----
         actionSheet?.let { pip ->
             val canAttackNow = myTurn && state.interaction == null && state.turn > 1
-            CardDetailOverlay(imageUrl = pip.card.artwork.large(true), onDismiss = { actionSheet = null; retreatPick = false }) {
+            CardDetailOverlay(imageUrl = pip.card.artwork.large(true), onDismiss = { actionSheet = null }) {
                 EnergyOrbs(pip)
                 if (state.turn == 1) {
                     Text(
@@ -816,58 +934,55 @@ fun GameScreen(
                     }
                 }
 
-                // ---- RETIRADA: botón + elección del Pokémon de Banca que pasa a Activo.
-                //      Habilitado en mi turno, sin decisión pendiente, con energía suficiente
-                //      para el coste de retirada y al menos un Pokémon en Banca. ----
+                // ---- RETIRADA: botón que ACTIVA el arrastre. Cierra el detalle y deja
+                //      arrastrar un Pokémon de la Banca al Puesto Activo para completar la
+                //      retirada (sin panel de selección). Habilitado en mi turno, sin decisión
+                //      pendiente, con energía suficiente y al menos un Pokémon en Banca. ----
                 val retreatCost = pip.card.retreatCost.size
                 val canRetreatNow = myTurn && state.interaction == null &&
                     state.player.bench.isNotEmpty() && pip.attachedEnergyCount >= retreatCost
                 if (canRetreatNow) {
-                    if (!retreatPick) {
-                        DetailButton(
-                            label = if (retreatCost == 0) "RETIRARSE" else "RETIRARSE (descarta $retreatCost energía)",
-                            enabled = true,
-                            accent = Color(0xFF1565C0),
-                        ) { retreatPick = true }
-                    } else {
-                        Text(
-                            "Elige el Pokémon de Banca que pasará a Activo:",
-                            color = TcgColors.Parchment, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            state.player.bench.forEach { b ->
-                                AsyncImage(
-                                    model = b.card.artwork.small(true),
-                                    contentDescription = b.card.name.es,
-                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                    modifier = Modifier
-                                        .width(72.dp)
-                                        .aspectRatio(BoardGeometry.CardAspect)
-                                        .clip(RoundedCornerShape(7.dp))
-                                        .border(1.dp, BattleTheme.Gold.copy(alpha = 0.6f), RoundedCornerShape(7.dp))
-                                        .clickable {
-                                            actionSheet = null; retreatPick = false
-                                            vm.onIntent(GameIntent.Retreat(b.card.id))
-                                        },
-                                )
-                            }
-                        }
-                    }
+                    DetailButton(
+                        label = if (retreatCost == 0) "RETIRARSE" else "RETIRARSE (descarta $retreatCost energía)",
+                        enabled = true,
+                        accent = Color(0xFF1565C0),
+                    ) { retreatMode = true; actionSheet = null }
                 }
             }
-        }
-
-        // ---- Inspección de carta en HD (solo lectura; tocar para cerrar). Va por
-        //      encima de los paneles inferiores para poder ojear cualquier carta. ----
-        inspect?.let { card ->
-            CardHdViewer(imageUrl = card.artwork.large(true)) { inspect = null }
         }
 
         // ---- Revelado de cartas BUSCADAS y llevadas a la mano (Cinio/Super Ball…):
         //      muestra qué agarraste, como el "enséñalos" de la carta. Toca para cerrar. ----
         searchReveal?.let { cards ->
             SearchRevealOverlay(cards) { searchReveal = null }
+        }
+
+        // ---- Panel de una pila de DESCARTE (todas las cartas en orden) ----
+        discardPanel?.let { (title, cards) ->
+            DiscardPanelOverlay(
+                title = title,
+                cards = cards,
+                onCardTap = { inspect = it },
+                onDismiss = { discardPanel = null },
+            )
+        }
+
+        // ---- Confirmación para ABANDONAR la partida (engranaje) ----
+        if (confirmExit) {
+            ConfirmDialog(
+                title = "¿Abandonar la partida?",
+                message = "Perderás el progreso de esta partida.",
+                confirmLabel = "Abandonar",
+                onConfirm = { confirmExit = false; onExit() },
+                onCancel = { confirmExit = false },
+            )
+        }
+
+        // ---- Inspección de carta en HD (solo lectura; tocar para cerrar). Va AL FINAL para
+        //      quedar por ENCIMA de cualquier panel (incluido el de descarte): así al tocar
+        //      una carta del descarte se ve su detalle al instante, sin cerrar el panel. ----
+        inspect?.let { card ->
+            CardHdViewer(imageUrl = card.artwork.large(true)) { inspect = null }
         }
 
         // ---- Mensaje de error transitorio ----
@@ -941,7 +1056,7 @@ private fun Modifier.dropGlow(on: Boolean): Modifier = composed {
         val pulse by transition.animateFloat(
             initialValue = 0.5f,
             targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(650), RepeatMode.Reverse),
+            animationSpec = AnimationSpecs.loop(AnimationDurations.GlowPulse),
             label = "pulse",
         )
         this.drawWithContent {
@@ -970,7 +1085,7 @@ private fun TurnArc(mine: Boolean) {
     val transition = rememberInfiniteTransition(label = "turnarc")
     val pulse by transition.animateFloat(
         initialValue = 0.72f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        animationSpec = AnimationSpecs.loop(AnimationDurations.ArcPulse),
         label = "arcpulse",
     )
     val edgeY = if (mine) 0.5635f else 0.2594f
@@ -1021,7 +1136,7 @@ private fun CoinTossOverlay(prompt: String, onFlip: () -> Unit) {
             )
             val transition = rememberInfiniteTransition(label = "cointoss")
             val spin by transition.animateFloat(
-                0f, 360f, infiniteRepeatable(tween(500), RepeatMode.Restart), label = "spin",
+                0f, 360f, AnimationSpecs.loopLinear(AnimationDurations.CoinSpin), label = "spin",
             )
             Box(
                 Modifier
@@ -1081,9 +1196,31 @@ private fun OpponentNameplate(name: String) {
 }
 
 /**
- * Banca de un lado colocada por su caja normalizada. Las cartas conservan su forma
- * (alto de la caja × relación de carta) y se reparten centradas en la fila.
+ * Fantasma de una carta que se arrastra: su arte sigue el dedo (posición en coords de
+ * raíz), centrado bajo él y semitransparente. Compartido por todos los arrastres del
+ * tablero (mano, retirada, promoción) para un feedback visual consistente.
  */
+@Composable
+private fun DragGhost(card: Card, pos: Offset) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val gh = maxHeight * BoardGeometry.HandCardHFrac
+        val gw = gh * BoardGeometry.CardAspect
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val gwPx = with(density) { gw.toPx() }
+        val ghPx = with(density) { gh.toPx() }
+        AsyncImage(
+            model = card.artwork.small(true),
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            modifier = Modifier
+                .offset { IntOffset((pos.x - gwPx / 2f).toInt(), (pos.y - ghPx / 2f).toInt()) }
+                .size(gw, gh)
+                .graphicsLayer { alpha = 0.92f }
+                .clip(RoundedCornerShape(8.dp)),
+        )
+    }
+}
+
 @Composable
 private fun BenchRow(
     bench: List<PokemonInPlay>,
@@ -1094,23 +1231,53 @@ private fun BenchRow(
     onTap: ((CardId) -> Unit)? = null,
     onBounds: ((CardId, Rect) -> Unit)? = null,
     highlightId: CardId? = null,
+    // Arrastre de un Pokémon de la Banca (para PROMOVERLO al Activo tras un KO). Solo se
+    // habilita con [dragEnabled]; reporta la posición del dedo en coords de raíz.
+    dragEnabled: Boolean = false,
+    onDragStart: ((CardId, Offset) -> Unit)? = null,
+    onDrag: ((Offset) -> Unit)? = null,
+    onDragEnd: ((CardId) -> Unit)? = null,
 ) {
     // Banca en PANAL (3+2): cada carta se ancla a su slot medido 1:1 (ver
     // BoardGeometry.MeBenchSlots/OppBenchSlots). Las cartas se colocan por índice.
     bench.take(slots.size).forEachIndexed { i, pip ->
         val slot = slots[i]
-        Box(
-            Modifier
-                .place(slot, boardW, boardH, "${tag}_$i")
-                .onGloballyPositioned { c -> onBounds?.invoke(pip.card.id, c.boundsInRoot()) }
-                .dropGlow(highlightId == pip.card.id),
-        ) {
-            FieldPokemon(
-                pip = pip,
-                width = boardW * slot.w,
-                height = boardH * slot.h,
-                onClick = onTap?.let { tap -> { tap(pip.card.id) } },
-            )
+        key(pip.card.id) {
+            var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+            var dragging by remember { mutableStateOf(false) }
+            Box(
+                Modifier
+                    .place(slot, boardW, boardH, "${tag}_$i")
+                    .onGloballyPositioned { c -> coords = c; onBounds?.invoke(pip.card.id, c.boundsInRoot()) }
+                    .dropGlow(highlightId == pip.card.id)
+                    .graphicsLayer {
+                        val s = if (dragging) 1.06f else 1f
+                        scaleX = s; scaleY = s
+                    }
+                    .then(
+                        if (dragEnabled) Modifier.pointerInput(pip.card.id) {
+                            detectDragGestures(
+                                onDragStart = { local ->
+                                    dragging = true
+                                    coords?.let { onDragStart?.invoke(pip.card.id, it.localToRoot(local)) }
+                                },
+                                onDrag = { ch, _ ->
+                                    coords?.let { onDrag?.invoke(it.localToRoot(ch.position)) }
+                                    ch.consume()
+                                },
+                                onDragEnd = { dragging = false; onDragEnd?.invoke(pip.card.id) },
+                                onDragCancel = { dragging = false; onDragEnd?.invoke(pip.card.id) },
+                            )
+                        } else Modifier,
+                    ),
+            ) {
+                FieldPokemon(
+                    pip = pip,
+                    width = boardW * slot.w,
+                    height = boardH * slot.h,
+                    onClick = onTap?.let { tap -> { tap(pip.card.id) } },
+                )
+            }
         }
     }
 }
@@ -1539,13 +1706,108 @@ private fun SearchRevealOverlay(cards: List<Card>, onDismiss: () -> Unit) {
     }
 }
 
+/**
+ * Panel de una pila de DESCARTE: muestra TODAS las cartas en el ORDEN en que se
+ * descartaron (de la primera a la última), en una rejilla desplazable. Tocar una carta
+ * abre su detalle HD (vía [onCardTap]). Tocar fuera / el botón ✕ cierra el panel.
+ */
+@Composable
+private fun DiscardPanelOverlay(
+    title: String,
+    cards: List<Card>,
+    onCardTap: (Card) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(
+        Modifier.fillMaxSize().background(Color(0xE6000000)).clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.86f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TcgColors.RedDark)
+                .border(1.5.dp, BattleTheme.Gold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                // Consume los toques del panel para no cerrarlo al tocar dentro.
+                .clickable {}
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "$title  ·  ${cards.size}",
+                    color = TcgColors.Gold, fontWeight = FontWeight.Black, fontSize = 16.sp, letterSpacing = 1.sp,
+                )
+                FloatIconButton("✕", onClick = onDismiss)
+            }
+            if (cards.isEmpty()) {
+                Text("La pila está vacía.", color = TcgColors.Parchment.copy(alpha = 0.7f), fontSize = 12.sp)
+            }
+            Text(
+                "Del más antiguo (1) al más reciente. Toca una carta para verla a detalle.",
+                color = TcgColors.Parchment.copy(alpha = 0.7f), fontSize = 10.sp,
+            )
+            // Rejilla desplazable en filas de 4, respetando el orden de descarte.
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                cards.chunked(4).forEachIndexed { rowIdx, row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEachIndexed { colIdx, card ->
+                            val ordinal = rowIdx * 4 + colIdx + 1
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .aspectRatio(BoardGeometry.CardAspect)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, BattleTheme.Gold.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                    .clickable { onCardTap(card) },
+                            ) {
+                                AsyncImage(
+                                    model = card.artwork.large(true),
+                                    contentDescription = card.name.es,
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                                Text(
+                                    "$ordinal",
+                                    color = TcgColors.Parchment,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(3.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0xCC000000))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                                )
+                            }
+                        }
+                        // Rellena la última fila incompleta para mantener el ancho de carta.
+                        repeat(4 - row.size) { Box(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Nº de cartas que puede elegir una decisión (1 si no aplica). */
 private fun decisionCount(decision: PendingDecision): Int = when (decision) {
     is PendingDecision.ChooseTargets -> decision.count
     is PendingDecision.SearchCards -> decision.count
     is PendingDecision.MoveEnergy -> decision.count
     is PendingDecision.AttachFromRevealed -> decision.maxAttach
+    is PendingDecision.PlaceCounters -> decision.count
     is PendingDecision.CoinFlip -> 0
+    is PendingDecision.CoinFlipThenSearch -> 0
+    is PendingDecision.ChooseEnergyType -> 1
 }
 
 /**
@@ -1569,7 +1831,13 @@ private fun DecisionPanel(
             Triple(decision.prompt.es, decision.fromCandidates + decision.toCandidates, decision.count)
         // AttachFromRevealed se dibuja en RevealAttachTray; CoinFlip en CoinTossOverlay.
         is PendingDecision.AttachFromRevealed -> Triple(decision.prompt.es, emptyList(), 0)
+        // Reparto de contadores: picker simple de objetivos (1 contador por selección).
+        is PendingDecision.PlaceCounters -> Triple(decision.prompt.es, decision.candidates, decision.count)
         is PendingDecision.CoinFlip -> Triple(decision.prompt.es, emptyList<CardId>(), 0)
+        // CoinFlipThenSearch se resuelve como lanzamiento (CoinTossOverlay/botón); sin picker.
+        is PendingDecision.CoinFlipThenSearch -> Triple(decision.prompt.es, emptyList<CardId>(), 0)
+        // ChooseEnergyType: el picker de tipos vive en CombatDecisions; aquí sin candidatos-carta.
+        is PendingDecision.ChooseEnergyType -> Triple(decision.prompt.es, emptyList<CardId>(), 0)
     }
     val screenHdp = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
     val cardH = (screenHdp * BoardGeometry.BenchCardHFrac * 1.35f).dp
@@ -1694,7 +1962,51 @@ private fun CardDetailOverlay(
     }
 }
 
-/** Botón de acción a todo el ancho (seleccionar carta en el detalle de decisión). */
+/**
+ * Diálogo modal de confirmación (fondo oscuro, tarjeta central). Usado para abandonar la
+ * partida. Tocar fuera = cancelar. [confirmLabel] rotula el botón de acción destructiva.
+ */
+@Composable
+private fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Box(
+        Modifier.fillMaxSize().background(Color(0xCC000000)).clickable(onClick = onCancel),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.82f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(TcgColors.RedDark)
+                .border(1.5.dp, BattleTheme.Gold.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                // Consume los toques del panel para no cerrarlo al tocar dentro.
+                .clickable {}
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(title, color = TcgColors.Gold, fontWeight = FontWeight.Black, fontSize = 18.sp, textAlign = TextAlign.Center)
+            Text(message, color = TcgColors.Parchment.copy(alpha = 0.85f), fontSize = 13.sp, textAlign = TextAlign.Center)
+            Row(
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(Modifier.weight(1f)) {
+                    DetailButton(label = "Cancelar", enabled = true, accent = Color(0xFF37474F), onClick = onCancel)
+                }
+                Box(Modifier.weight(1f)) {
+                    DetailButton(label = confirmLabel, enabled = true, accent = Color(0xFFB71C1C), onClick = onConfirm)
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun DetailButton(label: String, enabled: Boolean, accent: Color, onClick: () -> Unit) {
     Box(

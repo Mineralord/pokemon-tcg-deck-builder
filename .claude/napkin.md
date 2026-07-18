@@ -77,12 +77,35 @@ inerte). Tests: `AbilityLockAndStadiumTest` (registry inyectado con efectos sint
 **FUTURO:** cuando se scrapee Path to the Peak/Klefki, registrar su Effect con el `PassiveModifier(BLOCK_ABILITY,
 …)` correspondiente; el motor ya hace el resto. Aún NO hay estadios con efecto ACTIVO 1/turno (Cycling Road).
 
-## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 38 — 17 Jul 2026
+## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 39 — 18 Jul 2026
 **Contexto:** implementando TODOS los efectos del set 151 (`sv3pt5`) por fases. Inventario vivo en
 **`docs/inventario-efectos-151.md`** (regenerar con `python tools/scripts/gen_inventario_151.py`, cruza
 `cards/sv3pt5.json` × `Set151Effects.kt`; textos SIEMPRE del bloque `es` = español impreso, NUNCA inglés).
-Progreso: **170/198 efectos únicos** (Fases 1–37 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
-(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 28.**
+Progreso: **172/198 efectos únicos** (Fases 1–38 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
+(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 26.**
+
+### ✅ FASE 38 HECHA (18 Jul) — SUBSISTEMA de override de Debilidad (Kabutops + Porygon)
+**Nueva capacidad transversal:** `Damage.calculate` acepta `weaknessTypeOverride: EnergyType?` (cambia el TIPO
+de la Debilidad, mantiene la cantidad) y `weaknessMultiplierOverride: Int?` (aplica la Debilidad como ×N). La
+Debilidad efectiva parte de la impresa; si hay override de tipo sin Debilidad impresa (y sin multiplicador),
+es inerte. **Wiring en `GameEngine.attack`:** `weaknessTypeOverride = defender.weaknessOverrideType` (campo NUEVO
+por-instancia en PokemonInPlay); `weaknessMultiplierOverride` = primer `Effect.overridesDefenderWeaknessMultiplier`
+(flag NUEVO) de una habilidad EN JUEGO del ATACANTE (vía `abilityEffects`, respeta bloqueo).
+**Kabutops — Modo Ancestral/Ancient Way 141:** habilidad PASIVA `overridesDefenderWeaknessMultiplier=4` (no
+persistente; se lee al atacar el lado de Kabutops). **Porygon — Conversión 4/Conversion 4 137:** op INTERACTIVA
+`OverrideDefenderWeaknessType` → decisión NUEVA `PendingDecision.ChooseEnergyType(candidates: List<EnergyType>)`;
+al resolver, el intérprete fija `weaknessOverrideType` en el Activo rival. **Campo por-instancia
+`PokemonInPlay.weaknessOverrideType`** persiste HASTA que el Pokémon deja el Activo → RESET (=null) en la
+**retirada** (GameEngine.retreat) y en el **gust** (EffectInterpreter GustDefenderChooseNewActive). La decisión
+viaja por el canal estándar `chosen: List<CardId>` con **CardId centinela** `"energytype:XXX"` (helpers
+`PendingDecision.encodeType/decodeType` + `candidateIds`). **Capas tocadas (decisión NUEVA = muchos `when`
+exhaustivos):** modelo (PendingDecision + companion), intérprete (pendingFor emite / resolve fija / applyOp no-op),
+GameEngine.validateChoice, netplay `GameStateDto` (`DecisionKindDto.CHOOSE_ENERGY_TYPE` + PokemonInPlayDto
+`weaknessOverrideType: String?` en decl/toDto/toModel + import EnergyType), SmartAgent (toma el 1er tipo), UI
+`CombatDecisions.EnergyTypePicker` (botón por tipo, `energyTypeLabelEs`) y las 2 ramas de `GameScreen` (clásica).
+3 tests (Kabutops ×4 con/sin; Porygon pide-tipo→fija campo; override de tipo hace debilidad a un atacante Agua).
+Compilan `:engine:*`, `:data:netplay`, `:feature:game`, `:app`. **PATRÓN REUTILIZABLE:** para futuras decisiones
+que NO eligen cartas (elegir tipo/opción), usar el CardId-centinela por el canal `chosen` (evita tocar GameIntent).
 
 ### ✅ FASE 37 HECHA (17 Jul) — des-evolución del Activo rival
 **Op nueva** `EffectOp.DeEvolveDefender` (data object, patrón `GiovanniCharisma`): apunta al Activo rival; si
@@ -96,11 +119,8 @@ fase Básica de 60 PS no aguanta 100 de daño). **NO toca netplay** (el host apl
 evento es solo log). OJO: `updatePokemon` localiza el pip por el id ANTES de cambiar `card`; el nuevo `card.id`
 queda en juego y la carta vieja va a la mano.
 
-### ⏭️ SIGUIENTE (FASE 38) — candidatos y DEUDAS (faltan 28)
-**Cluster "manipulación de Debilidad" (DIFERIDO — requiere subsistema de override de Debilidad por-instancia con
-RESET al dejar el Activo):** Kabutops *Modo Ancestral* 141 (Debilidad ×4 — OJO texto ambiguo sobre a qué tipo),
-Porygon *Conversión 4* 137 (cambia el TIPO de Debilidad al elegido, "hasta que deje el Activo" → decisión de tipo +
-campo `weaknessOverride` + reset en retirada/promoción/gust). **Bounded sin sistema nuevo grande:** Meowth *Ven
+### ⏭️ SIGUIENTE (FASE 39) — candidatos y DEUDAS (faltan 26)
+**Cluster "manipulación de Debilidad" (✅ HECHO en Fase 38: Kabutops 141 + Porygon 137).** **Bounded sin sistema nuevo grande:** Meowth *Ven
 Aquí Ya* 52 (moneda → el ATACANTE elige un Banca rival que pasa a Activo = decisión sobre zona rival + coin-gate),
 Electrode *Cadena Bum Bum* 101 (descarta Herramientas propias EN JUEGO para +40 c/u = decisión de descarte sobre
 tools en juego). **DEUDAS del napkin (más abajo, sección ⚠️):** #1 Haunter *Espíritu Retorno* 93 (Partidario del
