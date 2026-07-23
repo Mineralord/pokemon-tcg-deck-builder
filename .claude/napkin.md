@@ -150,6 +150,16 @@ lógica de ningún Lab). `Lab(id,title,content:@Composable)` = unidad hospedable
 en **app-studio/StudioLabs.kt** (`studioLabs()`, placeholder sin contenido 11.2) → Shell desacoplado.
 0 tokens/componentes nuevos (usa SidebarStyle/ButtonStyle/EmptyStateStyle). APK: `app-studio/build/
 outputs/apk/debug/app-studio-debug.apk`. Sin tests (módulos UI sin infra de test, como 11.1).
+**✅ Sprint "Animation Gallery Lab v1" (23 Jul, DEMO):** primer Lab con CONTENIDO REAL → demuestra que
+la infra de Labs soporta contenido, no solo placeholders. La Galería es un Lab NORMAL: el placeholder
+de `studioLabs()` se cambió por `AnimationGalleryLabContent()` (app-studio/AnimationGalleryLab.kt); el
+Shell NO se tocó (mismo mecanismo registrar→hospedar→conmutar). Contenido: rejilla mínima de 2 col con
+las animaciones canónicas del pipeline v1.0 (catálogo estático `CanonicalAnimations`: "Robar carta"
+ANIM #001 + "Mover carta" slice), seleccionables (state `selectedId`, default 1ª) con `ListRowStyle`
++ barra guía, y panel de info básica (`PanelStyle`: nombre/categoría/duración/descripción). Todo dentro
+del Host (R3). 0 tokens/componentes nuevos, sin dependencias nuevas (catálogo estático, NO se acopló a
+core:animation). FUERA de alcance (diferido): preview, timeline, inspector, comparador, edición,
+pipeline, importación. APK ensamblado. Sin tests (UI sin infra de test).
 
 ## 🗂️ ARQUITECTURA POR EXPANSIÓN (16 Jul 2026) — datos y efectos SEPARADOS por set
 **REGLA:** cada expansión vive AISLADA; añadir un set nuevo NO toca los datos/efectos de otro.
