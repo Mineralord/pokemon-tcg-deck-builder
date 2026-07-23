@@ -19,5 +19,6 @@ import com.mineralord.tcg.studio.shell.Lab
  * de conmutación del Shell ya lo cubre sin cambios.
  */
 fun studioLabs(registry: AssetRegistry = studioAssetRegistry()): List<Lab> = listOf(
+    Lab(id = "board-simulator", title = "Board Simulator") { BoardSimulatorLabContent(registry) },
     Lab(id = "animation-gallery", title = "Galería de Animaciones") { AnimationGalleryLabContent(registry) },
 )
