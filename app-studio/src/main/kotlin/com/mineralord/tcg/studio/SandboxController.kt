@@ -27,12 +27,19 @@ import kotlinx.coroutines.flow.asStateFlow
  * para que el Studio renderice EXACTAMENTE la misma pantalla que el juego. La única diferencia con el
  * juego es quién gobierna la UI: aquí un humano (sandbox), no las reglas del motor.
  *
- * En esta v1 siembra un tapete real (Bulbasaur Activo; Ivysaur y Venusaur en mano) construyendo un
- * [GameState] canónico con datos reales de [CardRepository]; no ejecuta reglas. Las intenciones que
- * emite la pantalla se aceptan sin validar (sandbox); su manipulación libre completa se ampliará en
- * Sprints siguientes. No dibuja nada: todo el render es de la pantalla compartida.
+ * Siembra un tapete real (Bulbasaur Activo; Ivysaur y Venusaur en mano) construyendo un [GameState]
+ * canónico con datos reales de [CardRepository]; no ejecuta reglas. Traduce las intenciones que emite
+ * la pantalla (arrastres, etc.) a [BoardInteraction] NEUTRALES y las delega en [onInteraction] (el
+ * sistema de herramientas Active Tool decide qué hacer). No conoce Evolution ni ninguna categoría; no
+ * dibuja nada.
+ *
+ * @param onInteraction recibe cada interacción del tablero ya normalizada (la consume el ToolController).
  */
-class SandboxController : CombatSceneController {
+class SandboxController(
+    private val onInteraction: (BoardInteraction) -> Unit,
+) : CombatSceneController {
+
+    private var repo: CardRepository? = null
 
     private val _ui = MutableStateFlow(GameUiState(loading = true))
     override val ui: StateFlow<GameUiState> = _ui.asStateFlow()
@@ -44,6 +51,7 @@ class SandboxController : CombatSceneController {
 
     /** Construye el tapete inicial con cartas reales. Llamar fuera del hilo principal (carga JSON). */
     fun seed(repo: CardRepository) {
+        this.repo = repo
         fun pokemon(number: Int): PokemonCard? = repo[CardId("sv3pt5-$number")] as? PokemonCard
         val bulbasaur = pokemon(1) ?: return   // datos no disponibles: se mantiene "cargando"
         val ivysaur = pokemon(2)
@@ -52,7 +60,8 @@ class SandboxController : CombatSceneController {
 
         val me = PlayerState(
             side = Side.PLAYER,
-            active = PokemonInPlay(card = bulbasaur),
+            // turnsInPlay >= 1: la pantalla considera válido evolucionar sobre este Activo.
+            active = PokemonInPlay(card = bulbasaur, turnsInPlay = 1),
             hand = listOfNotNull(ivysaur, venusaur),
             deck = List(40) { bulbasaur as Card },
             prizes = List(6) { bulbasaur as Card },
@@ -88,8 +97,26 @@ class SandboxController : CombatSceneController {
     override fun card(id: CardId): Card? = byId[id]
     override fun cardName(id: CardId): String = byId[id]?.name?.es ?: id.raw
 
-    // ---- Sandbox: se acepta sin reglas (v1: sin cambios de estado). ----
-    override fun onIntent(intent: GameIntent) { /* sandbox: manipulación libre en Sprints futuros */ }
+    /** Restaura el tapete inicial para repetir pruebas (usando el repo ya cargado). */
+    fun reset() {
+        repo?.let { seed(it) }
+    }
+
+    // ---- Traduce la intención de la pantalla a una interacción NEUTRAL y la delega. ----
+    override fun onIntent(intent: GameIntent) {
+        onInteraction(intent.toBoardInteraction())
+    }
+
+    /** Mapeo genérico intención→interacción. Sin lógica de categoría: cada tool decide si la acepta. */
+    private fun GameIntent.toBoardInteraction(): BoardInteraction = when (this) {
+        is GameIntent.Evolve -> BoardInteraction(InteractionKind.EvolveDrop, evolution.raw, onto.raw)
+        is GameIntent.PlayBasicToBench -> BoardInteraction(InteractionKind.PlayBasic, card.raw)
+        is GameIntent.AttachEnergy -> BoardInteraction(InteractionKind.AttachEnergy, energy.raw, to.raw)
+        is GameIntent.Retreat -> BoardInteraction(InteractionKind.Retreat, benchTarget.raw)
+        is GameIntent.Attack -> BoardInteraction(InteractionKind.Attack)
+        GameIntent.EndTurn -> BoardInteraction(InteractionKind.EndTurn)
+        else -> BoardInteraction(InteractionKind.Other)
+    }
     override fun onResolve(chosen: List<CardId>) { /* no hay decisiones del motor en el sandbox */ }
     override fun playItemOn(cardId: CardId, targetId: CardId) { /* no-op en v1 */ }
 
