@@ -50,7 +50,8 @@ import com.mineralord.tcg.studio.assets.AssetStatus
 fun AssetToolPanel(
     controller: ToolController,
     onReset: () -> Unit,
-    onEnterImmersive: () -> Unit,
+    presentationToggleLabel: String,
+    onPresentationToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scheme = StudioTheme.colors
@@ -61,7 +62,7 @@ fun AssetToolPanel(
         verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
     ) {
         BasicText(text = "Asset Tool", style = coloredTool(PanelStyle.titleStyle, scheme.contentEmphasis))
-        ToolButton(scheme, ButtonVariant.Primary, "Entrar en modo inmersivo", onEnterImmersive)
+        ToolButton(scheme, ButtonVariant.Primary, presentationToggleLabel, onPresentationToggle)
 
         val active = controller.active
         if (active == null) {

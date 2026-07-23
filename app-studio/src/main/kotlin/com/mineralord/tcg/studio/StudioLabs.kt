@@ -11,15 +11,15 @@ import com.mineralord.tcg.studio.shell.Lab
  * otro. No recibe trato especial por ser el primero.
  *
  * **Fuente única de verdad:** los Labs que muestran datos los reciben desde el `AssetRegistry` de la
- * [session]; no mantienen listas propias. El Board Simulator recibe además [onEnterImmersive] para
- * activar el modo inmersivo (que puentea el Shell, gestionado en `MainActivity`).
+ * [session]; no mantienen listas propias. El Board Simulator recibe además [onEnterPresentation] para
+ * activar Presentation Mode (que puentea el Shell, gestionado en `MainActivity`).
  *
  * Añadir un Lab futuro = añadir un `Lab(...)` más a esta lista con su propio `content`; el mecanismo
  * de conmutación del Shell ya lo cubre sin cambios.
  */
-fun studioLabs(session: BoardSimSession, onEnterImmersive: () -> Unit): List<Lab> = listOf(
+fun studioLabs(session: BoardSimSession, onEnterPresentation: () -> Unit): List<Lab> = listOf(
     Lab(id = "board-simulator", title = "Board Simulator") {
-        BoardSimulatorLabContent(session = session, onEnterImmersive = onEnterImmersive)
+        BoardSimulatorLabContent(session = session, onEnterPresentation = onEnterPresentation)
     },
     Lab(id = "animation-gallery", title = "Galería de Animaciones") {
         AnimationGalleryLabContent(session.registry)

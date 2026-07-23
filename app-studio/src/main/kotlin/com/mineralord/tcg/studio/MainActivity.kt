@@ -62,14 +62,15 @@ class MainActivity : ComponentActivity() {
                 // Sesión del Board Simulator HOISTADA por encima del Shell: así la MISMA CombatScreen y
                 // su controlador sobreviven al conmutar entre modos (no se reinician ni se duplican).
                 val session = rememberBoardSimSession()
-                // Dos modos de trabajo: Workspace (Shell + consola) e Immersive (solo la CombatScreen).
-                var immersive by remember { mutableStateOf(false) }
-                Crossfade(targetState = immersive, animationSpec = tween(320), label = "studioWorkspaceMode") { imm ->
-                    if (imm) {
-                        // Modo inmersivo: se puentea TODO el chasis del Studio; sólo el combate a sangre.
-                        ImmersiveWorkspace(session = session, onExit = { immersive = false })
+                // Dos modos: Workspace (Shell + consola con grab handle fijo) y Presentation (la
+                // CombatScreen LIMPIA, indistinguible del juego; el acceso al Studio es el botón de
+                // Opciones del tapete). Se puentea el Shell en Presentation.
+                var presentation by remember { mutableStateOf(false) }
+                Crossfade(targetState = presentation, animationSpec = tween(320), label = "studioMode") { pres ->
+                    if (pres) {
+                        PresentationWorkspace(session = session, onExitPresentation = { presentation = false })
                     } else {
-                        StudioShell(labs = studioLabs(session = session, onEnterImmersive = { immersive = true }))
+                        StudioShell(labs = studioLabs(session = session, onEnterPresentation = { presentation = true }))
                     }
                 }
             }
