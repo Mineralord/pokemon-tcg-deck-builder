@@ -44,6 +44,7 @@ include(":feature:game")
 include(":app")
 
 // --- studio: cáscara del Pokémon TCG Studio (APK 2), sobre el mismo núcleo compartido ---
+include(":studio:assets")
 include(":studio:shell")
 include(":app-studio")
 // include(":core:common")

@@ -43,6 +43,9 @@ android {
 dependencies {
     // Única feature del Studio: la cáscara/Shell. El núcleo compartido llega transitivamente.
     implementation(project(":studio:shell"))
+    // Fuente única de verdad de los recursos del Studio (Asset Registry). Aporta el modelo de datos;
+    // el catálogo concreto de animaciones se ensambla aquí, en el composition root (StudioAssets.kt).
+    implementation(project(":studio:assets"))
     // Motor de animaciones compartido (núcleo): el Studio HOSPEDA el mismo pipeline que el juego.
     // Es núcleo compartido (Compose puro, sin reglas de juego/red/Firebase): compatible con la
     // Arquitectura Dual y la Regla de Oro. `core:animation` llega transitivamente (api).
