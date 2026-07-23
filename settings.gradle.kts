@@ -30,12 +30,22 @@ include(":data:cloud")
 include(":data:netplay")
 include(":data:netfirestore")
 
+// --- core: sistema de animaciones (Kotlin puro JVM, independiente del engine y de la UI) ---
+include(":core:animation")
+
+// --- core: integración Compose del framework de animaciones (Android/Compose/render) ---
+include(":core:animation-compose")
+
 // --- core + feature + app: capa Android/Compose ---
 include(":core:designsystem")
 include(":feature:packs")
 include(":feature:decks")
 include(":feature:game")
 include(":app")
+
+// --- studio: cáscara del Pokémon TCG Studio (APK 2), sobre el mismo núcleo compartido ---
+include(":studio:shell")
+include(":app-studio")
 // include(":core:common")
 // include(":core:designsystem")
 // include(":core:ui")
