@@ -84,6 +84,25 @@ la posibilidad de validar en físico cuando aporta valor. Declara SIEMPRE, al ce
 clasificación (Interno/Demo) y, si es Demo, adjunta el APK. Esta política se aplica **siempre**, sin
 recordatorios en prompts futuros.
 
+## Responsive por contrato (regla PERMANENTE de infraestructura visual del Studio)
+Desde el Sprint *Studio Window & Adaptive Layout*, el Studio tiene una infraestructura visual
+congelada que **todo Lab debe respetar sin excepción**:
+
+- **El Shell (`studio:shell`) es el único responsable** de la inmersión (edge-to-edge, barras del
+  sistema ocultas), de los Safe Areas (notch / display cutout / esquinas redondeadas vía
+  `WindowInsets.safeDrawing`) y de la adaptación de tamaño/orientación. Lo fija una sola vez para
+  todo el Studio (`MainActivity` + `StudioShell`).
+- **Un único sistema adaptativo**, nunca layouts duplicados `PortraitLayout`/`LandscapeLayout`. La
+  clase de ancho se deriva del **workspace real** (`BoxWithConstraints` + [`StudioWindowWidth`],
+  umbrales oficiales de Material 3: Compacto <600dp · Medio <840dp · Expandido ≥840dp). Rail inferior
+  en Compacto (Portrait); Rail lateral en Medio/Expandido (Landscape, tablet, plegable, ChromeOS).
+- **Todo Lab DEBE ser completamente responsive.** Ningún Lab puede asumir un tamaño fijo, una
+  orientación fija ni una resolución concreta. El Lab recibe del Host un área ya adaptada e
+  inset-safe y **solo** debe rellenarla de forma fluida (`fillMaxSize`, medidas relativas,
+  `BoxWithConstraints` interno si necesita reorganizarse). No toca insets, ventana ni orientación.
+- Al construir o modificar cualquier Lab, **verificar Portrait y Landscape** (los `@Preview` del
+  Shell incluyen ambos: *Compact* y *Expanded*). Un Sprint que rompa esta regla no cumple su DoD.
+
 ## Cuándo SÍ está permitido tocar arquitectura
 Solo si, durante la implementación, aparece:
 - un **bloqueo técnico real** (no se puede continuar el Sprint sin un cambio estructural), o

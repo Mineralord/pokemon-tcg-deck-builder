@@ -2,16 +2,22 @@ package com.mineralord.tcg.studio.shell
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -44,22 +50,27 @@ import com.mineralord.tcg.core.designsystem.tokens.ToolbarStyle
 import com.mineralord.tcg.core.designsystem.tokens.VisualState
 
 /**
- * **Pokémon TCG Studio — Boot + Shell + Navegación v1: el contenedor permanente conmutable.**
+ * **Pokémon TCG Studio — Shell inmersivo y adaptativo: el contenedor permanente.**
  *
- * Única superficie persistente del Studio. Es una **Plantilla** (VG): solo *coloca organismos* en
- * regiones fijas (R1 Toolbar · R2 Rail de Labs · R3 Host del Workspace · R4 Status Bar).
+ * Única superficie persistente del Studio. Es una **Plantilla** (VG): coloca organismos en regiones
+ * fijas (R1 Toolbar · R2 Rail de Labs · R3 Host del Workspace · R4 Status Bar).
  *
- * **Responsabilidad única frente a los Labs:** hospedarlos y permitir conmutar entre ellos. El Shell
- * recibe la lista de [labs] registrados y **no conoce el interior de ninguno** (ni siquiera de la
- * Galería de Animaciones, que es solo el primer Lab registrado). Al seleccionar un Lab en el Rail:
- * el Host (R3) muestra su [Lab.content] y la ruta de contexto (R1) refleja su [Lab.title]. Sin ningún
- * Lab activo, el Host muestra el estado vacío ("home"). Este mecanismo sirve para cualquier Lab futuro.
+ * **Infraestructura visual permanente (Studio Window & Adaptive Layout).** El Shell es el único
+ * responsable de entregar a cada Lab un **área de trabajo ya adaptada**:
+ *  - **Inmersión / edge-to-edge**: el lienzo de tema pinta a sangre completa (bajo el notch y las
+ *    esquinas), pero el contenido se enmarca dentro de los **Safe Areas** con
+ *    `WindowInsets.safeDrawing` (notch, cutout, barras transitorias): nunca tapa texto ni botones.
+ *  - **Adaptación de tamaño/orientación**: un **único sistema adaptativo** (sin layouts Portrait /
+ *    Landscape duplicados). Con `BoxWithConstraints` se mide el workspace real y se deriva la clase de
+ *    ancho oficial ([StudioWindowWidth]); en ancho **Compacto** el Rail se coloca abajo (Portrait
+ *    teléfono), en **Medio/Expandido** el Rail va al lateral (Landscape, tablet, plegable, ChromeOS).
  *
- * Toda la apariencia sale del Design System congelado a través de sus **ComponentStyle**
- * (`ToolbarStyle`, `SidebarStyle`, `StatusBarStyle`, `EmptyStateStyle`, `ButtonStyle`, `DividerStyle`)
- * y el `StudioTheme`. **No introduce ningún componente, token, estilo ni principio nuevo.**
+ * **Responsabilidad única frente a los Labs:** hospedarlos, conmutar entre ellos y darles un espacio
+ * inset-safe y responsive. El Shell **no conoce el interior de ningún Lab**; los Labs no se preocupan
+ * por orientación, notch, barras del sistema ni tamaño de pantalla.
  *
- * Debe invocarse dentro de un `StudioTheme { … }` (que provee el esquema de color activo).
+ * Toda la apariencia sale del Design System congelado a través de sus **ComponentStyle** y el
+ * `StudioTheme`. **No introduce ningún componente, token, estilo ni principio nuevo.**
  *
  * @param labs Labs registrados que el Shell hospeda, en el orden en que aparecen en el Rail.
  */
@@ -71,26 +82,59 @@ fun StudioShell(labs: List<Lab> = emptyList()) {
     var activeLabId by remember { mutableStateOf<String?>(null) }
     val activeLab = labs.firstOrNull { it.id == activeLabId }
 
-    // R0 · Lienzo raíz: responsabilidad del Theme (surfaceCanvas). Los huecos entre regiones lo
-    // muestran; el Shell no pinta superficie propia más allá de este lienzo de tema.
-    Column(
+    // R0 · Lienzo raíz: color de tema A SANGRE (edge-to-edge), incluida la zona del notch/cutout.
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(scheme.surfaceCanvas),
     ) {
+        // Todo el contenido útil vive dentro del área segura: el Shell descuenta insets de notch,
+        // cutout y barras del sistema una sola vez, para todas las regiones y todos los Labs.
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+        ) {
+            val widthClass = StudioWindowWidth.fromWidth(maxWidth)
+            if (widthClass == StudioWindowWidth.Compact) {
+                CompactLayout(scheme, labs, activeLab, activeLabId) { activeLabId = it }
+            } else {
+                RegularLayout(scheme, labs, activeLab, activeLabId, widthClass) { activeLabId = it }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Layouts adaptativos (un único sistema; sin duplicar Portrait/Landscape).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Ancho **Medio/Expandido** (Landscape, tablet, plegable, ChromeOS): Rail lateral vertical. */
+@Composable
+private fun RegularLayout(
+    scheme: StudioColorTokens.Scheme,
+    labs: List<Lab>,
+    activeLab: Lab?,
+    activeLabId: String?,
+    widthClass: StudioWindowWidth,
+    onSelect: (String?) -> Unit,
+) {
+    val railWidth = if (widthClass == StudioWindowWidth.Expanded) RailWidthExpanded else RailWidth
+    Column(modifier = Modifier.fillMaxSize()) {
         ToolbarRegion(scheme, activeLabTitle = activeLab?.title)   // R1
         Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            RailRegion(                                            // R2
+            SideRailRegion(                                        // R2 (lateral)
                 scheme = scheme,
                 labs = labs,
                 activeLabId = activeLabId,
-                onSelect = { activeLabId = it },
+                width = railWidth,
+                onSelect = { onSelect(it) },
             )
             HostRegion(                                            // R3
                 scheme = scheme,
                 activeLab = activeLab,
                 labs = labs,
-                onOpen = { activeLabId = it },
+                onOpen = { onSelect(it) },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -98,12 +142,39 @@ fun StudioShell(labs: List<Lab> = emptyList()) {
     }
 }
 
+/** Ancho **Compacto** (teléfono en Portrait): Rail horizontal inferior, sobre la Status Bar. */
+@Composable
+private fun CompactLayout(
+    scheme: StudioColorTokens.Scheme,
+    labs: List<Lab>,
+    activeLab: Lab?,
+    activeLabId: String?,
+    onSelect: (String?) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        ToolbarRegion(scheme, activeLabTitle = activeLab?.title)   // R1
+        HostRegion(                                                // R3
+            scheme = scheme,
+            activeLab = activeLab,
+            labs = labs,
+            onOpen = { onSelect(it) },
+            modifier = Modifier.fillMaxWidth().weight(1f),
+        )
+        BottomRailRegion(                                          // R2 (inferior)
+            scheme = scheme,
+            labs = labs,
+            activeLabId = activeLabId,
+            onSelect = { onSelect(it) },
+        )
+        StatusBarRegion(scheme, activeLabTitle = activeLab?.title) // R4
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Dimensiones de PLANTILLA (geometría de regiones, no tokens de estilo).
-// El Design System gobierna la apariencia (color/tipografía/relaciones/materiales); la Plantilla
-// decide dónde y con qué tamaño se colocan las regiones (11.1).
 // ─────────────────────────────────────────────────────────────────────────────
 private val RailWidth: Dp = 220.dp
+private val RailWidthExpanded: Dp = 264.dp
 
 // ─────────────────────────────────────────────────────────────────────────────
 // R1 · Barra global (Toolbar)
@@ -121,12 +192,10 @@ private fun ToolbarRegion(scheme: StudioColorTokens.Scheme, activeLabTitle: Stri
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(ToolbarStyle.gap),
     ) {
-        // Identidad + ruta de contexto (compuesta con tipografía; sin componente "breadcrumb" nuevo).
         BasicText(
             text = "Pokémon TCG Studio",
             style = coloredText(StudioTypographyTokens.Role.Title, scheme.contentEmphasis),
         )
-        // La ruta refleja el Lab activo; sin Lab, muestra la raíz "Studio".
         BasicText(
             text = "›  ${activeLabTitle ?: "Studio"}",
             style = coloredText(StudioTypographyTokens.Role.Body, scheme.contentMuted),
@@ -135,20 +204,22 @@ private fun ToolbarRegion(scheme: StudioColorTokens.Scheme, activeLabTitle: Stri
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// R2 · Rail de Labs (Sidebar) — lista conmutable de Labs registrados.
+// R2 · Rail de Labs — lista conmutable. Dos disposiciones del mismo mecanismo.
 // ─────────────────────────────────────────────────────────────────────────────
+/** Rail lateral (ancho medio/expandido). */
 @Composable
-private fun RailRegion(
+private fun SideRailRegion(
     scheme: StudioColorTokens.Scheme,
     labs: List<Lab>,
     activeLabId: String?,
+    width: Dp,
     onSelect: (String) -> Unit,
 ) {
     val material = SidebarStyle.material
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(RailWidth)
+            .width(width)
             .background(material.surface(scheme))
             .endHairline(material.border?.invoke(scheme), material.borderWidth)
             .padding(SidebarStyle.padding),
@@ -159,6 +230,38 @@ private fun RailRegion(
                 scheme = scheme,
                 label = lab.title,
                 selected = lab.id == activeLabId,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { onSelect(lab.id) },
+            )
+        }
+    }
+}
+
+/** Rail inferior horizontal (ancho compacto / Portrait). Desplazable si no caben todos los Labs. */
+@Composable
+private fun BottomRailRegion(
+    scheme: StudioColorTokens.Scheme,
+    labs: List<Lab>,
+    activeLabId: String?,
+    onSelect: (String) -> Unit,
+) {
+    val material = SidebarStyle.material
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(material.surface(scheme))
+            .topHairline(material.border?.invoke(scheme), material.borderWidth)
+            .horizontalScroll(rememberScrollState())
+            .padding(SidebarStyle.padding),
+        horizontalArrangement = Arrangement.spacedBy(SidebarStyle.itemGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        labs.forEach { lab ->
+            RailItem(
+                scheme = scheme,
+                label = lab.title,
+                selected = lab.id == activeLabId,
+                modifier = Modifier.width(RailWidth),
                 onClick = { onSelect(lab.id) },
             )
         }
@@ -167,21 +270,21 @@ private fun RailRegion(
 
 /**
  * Fila del Rail materializada con [SidebarStyle]: fondo `selectionBackground` + barra guía de
- * `selectionEdge` cuando está activa (VG-K: no solo color). El comportamiento (clic → selección) lo
- * aporta la Plantilla; la apariencia por estado la resuelve el ComponentStyle.
+ * `selectionEdge` cuando está activa (VG-K). El comportamiento (clic → selección) lo aporta la
+ * Plantilla; la apariencia por estado la resuelve el ComponentStyle.
  */
 @Composable
 private fun RailItem(
     scheme: StudioColorTokens.Scheme,
     label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val state = if (selected) VisualState.Selected else VisualState.Rest
     val colors = SidebarStyle.colors(scheme, state)
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .height(SidebarStyle.itemHeight)
             .clip(RoundedCornerShape(SidebarStyle.itemRadius))
             .background(colors.container)
@@ -195,7 +298,7 @@ private fun RailItem(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// R3 · Host del Workspace (Dock) — Lab activo o estado vacío "home".
+// R3 · Host del Workspace — Lab activo o estado vacío "home".
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 private fun HostRegion(
@@ -210,7 +313,8 @@ private fun HostRegion(
         contentAlignment = if (activeLab == null) Alignment.Center else Alignment.TopStart,
     ) {
         if (activeLab != null) {
-            // El Shell delega por completo el interior al Lab: no conoce su contenido.
+            // El Shell delega por completo el interior al Lab: no conoce su contenido. El Lab recibe
+            // un área ya adaptada e inset-safe y solo debe rellenarla de forma responsive.
             activeLab.content()
         } else {
             HomeEmptyState(scheme, labs, onOpen)
@@ -234,7 +338,6 @@ private fun HomeEmptyState(scheme: StudioColorTokens.Scheme, labs: List<Lab>, on
             text = if (labs.isEmpty()) "Ningún laboratorio disponible." else "Elige un laboratorio en el Rail.",
             style = coloredText(EmptyStateStyle.bodyStyle, EmptyStateStyle.bodyColor(scheme)),
         )
-        // Acción primaria del "home": abre el primer Lab registrado (dirigida por datos, no acoplada).
         labs.firstOrNull()?.let { first ->
             PrimaryAction(scheme, label = "Abrir ${first.title}", onClick = { onOpen(first.id) })
         }
@@ -322,16 +425,29 @@ private fun Modifier.topHairline(color: Color?, thickness: Dp): Modifier =
         drawRect(color, topLeft = Offset(0f, 0f), size = Size(size.width, t))
     }
 
-/** Hairline en el borde final (derecho) — separa el Rail del Host. */
+/** Hairline en el borde final (derecho) — separa el Rail lateral del Host. */
 private fun Modifier.endHairline(color: Color?, thickness: Dp): Modifier =
     if (color == null) this else drawBehind {
         val t = thickness.toPx()
         drawRect(color, topLeft = Offset(size.width - t, 0f), size = Size(t, size.height))
     }
 
-@Preview(name = "Studio Shell — Navegación v1", widthDp = 1280, heightDp = 800)
+@Preview(name = "Studio Shell — Landscape (Expanded)", widthDp = 1280, heightDp = 800)
 @Composable
-private fun StudioShellPreview() {
+private fun StudioShellExpandedPreview() {
+    StudioTheme {
+        StudioShell(
+            labs = listOf(
+                Lab(id = "preview-a", title = "Galería de Animaciones") {},
+                Lab(id = "preview-b", title = "Otro Lab") {},
+            ),
+        )
+    }
+}
+
+@Preview(name = "Studio Shell — Portrait (Compact)", widthDp = 380, heightDp = 800)
+@Composable
+private fun StudioShellCompactPreview() {
     StudioTheme {
         StudioShell(
             labs = listOf(
