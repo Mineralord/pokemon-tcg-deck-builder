@@ -47,16 +47,21 @@ import com.mineralord.tcg.studio.assets.AssetStatus
  * No conoce ninguna categoría concreta: todo sale de [ToolController] y del Registry.
  */
 @Composable
-fun AssetToolPanel(controller: ToolController, onReset: () -> Unit, modifier: Modifier = Modifier) {
+fun AssetToolPanel(
+    controller: ToolController,
+    onReset: () -> Unit,
+    onEnterImmersive: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val scheme = StudioTheme.colors
     Column(
         modifier = modifier
-            .background(scheme.surfacePanel)
             .verticalScroll(rememberScrollState())
             .padding(PanelStyle.contentPadding),
         verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
     ) {
         BasicText(text = "Asset Tool", style = coloredTool(PanelStyle.titleStyle, scheme.contentEmphasis))
+        ToolButton(scheme, ButtonVariant.Primary, "Entrar en modo inmersivo", onEnterImmersive)
 
         val active = controller.active
         if (active == null) {

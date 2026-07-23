@@ -1,6 +1,5 @@
 package com.mineralord.tcg.studio
 
-import com.mineralord.tcg.studio.assets.AssetRegistry
 import com.mineralord.tcg.studio.shell.Lab
 
 /**
@@ -11,14 +10,18 @@ import com.mineralord.tcg.studio.shell.Lab
  * Animaciones** es un Lab NORMAL: se registra, carga y muestra con el mismo mecanismo que cualquier
  * otro. No recibe trato especial por ser el primero.
  *
- * **Fuente única de verdad:** los Labs que muestran datos los reciben desde el [AssetRegistry]
- * (construido en [studioAssetRegistry]); no mantienen listas propias. La Gallery recibe el registro
- * y sólo lo consume.
+ * **Fuente única de verdad:** los Labs que muestran datos los reciben desde el `AssetRegistry` de la
+ * [session]; no mantienen listas propias. El Board Simulator recibe además [onEnterImmersive] para
+ * activar el modo inmersivo (que puentea el Shell, gestionado en `MainActivity`).
  *
  * Añadir un Lab futuro = añadir un `Lab(...)` más a esta lista con su propio `content`; el mecanismo
  * de conmutación del Shell ya lo cubre sin cambios.
  */
-fun studioLabs(registry: AssetRegistry = studioAssetRegistry()): List<Lab> = listOf(
-    Lab(id = "board-simulator", title = "Board Simulator") { BoardSimulatorLabContent() },
-    Lab(id = "animation-gallery", title = "Galería de Animaciones") { AnimationGalleryLabContent(registry) },
+fun studioLabs(session: BoardSimSession, onEnterImmersive: () -> Unit): List<Lab> = listOf(
+    Lab(id = "board-simulator", title = "Board Simulator") {
+        BoardSimulatorLabContent(session = session, onEnterImmersive = onEnterImmersive)
+    },
+    Lab(id = "animation-gallery", title = "Galería de Animaciones") {
+        AnimationGalleryLabContent(session.registry)
+    },
 )

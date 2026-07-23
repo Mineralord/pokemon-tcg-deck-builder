@@ -6,6 +6,12 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -53,7 +59,19 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StudioTheme {
-                StudioShell(labs = studioLabs())
+                // Sesión del Board Simulator HOISTADA por encima del Shell: así la MISMA CombatScreen y
+                // su controlador sobreviven al conmutar entre modos (no se reinician ni se duplican).
+                val session = rememberBoardSimSession()
+                // Dos modos de trabajo: Workspace (Shell + consola) e Immersive (solo la CombatScreen).
+                var immersive by remember { mutableStateOf(false) }
+                Crossfade(targetState = immersive, animationSpec = tween(320), label = "studioWorkspaceMode") { imm ->
+                    if (imm) {
+                        // Modo inmersivo: se puentea TODO el chasis del Studio; sólo el combate a sangre.
+                        ImmersiveWorkspace(session = session, onExit = { immersive = false })
+                    } else {
+                        StudioShell(labs = studioLabs(session = session, onEnterImmersive = { immersive = true }))
+                    }
+                }
             }
         }
     }
