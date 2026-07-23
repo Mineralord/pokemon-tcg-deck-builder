@@ -1,6 +1,7 @@
 package com.mineralord.tcg.studio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -29,6 +31,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mineralord.tcg.core.animation.AnimationRequest
+import com.mineralord.tcg.core.animationcompose.AnimationRenderState
+import com.mineralord.tcg.core.animationcompose.AnimationStage
+import com.mineralord.tcg.core.animationcompose.CoordinateRegistry
+import com.mineralord.tcg.core.animationcompose.LocalCoordinateRegistry
+import com.mineralord.tcg.core.animationcompose.SlotId
+import com.mineralord.tcg.core.animationcompose.activeSlotId
+import com.mineralord.tcg.core.animationcompose.deckSlotId
+import com.mineralord.tcg.core.animationcompose.handSlotId
+import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirector
+import com.mineralord.tcg.core.animationcompose.trackBounds
+import com.mineralord.tcg.core.designsystem.tokens.ButtonStyle
+import com.mineralord.tcg.core.designsystem.tokens.ButtonVariant
 import com.mineralord.tcg.core.designsystem.tokens.ListRowStyle
 import com.mineralord.tcg.core.designsystem.tokens.PanelStyle
 import com.mineralord.tcg.core.designsystem.tokens.StudioColorTokens
@@ -37,33 +52,36 @@ import com.mineralord.tcg.core.designsystem.tokens.StudioTypographyTokens
 import com.mineralord.tcg.core.designsystem.tokens.VisualState
 
 /**
- * **Galería de Animaciones — Lab v1 (contenido real).**
+ * **Galería de Animaciones — Lab v2: Preview real (contenido del Lab).**
  *
- * Es un Lab NORMAL: su único punto de contacto con el Shell es ser el `content` de un `Lab` en
- * [studioLabs]. No recibe trato especial por ser el primero; el mismo mecanismo (registrar → hospedar
- * → conmutar) sirve para cualquier Lab futuro. Este Sprint demuestra que la infraestructura de Labs ya
- * soporta contenido real: una rejilla de las animaciones canónicas existentes, seleccionables, con su
- * información básica, todo dentro del Host del Shell.
+ * Es un Lab NORMAL: su único contacto con el Shell es ser el `content` de un `Lab` en [studioLabs].
+ * El Studio actúa aquí como **anfitrión del motor de animaciones**: monta el `AnimationStage` real y
+ * obtiene el `AnimationDirector` desde el composition root ÚNICO compartido
+ * ([rememberCanonicalAnimationDirector]). Al pulsar «Reproducir» se envía la request de dominio real
+ * por la misma fachada que usará el juego (`director.submit(...)`), y el mismo pipeline (Scheduler →
+ * Runner → Definition → Executor → RenderNode) reproduce la animación en el escenario.
  *
- * Fuera de alcance (no aquí): preview, timeline, inspector, comparador, edición, pipeline, importación.
+ * **No existe ninguna implementación de animación exclusiva del Studio:** las recetas, ejecutores y
+ * el director viven en `core:animation-compose`; el Studio sólo provee dónde dibujar (registro de
+ * coordenadas + estado de render) y las ranuras rastreadas.
  *
- * Se compone EXCLUSIVAMENTE con el Design System congelado ([PanelStyle], [ListRowStyle], tipografía):
- * cero tokens/componentes nuevos.
+ * Fuera de alcance (diferido): timeline, inspector, comparador, edición, parámetros, importación,
+ * catálogo automático. Se compone con el Design System congelado; cero tokens/componentes nuevos.
  */
 
-/** Ficha de una animación canónica del catálogo (solo información básica en v1). */
+private const val PREVIEW_PLAYER = "studio"
+
+/** Ficha de una animación canónica: metadatos + la request de dominio REAL que la dispara. */
 private data class GalleryAnimation(
     val id: String,
     val name: String,
     val category: String,
     val duration: String,
     val description: String,
+    val request: AnimationRequest,
 )
 
-/**
- * Animaciones canónicas ya existentes en el pipeline (v1.0). Catálogo mínimo de v1; crece cuando el
- * backlog de animaciones canonice nuevas piezas.
- */
+/** Animaciones canónicas ya existentes en el pipeline compartido (v1.0). */
 private val CanonicalAnimations: List<GalleryAnimation> = listOf(
     GalleryAnimation(
         id = "draw-card",
@@ -72,14 +90,16 @@ private val CanonicalAnimations: List<GalleryAnimation> = listOf(
         duration = "~320 ms",
         description = "Carta que viaja del mazo a la mano con arco leve, escala y overshoot sobrio " +
             "(estándar «Snap sobrio»). Primera animación canónica del backlog (ANIM #001).",
+        request = AnimationRequest.CardDrawn(playerId = PREVIEW_PLAYER, cardId = "preview"),
     ),
     GalleryAnimation(
         id = "move-card",
         name = "Mover carta",
         category = "N1 · Gameplay",
-        duration = "variable",
-        description = "Desplazamiento de una carta entre dos ranuras (slot → slot) por la capa de " +
+        duration = "~260 ms",
+        description = "Desplazamiento de una carta entre dos ranuras (mano → Activo) por la capa de " +
             "vuelo. Slice vertical que validó el pipeline de extremo a extremo.",
+        request = AnimationRequest.PokemonPlayed(playerId = PREVIEW_PLAYER, pokemonId = "preview"),
     ),
 )
 
@@ -89,6 +109,11 @@ fun AnimationGalleryLabContent() {
     val scheme = StudioTheme.colors
     var selectedId by remember { mutableStateOf(CanonicalAnimations.first().id) }
     val selected = CanonicalAnimations.first { it.id == selectedId }
+
+    // Anfitrión del motor real: el Studio provee dónde dibujar; el pipeline llega del núcleo.
+    val coordinates = remember { CoordinateRegistry() }
+    val renderState = remember { AnimationRenderState() }
+    val director = rememberCanonicalAnimationDirector(coordinates, renderState)
 
     Column(
         modifier = Modifier
@@ -102,7 +127,7 @@ fun AnimationGalleryLabContent() {
             style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis),
         )
         BasicText(
-            text = "${CanonicalAnimations.size} animaciones canónicas",
+            text = "${CanonicalAnimations.size} animaciones canónicas · motor compartido",
             style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
         )
 
@@ -121,9 +146,16 @@ fun AnimationGalleryLabContent() {
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // Rellena la fila impar para conservar el ancho de columna.
                 if (rowItems.size == 1) Box(modifier = Modifier.weight(1f))
             }
+        }
+
+        // Escenario de Preview: el AnimationStage REAL con las ranuras rastreadas.
+        PreviewStage(scheme, coordinates, renderState)
+
+        // Acción: reproducir la animación seleccionada por la fachada real del motor.
+        PrimaryAction(scheme, label = "Reproducir «${selected.name}»") {
+            director.submit(selected.request)
         }
 
         // Información básica de la animación seleccionada.
@@ -131,7 +163,68 @@ fun AnimationGalleryLabContent() {
     }
 }
 
-private val TileHeight: Dp = 72.dp
+private val StageHeight: Dp = 320.dp
+private val SlotWidth: Dp = 56.dp
+private val SlotHeight: Dp = 80.dp
+
+/**
+ * Escenario del Preview: monta el [AnimationStage] real y publica las tres ranuras canónicas
+ * (mazo, mano, Activo) con [trackBounds], para que los ejecutores resuelvan sus rectángulos reales.
+ * La animación en vuelo la dibuja el pipeline en la capa de vuelo del Stage.
+ */
+@Composable
+private fun PreviewStage(
+    scheme: StudioColorTokens.Scheme,
+    coordinates: CoordinateRegistry,
+    renderState: AnimationRenderState,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(StageHeight)
+            .clip(RoundedCornerShape(ListRowStyle.radius))
+            .background(scheme.surfacePanel)
+            .border(1.dp, scheme.borderSubtle, RoundedCornerShape(ListRowStyle.radius)),
+    ) {
+        AnimationStage(
+            registry = coordinates,
+            renderState = renderState,
+            board = {
+                Box(modifier = Modifier.fillMaxSize().padding(PanelStyle.padding)) {
+                    SlotMarker(scheme, "Mazo", deckSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.TopStart))
+                    SlotMarker(scheme, "Mano", handSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.Center))
+                    SlotMarker(scheme, "Activo", activeSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.BottomEnd))
+                }
+            },
+        )
+    }
+}
+
+/** Ranura visible del escenario, rastreada en el registro compartido vía [trackBounds]. */
+@Composable
+private fun SlotMarker(
+    scheme: StudioColorTokens.Scheme,
+    label: String,
+    slotId: SlotId,
+    modifier: Modifier = Modifier,
+) {
+    val registry = LocalCoordinateRegistry.current
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(SlotWidth, SlotHeight)
+                .trackBounds(slotId, registry)
+                .clip(RoundedCornerShape(ListRowStyle.radius))
+                .background(scheme.surfaceRaised)
+                .border(1.dp, scheme.borderDefault, RoundedCornerShape(ListRowStyle.radius)),
+        )
+        BasicText(text = label, style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted))
+    }
+}
 
 /** Casilla seleccionable de la rejilla, materializada con [ListRowStyle] (fila de datos). */
 @Composable
@@ -146,7 +239,7 @@ private fun GalleryTile(
     val colors = ListRowStyle.colors(scheme, state)
     Column(
         modifier = modifier
-            .height(TileHeight)
+            .height(72.dp)
             .clip(RoundedCornerShape(ListRowStyle.radius))
             .background(colors.container)
             .selectionGuide(colors.border, ListRowStyle.selectionMarker(scheme))
@@ -159,6 +252,24 @@ private fun GalleryTile(
             text = anim.category,
             style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
         )
+    }
+}
+
+/** Botón primario materializado con [ButtonStyle] (10.1). El comportamiento (clic) es del anfitrión. */
+@Composable
+private fun PrimaryAction(scheme: StudioColorTokens.Scheme, label: String, onClick: () -> Unit) {
+    val style = ButtonStyle(ButtonVariant.Primary)
+    val colors = style.colors(scheme, VisualState.Rest)
+    Box(
+        modifier = Modifier
+            .height(style.metrics.height)
+            .clip(RoundedCornerShape(style.metrics.radius))
+            .background(colors.container)
+            .clickable(onClick = onClick)
+            .padding(horizontal = style.metrics.paddingH),
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(text = label, style = coloredText(style.textStyle, colors.content))
     }
 }
 

@@ -160,6 +160,23 @@ ANIM #001 + "Mover carta" slice), seleccionables (state `selectedId`, default 1�
 del Host (R3). 0 tokens/componentes nuevos, sin dependencias nuevas (catálogo estático, NO se acopló a
 core:animation). FUERA de alcance (diferido): preview, timeline, inspector, comparador, edición,
 pipeline, importación. APK ensamblado. Sin tests (UI sin infra de test).
+**✅ Sprint "Animation Gallery Lab v2: Preview real" (23 Jul, DEMO):** el Studio HOSPEDA el motor de
+animaciones REAL y reproduce la animación seleccionada con el MISMO pipeline que usará el juego (cero
+código paralelo/mocks). **Composition root ÚNICO compartido:** `core:animation-compose/
+CanonicalAnimationHost.kt` → `rememberCanonicalAnimationDirector(coordinates, renderState)` +
+`CanonicalAnimationContributors` (lista única de recetas) + `canonicalStepExecutors` (registro único de
+executors); tanto el juego como el Studio obtendrán su `AnimationDirector` desde aquí. **Move ascendido
+a producción:** `MoveAnimations` (PokemonPlayed→Move) sale del test y pasa a contribuidor real (+helper
+`activeSlotId`), junto a `DrawCardAnimations` (CardDrawn→DrawCard). **Preview:** `AnimationGalleryLab.kt`
+monta el `AnimationStage` real con 3 ranuras `trackBounds` (mazo/mano/activo, playerId "studio"); botón
+"Reproducir" hace `director.submit(anim.request)` (CardDrawn / PokemonPlayed) y el pipeline dibuja el
+vuelo. `app-studio` gana dep a `core:animation-compose` (núcleo compartido, OK Dual/Regla de Oro).
+**Fix compartido retrocompatible del framework:** `LocalFlightOrigin` — la capa de vuelo compensa su
+offset de montaje (`onGloballyPositioned`), por defecto `Offset.Zero` = idéntico a pantalla completa;
+así el MISMO Stage renderiza bien dentro del Host del Studio (offset≠0) y en el board del juego. Además
+el placeholder de vuelo ahora es VISIBLE (`flightCardPlaceholder`, helper único, sin duplicar) en ambos
+NodeRenderers. Tests `:core:animation-compose` y `:core:animation` verdes (puros intactos). APK
+ensamblado. FUERA de alcance: timeline/inspector/comparador/edición/parámetros/importación/catálogo auto.
 
 ## 🗂️ ARQUITECTURA POR EXPANSIÓN (16 Jul 2026) — datos y efectos SEPARADOS por set
 **REGLA:** cada expansión vive AISLADA; añadir un set nuevo NO toca los datos/efectos de otro.

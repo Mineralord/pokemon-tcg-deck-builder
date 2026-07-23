@@ -65,6 +65,7 @@ fun DrawCardNodeRenderer(node: DrawCardRenderNode) {
     val scale = node.scale()
     val rotation = node.rotationDeg()
     val size = node.origin.size
+    val flightOrigin = LocalFlightOrigin.current
     val density = LocalDensity.current
     val widthDp = with(density) { size.width.toDp() }
     val heightDp = with(density) { size.height.toDp() }
@@ -72,13 +73,15 @@ fun DrawCardNodeRenderer(node: DrawCardRenderNode) {
     Box(
         Modifier
             .graphicsLayer {
-                // Traslación del top-left = centro interpolado menos media carta.
-                translationX = center.x - size.width / 2f
-                translationY = center.y - size.height / 2f
+                // Traslación del top-left = centro interpolado menos media carta, menos el origen
+                // de la capa de vuelo (0 a pantalla completa; el offset del Host en el Studio).
+                translationX = center.x - size.width / 2f - flightOrigin.x
+                translationY = center.y - size.height / 2f - flightOrigin.y
                 scaleX = scale
                 scaleY = scale
                 rotationZ = rotation
             }
-            .size(widthDp, heightDp),
+            .size(widthDp, heightDp)
+            .flightCardPlaceholder(),
     )
 }

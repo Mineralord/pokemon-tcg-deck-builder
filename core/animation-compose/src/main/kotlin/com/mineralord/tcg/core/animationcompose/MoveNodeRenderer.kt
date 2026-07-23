@@ -33,6 +33,7 @@ fun MoveRenderNode.interpolatedBounds(): Rect = lerp(origin, destination, progre
 @Composable
 fun MoveNodeRenderer(node: MoveRenderNode) {
     val bounds = node.interpolatedBounds()
+    val flightOrigin = LocalFlightOrigin.current
     val density = LocalDensity.current
     val widthDp = with(density) { bounds.width.toDp() }
     val heightDp = with(density) { bounds.height.toDp() }
@@ -40,9 +41,11 @@ fun MoveNodeRenderer(node: MoveRenderNode) {
     Box(
         Modifier
             .graphicsLayer {
-                translationX = bounds.left
-                translationY = bounds.top
+                // Coords de raíz menos el origen de la capa de vuelo (0 a pantalla completa).
+                translationX = bounds.left - flightOrigin.x
+                translationY = bounds.top - flightOrigin.y
             }
-            .size(widthDp, heightDp),
+            .size(widthDp, heightDp)
+            .flightCardPlaceholder(),
     )
 }

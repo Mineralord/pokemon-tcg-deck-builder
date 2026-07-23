@@ -4,9 +4,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.zIndex
 
 /**
@@ -16,6 +22,18 @@ import androidx.compose.ui.zIndex
 val LocalAnimationRenderState = staticCompositionLocalOf<AnimationRenderState> {
     error("No hay AnimationRenderState en composición. Envuelve la UI en un AnimationStage.")
 }
+
+/**
+ * Desplazamiento en coordenadas de raíz de la capa de vuelo respecto al origen de la ventana. Las
+ * ranuras se registran con `positionInRoot` (coords de ventana), pero la traslación de un nodo con
+ * `graphicsLayer` es relativa a la posición donde se colocó la capa de vuelo. Restando este origen,
+ * el nodo se dibuja en las coordenadas de raíz correctas **sea cual sea el punto de montaje** del
+ * `AnimationStage` (pantalla completa en el juego, o dentro del Host del Studio).
+ *
+ * Por defecto [Offset.Zero]: si el Stage está en el origen de la ventana (uso a pantalla completa),
+ * el comportamiento es idéntico al anterior — cambio retrocompatible.
+ */
+val LocalFlightOrigin = staticCompositionLocalOf { Offset.Zero }
 
 /**
  * Raíz de render del framework de animaciones (ESQUELETO de la Fase 1).
@@ -96,11 +114,22 @@ private fun RenderLayerContent(
 @Composable
 private fun FlightLayer() {
     val renderState = LocalAnimationRenderState.current
-    renderState.nodesOf(RenderLayer.Flight).forEach { node ->
-        when (node) {
-            is MoveRenderNode -> MoveNodeRenderer(node)
-            is DrawCardRenderNode -> DrawCardNodeRenderer(node)
-            else -> Unit // otros tipos de nodo: su renderer llegará en fases futuras
+    // Captura el origen de la capa de vuelo en coords de raíz para que los nodos se dibujen bien
+    // aunque el Stage no esté en el origen de la ventana (p. ej. dentro del Host del Studio).
+    var flightOrigin by remember { mutableStateOf(Offset.Zero) }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { flightOrigin = it.positionInRoot() },
+    ) {
+        CompositionLocalProvider(LocalFlightOrigin provides flightOrigin) {
+            renderState.nodesOf(RenderLayer.Flight).forEach { node ->
+                when (node) {
+                    is MoveRenderNode -> MoveNodeRenderer(node)
+                    is DrawCardRenderNode -> DrawCardNodeRenderer(node)
+                    else -> Unit // otros tipos de nodo: su renderer llegará en fases futuras
+                }
+            }
         }
     }
 }
