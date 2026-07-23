@@ -63,6 +63,35 @@ class ModelTest {
     }
 
     @Test
+    fun `solo Ability es apagable por bloqueo de Habilidades`() {
+        assertTrue(AbilityKind.ABILITY.suppressibleByAbilityLock)
+        assertFalse(AbilityKind.POKE_POWER.suppressibleByAbilityLock)
+        assertFalse(AbilityKind.POKE_BODY.suppressibleByAbilityLock)
+    }
+
+    @Test
+    fun `effectiveAbilities oculta Habilidades pero conserva Poke-Power-Body con bloqueo`() {
+        val abi = Ability(LocalizedText("Habilidad", "Ability"), LocalizedText("", ""), null, AbilityKind.ABILITY)
+        val power = Ability(LocalizedText("Poder", "Power"), LocalizedText("", ""), null, AbilityKind.POKE_POWER)
+        val body = Ability(LocalizedText("Cuerpo", "Body"), LocalizedText("", ""), null, AbilityKind.POKE_BODY)
+        val mon = pikachuEx().copy(abilities = listOf(abi, power, body))
+
+        assertEquals(3, mon.effectiveAbilities(abilityLockActive = false).size)
+        // Con bloqueo activo solo se apaga la Habilidad moderna.
+        val locked = mon.effectiveAbilities(abilityLockActive = true)
+        assertEquals(listOf(AbilityKind.POKE_POWER, AbilityKind.POKE_BODY), locked.map { it.kind })
+    }
+
+    @Test
+    fun `un Rasgo Antiguo es inmune por construccion (no vive en abilities)`() {
+        val trait = AncientTrait(LocalizedText("Θ Barrera", "Θ Barrier"), LocalizedText("", ""))
+        val mon = pikachuEx().copy(ancientTrait = trait)
+        // Ni con bloqueo de Habilidades desaparece: no está en la lista de abilities.
+        assertEquals(trait, mon.ancientTrait)
+        assertTrue(mon.effectiveAbilities(abilityLockActive = true).isEmpty())
+    }
+
+    @Test
     fun `el estado de juego resuelve el lado activo`() {
         val p = PlayerState(side = Side.PLAYER, active = PokemonInPlay(pikachuEx()))
         val o = PlayerState(side = Side.OPPONENT, active = PokemonInPlay(pikachuEx()))

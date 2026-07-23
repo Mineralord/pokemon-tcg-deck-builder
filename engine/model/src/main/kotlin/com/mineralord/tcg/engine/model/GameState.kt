@@ -183,6 +183,13 @@ data class GameState(
      * de un lado que esté aquí; el resto de acciones se rechazan.
      */
     val pendingPromotion: Set<Side> = emptySet(),
+    /**
+     * Psyduck — Cavilar/Overthink: durante el próximo turno del rival, cada moneda que lance el
+     * jugador [coinsAsTailsSide] mientras sea SU turno ([coinsAsTailsOnTurn]) se considera CRUZ.
+     * Lo aplica el lanzamiento gateado de GameEngine; no persiste más allá de ese turno.
+     */
+    val coinsAsTailsSide: Side? = null,
+    val coinsAsTailsOnTurn: Int? = null,
 ) {
     fun sideState(side: Side): PlayerState = if (side == Side.PLAYER) player else opponent
     val activePlayer: PlayerState get() = sideState(activeSide)

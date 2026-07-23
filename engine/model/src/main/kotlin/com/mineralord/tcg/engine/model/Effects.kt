@@ -423,6 +423,12 @@ sealed interface EffectOp {
     data class RequireCoinsToAttackNextTurn(val target: Target, val coins: Int) : EffectOp
 
     /**
+     * Durante el PRÓXIMO turno del rival, cada moneda que lance ese jugador se considera CRUZ
+     * (Psyduck — Cavilar/Overthink sv3pt5-54). Fija [GameState.coinsAsTailsSide] = rival del que
+     * ataca y [GameState.coinsAsTailsOnTurn] = turno actual + 1. Lo aplica el flip gateado del motor. */
+    data object ForceOpponentCoinsTailsNextTurn : EffectOp
+
+    /**
      * Descarta el Estadio que haya en juego (a la pila de descartes de SU dueño), si lo
      * hay (Charmander — Destrucción Abrasadora). No-op si no hay Estadio. */
     data object DiscardStadium : EffectOp

@@ -622,6 +622,13 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(atkKey("sv3pt5-117", "Blinding Ink"), Effect(
         ops = listOf(EffectOp.RequireCoinsToAttackNextTurn(Target.OPP_ACTIVE, coins = 2))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 44: monedas del rival como cruz (Cavilar) -------------------
+
+    // Psyduck — Cavilar (Overthink): sin daño. Durante el próximo turno del rival, cada moneda que
+    // lance ese jugador se considera cruz. Marca al lado rival para turn + 1 (lo aplica el flip gateado).
+    put(atkKey("sv3pt5-54", "Overthink"), Effect(
+        ops = listOf(EffectOp.ForceOpponentCoinsTailsNextTurn)))
+
     // ------------------- SET 151 (sv3pt5) — Fase 25: "si tu mano está vacía" (daño + estado) -------------------
 
     // Beedrill — Aguijón Nadir (Nadir Needle): 30 base; si tu mano está vacía, +120 Y
