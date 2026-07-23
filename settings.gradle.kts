@@ -36,6 +36,9 @@ include(":core:animation")
 // --- core: integración Compose del framework de animaciones (Android/Compose/render) ---
 include(":core:animation-compose")
 
+// --- core: la ÚNICA Combat Scene compartida (juego + Studio); sólo visual, sin reglas ---
+include(":core:combat-scene")
+
 // --- core + feature + app: capa Android/Compose ---
 include(":core:designsystem")
 include(":feature:packs")

@@ -46,6 +46,9 @@ dependencies {
     // Fuente única de verdad de los recursos del Studio (Asset Registry). Aporta el modelo de datos;
     // el catálogo concreto de animaciones se ensambla aquí, en el composition root (StudioAssets.kt).
     implementation(project(":studio:assets"))
+    // La ÚNICA Combat Scene compartida (juego + Studio): el Studio EJECUTA la escena del juego,
+    // sólo cambia el controlador (SandboxController). Trae core:animation-compose y designsystem (api).
+    implementation(project(":core:combat-scene"))
     // Motor de animaciones compartido (núcleo): el Studio HOSPEDA el mismo pipeline que el juego.
     // Es núcleo compartido (Compose puro, sin reglas de juego/red/Firebase): compatible con la
     // Arquitectura Dual y la Regla de Oro. `core:animation` llega transitivamente (api).
