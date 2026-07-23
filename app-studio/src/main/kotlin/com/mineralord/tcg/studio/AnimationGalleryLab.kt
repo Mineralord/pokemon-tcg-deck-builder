@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,6 +36,7 @@ import com.mineralord.tcg.core.animation.AnimationRequest
 import com.mineralord.tcg.core.animationcompose.AnimationRenderState
 import com.mineralord.tcg.core.animationcompose.AnimationStage
 import com.mineralord.tcg.core.animationcompose.CoordinateRegistry
+import com.mineralord.tcg.core.animationcompose.EvolveVariants
 import com.mineralord.tcg.core.animationcompose.LocalCoordinateRegistry
 import com.mineralord.tcg.core.animationcompose.SlotId
 import com.mineralord.tcg.core.animationcompose.activeSlotId
@@ -52,63 +54,148 @@ import com.mineralord.tcg.core.designsystem.tokens.StudioTypographyTokens
 import com.mineralord.tcg.core.designsystem.tokens.VisualState
 
 /**
- * **Galería de Animaciones — Lab v2: Preview real (contenido del Lab).**
+ * **Galería de Animaciones — Lab v3: laboratorio de I+D por categorías.**
  *
- * Es un Lab NORMAL: su único contacto con el Shell es ser el `content` de un `Lab` en [studioLabs].
- * El Studio actúa aquí como **anfitrión del motor de animaciones**: monta el `AnimationStage` real y
- * obtiene el `AnimationDirector` desde el composition root ÚNICO compartido
- * ([rememberCanonicalAnimationDirector]). Al pulsar «Reproducir» se envía la request de dominio real
- * por la misma fachada que usará el juego (`director.submit(...)`), y el mismo pipeline (Scheduler →
- * Runner → Definition → Executor → RenderNode) reproduce la animación en el escenario.
+ * Es un Lab NORMAL (su único contacto con el Shell es ser el `content` de un `Lab`). El Studio actúa
+ * como **anfitrión del motor real**: obtiene el `AnimationDirector` del composition root ÚNICO
+ * compartido ([rememberCanonicalAnimationDirector]) y reproduce cada variante por la misma fachada
+ * que usará el juego (`director.submit(...)`). No hay ninguna animación exclusiva del Studio ni mocks.
  *
- * **No existe ninguna implementación de animación exclusiva del Studio:** las recetas, ejecutores y
- * el director viven en `core:animation-compose`; el Studio sólo provee dónde dibujar (registro de
- * coordenadas + estado de render) y las ranuras rastreadas.
+ * Organiza las animaciones por **categorías** (carpetas); cada categoría contiene todas sus
+ * **variantes**, cada una con un **estado** ([AnimationVariantState]: Experimental / Candidata /
+ * Canon). Sólo una variante puede ser Canon por categoría (invariante verificado en construcción);
+ * las demás nunca se eliminan: quedan disponibles para comparar. La decisión de cuál es Canon es
+ * exclusiva del desarrollador (esta pantalla sólo permite probarlas).
  *
- * Fuera de alcance (diferido): timeline, inspector, comparador, edición, parámetros, importación,
- * catálogo automático. Se compone con el Design System congelado; cero tokens/componentes nuevos.
+ * Se compone con el Design System congelado; cero tokens/componentes nuevos.
  */
 
 private const val PREVIEW_PLAYER = "studio"
 
-/** Ficha de una animación canónica: metadatos + la request de dominio REAL que la dispara. */
-private data class GalleryAnimation(
+/** Estado de curación de una variante dentro de su categoría. */
+private enum class AnimationVariantState(val label: String) {
+    Experimental("Experimental"),
+    Candidata("Candidata"),
+    Canon("Canon"),
+}
+
+/** Una variante concreta: metadatos + la request de dominio REAL que la dispara en el pipeline. */
+private data class GalleryVariant(
     val id: String,
     val name: String,
-    val category: String,
-    val duration: String,
     val description: String,
+    val inspiration: String,
+    val duration: String,
+    val state: AnimationVariantState,
     val request: AnimationRequest,
 )
 
-/** Animaciones canónicas ya existentes en el pipeline compartido (v1.0). */
-private val CanonicalAnimations: List<GalleryAnimation> = listOf(
-    GalleryAnimation(
-        id = "draw-card",
+/** Una categoría (carpeta) con todas sus variantes. Invariante: ≤ 1 Canon por categoría. */
+private data class GalleryCategory(
+    val id: String,
+    val name: String,
+    val variants: List<GalleryVariant>,
+) {
+    init {
+        require(variants.count { it.state == AnimationVariantState.Canon } <= 1) {
+            "La categoría '$name' no puede tener más de una variante Canon."
+        }
+    }
+}
+
+/** Catálogo del laboratorio. La categoría Evolución trae las cinco variantes de I+D (Experimental). */
+private val GalleryCatalog: List<GalleryCategory> = listOf(
+    GalleryCategory(
+        id = "draw",
         name = "Robar carta",
-        category = "N1 · Gameplay",
-        duration = "~320 ms",
-        description = "Carta que viaja del mazo a la mano con arco leve, escala y overshoot sobrio " +
-            "(estándar «Snap sobrio»). Primera animación canónica del backlog (ANIM #001).",
-        request = AnimationRequest.CardDrawn(playerId = PREVIEW_PLAYER, cardId = "preview"),
+        variants = listOf(
+            GalleryVariant(
+                id = "DRAW_001",
+                name = "Robar carta",
+                description = "Carta del mazo a la mano con arco leve, escala y overshoot sobrio.",
+                inspiration = "Marvel Snap (estándar «Snap sobrio»)",
+                duration = "~320 ms",
+                state = AnimationVariantState.Canon,
+                request = AnimationRequest.CardDrawn(PREVIEW_PLAYER, "preview"),
+            ),
+        ),
     ),
-    GalleryAnimation(
-        id = "move-card",
-        name = "Mover carta",
-        category = "N1 · Gameplay",
-        duration = "~260 ms",
-        description = "Desplazamiento de una carta entre dos ranuras (mano → Activo) por la capa de " +
-            "vuelo. Slice vertical que validó el pipeline de extremo a extremo.",
-        request = AnimationRequest.PokemonPlayed(playerId = PREVIEW_PLAYER, pokemonId = "preview"),
+    GalleryCategory(
+        id = "basic",
+        name = "Pokémon Básico",
+        variants = listOf(
+            GalleryVariant(
+                id = "BASIC_001",
+                name = "Poner en juego",
+                description = "Desplazamiento de la carta de la mano al Activo por la capa de vuelo.",
+                inspiration = "Pokémon TCG Live",
+                duration = "~260 ms",
+                state = AnimationVariantState.Canon,
+                request = AnimationRequest.PokemonPlayed(PREVIEW_PLAYER, "preview"),
+            ),
+        ),
+    ),
+    GalleryCategory(
+        id = "evolution",
+        name = "Evolución",
+        variants = listOf(
+            evolveVariant(
+                EvolveVariants.EVO_001, "Crystal Bloom",
+                "Bombeo suave con anillo cristalino frío que florece alrededor de la carta.",
+                "Hearthstone (cristal/escarcha) + Legends of Runeterra", "~700 ms",
+            ),
+            evolveVariant(
+                EvolveVariants.EVO_002, "Energy Spiral",
+                "La carta gira y asciende envuelta en una espiral de energía violeta.",
+                "Genshin/Honkai (revelado gacha en espiral)", "~850 ms",
+            ),
+            evolveVariant(
+                EvolveVariants.EVO_003, "Radiant Ascension",
+                "Ascenso pronunciado sobre una columna de luz dorada con gran destello.",
+                "Legends of Runeterra (subida de nivel de campeón)", "~950 ms",
+            ),
+            evolveVariant(
+                EvolveVariants.EVO_004, "DNA Morph",
+                "Volteo/morfología rápida de la carta con tono verde, sin anillo.",
+                "Evolución del anime Pokémon (silueta que muta)", "~600 ms",
+            ),
+            evolveVariant(
+                EvolveVariants.EVO_005, "Celestial Burst",
+                "Estallido: bombeo fuerte, destello intenso y anillo amplio azul-blanco.",
+                "Marvel Snap (reveal) + estallido del anime", "~800 ms",
+            ),
+        ),
     ),
 )
+
+/** Constructor de una variante de evolución: su request es `Evolved(variantId)` (pipeline real). */
+private fun evolveVariant(
+    id: String,
+    name: String,
+    description: String,
+    inspiration: String,
+    duration: String,
+): GalleryVariant = GalleryVariant(
+    id = id,
+    name = name,
+    description = description,
+    inspiration = inspiration,
+    duration = duration,
+    state = AnimationVariantState.Experimental, // ninguna es Canon todavía: lo decide el desarrollador
+    request = AnimationRequest.Evolved(PREVIEW_PLAYER, "preview", id),
+)
+
+private val AllVariants: List<GalleryVariant> = GalleryCatalog.flatMap { it.variants }
 
 /** Contenido del Lab «Galería de Animaciones», dibujado en el Host del Shell. */
 @Composable
 fun AnimationGalleryLabContent() {
     val scheme = StudioTheme.colors
-    var selectedId by remember { mutableStateOf(CanonicalAnimations.first().id) }
-    val selected = CanonicalAnimations.first { it.id == selectedId }
+    var selectedId by remember { mutableStateOf(EvolveVariants.EVO_001) }
+    val selected = AllVariants.first { it.id == selectedId }
+
+    // Carpetas abiertas: por defecto Evolución (categoría de I+D de este Sprint).
+    val expanded = remember { mutableStateMapOf("evolution" to true) }
 
     // Anfitrión del motor real: el Studio provee dónde dibujar; el pipeline llega del núcleo.
     val coordinates = remember { CoordinateRegistry() }
@@ -127,51 +214,136 @@ fun AnimationGalleryLabContent() {
             style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis),
         )
         BasicText(
-            text = "${CanonicalAnimations.size} animaciones canónicas · motor compartido",
+            text = "${GalleryCatalog.size} categorías · ${AllVariants.size} variantes · motor compartido",
             style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
         )
 
-        // Rejilla mínima (2 columnas) de animaciones seleccionables.
-        CanonicalAnimations.chunked(2).forEach { rowItems ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
-            ) {
-                rowItems.forEach { anim ->
-                    GalleryTile(
-                        scheme = scheme,
-                        anim = anim,
-                        selected = anim.id == selectedId,
-                        onClick = { selectedId = anim.id },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                if (rowItems.size == 1) Box(modifier = Modifier.weight(1f))
-            }
+        // Árbol de carpetas (categorías) → variantes seleccionables.
+        GalleryCatalog.forEach { category ->
+            CategoryFolder(
+                scheme = scheme,
+                category = category,
+                open = expanded[category.id] == true,
+                onToggle = { expanded[category.id] = !(expanded[category.id] == true) },
+                selectedId = selectedId,
+                onSelect = { selectedId = it },
+            )
         }
 
-        // Escenario de Preview: el AnimationStage REAL con las ranuras rastreadas.
+        // Escenario de Preview real + acción + información de la variante seleccionada.
         PreviewStage(scheme, coordinates, renderState)
-
-        // Acción: reproducir la animación seleccionada por la fachada real del motor.
         PrimaryAction(scheme, label = "Reproducir «${selected.name}»") {
             director.submit(selected.request)
         }
-
-        // Información básica de la animación seleccionada.
         DetailPanel(scheme, selected)
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Árbol de categorías/variantes
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CategoryFolder(
+    scheme: StudioColorTokens.Scheme,
+    category: GalleryCategory,
+    open: Boolean,
+    onToggle: () -> Unit,
+    selectedId: String,
+    onSelect: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap)) {
+        // Cabecera de carpeta (clic para plegar/desplegar).
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(ListRowStyle.rowHeight)
+                .clip(RoundedCornerShape(ListRowStyle.radius))
+                .background(scheme.surfacePanel)
+                .clickable(onClick = onToggle)
+                .padding(horizontal = ListRowStyle.paddingH),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ListRowStyle.paddingH),
+        ) {
+            BasicText(
+                text = if (open) "▾" else "▸",
+                style = coloredText(ListRowStyle.textStyle, scheme.contentSecondary),
+            )
+            BasicText(
+                text = "📁 ${category.name}",
+                style = coloredText(ListRowStyle.textStyle, scheme.contentEmphasis),
+            )
+            BasicText(
+                text = "${category.variants.size}",
+                style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
+            )
+        }
+        if (open) {
+            category.variants.forEach { variant ->
+                VariantRow(
+                    scheme = scheme,
+                    variant = variant,
+                    selected = variant.id == selectedId,
+                    onClick = { onSelect(variant.id) },
+                )
+            }
+        }
+    }
+}
+
+/** Fila de variante (sangrada), materializada con [ListRowStyle]. */
+@Composable
+private fun VariantRow(
+    scheme: StudioColorTokens.Scheme,
+    variant: GalleryVariant,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val state = if (selected) VisualState.Selected else VisualState.Rest
+    val colors = ListRowStyle.colors(scheme, state)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(ListRowStyle.rowHeight)
+            .padding(start = ListRowStyle.paddingH)
+            .clip(RoundedCornerShape(ListRowStyle.radius))
+            .background(colors.container)
+            .selectionGuide(colors.border, ListRowStyle.selectionMarker(scheme))
+            .clickable(onClick = onClick)
+            .padding(horizontal = ListRowStyle.paddingH),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ListRowStyle.paddingH),
+    ) {
+        BasicText(
+            text = variant.id,
+            style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
+        )
+        BasicText(text = variant.name, style = coloredText(ListRowStyle.textStyle, colors.content))
+        Box(modifier = Modifier.weight(1f))
+        StateBadge(scheme, variant.state)
+    }
+}
+
+/** Insignia textual del estado (color por estado; no sólo color: lleva etiqueta). */
+@Composable
+private fun StateBadge(scheme: StudioColorTokens.Scheme, state: AnimationVariantState) {
+    val color = when (state) {
+        AnimationVariantState.Experimental -> scheme.contentMuted
+        AnimationVariantState.Candidata -> scheme.contentPrimary
+        AnimationVariantState.Canon -> scheme.selectionEdge
+    }
+    val text = if (state == AnimationVariantState.Canon) "★ ${state.label}" else state.label
+    BasicText(text = text, style = coloredText(StudioTypographyTokens.Role.Status, color))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Escenario de Preview (motor real)
+// ─────────────────────────────────────────────────────────────────────────────
 
 private val StageHeight: Dp = 320.dp
 private val SlotWidth: Dp = 56.dp
 private val SlotHeight: Dp = 80.dp
 
-/**
- * Escenario del Preview: monta el [AnimationStage] real y publica las tres ranuras canónicas
- * (mazo, mano, Activo) con [trackBounds], para que los ejecutores resuelvan sus rectángulos reales.
- * La animación en vuelo la dibuja el pipeline en la capa de vuelo del Stage.
- */
 @Composable
 private fun PreviewStage(
     scheme: StudioColorTokens.Scheme,
@@ -192,8 +364,8 @@ private fun PreviewStage(
             board = {
                 Box(modifier = Modifier.fillMaxSize().padding(PanelStyle.padding)) {
                     SlotMarker(scheme, "Mazo", deckSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.TopStart))
-                    SlotMarker(scheme, "Mano", handSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.Center))
-                    SlotMarker(scheme, "Activo", activeSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.BottomEnd))
+                    SlotMarker(scheme, "Mano", handSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.BottomEnd))
+                    SlotMarker(scheme, "Activo", activeSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.Center))
                 }
             },
         )
@@ -226,36 +398,10 @@ private fun SlotMarker(
     }
 }
 
-/** Casilla seleccionable de la rejilla, materializada con [ListRowStyle] (fila de datos). */
-@Composable
-private fun GalleryTile(
-    scheme: StudioColorTokens.Scheme,
-    anim: GalleryAnimation,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val state = if (selected) VisualState.Selected else VisualState.Rest
-    val colors = ListRowStyle.colors(scheme, state)
-    Column(
-        modifier = modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(ListRowStyle.radius))
-            .background(colors.container)
-            .selectionGuide(colors.border, ListRowStyle.selectionMarker(scheme))
-            .clickable(onClick = onClick)
-            .padding(horizontal = ListRowStyle.paddingH, vertical = ListRowStyle.paddingH),
-        verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
-    ) {
-        BasicText(text = anim.name, style = coloredText(ListRowStyle.textStyle, colors.content))
-        BasicText(
-            text = anim.category,
-            style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
-        )
-    }
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Acción + detalle
+// ─────────────────────────────────────────────────────────────────────────────
 
-/** Botón primario materializado con [ButtonStyle] (10.1). El comportamiento (clic) es del anfitrión. */
 @Composable
 private fun PrimaryAction(scheme: StudioColorTokens.Scheme, label: String, onClick: () -> Unit) {
     val style = ButtonStyle(ButtonVariant.Primary)
@@ -273,9 +419,8 @@ private fun PrimaryAction(scheme: StudioColorTokens.Scheme, label: String, onCli
     }
 }
 
-/** Panel con la información básica de la animación seleccionada ([PanelStyle]). */
 @Composable
-private fun DetailPanel(scheme: StudioColorTokens.Scheme, anim: GalleryAnimation) {
+private fun DetailPanel(scheme: StudioColorTokens.Scheme, variant: GalleryVariant) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,11 +430,17 @@ private fun DetailPanel(scheme: StudioColorTokens.Scheme, anim: GalleryAnimation
             .padding(PanelStyle.contentPadding),
         verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
     ) {
-        BasicText(text = anim.name, style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis))
-        InfoRow(scheme, "Categoría", anim.category)
-        InfoRow(scheme, "Duración", anim.duration)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
+        ) {
+            BasicText(text = "${variant.id} · ${variant.name}", style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis))
+            StateBadge(scheme, variant.state)
+        }
+        InfoRow(scheme, "Duración", variant.duration)
+        InfoRow(scheme, "Inspiración", variant.inspiration)
         BasicText(
-            text = anim.description,
+            text = variant.description,
             style = coloredText(StudioTypographyTokens.Role.Body, scheme.contentPrimary),
         )
     }

@@ -73,6 +73,23 @@ sealed interface AnimationStep {
         val duration: Duration,
     ) : AnimationStep
 
+    /**
+     * Evolución de un Pokémon EN una ranura (no una traslación): la carta asciende, gira,
+     * bombea, destella y proyecta un anillo según sus perillas [visual]. Se separa de
+     * [Move]/[DrawCard] a propósito: es una transformación in-situ con identidad propia.
+     * Añadir esta hoja NO toca el `AnimationPlayer` (Open-Closed): el registro de ejecutores
+     * la enruta a `EvolveExecutor`.
+     *
+     * La ranura se referencia por `String` (no `SlotId`) para no acoplar el módulo puro. El
+     * "feel" concreto de cada variante son DATOS ([visual]), no ramas de código: cinco
+     * evoluciones distintas = cinco [EvolveVisual] distintos, un único ejecutor/renderer.
+     */
+    data class Evolve(
+        val slotId: String,
+        val duration: Duration,
+        val visual: EvolveVisual,
+    ) : AnimationStep
+
     /** Escala un objetivo hasta un factor. */
     data class Scale(val targetId: String, val factor: Float) : AnimationStep
 

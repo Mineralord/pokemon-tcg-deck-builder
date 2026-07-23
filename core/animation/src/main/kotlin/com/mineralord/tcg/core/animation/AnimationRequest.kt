@@ -50,6 +50,18 @@ sealed interface AnimationRequest {
         val pokemonId: String,
     ) : AnimationRequest
 
+    /**
+     * Un Pokémon ha evolucionado. [variantId] selecciona QUÉ variante visual de evolución
+     * reproducir (p. ej. "EVO_003"); el contribuidor de recetas resuelve la
+     * [AnimationDefinition] concreta a partir de ella. En el juego bastará con una variante
+     * canónica; en el Studio se prueban todas las variantes por su id.
+     */
+    data class Evolved(
+        val playerId: String,
+        val pokemonId: String,
+        val variantId: String,
+    ) : AnimationRequest
+
     /** Comienza la secuencia de ataque de un Pokémon. */
     data class AttackStarted(
         val attackerId: String,

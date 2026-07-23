@@ -27,6 +27,7 @@ import com.mineralord.tcg.core.animation.DefaultAnimationDirector
 val CanonicalAnimationContributors = listOf(
     DrawCardAnimations,
     MoveAnimations,
+    EvolveAnimations,
 )
 
 /**
@@ -39,6 +40,7 @@ fun canonicalStepExecutors(
 ): AnimationStepExecutorRegistry = AnimationStepExecutorRegistry().apply {
     register(AnimationStep.DrawCard::class, DrawCardExecutor(coordinates, renderState))
     register(AnimationStep.Move::class, MoveExecutor(coordinates, renderState))
+    register(AnimationStep.Evolve::class, EvolveExecutor(coordinates, renderState))
 }
 
 /**

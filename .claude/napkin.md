@@ -177,6 +177,26 @@ así el MISMO Stage renderiza bien dentro del Host del Studio (offset≠0) y en 
 el placeholder de vuelo ahora es VISIBLE (`flightCardPlaceholder`, helper único, sin duplicar) en ambos
 NodeRenderers. Tests `:core:animation-compose` y `:core:animation` verdes (puros intactos). APK
 ensamblado. FUERA de alcance: timeline/inspector/comparador/edición/parámetros/importación/catálogo auto.
+**✅ Sprint "Animation Gallery Lab v3: laboratorio I+D por categorías" (23 Jul, DEMO):** la Galería pasa
+de visor a LABORATORIO. Organiza por **categorías (carpetas) → variantes**, cada variante con **estado**
+(Experimental/Candidata/Canon; **≤1 Canon/categoría**, invariante `require` en `GalleryCategory`; nada se
+borra). **Categoría EVOLUCIÓN con 5 variantes REALES** (skill `aaa-animation-researcher`): EVO_001 Crystal
+Bloom (Hearthstone/LoR), EVO_002 Energy Spiral (Genshin/Honkai gacha), EVO_003 Radiant Ascension (LoR
+level-up), EVO_004 DNA Morph (anime), EVO_005 Celestial Burst (Marvel Snap+anime) — todas Experimental
+(el desarrollador decidirá Canon). **Motor real, 1 sola maquinaria nueva (triad):** paso puro
+`AnimationStep.Evolve(slotId,duration,visual)` + `EvolveVisual` (perillas puras rise/spin/flip/pulse/flash/
+ring/hue, sin Compose) + request `AnimationRequest.Evolved(playerId,pokemonId,variantId)` + `EvolveRenderNode`
++ `EvolveExecutor` (frame-loop, como Move/DrawCard) + `EvolveNodeRenderer` (Canvas anillo/destello +
+graphicsLayer carta; reusa `flightCardPlaceholder` + `LocalFlightOrigin`) + contribuidor `EvolveAnimations`
+(mapa variantId→(dur,EvolveVisual); ids en `object EvolveVariants`). **5 variantes = 5 `EvolveVisual`
+distintos, un único executor/renderer/pipeline** (identidad como DATOS, no código por variante). Registrado
+en el composition root ÚNICO (`CanonicalAnimationContributors`+`canonicalStepExecutors`) → juego y Studio
+comparten. UI (`AnimationGalleryLab.kt`): carpetas plegables + filas de variante con badge de estado +
+Preview real + "Reproducir" (`director.submit(Evolved(variantId))`). Robar carta/Pokémon Básico quedan como
+categorías Canon. Tests `:core:animation(+compose)` verdes (nuevo `EvolvePipelineTest`: Evolved recorre el
+pipeline y limpia; las 5 resuelven a definiciones distintas). Sin cambios de gradle/deps. APK ensamblado.
+**Método de la categoría (repetible):** investigar AAA → 5 variantes como `EvolveVisual` → probar en Studio
+→ el desarrollador marca Canon. NO marcar Canon por cuenta propia (límite de la skill).
 
 ## 🗂️ ARQUITECTURA POR EXPANSIÓN (16 Jul 2026) — datos y efectos SEPARADOS por set
 **REGLA:** cada expansión vive AISLADA; añadir un set nuevo NO toca los datos/efectos de otro.

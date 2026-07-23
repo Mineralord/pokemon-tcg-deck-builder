@@ -127,6 +127,7 @@ private fun FlightLayer() {
                 when (node) {
                     is MoveRenderNode -> MoveNodeRenderer(node)
                     is DrawCardRenderNode -> DrawCardNodeRenderer(node)
+                    is EvolveRenderNode -> EvolveNodeRenderer(node)
                     else -> Unit // otros tipos de nodo: su renderer llegará en fases futuras
                 }
             }
