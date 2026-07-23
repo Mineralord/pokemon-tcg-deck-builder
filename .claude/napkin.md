@@ -2,6 +2,155 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## 🏛 GOBERNANZA POR AGENTES (22 Jul 2026) — DC-5, canon operativo → `docs/GOBERNANZA-AGENTES.md`
+**El proyecto trabaja como un equipo AAA de agentes especializados, invocados AUTOMÁTICAMENTE
+según la tarea (no hay que pedirlo).** Antes de responder: identificar qué agentes participan;
+si varios aplican, TODOS intervienen y el resultado INTEGRA sus conclusiones.
+**Orden de autoridad (inferior nunca contradice a superior):** 1) 📚 Canon Auditor · 2) 🏛 Software
+Architect · 3) 🎮 Game Systems Architect · 4) 🌎 Tech Research · 5) 🔬 OSINT · 6) Especialistas
+(UI/UX · Animation · Network · Persistence · Security · Performance · Test · 📈 Technical Debt Auditor) · 7) ✍ Code Writer · 8) 🔍 Code Reviewer.
+**📈 Technical Debt Auditor (nivel 6, asesor):** salud GLOBAL del proyecto (deuda, módulos/clases grandes,
+acoplamiento, código muerto, violaciones de arquitectura, degradación) — distinto del Code Reviewer (cambios
+concretos). Solo audita/recomienda, nunca modifica. Interviene SOLO en auditorías completas, revisión de
+arquitectura, refactors importantes o análisis de evolución (no en trabajo normal → no suma subagentes habituales).
+**Política permanente Architectural Health Review (AHR):** revisión global en grandes hitos / antes de versión
+importante, con Canon + Architect + Tech Debt + Performance + Test + Tech Research + OSINT. Solo produce INFORME
+(`docs/ahr/AHR-<fecha>.md`); no cambia arquitectura — toda mejora pasa luego por el gate del Canon Auditor.
+**Gate de código:** antes de que Code Writer implemente, conformidad de Architect + Game Systems (si toca juego)
++ Code Reviewer + Performance (si toca rendimiento) + Canon Auditor. **Regla de investigación:** ante frameworks/
+libs/arquitectura/rendimiento/Android/Kotlin/Compose/Firebase/Room/SQL/red/seguridad/testing/CI/shaders/anim/
+benchmarks → Tech Research + OSINT intervienen con fuentes externas reales + Skills del proyecto (no solo memoria).
+**Fronteras:** Game Systems nunca toca Android/UI; Animation nunca toca el Engine; UI nunca toca reglas.
+**Mecánica:** por defecto = roles como LENTES de razonamiento (inmediato); agentes/Skills REALES solo cuando
+hay investigación externa genuina, código a escribir/revisar o análisis multi-archivo (no lanzar todos siempre).
+**Marco de canon vigente = Fases 0–11.9 + DMI (DC-4). Fases 12–13 = ASPIRACIONALES, aún NO escritas.**
+**Invariantes que el Canon Auditor protege:** determinismo del Engine · Engine puro · proveedores tras interfaz
+(patrón `MatchTransport`) · versionado multi-eje (ningún blob sin `version`) · direccionalidad `feature→data→engine`.
+
+## 🎬 FRAMEWORK DE ANIMACIONES (21 Jul 2026) — pipeline propio, Kotlin puro + Compose
+**Workstream SEPARADO del motor de efectos 151.** Framework de animación propio, diseñado por fases
+(primero arquitectura, luego implementación) con investigación previa en GitHub. **Regla del proyecto
+ahora en la skill `revision-critica`:** antes de cualquier subsistema complejo (render/shaders/audio/red/
+IA/persistencia/sync/PvP/animación) → investigar 3–5 implementaciones reales + comparación ✅/❌/⚠️ ANTES de codear.
+
+**DOS módulos:**
+- **`core:animation`** — Kotlin PURO JVM (solo coroutines + kotlin.reflect). SIN Android/Compose/engine.
+  **ESTABLE, NO MODIFICAR.** Pipeline: `AnimationDirector(Facade) → Scheduler → Queue → Runner → Player → Steps`.
+- **`core:animation-compose`** — Android/Compose. Implementa los *seams* que dejó abiertos el puro. Depende
+  de `core:animation` (dependencia SOLO en ese sentido). namespace `com.mineralord.tcg.core.animationcompose`.
+
+**Piezas `core:animation` (fases 1–6, todas con tests verdes):**
+- `AnimationRequest` (sealed, entrada; NO "Event" para no chocar con EngineEvent) · `AnimationDefinition`
+  (receta) + `AnimationStep` (árbol Composite: Sequence/Parallel + hojas) + `AnimationPolicy` (data class con
+  3 ejes ortogonales: Concurrency/Interruptibility/Conflict) · `AnimationHandle` (+`PausableHandle` ISP) +
+  `AnimationResult`.
+- `AnimationPlayer` = intérprete del árbol (compuestos por recursión, hojas → `AnimationStepExecutorRegistry`
+  con OCP; NADA de `when` gigante). `AnimationScheduler` = coordinador (arbiter PURO `DefaultPolicyArbiter` +
+  `RunningAnimations` + drena `AnimationQueue`; aplica política: Exclusive bloquea/Parallel solapa/Replace
+  cancela/Ignore descarta). `DefaultAnimationQueue` = **buckets FIFO por prioridad** (NO PriorityQueue: estable
+  + O(1); `EnumMap`+`ReentrantLock`). `AnimationDirector` = **Facade** = única API pública (`submit`+`StateFlow
+  <AnimationState>`); `DefaultAnimationDirector.create(runner, scope, …)` = composition root; `StateReportingRunner`
+  decora el runner para reportar estado SIN tocar el scheduler.
+- OJO: `AnimationState.pending` queda en 0 (profundidad de cola no observable sin tocar scheduler). `AnimationPriority.Low`
+  no lo produce ninguna request hoy.
+
+**Piezas `core:animation-compose` (fases 1–2 hechas, tests verdes):**
+- **RenderLayer** — enum con `zOrder` EXPLÍCITO (0/100/200/300/400/500, huecos), NO ordinal. `orderedByZ`.
+  Capas: Board→Cards→Flight(overlay anti-clipping)→Particles(Canvas)→Effects→Overlay. **Cero zIndex arbitrarios.**
+- **CoordinateRegistry** (frontera lógico↔pantalla): `SlotId`→`SlotBounds` (Offset+IntSize), `SnapshotStateMap`.
+  Modifier **`trackBounds`** = SEAM: hoy `onGloballyPositioned`; migrar a `onLayoutRectChanged` cuando se suba el
+  BOM a 2025.04.01 (Compose 1.8). **BOM actual = 2024.12.01, mantener por ahora** (decidido). Único punto a cambiar.
+- **AnimationRenderState** (renombrado de "Scene": es DTO reactivo de dibujo, no scene-graph). `RenderNode` =
+  interfaz ABIERTA (no sealed) → cada feature aporta sus nodos. `AnimationStage` = esqueleto que dibuja capas por
+  `orderedByZ` y provee registry+renderState por CompositionLocal (aún NO dibuja nodos).
+- **AnimationDefinitionRegistry** = DISTRIBUIDO: `AnimationDefinitionContributor` por módulo, `from(contributors)`
+  fusiona con **fail-fast** ante colisión, clave por tipo sealed. **ComposeAnimationRunner** = cierra
+  `Request→Definition→Player→Handle` (request sin receta → handle inerte completado).
+- Se añadió `compose-foundation` al catálogo (aditivo).
+
+**✅ v1.0 STABLE (21 Jul) — pipeline validado extremo-a-extremo. NO seguir construyendo infraestructura.**
+Prueba vertical `Move` HECHA + prueba de INTEGRACIÓN por la fachada HECHA (tests verdes). Piezas nuevas en
+`core:animation-compose`: `AnimationStep.Move(fromSlotId,toSlotId,duration)` (reformado en el puro; era el ejemplo
+sin usar), **`MoveRenderNode`** (1er RenderNode real: id+origin+destination+progress, capa Flight fija, SIN campos
+"por si acaso"), **`MoveExecutor`** (`AnimationStepExecutor<Move>`: resuelve rects vía CoordinateRegistry → crea/
+actualiza/elimina nodo con `withFrameNanos`; limpieza en `finally` incl. cancelación), **`MoveNodeRenderer`**
+(+`interpolatedBounds()` = `lerp(Rect,Rect,t)` NATIVO de Compose; posición vía `graphicsLayer` translationX/Y, NO
+`offset` = fase draw sin relayout), y `FlightLayer` en `AnimationStage` (única capa real conectada; resto vacías).
+Tests dirigen el reloj con `BroadcastFrameClock`+`Dispatchers.Unconfined` (no hay coroutines-test). `PipelineIntegration
+Test` entra por `AnimationDirector.submit(PokemonPlayed)` y recorre Scheduler→Queue→Runner→Registry→Definition→
+Player→MoveExecutor→RenderState (Default policy = Exclusive). **Regla:** lo nuevo se construye SOBRE el framework
+(nuevo RenderNode+Executor+Definition+NodeRenderer+capa), NO se rediseña salvo defecto arquitectónico real.
+**Pendiente NO hecho (a propósito):** composition root real en `feature:game` (montar AnimationStage +
+DefaultAnimationDirector.create + `trackBounds` en las ranuras). El dibujo Compose vivo NO está instrumentado
+(no hay compose-ui-test/robolectric); se valida el RenderState que el Stage consume + la matemática del renderer.
+
+## 🎞️ BACKLOG DE ANIMACIONES (21 Jul) — 4 pilares listos, ahora se ALIMENTA el motor
+Ya NO se habla de "fases del framework" sino de **Backlog de Animaciones**. Cuatro pilares cubren el ciclo de vida:
+✅ **Animation Framework v1.0** (motor desacoplado, probado E2E) · ✅ skill **`animation-benchmark`** (define el
+ESTÁNDAR VISUAL; no busca código) · ✅ skill **`implementation-research`** (encuentra la mejor implementación open
+source compatible; fichas + A/B/C/D/E) · ✅ skill **`revision-critica`** (audita antes de consolidar).
+**FLUJO CANÓNICO de toda animación nueva (repetible, no degradar):**
+```
+Nueva animación → animation-benchmark → implementation-research → Integración sobre Framework v1.0 → revision-critica → Canónica
+```
+`animation-benchmark` encadena AUTO con `implementation-research` al terminar el benchmark. **Regla de oro:** primero
+entender (mejor referencia visual) → luego investigar (mejor implementación) → integrar/adaptar → desarrollar desde
+cero SOLO lo estrictamente exclusivo.
+**ORDEN del backlog (decisión del usuario, como Blizzard/Riot/Second Dinner — microanimaciones ANTES que FX):**
+**N1 Gameplay fundamental** (robar carta[s], jugar carta, mover entre zonas, evolucionar, adjuntar Energía, barajar,
+buscar en mazo, revelar, descartar) → **N2 Combate** (ataque, daño, marcadores, KO, cambio de Activo, retirada,
+moneda, dados) → **N3 Efectos** (partículas, glow, holo, shaders, explosiones, rayos, FX por tipo) → **N4 Cinemáticas**
+(victoria, derrota, inicio de combate, apertura de sobres, recompensas). **Empezar por N1 "robar carta".** OJO: mover
+carta entre zonas YA está validado E2E por el slice (`PokemonPlayed`→`Move`); el pipeline le añade la PIEL de calidad
+(timing/easing/overshoot/peso/arco/sonido/haptic), no parte de cero.
+**✅ ANIM #001 "Robar carta" CANÓNICA (21 Jul) — 1er ítem del backlog, pipeline completo ejecutado.**
+Estándar visual = **"Snap sobrio"** (Marvel Snap tier S calibrado a claridad TCG Live): ~320ms, arco leve
+(0.18·dist), escala 0.82→1, rotación −6°→0, overshoot ~8%, SIN partículas. **Triad canónico** (patrón a repetir
+para toda animación nueva): hoja pura `AnimationStep.DrawCard(fromSlotId,toSlotId,duration)` → `DrawCardRenderNode`
+(2º RenderNode real: +arcHeightPx, capa Flight) → `DrawCardExecutor` (clona el frame-loop de MoveExecutor pero
+aplica `DrawCardEasing`=`CubicBezierEasing(0.22,1,0.36,1.08)` overshoot nativo) → `DrawCardNodeRenderer` (Bézier
+cuadrática `center()` + `scale()`/`rotationDeg()` acotados vía `graphicsLayer`). Request dominio = `CardDrawn`
+(ya existía). Contributor `DrawCardAnimations` mapea CardDrawn→Definition[DrawCard]; convención de slots
+`deck:$id`/`hand:$id` (helpers `deckSlotId/handSlotId`; la UI debe publicarlas con `trackBounds`). **0 dependencias
+nuevas** (reutiliza Easing+graphicsLayer+lerp de Compose). Framework v1.0 INTACTO (solo +1 subclase al sealed, OCP).
+Tests: `DrawCardRenderNodeTest` (puros) + `DrawCardPipelineTest` (E2E por `submit(CardDrawn)`), verdes.
+**Deuda anotada (no bloquea):** (1) extraer un `frameProgressLoop` compartido cuando aparezca el 3er executor
+(regla de tres; hoy Move+DrawCard duplican el loop); (2) **handoff de estado**: al integrar en composition root,
+encadenar la aparición de la carta REAL de mano al fin de la animación (hoy el nodo de vuelo se elimina en `finally`,
+pero la carta de reposo la mostrará el feature); (3) object churn (1 node/frame) → pooling solo si el profiling
+lo exige. **Método del backlog (repetir):** `animation-benchmark`→`implementation-research`→triad sobre v1.0→
+`revision-critica`→Canónica. **Siguiente candidato N1:** jugar carta desde la mano (o robo múltiple, ya diferido).
+**Catálogo Maestro de candidatas técnicas (de implementation-research, 21 Jul):** Partículas → **ParticleEmitter**
+(`io.github.piotrprus`, Apache-2.0, física, dual-render) clase B, o **Konfetti** (ISC) B para celebraciones. Holo →
+**propio AGSL** (API 33+ con FALLBACK gradiente para minSdk 26–32; GPL de simeydotme/pokemon-cards-css BLOQUEA copiar
+código = solo inspiración visual; patrón de cableado de ShaderX). Vuelo de carta → **ya lo tenemos** (SharedTransition
+solo estudio). Fan-out/drag → Card-Game-Animation (Apache) inspiración. Regla: toda lib externa vive DETRÁS de un
+NodeRenderer/Executor en `core:animation-compose`, sustituible; NUNCA en el puro.
+
+## 🏗️ FASE DE IMPLEMENTACIÓN CONTINUA (23 Jul 2026) — skill `implementacion-continua`
+Arquitectura del Studio CONGELADA. Se construye **Sprint a Sprint**, política permanente en la skill
+**`implementacion-continua`**: flujo `Sprint→Implementación→Build verde→Validación→Commit→Cierre→Siguiente`.
+**Prioridad: software funcional > arquitectura.** Cambios de arquitectura SOLO ante bloqueo técnico real o
+violación del Canon (si aparece: detenerse, evidenciar, pedir decisión). DoD por Sprint: build verde + tests
+afectados verdes + commit quirúrgico + **reproducible desde clon limpio** (verificar con `git worktree` si toca
+build/módulos/deps) + sin deuda nueva + sin romper Dual/Regla de Oro/Canon. Prohibido: rediseñar, módulos
+innecesarios, abstracciones "por si acaso" (YAGNI), componentes/tokens nuevos en el DS, ciclo plan→revisión→plan.
+Sprint más pequeño posible con mejora VISIBLE y funcional; nada de roadmaps. **Studio Bootstrap ✅ cerrado**
+(app-studio arranca el Shell 11.1 vacío; commits 2cf57e7/44728c4/6ea9825/6e605bc).
+**POLÍTICA PERMANENTE DE ENTREGABLES (en la skill):** cada Sprint se clasifica AUTO como **Interno**
+(por defecto, refactor/tests/limpieza/deuda/infra/arquitectura → **NO** genera APK) o **Demo** (mejora
+visual, interacción nueva, funcionalidad validable en dispositivo, o petición expresa → **genera APK**
+instalable `assembleDebug` como entregable). Ante duda "¿querría verlo/tocarlo en el móvil?" → Demo.
+**✅ Sprint "Shell Navigation v1: Rail de Labs conmutable" (23 Jul, DEMO):** el Shell dejó de estar
+vacío → hospeda Labs y CONMUTA entre ellos. Responsabilidad ÚNICA del Shell: hospedar+conmutar (NO
+lógica de ningún Lab). `Lab(id,title,content:@Composable)` = unidad hospedable (studio:shell/Lab.kt);
+`StudioShell(labs: List<Lab>)` guarda `activeLabId` (state), Rail (R2) lista Labs seleccionables con
+`SidebarStyle`+barra guía, Host (R3) dibuja `activeLab.content()` o el home vacío, ruta (R1) y Status
+(R4) reflejan el Lab activo. La **Galería de Animaciones** = 1er Lab registrado, pero su registro vive
+en **app-studio/StudioLabs.kt** (`studioLabs()`, placeholder sin contenido 11.2) → Shell desacoplado.
+0 tokens/componentes nuevos (usa SidebarStyle/ButtonStyle/EmptyStateStyle). APK: `app-studio/build/
+outputs/apk/debug/app-studio-debug.apk`. Sin tests (módulos UI sin infra de test, como 11.1).
+
 ## 🗂️ ARQUITECTURA POR EXPANSIÓN (16 Jul 2026) — datos y efectos SEPARADOS por set
 **REGLA:** cada expansión vive AISLADA; añadir un set nuevo NO toca los datos/efectos de otro.
 **Cartas (datos):** ya NO existe el monolito `cartas-db.json` (borrado). Ahora jerarquía
@@ -77,12 +226,34 @@ inerte). Tests: `AbilityLockAndStadiumTest` (registry inyectado con efectos sint
 **FUTURO:** cuando se scrapee Path to the Peak/Klefki, registrar su Effect con el `PassiveModifier(BLOCK_ABILITY,
 …)` correspondiente; el motor ya hace el resto. Aún NO hay estadios con efecto ACTIVO 1/turno (Cycling Road).
 
-## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 39 — 18 Jul 2026
+## ⏩⏩ RETOMAR AQUÍ (al decir "continuemos") — EFECTOS SET 151, FASE 45 — 21 Jul 2026
 **Contexto:** implementando TODOS los efectos del set 151 (`sv3pt5`) por fases. Inventario vivo en
 **`docs/inventario-efectos-151.md`** (regenerar con `python tools/scripts/gen_inventario_151.py`, cruza
 `cards/sv3pt5.json` × `Set151Effects.kt`; textos SIEMPRE del bloque `es` = español impreso, NUNCA inglés).
-Progreso: **172/198 efectos únicos** (Fases 1–38 + Mr. Mime de deuda #3, tests verdes). Registros en `Set151Effects.kt`
-(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 26.**
+Progreso: **178/198 efectos únicos** (Fases 1–44, tests verdes). Registros en `Set151Effects.kt`
+(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 20.**
+
+### ✅ FASE 44 HECHA (21 Jul) — "monedas del rival como cruz" (flip gateado)
+**Psyduck *Cavilar/Overthink* 54** (sin daño): durante el próximo turno del rival, cada moneda que lance ese
+jugador cuenta como CRUZ. Op nueva `EffectOp.ForceOpponentCoinsTailsNextTurn` (data object) → el intérprete fija
+`GameState.coinsAsTailsSide = actingSide.other()` y `coinsAsTailsOnTurn = turn+1`. **Infra "flip gateado":**
+helper `GameEngine.gatedFlip(s)` = cruz(false) si `s.coinsAsTailsSide==s.activeSide && s.coinsAsTailsOnTurn==s.turn`,
+si no `rng.flipCoin()`. Reemplazados por `{ gatedFlip(state) }` SOLO los flips del jugador ACTIVO: coste-para-atacar
+(~301), execute de ataque, execute de habilidad y `resolve` de decisión. **NO gateados** `applyDefenderRetaliation`
+(857) ni Machamp *Agallas* (888) = tiradas del DEFENSOR en el turno del atacante. Campos espejados en netplay
+`GameStateDto` (`coinsAsTailsSide`/`OnTurn`, framed en toDtoFor + toModel); no se limpian (el gate compara turno
+exacto). 1 test (marca + fuerza cruz vs control sin marca). **Efecto colateral bueno:** también fuerza a cruz
+las monedas "para poder atacar" (Tinta Cegadora) del rival si coincide.
+
+### ✅ FASES 39–43 HECHAS (18 Jul) — resumen breve
+- **F39** Meowth *Ven Aquí Ya* 52 — `CoinFlipSwapOppActiveWithChosen` (moneda → el atacante elige un Banca rival que pasa a Activo).
+- **F40** Transferencia de Bill 156 — `SearchDeck.fromTop=8` (mira top 8, Pokémon → mano; búsqueda de profundidad limitada).
+- **F41** Pegatinas de Energía 159 — `AttachFromRevealed.coinFlip` (enganche desde descarte a una moneda).
+- **F42** Electrode *Cadena Bum Bum* 101 — `DiscardOwnToolsForDamage(perCard)` + flag `SearchCards.fromAttachedTools`
+  (candidatos = Herramientas enganchadas a tus Pokémon; +40 crudo por cada una; base 20 pasa por Debilidad). NO tocó netplay.
+- **F43** Seadra *Tinta Cegadora* 117 — `RequireCoinsToAttackNextTurn(target, coins)` + campos `PokemonInPlay.flipsToAttackOnTurn/
+  Count` (espejados en netplay DTO). `GameEngine.attack` lanza N monedas al intentar atacar; cruz → el ataque no ocurre (turno igual acaba).
+Además: se enderezó el guard de `EffectsDbTest` (sv3pt5-156 ya modelado → ahora apunta a sv3pt5-12 Bye-Bye Flight).
 
 ### ✅ FASE 38 HECHA (18 Jul) — SUBSISTEMA de override de Debilidad (Kabutops + Porygon)
 **Nueva capacidad transversal:** `Damage.calculate` acepta `weaknessTypeOverride: EnergyType?` (cambia el TIPO
@@ -119,16 +290,23 @@ fase Básica de 60 PS no aguanta 100 de daño). **NO toca netplay** (el host apl
 evento es solo log). OJO: `updatePokemon` localiza el pip por el id ANTES de cambiar `card`; el nuevo `card.id`
 queda en juego y la carta vieja va a la mano.
 
-### ⏭️ SIGUIENTE (FASE 39) — candidatos y DEUDAS (faltan 26)
-**Cluster "manipulación de Debilidad" (✅ HECHO en Fase 38: Kabutops 141 + Porygon 137).** **Bounded sin sistema nuevo grande:** Meowth *Ven
-Aquí Ya* 52 (moneda → el ATACANTE elige un Banca rival que pasa a Activo = decisión sobre zona rival + coin-gate),
-Electrode *Cadena Bum Bum* 101 (descarta Herramientas propias EN JUEGO para +40 c/u = decisión de descarte sobre
-tools en juego). **DEUDAS del napkin (más abajo, sección ⚠️):** #1 Haunter *Espíritu Retorno* 93 (Partidario del
-descarte RIVAL → su mano, al evolucionar; manipular zona rival), #2 HP máx. en la BARRA de la UI (cosmético,
-feature/game lee `card.hp` impreso; exponer `effectiveMaxHp`), #3 Kakuna *Cubierta de Capullo* 14 (evitar EFECTOS
-—no daño— de ataques: gate por-op del efecto del ataque según objetivo). **Mini-sistemas grandes:** Mew ex *Hackeo
-Genoma* 151 (copiar ataque rival), Alakazam ex *Mano Dimensional* 65 (atacar desde Banca), Fósiles 152/153/154
-(jugar como Pokémon Básico). Método de siempre: query python → DSL → registro → tests → suite → inventario.
+### ⏭️ SIGUIENTE (FASE 44) — candidatos y DEUDAS (faltan 21)
+**Cluster "manipular la MANO/zonas del RIVAL" (mini-subsistema nuevo, reutilizable para 3 cartas):** Agarrador
+Mecánico 162 (rival enseña mano → pones 1 Pokémon al FONDO de su baraja), Invitación de Erika 160 (rival enseña
+mano → pones 1 Básico en SU Banca y lo cambias por su Activo), Zubat *Eco Revelador* 41 (habilidad: el rival enseña
+su mano). Hoy `SearchCards`/`applySearch` operan sobre las zonas del lado que ACTÚA → hace falta una decisión que
+elija sobre la mano RIVAL. **DEUDA #1 (misma familia):** Haunter *Espíritu Retorno* 93 (al evolucionar, 1 Partidario
+del descarte RIVAL → su mano). **Estadio activable 1/turno (infra nueva):** Camino de Bicis 157 (descarta 1 Energía
+Básica → roba; hoy es estadio inerte). **DEUDA #2:** HP máx. en la BARRA de la UI (cosmético; feature/game lee
+`card.hp` impreso; exponer `effectiveMaxHp`). **DEUDA #3:** Kakuna *Cubierta de Capullo* 14 (evitar EFECTOS —no daño—
+de ataques: gate por-op del efecto del ataque según objetivo). **Otros bounded:** Spearow *Ventaja Evolutiva* 21
+(evolucionar en tu 1er turno si sales 2º — OJO: el motor NO enforcea hoy "no evolucionar tu 1er turno", así que
+requiere primero esa regla), Psyduck *Cavilar* 54 (las monedas del rival cuentan como cruz su próximo turno),
+Electrode *Cadena Bum Bum* ✅ hecho F42. **Mini-sistemas grandes:** Mew ex *Hackeo Genoma* 151 (copiar ataque rival),
+Alakazam ex *Mano Dimensional* 65 (atacar desde Banca), Ditto *Inicio Transformador* 132 (buscar Básico y sustituirse),
+Butterfree *Adiós Vuelo/Bye-Bye Flight* 12 (barajar un Banca rival + a sí mismo a los mazos), Fósiles 152/153/154
+(jugar como Pokémon Básico), Chansey *Regalo Fortuito* 113 (interacción con Premios). Método de siempre: query python
+→ DSL → registro → tests → suite → inventario.
 
 ### ✅ FASE 36 HECHA (17 Jul) — pasivos de habilidad condicionados por un aliado en juego (por nombre)
 **Infra nueva:** helper `GameEngine.abilityEffects(state, side, pip): List<Effect>` (espejo de `abilityPassives`
