@@ -28,62 +28,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Estado observable del combate para la pantalla. */
-data class GameUiState(
-    val loading: Boolean = true,
-    val state: GameState? = null,
-    /** No null durante el lanzamiento de moneda inicial (antes de la preparación). */
-    val coinFlip: CoinFlipUiState? = null,
-    /** No null durante el reparto animado de la mano inicial (tras la moneda). */
-    val dealing: DealUiState? = null,
-    /** No null durante la preparación interactiva (elegir Activo/Banca). */
-    val setup: SetupUiState? = null,
-    /** true durante el revelado inicial: el rival voltea sus Pokémon y se reparten
-     *  los premios, antes de ceder el control del primer turno. */
-    val revealing: Boolean = false,
-    val log: List<String> = emptyList(),
-    /** Mensaje transitorio (acción ilegal, etc.); se limpia en la próxima acción. */
-    val message: String? = null,
-    /** true mientras la IA está jugando su turno (bloquea la entrada). */
-    val aiThinking: Boolean = false,
-)
-
-/**
- * Estado de la preparación interactiva: la mano repartida del jugador, sus
- * Básicos elegibles y las elecciones actuales de Activo y Banca. Mientras exista,
- * la pantalla muestra el overlay de setup en vez del tablero jugable.
- */
-/** Fase del lanzamiento de moneda inicial (réplica de TCG Live). CHOOSE_ORDER =
- *  el jugador ganó el volado y elige quién empieza (regla oficial: el ganador decide). */
-enum class CoinPhase { CHOOSING, SPINNING, RESULT, CHOOSE_ORDER }
-
-/**
- * Estado del reparto animado de la mano inicial: las 7 cartas que salen del mazo
- * hacia la mano, en orden. La UI las anima (mazo→abanico) y avisa al terminar.
- */
-data class DealUiState(val hand: List<Card>)
-
-/** Estado del volado de moneda: elección del jugador, resultado y quién empieza. */
-data class CoinFlipUiState(
-    val phase: CoinPhase,
-    /** Elección del jugador: true = cara, false = cruz. */
-    val call: Boolean? = null,
-    /** Resultado del volado: true = cara, false = cruz. */
-    val result: Boolean? = null,
-    val playerWon: Boolean? = null,
-    val message: String? = null,
-)
-
-data class SetupUiState(
-    val hand: List<Card>,
-    val basics: List<PokemonCard>,
-    val activeId: CardId? = null,
-    val benchIds: List<CardId> = emptyList(),
-) {
-    /** ¿Se puede confirmar? Basta con haber elegido Activo. */
-    val canConfirm: Boolean get() = activeId != null
-}
-
 /**
  * Orquesta una partida del jugador (lado [Side.PLAYER]) contra la IA
  * ([SmartAgent], lado [Side.OPPONENT]). La lógica de juego COMPARTIDA (estado,
@@ -145,7 +89,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
 
             val (playerCards, oppCards) = withContext(Dispatchers.Default) { buildDecks() }
             engine = GameEngine(SeededRng(System.nanoTime()))
-            agent = SmartAgent(engine)
+            agent = SmartAgent(engine, PveConfig.difficulty)
             core.engine = engine
 
             // MODO DEPURACIÓN: arranca directo en el tablero con la Banca LLENA (5) en
@@ -328,7 +272,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
     override fun card(id: CardId): Card? = lookupCard(core.state, core.repo, id)
 
     /** Jugadas legales del lado en turno (vacío si hay decisión pendiente). */
-    fun legalIntents(): List<GameIntent> =
+    override fun legalIntents(): List<GameIntent> =
         core.state?.let { engine.legalIntents(it) } ?: emptyList()
 
     /** Aplica un intent del jugador y, si procede, deja jugar a la IA. */
@@ -372,15 +316,26 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
      */
     private suspend fun advanceAi() {
         var guard = 0
-        while (!(core.state?.isOver ?: true) && core.state?.activeSide == Side.OPPONENT && guard++ < 80) {
+        while (!(core.state?.isOver ?: true) && guard++ < 120) {
+            val s = core.state ?: break
+            // La IA promueve su nuevo Activo tras un KO en CUALQUIER momento (incluido
+            // durante el turno del jugador: recoil/veneno o un KO por Objeto rival).
+            if (Side.OPPONENT in s.pendingPromotion) {
+                val r = engine.apply(s, agent.decide(s, Side.OPPONENT))
+                if (r.accepted) { core.commit(r); core.playEventFx(r.events) }
+                continue
+            }
+            // Si el JUGADOR debe promover, la IA cede el control: la UI espera su elección.
+            if (Side.PLAYER in s.pendingPromotion) break
+            if (s.activeSide != Side.OPPONENT) break
             core.aiThinking = true
             core.emit()
             delay(450)
-            val s = core.state ?: break
-            val ai = agent.decide(s, Side.OPPONENT)
-            val r = engine.apply(s, ai)
+            val cur = core.state ?: break
+            val ai = agent.decide(cur, Side.OPPONENT)
+            val r = engine.apply(cur, ai)
             if (!r.accepted) {
-                core.commit(engine.apply(s, GameIntent.EndTurn))
+                core.commit(engine.apply(cur, GameIntent.EndTurn))
                 continue
             }
             core.commit(r)

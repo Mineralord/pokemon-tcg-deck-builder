@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":feature:packs"))
     implementation(project(":feature:decks"))
+    implementation(project(":feature:combat"))
     implementation(project(":feature:game"))
     implementation(project(":data:cards"))
     implementation(project(":data:profile"))
@@ -59,6 +60,7 @@ dependencies {
     implementation(project(":data:netplay"))
     implementation(project(":data:netfirestore"))
     implementation(project(":engine:model"))
+    implementation(project(":engine:rules"))
 
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)

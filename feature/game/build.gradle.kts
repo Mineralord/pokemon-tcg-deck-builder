@@ -24,6 +24,9 @@ android {
 }
 
 dependencies {
+    // La pantalla de combate compartida (UI canónica). El juego provee sus controladores
+    // (GameViewModel/OnlineGameController) a esa misma pantalla vía el contrato neutral.
+    implementation(project(":feature:combat"))
     implementation(project(":core:designsystem"))
     // :engine:rules reexporta (api) model/events/effects.
     implementation(project(":engine:rules"))

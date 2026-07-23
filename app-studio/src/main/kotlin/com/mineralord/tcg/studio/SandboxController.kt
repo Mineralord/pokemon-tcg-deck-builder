@@ -1,122 +1,104 @@
 package com.mineralord.tcg.studio
 
-import androidx.compose.ui.geometry.Offset
-import com.mineralord.tcg.core.combatscene.CombatSceneController
-import com.mineralord.tcg.core.combatscene.CombatSceneEngine
-import com.mineralord.tcg.core.combatscene.CombatSceneEvent
-import com.mineralord.tcg.core.combatscene.CombatSceneState
-import com.mineralord.tcg.core.combatscene.SceneAction
-import com.mineralord.tcg.core.combatscene.SceneCard
-import com.mineralord.tcg.core.combatscene.SceneOption
-import com.mineralord.tcg.core.combatscene.SceneOverlay
-import com.mineralord.tcg.studio.assets.AnimationAsset
-import com.mineralord.tcg.studio.assets.AssetRegistry
-import com.mineralord.tcg.studio.assets.AssetStatus
-import com.mineralord.tcg.studio.assets.AssetType
+import com.mineralord.tcg.data.cards.CardRepository
+import com.mineralord.tcg.engine.model.Card
+import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.GameState
+import com.mineralord.tcg.engine.model.Phase
+import com.mineralord.tcg.engine.model.PlayerState
+import com.mineralord.tcg.engine.model.PokemonCard
+import com.mineralord.tcg.engine.model.PokemonInPlay
+import com.mineralord.tcg.engine.model.Side
+import com.mineralord.tcg.engine.rules.GameIntent
+import com.mineralord.tcg.feature.game.GameUiState
+import com.mineralord.tcg.feature.game.anim.FxCue
+import com.mineralord.tcg.feature.game.combat.CombatSceneController
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * **Sandbox Controller: el control MANUAL de la Combat Scene en el Studio.**
+ * **Sandbox Controller: conduce MANUALMENTE la pantalla de combate REAL en el Studio.**
  *
- * Implementa el contrato [CombatSceneController]: **conduce** la escena compartida sin dibujar nada.
- * Su única diferencia frente al futuro Game Controller es el origen de las decisiones: aquí es el
- * usuario (mover cartas libremente, superponerlas, elegir variantes, repetir animaciones), no las
- * reglas. Toda la representación visual la aporta la `CombatScene` del núcleo compartido.
+ * Implementa el contrato neutral [CombatSceneController] —el mismo del que depende `CombatScreen`—
+ * para que el Studio renderice EXACTAMENTE la misma pantalla que el juego. La única diferencia con el
+ * juego es quién gobierna la UI: aquí un humano (sandbox), no las reglas del motor.
  *
- * Consumo del Asset Registry **por categoría, nunca por id**: al soltar una carta sobre otra con la
- * acción Evolution armada, pregunta al [AssetRegistry] qué variantes hay en [EVOLUTION_CATEGORY] y
- * ofrece las que devuelva; al confirmar, reproduce con el motor real (`engine.submit`).
+ * En esta v1 siembra un tapete real (Bulbasaur Activo; Ivysaur y Venusaur en mano) construyendo un
+ * [GameState] canónico con datos reales de [CardRepository]; no ejecuta reglas. Las intenciones que
+ * emite la pantalla se aceptan sin validar (sandbox); su manipulación libre completa se ampliará en
+ * Sprints siguientes. No dibuja nada: todo el render es de la pantalla compartida.
  */
-class SandboxController(private val registry: AssetRegistry) : CombatSceneController {
+class SandboxController : CombatSceneController {
 
-    override val state: CombatSceneState = CombatSceneState().apply {
-        hudTitle = "Board Simulator — arma «Evolution» y arrastra una carta sobre otra"
-        // Cartas reales fijas: Bulbasaur, Ivysaur, Venusaur (identidad local; el Studio no enlaza data:cards).
-        cards += SceneCard("bulbasaur", "Bulbasaur", Offset(0.42f, 0.49f), widthFrac = 0.14f) // sobre el Activo
-        cards += SceneCard("ivysaur", "Ivysaur", Offset(0.20f, 0.80f), widthFrac = 0.14f)     // en la Mano
-        cards += SceneCard("venusaur", "Venusaur", Offset(0.66f, 0.80f), widthFrac = 0.14f)
-        cards.forEach { zOrder += it.id }
-        actions += SANDBOX_ACTIONS
-    }
+    private val _ui = MutableStateFlow(GameUiState(loading = true))
+    override val ui: StateFlow<GameUiState> = _ui.asStateFlow()
 
-    private var engine: CombatSceneEngine? = null
-    /** Variantes ofrecidas en el overlay actual (mapa opción→request), obtenidas del Registry. */
-    private var overlayAssets: List<AnimationAsset> = emptyList()
+    private val _fx = MutableSharedFlow<FxCue>(extraBufferCapacity = 16)
+    override val fx: SharedFlow<FxCue> = _fx.asSharedFlow()
 
-    override fun attachEngine(engine: CombatSceneEngine) {
-        this.engine = engine
-    }
+    private var byId: Map<CardId, Card> = emptyMap()
 
-    override fun onEvent(event: CombatSceneEvent) {
-        when (event) {
-            is CombatSceneEvent.CardDragStart -> state.bringToFront(event.cardId)
+    /** Construye el tapete inicial con cartas reales. Llamar fuera del hilo principal (carga JSON). */
+    fun seed(repo: CardRepository) {
+        fun pokemon(number: Int): PokemonCard? = repo[CardId("sv3pt5-$number")] as? PokemonCard
+        val bulbasaur = pokemon(1) ?: return   // datos no disponibles: se mantiene "cargando"
+        val ivysaur = pokemon(2)
+        val venusaur = pokemon(3)
+        val charmander = pokemon(4)
 
-            is CombatSceneEvent.CardDrag -> state.cardById(event.cardId)?.let { card ->
-                card.position = Offset(
-                    (card.position.x + event.deltaFrac.x).coerceIn(0f, 0.95f),
-                    (card.position.y + event.deltaFrac.y).coerceIn(0f, 0.95f),
-                )
-            }
-
-            is CombatSceneEvent.CardDrop -> maybeEvolve(event.cardId)
-
-            is CombatSceneEvent.ActionClick ->
-                state.armedActionId = if (state.armedActionId == event.actionId) null else event.actionId
-
-            is CombatSceneEvent.OverlayOption ->
-                state.overlay = state.overlay?.copy(selectedId = event.optionId)
-
-            CombatSceneEvent.OverlayConfirm -> {
-                val selected = overlayAssets.firstOrNull { it.id == state.overlay?.selectedId }
-                selected?.let { engine?.submit(it.request) }
-                state.overlay = null
-            }
-
-            CombatSceneEvent.OverlayDismiss -> state.overlay = null
-        }
-    }
-
-    /** Si Evolution está armada y la carta soltada se solapa con otra, abre el selector de variantes. */
-    private fun maybeEvolve(droppedId: String) {
-        if (state.armedActionId != "evolution") return
-        val dropped = state.cardById(droppedId) ?: return
-        val target = state.cards.firstOrNull { other ->
-            other.id != droppedId && overlaps(dropped.position, other.position)
-        } ?: return
-
-        val variants = registry.byCategory(AssetType.Animation, EVOLUTION_CATEGORY).filterIsInstance<AnimationAsset>()
-        overlayAssets = variants
-        state.overlay = SceneOverlay(
-            title = "Evolución — ${dropped.label} sobre ${target.label}",
-            subtitle = "Categoría «$EVOLUTION_CATEGORY» · ${variants.size} variantes del Asset Registry",
-            options = variants.map { SceneOption(it.id, it.name, highlighted = it.status == AssetStatus.Canon) },
-            selectedId = variants.firstOrNull()?.id.orEmpty(),
+        val me = PlayerState(
+            side = Side.PLAYER,
+            active = PokemonInPlay(card = bulbasaur),
+            hand = listOfNotNull(ivysaur, venusaur),
+            deck = List(40) { bulbasaur as Card },
+            prizes = List(6) { bulbasaur as Card },
         )
+        val opponent = PlayerState(
+            side = Side.OPPONENT,
+            active = charmander?.let { PokemonInPlay(card = it) },
+            deck = List(40) { bulbasaur as Card },
+            prizes = List(6) { bulbasaur as Card },
+        )
+        val state = GameState(
+            player = me,
+            opponent = opponent,
+            turn = 1,
+            activeSide = Side.PLAYER,
+            phase = Phase.MAIN,
+        )
+        byId = allCardsById(state)
+        _ui.value = GameUiState(loading = false, state = state)
     }
 
-    private fun overlaps(a: Offset, b: Offset): Boolean =
-        kotlin.math.abs(a.x - b.x) < 0.12f && kotlin.math.abs(a.y - b.y) < 0.16f
+    private fun allCardsById(s: GameState): Map<CardId, Card> {
+        val m = HashMap<CardId, Card>()
+        listOf(s.player, s.opponent).forEach { ps ->
+            (ps.deck + ps.hand + ps.discard + ps.prizes).forEach { m[it.id] = it }
+            ps.bench.forEach { m[it.card.id] = it.card }
+            ps.active?.let { m[it.card.id] = it.card }
+        }
+        return m
+    }
+
+    // ---- Consultas de UI ----
+    override fun card(id: CardId): Card? = byId[id]
+    override fun cardName(id: CardId): String = byId[id]?.name?.es ?: id.raw
+
+    // ---- Sandbox: se acepta sin reglas (v1: sin cambios de estado). ----
+    override fun onIntent(intent: GameIntent) { /* sandbox: manipulación libre en Sprints futuros */ }
+    override fun onResolve(chosen: List<CardId>) { /* no hay decisiones del motor en el sandbox */ }
+    override fun playItemOn(cardId: CardId, targetId: CardId) { /* no-op en v1 */ }
+
+    // ---- Ceremonia inicial: el sandbox arranca ya en juego (sin moneda/reparto/preparación). ----
+    override fun chooseCoin(heads: Boolean) {}
+    override fun chooseFirst(playerFirst: Boolean) {}
+    override fun onDealComplete() {}
+    override fun chooseActive(id: CardId) {}
+    override fun clearActive() {}
+    override fun toggleBench(id: CardId) {}
+    override fun confirmSetup() {}
 }
-
-/** Categoría de Asset que la acción Evolution consulta en el Registry. El Sandbox sólo conoce esto. */
-const val EVOLUTION_CATEGORY = "Evolución"
-
-/**
- * Catálogo GENÉRICO de acciones del Sandbox (sólo Evolution implementada). Es el punto de extensión
- * del laboratorio: nuevas capacidades futuras (partículas, sonidos, cámaras…) se añaden aquí como
- * acciones sobre la MISMA Combat Scene, sin tocar la escena ni el render.
- */
-val SANDBOX_ACTIONS: List<SceneAction> = listOf(
-    SceneAction("draw", "Draw Card", enabled = false),
-    SceneAction("evolution", "Evolution", enabled = true),
-    SceneAction("play", "Play Pokémon", enabled = false),
-    SceneAction("energy", "Attach Energy", enabled = false),
-    SceneAction("tool", "Attach Tool", enabled = false),
-    SceneAction("retreat", "Retreat", enabled = false),
-    SceneAction("ko", "Knock Out", enabled = false),
-    SceneAction("prize", "Prize", enabled = false),
-    SceneAction("shuffle", "Shuffle", enabled = false),
-    SceneAction("coin", "Coin", enabled = false),
-    SceneAction("dice", "Dice", enabled = false),
-    SceneAction("ability", "Ability", enabled = false),
-    SceneAction("attack", "Attack", enabled = false),
-)

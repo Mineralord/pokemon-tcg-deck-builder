@@ -36,11 +36,11 @@ include(":core:animation")
 // --- core: integración Compose del framework de animaciones (Android/Compose/render) ---
 include(":core:animation-compose")
 
-// --- core: la ÚNICA Combat Scene compartida (juego + Studio); sólo visual, sin reglas ---
-include(":core:combat-scene")
-
 // --- core + feature + app: capa Android/Compose ---
 include(":core:designsystem")
+// --- feature:combat — la ÚNICA pantalla de combate (UI canónica), compartida por juego y Studio.
+//     Sólo UI + modelos canónicos (engine/data:cards); NUNCA red/matchmaking/Firebase. ---
+include(":feature:combat")
 include(":feature:packs")
 include(":feature:decks")
 include(":feature:game")

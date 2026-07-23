@@ -10,6 +10,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,8 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.core.designsystem.TcgTheme
+import com.mineralord.tcg.core.designsystem.motion.AnimationTheme
+import com.mineralord.tcg.core.designsystem.motion.MotionScreen
 import com.mineralord.tcg.feature.decks.DecksScreen
-import com.mineralord.tcg.feature.game.GameScreen
 import com.mineralord.tcg.feature.game.MatchmakingScreen
 import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
@@ -46,7 +48,9 @@ class MainActivity : ComponentActivity() {
         hideSystemBars()
         setContent {
             TcgTheme {
-                AppShell()
+                AnimationTheme {
+                    AppShell()
+                }
             }
         }
     }
@@ -68,17 +72,22 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppShell() {
     var screen by remember { mutableStateOf(Screen.HOME) }
+    // Selector de dificultad PvE: se muestra al pulsar JUGAR y, al elegir, pasa a matchmaking.
+    var pickingDifficulty by remember { mutableStateOf(false) }
 
     BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
 
-    when (screen) {
+    Box(Modifier.fillMaxSize()) {
+    // Transición coherente entre pantallas (crossfade Motion). Cada estado se resuelve dentro.
+    MotionScreen(targetState = screen, modifier = Modifier.fillMaxSize()) { target ->
+    when (target) {
         Screen.HOME -> HomeScreen(
             modifier = Modifier.fillMaxSize(),
             onCartadex = { screen = Screen.COLLECTION },
             onTienda = { screen = Screen.PACKS },
             onBarajas = { screen = Screen.DECKS },
             onPerfil = { screen = Screen.PROFILE },
-            onJugar = { screen = Screen.MATCHMAKING },
+            onJugar = { pickingDifficulty = true },
             onJugarOnline = { screen = Screen.ONLINE },
         )
         Screen.MATCHMAKING -> MatchmakingScreen(
@@ -87,8 +96,10 @@ private fun AppShell() {
             onMatched = { screen = Screen.GAME },
             modifier = Modifier.fillMaxSize(),
         )
-        Screen.GAME -> GameScreen(
+        // Combate vs IA: pantalla canónica de combate.
+        Screen.GAME -> com.mineralord.tcg.feature.game.combat.CombatScreen(
             onExit = { screen = Screen.HOME },
+            vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
             modifier = Modifier.fillMaxSize(),
         )
         Screen.ONLINE -> OnlineGameScreen(
@@ -107,6 +118,20 @@ private fun AppShell() {
         Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { screen = Screen.HOME }) {
             ProfileScreen(modifier = Modifier.fillMaxSize())
         }
+    }
+    }
+
+    if (pickingDifficulty) {
+        DifficultyDialog(
+            onPick = { difficulty ->
+                com.mineralord.tcg.feature.game.PveConfig.difficulty = difficulty
+                pickingDifficulty = false
+                screen = Screen.MATCHMAKING
+            },
+            onDismiss = { pickingDifficulty = false },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
     }
 }
 

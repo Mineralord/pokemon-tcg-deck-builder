@@ -86,33 +86,5 @@ internal fun lookupCard(state: GameState?, repo: CardRepository, id: CardId): Ca
 internal fun cardNameOf(repo: CardRepository, id: CardId): String =
     repo[id.printed]?.name?.es ?: id.printed.raw
 
-/**
- * Si [card] es un Objeto que apunta a UN Pokémon PROPIO (su efecto empieza por un
- * `ChooseTarget` de 1 sobre Pokémon propios, p. ej. Poción → cura 30), devuelve esa op
- * de elección; si no, `null`. La UI la usa para permitir ARRASTRAR la carta sobre el
- * Pokémon objetivo y aplicar el efecto en un gesto (en vez de jugarla al panel central
- * y elegir aparte). El campo `onlyDamaged` indica que solo son válidos los Pokémon con
- * daño (así Poción no se puede soltar sobre uno intacto).
- */
-internal fun itemTargetChoose(card: TrainerCard): EffectOp.ChooseTarget? {
-    val effect = EffectsDb.registry[card.effect] ?: return null
-    val first = effect.ops.firstOrNull() as? EffectOp.ChooseTarget ?: return null
-    if (first.howMany != 1) return null
-    return when (first.from) {
-        Target.OWN_ALL, Target.OWN_ACTIVE, Target.OWN_BENCH -> first
-        else -> null
-    }
-}
-
-/**
- * Si [card] es una HERRAMIENTA (Pokémon Tool), devuelve a qué Pokémon puede anclarse
- * ([ToolTarget]); si no, `null`. Como los Objetos dirigidos, las Herramientas se
- * arrastran sobre un Pokémon (no se juegan en el panel central); la UI la usa para
- * resaltar los Pokémon válidos y anclarla al soltar.
- */
-internal fun toolAttachScope(card: TrainerCard): ToolTarget? =
-    (card.kind as? TrainerKind.Tool)?.attachTo
-
-/** ¿Esta carta se juega apuntando a un Pokémon (Objeto dirigido o Herramienta)? */
-internal fun cardTargetsPokemon(card: TrainerCard): Boolean =
-    itemTargetChoose(card) != null || toolAttachScope(card) != null
+// Los helpers de targeting de UI (itemTargetChoose/toolAttachScope/cardTargetsPokemon) se movieron
+// a `feature:combat` (CombatCardTargeting.kt), junto a la pantalla que los usa.
