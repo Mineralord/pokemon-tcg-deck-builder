@@ -86,6 +86,7 @@ import com.mineralord.tcg.feature.game.cardTargetsPokemon
 import com.mineralord.tcg.feature.game.itemTargetChoose
 import com.mineralord.tcg.feature.game.toolAttachScope
 import com.mineralord.tcg.core.designsystem.CardDetailDialog
+import com.mineralord.tcg.core.designsystem.actor.actorControlled
 import com.mineralord.tcg.core.designsystem.motion.MotionContainer
 import com.mineralord.tcg.core.designsystem.motion.MotionDialog
 import com.mineralord.tcg.core.designsystem.motion.MotionEdge
@@ -902,6 +903,9 @@ private fun FieldCard(
     Box(
         modifier
             .fillMaxSize()
+            // Actor visual: por defecto identidad (el juego no provee controller → sin cambios). Una
+            // animación puede tomar el control TEMPORAL de ESTA MISMA carta (sin placeholder ni copia).
+            .then(if (pip != null) Modifier.actorControlled(pip.card.id.raw) else Modifier)
             .onGloballyPositioned { coords = it }
             .then(if (onTap != null && pip != null) Modifier.clickable(onClick = onTap) else Modifier)
             .then(

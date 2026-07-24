@@ -93,6 +93,9 @@ class SandboxController(
         return m
     }
 
+    /** Id (raw) de la carta actualmente en el Activo del jugador, o null. Actor de las evoluciones. */
+    fun activeCardId(): String? = _ui.value.state?.player?.active?.card?.id?.raw
+
     // ---- Consultas de UI ----
     override fun card(id: CardId): Card? = byId[id]
     override fun cardName(id: CardId): String = byId[id]?.name?.es ?: id.raw

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,12 +33,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mineralord.tcg.core.animationcompose.AnimationRenderState
-import com.mineralord.tcg.core.animationcompose.AnimationStage
 import com.mineralord.tcg.core.animationcompose.CoordinateRegistry
 import com.mineralord.tcg.core.animationcompose.LocalCoordinateRegistry
 import com.mineralord.tcg.core.animationcompose.activeSlotId
 import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirector
 import com.mineralord.tcg.core.animationcompose.trackBounds
+import com.mineralord.tcg.core.designsystem.actor.ActorVisualController
+import com.mineralord.tcg.core.designsystem.actor.LocalActorVisuals
 import com.mineralord.tcg.core.designsystem.tokens.StudioColorTokens
 import com.mineralord.tcg.core.designsystem.tokens.StudioTheme
 import com.mineralord.tcg.data.cards.CardRepository
@@ -61,6 +63,8 @@ class BoardSimSession(
     val toolController: ToolController,
     val coordinates: CoordinateRegistry,
     val renderState: AnimationRenderState,
+    /** Canal de actores visuales: permite que las animaciones controlen la carta REAL de la escena. */
+    val actors: ActorVisualController,
 )
 
 /** Crea (una vez) y recuerda la sesión: controladores, motor canónico y siembra del tapete real. */
@@ -71,6 +75,7 @@ fun rememberBoardSimSession(): BoardSimSession {
     val sandbox = remember { SandboxController(onInteraction = { toolController.onInteraction(it) }) }
     val coordinates = remember { CoordinateRegistry() }
     val renderState = remember { AnimationRenderState() }
+    val actors = remember { ActorVisualController() }
     val director = rememberCanonicalAnimationDirector(coordinates, renderState)
 
     LaunchedEffect(Unit) {
@@ -79,7 +84,26 @@ fun rememberBoardSimSession(): BoardSimSession {
     }
     LaunchedEffect(director) { toolController.attachEngine { request -> director.submit(request) } }
 
-    return remember { BoardSimSession(registry, sandbox, toolController, coordinates, renderState) }
+    return remember { BoardSimSession(registry, sandbox, toolController, coordinates, renderState, actors) }
+}
+
+/**
+ * Monta la CombatScreen dentro del canal de actores + el registro de coordenadas del Studio, y añade
+ * el rastreo de la zona Activa (para que el executor resuelva su rect) y el puente actor↔animación
+ * ([EvolveActorBridge]). No dibuja placeholders: la carta real es el actor.
+ */
+@Composable
+private fun ActorHostedBoard(session: BoardSimSession, onExit: () -> Unit) {
+    CompositionLocalProvider(
+        LocalActorVisuals provides session.actors,
+        LocalCoordinateRegistry provides session.coordinates,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CombatScreen(onExit = onExit, vm = session.sandbox)
+            ActiveSlotTracker()
+            EvolveActorBridge(session.renderState, session.actors, session.sandbox.activeCardId())
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,8 +121,7 @@ fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().blur((sheet.openProgress * 16f).dp)) {
-            CombatScreen(onExit = { scope.launch { sheet.open() } }, vm = session.sandbox)
-            AssetPlaybackOverlay(session.coordinates, session.renderState)
+            ActorHostedBoard(session, onExit = { scope.launch { sheet.open() } })
         }
         Scrim(sheet) { scope.launch { sheet.peek() } }
         StudioSheet(sheet, closedIsGone = false) {
@@ -138,8 +161,7 @@ fun PresentationWorkspace(session: BoardSimSession, onExitPresentation: () -> Un
         Box(modifier = Modifier.fillMaxSize().blur((sheet.openProgress * 16f).dp)) {
             // El BOTÓN DE OPCIONES del tapete (onExit) abre el Workspace del Studio. En el juego este
             // mismo callback hace lo suyo (salir de la partida): la pantalla es idéntica.
-            CombatScreen(onExit = { scope.launch { sheet.open() } }, vm = session.sandbox)
-            AssetPlaybackOverlay(session.coordinates, session.renderState)
+            ActorHostedBoard(session, onExit = { scope.launch { sheet.open() } })
         }
         // Al cerrar en Presentation, el sheet se oculta del TODO (handle incluido) → pantalla limpia.
         Scrim(sheet) { scope.launch { sheet.gone() } }
@@ -253,11 +275,13 @@ private fun GrabHandle(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Overlay de reproducción de assets (capa de vuelo alineada al tapete real)
+// Rastreo de la zona Activa (para que el executor resuelva su rect). NO dibuja nada:
+// la animación toma el control de la carta REAL vía el canal de actores.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun AssetPlaybackOverlay(coordinates: CoordinateRegistry, renderState: AnimationRenderState) {
+private fun ActiveSlotTracker() {
+    val reg = LocalCoordinateRegistry.current
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val availW = maxWidth
         val availH = maxHeight
@@ -269,19 +293,12 @@ private fun AssetPlaybackOverlay(coordinates: CoordinateRegistry, renderState: A
             boardH = availH; boardW = availH * BoardGeometry.Aspect
         }
         Box(modifier = Modifier.size(boardW, boardH).align(Alignment.Center)) {
-            AnimationStage(
-                registry = coordinates,
-                renderState = renderState,
-                board = {
-                    val reg = LocalCoordinateRegistry.current
-                    val b = BoardGeometry.MeActive
-                    Box(
-                        Modifier
-                            .offset(x = boardW * b.x, y = boardH * b.y)
-                            .size(width = boardW * b.w, height = boardH * b.h)
-                            .trackBounds(activeSlotId("studio"), reg),
-                    )
-                },
+            val b = BoardGeometry.MeActive
+            Box(
+                Modifier
+                    .offset(x = boardW * b.x, y = boardH * b.y)
+                    .size(width = boardW * b.w, height = boardH * b.h)
+                    .trackBounds(activeSlotId("studio"), reg),
             )
         }
     }
