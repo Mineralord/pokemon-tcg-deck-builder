@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -117,6 +118,14 @@ import com.mineralord.tcg.feature.game.board.sortedHandCards
  * reglas ni ViewModels. La pantalla es la MISMA para el juego y para el Studio; sólo cambia el
  * controlador que se le inyecta (el anfitrión provee el suyo; ya no hay `viewModel` por defecto).
  */
+/**
+ * **Auto-animaciones internas de la CombatScreen** (vuelo entre zonas + entrada "aterrizaje" de
+ * cartas). Por defecto `true` ⇒ el juego se comporta igual que siempre. Un anfitrión que anime las
+ * cartas por OTRO medio (el Studio, con su sistema de actores) lo pone en `false` para que estas
+ * animaciones internas no compitan ni produzcan un segundo desplazamiento tras un cambio de estado.
+ */
+val LocalCombatAutoMotion = staticCompositionLocalOf { true }
+
 @Composable
 fun CombatScreen(
     onExit: () -> Unit,
@@ -125,6 +134,7 @@ fun CombatScreen(
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val state = ui.state
+    val autoMotion = LocalCombatAutoMotion.current
 
     // FX PREMIUM de ataque en el lente central (color+motivo por TIPO, ~1 s). SINCRONIZADO con
     // el IMPACTO de daño (FxCue.Damage): revienta sobre el Pokémon golpeado (el defensor =
@@ -227,7 +237,7 @@ fun CombatScreen(
         LaunchedEffect(state, inSetup, revealing) {
             val now = classifyZones(state)
             val prev = prevZones
-            val quiet = !inSetup && !revealing && ui.dealing == null
+            val quiet = autoMotion && !inSetup && !revealing && ui.dealing == null
             if (prev != null && quiet) {
                 val cards = allCardsById(state)
                 now.forEach { (id, zone) ->
@@ -929,10 +939,12 @@ private fun FieldCard(
             selected = selected || highlighted,
             contentDescription = pip.card.name.es,
             card = if (faceDown) null else pip.card,
-            // Entrada al entrar en juego (aterrizaje) + elevación física al resaltar/seleccionar.
+            // Entrada al entrar en juego (aterrizaje) + elevación física al resaltar/seleccionar. La
+            // entrada se omite si el anfitrión desactiva las auto-animaciones (el Studio anima la carta
+            // por su sistema de actores, evitando una entrada residual tras el Drop).
             modifier = Modifier
                 .fillMaxSize()
-                .motionAppear(pip.card.id)
+                .then(if (LocalCombatAutoMotion.current) Modifier.motionAppear(pip.card.id) else Modifier)
                 .motionElevate(selected || highlighted),
         )
         if (!faceDown) {

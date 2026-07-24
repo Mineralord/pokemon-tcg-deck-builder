@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -45,6 +47,7 @@ import com.mineralord.tcg.core.designsystem.tokens.StudioTheme
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.feature.game.board.BoardGeometry
 import com.mineralord.tcg.feature.game.combat.CombatScreen
+import com.mineralord.tcg.feature.game.combat.LocalCombatAutoMotion
 import com.mineralord.tcg.studio.assets.AssetRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -94,14 +97,21 @@ fun rememberBoardSimSession(): BoardSimSession {
  */
 @Composable
 private fun ActorHostedBoard(session: BoardSimSession, onExit: () -> Unit) {
+    // Actor id REACTIVO: la carta actualmente en el Activo. Se actualiza al aterrizar la evolución, de
+    // modo que el puente controla SIEMPRE la carta real visible (corrige el actor obsoleto).
+    val ui by session.sandbox.ui.collectAsState()
+    val actorId = ui.state?.player?.active?.card?.id?.raw
     CompositionLocalProvider(
         LocalActorVisuals provides session.actors,
         LocalCoordinateRegistry provides session.coordinates,
+        // El sistema de actores es el ÚNICO animador en el Studio: desactiva el vuelo/entrada internos
+        // de la CombatScreen para que no compitan ni produzcan un desplazamiento residual tras el Drop.
+        LocalCombatAutoMotion provides false,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             CombatScreen(onExit = onExit, vm = session.sandbox)
             ActiveSlotTracker()
-            EvolveActorBridge(session.renderState, session.actors, session.sandbox.activeCardId())
+            EvolveActorBridge(session.renderState, session.actors, actorId)
         }
     }
 }
