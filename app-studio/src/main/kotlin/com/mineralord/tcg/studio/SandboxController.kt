@@ -104,7 +104,49 @@ class SandboxController(
 
     // ---- Traduce la intención de la pantalla a una interacción NEUTRAL y la delega. ----
     override fun onIntent(intent: GameIntent) {
-        onInteraction(intent.toBoardInteraction())
+        val interaction = intent.toBoardInteraction()
+        // 1) La carta soltada ATERRIZA y PERMANECE en su destino (deja de ser un ghost de drag y pasa
+        //    a ser el actor/resultado de la secuencia). Estructurado por tipo de interacción para
+        //    reutilizarse en futuras interacciones (no es lógica exclusiva de Evolution).
+        applyToBoard(interaction)
+        // 2) Se delega en el sistema de herramientas, que reproduce el asset activo SOBRE ese destino.
+        onInteraction(interaction)
+    }
+
+    /**
+     * Aplica el efecto visual de una interacción al estado del tablero (sandbox, sin reglas), para que
+     * la carta arrastrada aterrice donde se soltó y la animación sea continuación del gesto. Cada
+     * [InteractionKind] declara aquí su efecto; hoy sólo Evolution (aterrizaje de la evolución).
+     */
+    private fun applyToBoard(interaction: BoardInteraction) {
+        when (interaction.kind) {
+            InteractionKind.EvolveDrop -> landEvolution(interaction.sourceCardId, interaction.targetCardId)
+            else -> Unit // otras interacciones aún no modifican el tablero del sandbox
+        }
+    }
+
+    /** La evolución soltada sustituye al Pokémon Activo objetivo y queda en su lugar (apila la base). */
+    private fun landEvolution(evolutionId: String?, ontoId: String?) {
+        val state = _ui.value.state ?: return
+        val me = state.player
+        val active = me.active ?: return
+        if (ontoId == null || active.card.id.raw != ontoId) return
+        val evoCard = me.hand.firstOrNull { it.id.raw == evolutionId } as? PokemonCard ?: return
+
+        val evolved = PokemonInPlay(
+            card = evoCard,
+            damage = active.damage,
+            attachedEnergy = active.attachedEnergy,
+            attachedTools = active.attachedTools,
+            statuses = active.statuses,
+            evolutionStack = active.evolutionStack + active.card,
+            turnsInPlay = 1, // permite encadenar (p. ej. Venusaur sobre Ivysaur) para seguir probando.
+        )
+        val newState = state.copy(
+            player = me.copy(active = evolved, hand = me.hand.filterNot { it.id.raw == evolutionId }),
+        )
+        byId = allCardsById(newState)
+        _ui.value = _ui.value.copy(state = newState)
     }
 
     /** Mapeo genérico intención→interacción. Sin lógica de categoría: cada tool decide si la acepta. */
