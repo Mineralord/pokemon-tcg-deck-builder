@@ -2,12 +2,16 @@ package com.mineralord.tcg.studio
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import com.mineralord.tcg.core.animationcompose.AnimationRenderState
 import com.mineralord.tcg.core.animationcompose.EvolveRenderNode
 import com.mineralord.tcg.core.animationcompose.RenderLayer
 import com.mineralord.tcg.core.animationcompose.evolveArc
 import com.mineralord.tcg.core.designsystem.actor.ActorTransform
+import com.mineralord.tcg.core.designsystem.actor.ActorVFX
 import com.mineralord.tcg.core.designsystem.actor.ActorVisualController
+import com.mineralord.tcg.core.designsystem.actor.BurstVFX
+import com.mineralord.tcg.core.designsystem.actor.RingVFX
 import kotlin.math.PI
 import kotlin.math.cos
 
@@ -30,8 +34,10 @@ fun EvolveActorBridge(renderState: AnimationRenderState, actors: ActorVisualCont
 
     if (node != null) {
         val transform = node.toActorTransform()
-        // El nodo cambia cada frame ⇒ esta recomposición mínima publica la transformación viva.
-        SideEffect { actors.set(actorId, transform) }
+        val vfx = node.toActorVfx()
+        // El nodo cambia cada frame ⇒ esta recomposición mínima publica transform + VFX vivos, que
+        // viajan con la carta real (se dibujan dentro de su capa transformada).
+        SideEffect { actors.set(actorId, transform, vfx) }
     } else {
         // Sin nodo: la animación terminó (o no hay ninguna) ⇒ devolvemos el control a la CombatScreen.
         SideEffect { actors.clear(actorId) }
@@ -56,4 +62,23 @@ private fun EvolveRenderNode.toActorTransform(): ActorTransform {
         rotationZ = v.spin * 360f * p,
         glow = (v.flash * arc).coerceIn(0f, 1f),
     )
+}
+
+/**
+ * VFX de la evolución ANCLADOS a la carta (anillo expansivo del matiz de la variante + destello),
+ * derivados del mismo estado del nodo. Al viajar dentro de la capa del actor, siguen a la carta.
+ */
+private fun EvolveRenderNode.toActorVfx(): List<ActorVFX> {
+    val v = visual
+    val p = progress
+    val arc = evolveArc(p)
+    val accent = Color.hsv(v.hue.coerceIn(0f, 360f), 0.7f, 1f)
+    val effects = ArrayList<ActorVFX>(2)
+    if (v.ring > 0f && p > 0f) {
+        effects += RingVFX(color = accent, progress = p, maxRadiusFrac = v.ring, alpha = (1f - p) * 0.6f)
+    }
+    if (v.flash > 0f) {
+        effects += BurstVFX(color = Color.White, alpha = v.flash * arc, radiusFrac = 0.7f + p * 0.9f)
+    }
+    return effects
 }
