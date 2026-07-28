@@ -36,7 +36,11 @@ hasta que el actual sea `CANON`.**
 
 | ID | Workflow | Madurez | Research Package | Notas |
 |----|----------|---------|------------------|-------|
-| **V0.1** | 🟡 DISEÑO | STORYBOARD | Referencias aprobadas | Estructura de 5 beats + lenguaje "Elegancia Cinematográfica" + 6 Principios fijados. **5 propuestas redactadas** (Umbral de Luz · Descenso · Materialización · Enfoque · Cruce Diegético); pendiente tu OK para implementar las 5 en el Studio. |
+| **V0.1** | 🟡 IMPLEMENTACIÓN | PLAYABLE | Referencias aprobadas | 5 propuestas (Umbral de Luz · Descenso · Materialización · Enfoque · Cruce Diegético) **jugables y comparables dentro del Board Simulator** (Event Player universal, no un Lab aparte). Pendiente: iterar a AAA + elegir CANON. |
+
+> **Arquitectura del Studio (permanente):** los eventos NO tienen un Lab propio. El **Board Simulator
+> (Sandbox)** es el **reproductor universal del Event Catalog**: carga cualquier evento, reproduce sus
+> propuestas sobre el tapete real, compara, edita, guarda y marca Canon. Un solo entorno para TODO.
 
 *(A medida que un evento avance, se añade/actualiza aquí su fila. Cuando llegue a CANON, se marca 🟢.)*
 

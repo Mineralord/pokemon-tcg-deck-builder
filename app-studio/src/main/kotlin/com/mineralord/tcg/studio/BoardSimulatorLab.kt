@@ -24,6 +24,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -49,6 +51,11 @@ import com.mineralord.tcg.feature.game.board.BoardGeometry
 import com.mineralord.tcg.feature.game.combat.CombatScreen
 import com.mineralord.tcg.feature.game.combat.LocalCombatAutoMotion
 import com.mineralord.tcg.studio.assets.AssetRegistry
+import com.mineralord.tcg.studio.preparation.EventOverlay
+import com.mineralord.tcg.studio.preparation.EventPlayerPanel
+import com.mineralord.tcg.studio.preparation.EventPlayerState
+import com.mineralord.tcg.studio.preparation.PREP_EVENTS
+import com.mineralord.tcg.studio.preparation.cameraChannels
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -129,19 +136,52 @@ fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -
     val sheet = remember(sheetPx) { StudioSheetState(sheetPx, handlePx, start = sheetPx - handlePx) }
     val scope = rememberCoroutineScope()
 
+    // Reproductor UNIVERSAL de eventos del catálogo, hospedado por el propio Sandbox (no un Lab aparte).
+    val player = remember { EventPlayerState(PREP_EVENTS) }
+
+    // Studio Player: avanza el reloj por frame (escalado por velocidad; respeta loop/fin) mientras haya
+    // un evento cargado y en reproducción. Con evento cerrado, el tablero es el Sandbox normal.
+    LaunchedEffect(player.active, player.playing, player.speed, player.eventIndex, player.variantIndex) {
+        if (!player.active || !player.playing) return@LaunchedEffect
+        var last = withFrameNanos { it }
+        while (true) {
+            val now = withFrameNanos { it }
+            val dtMs = (now - last) / 1_000_000f * player.speed
+            last = now
+            var next = player.elapsed + dtMs
+            if (next >= player.variant.totalMs) {
+                if (player.loop) next = 0f else { player.elapsed = player.variant.totalMs; player.playing = false; break }
+            }
+            player.elapsed = next
+        }
+    }
+
+    val frame = if (player.active) player.frame() else null
+    // Con un evento activo, no difuminamos/atenuamos el tablero por el sheet: hay que VER la cinemática.
+    val boardBlur = if (player.active) 0f else sheet.openProgress * 16f
+
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().blur((sheet.openProgress * 16f).dp)) {
+        // Tablero REAL con la "cámara" del evento aplicada (reveal/escala/desplazamiento/tilt/rack-focus).
+        Box(modifier = Modifier.fillMaxSize().blur(boardBlur.dp).cameraChannels(frame?.channels)) {
             ActorHostedBoard(session, onExit = { scope.launch { sheet.open() } })
         }
-        Scrim(sheet) { scope.launch { sheet.peek() } }
+        // Capas overlay del evento (menú saliente, velo, luz, bloom, partículas) sobre el tablero.
+        if (frame != null) EventOverlay(frame.channels)
+
+        if (!player.active) Scrim(sheet) { scope.launch { sheet.peek() } }
         StudioSheet(sheet, closedIsGone = false) {
-            AssetToolPanel(
-                controller = session.toolController,
-                onReset = { session.sandbox.reset() },
-                presentationToggleLabel = "Entrar en Presentation Mode",
-                onPresentationToggle = onEnterPresentation,
-                modifier = Modifier.fillMaxSize(),
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Event Player (reproductor universal del catálogo) — primario.
+                EventPlayerPanel(player, StudioTheme.colors, Modifier.fillMaxWidth().padding(12.dp))
+                // Herramientas de asset (Active Tool de evolución) — secundario, en el espacio restante.
+                AssetToolPanel(
+                    controller = session.toolController,
+                    onReset = { session.sandbox.reset() },
+                    presentationToggleLabel = "Entrar en Presentation Mode",
+                    onPresentationToggle = onEnterPresentation,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            }
         }
     }
 }

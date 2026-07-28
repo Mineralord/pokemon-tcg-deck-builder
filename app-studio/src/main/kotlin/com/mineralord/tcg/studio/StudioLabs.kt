@@ -1,6 +1,5 @@
 package com.mineralord.tcg.studio
 
-import com.mineralord.tcg.studio.preparation.V01LabContent
 import com.mineralord.tcg.studio.shell.Lab
 
 /**
@@ -19,9 +18,6 @@ import com.mineralord.tcg.studio.shell.Lab
  * de conmutación del Shell ya lo cubre sin cambios.
  */
 fun studioLabs(session: BoardSimSession, onEnterPresentation: () -> Unit): List<Lab> = listOf(
-    Lab(id = "prep-v01", title = "Preparación · V0.1") {
-        V01LabContent()
-    },
     Lab(id = "board-simulator", title = "Board Simulator") {
         BoardSimulatorLabContent(session = session, onEnterPresentation = onEnterPresentation)
     },
