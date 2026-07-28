@@ -75,6 +75,8 @@ class BoardSimSession(
     val renderState: AnimationRenderState,
     /** Canal de actores visuales: permite que las animaciones controlen la carta REAL de la escena. */
     val actors: ActorVisualController,
+    /** Reproductor UNIVERSAL de eventos del Event Catalog (compartido por Workspace y Presentation). */
+    val player: EventPlayerState,
 )
 
 /** Crea (una vez) y recuerda la sesión: controladores, motor canónico y siembra del tapete real. */
@@ -86,6 +88,7 @@ fun rememberBoardSimSession(): BoardSimSession {
     val coordinates = remember { CoordinateRegistry() }
     val renderState = remember { AnimationRenderState() }
     val actors = remember { ActorVisualController() }
+    val player = remember { EventPlayerState(PREP_EVENTS) }
     val director = rememberCanonicalAnimationDirector(coordinates, renderState)
 
     LaunchedEffect(Unit) {
@@ -94,7 +97,7 @@ fun rememberBoardSimSession(): BoardSimSession {
     }
     LaunchedEffect(director) { toolController.attachEngine { request -> director.submit(request) } }
 
-    return remember { BoardSimSession(registry, sandbox, toolController, coordinates, renderState, actors) }
+    return remember { BoardSimSession(registry, sandbox, toolController, coordinates, renderState, actors, player) }
 }
 
 /**
@@ -124,23 +127,12 @@ private fun ActorHostedBoard(session: BoardSimSession, onExit: () -> Unit) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Workspace Mode: tapete a pantalla completa (en el Host) + consola con grab handle fijo.
+// Reproductor de eventos COMPARTIDO por Workspace y Presentation (mismo pipeline de render).
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Reloj del reproductor: avanza mientras haya evento cargado y en reproducción (respeta loop/fin). */
 @Composable
-fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -> Unit) {
-    val density = LocalDensity.current
-    val sheetPx = with(density) { SheetHeight.toPx() }
-    val handlePx = with(density) { HandleStrip.toPx() }
-    // En Workspace el grab handle es PERMANENTE: la posición de reposo es "peek" (handle visible).
-    val sheet = remember(sheetPx) { StudioSheetState(sheetPx, handlePx, start = sheetPx - handlePx) }
-    val scope = rememberCoroutineScope()
-
-    // Reproductor UNIVERSAL de eventos del catálogo, hospedado por el propio Sandbox (no un Lab aparte).
-    val player = remember { EventPlayerState(PREP_EVENTS) }
-
-    // Studio Player: avanza el reloj por frame (escalado por velocidad; respeta loop/fin) mientras haya
-    // un evento cargado y en reproducción. Con evento cerrado, el tablero es el Sandbox normal.
+private fun EventPlayerClock(player: EventPlayerState) {
     LaunchedEffect(player.active, player.playing, player.speed, player.eventIndex, player.variantIndex) {
         if (!player.active || !player.playing) return@LaunchedEffect
         var last = withFrameNanos { it }
@@ -155,33 +147,60 @@ fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -
             player.elapsed = next
         }
     }
+}
 
+/**
+ * El tablero REAL con la "cámara" del evento aplicada + el overlay del fotograma. Es EXACTAMENTE el
+ * mismo render que verá el juego: la cinemática se ejecuta sobre la `CombatScreen` real (no hay
+ * renderer paralelo). Con evento cerrado, el tablero es el Sandbox normal.
+ */
+@Composable
+private fun PlayerDrivenBoard(session: BoardSimSession, sheetBlur: Float, onExit: () -> Unit) {
+    val player = session.player
+    EventPlayerClock(player)
     val frame = if (player.active) player.frame() else null
-    // Con un evento activo, no difuminamos/atenuamos el tablero por el sheet: hay que VER la cinemática.
-    val boardBlur = if (player.active) 0f else sheet.openProgress * 16f
+    // Con un evento activo NO difuminamos el tablero por el sheet: hay que VER la cinemática.
+    val boardBlur = if (player.active) 0f else sheetBlur
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().blur(boardBlur.dp).cameraChannels(frame?.channels)) {
+            ActorHostedBoard(session, onExit = onExit)
+        }
+        if (frame != null) EventOverlay(frame.channels)
+    }
+}
+
+/** Consola común (bottom sheet): Event Player (primario) + herramientas de asset (secundario). */
+@Composable
+private fun SandboxConsole(session: BoardSimSession, presentationToggleLabel: String, onPresentationToggle: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        EventPlayerPanel(session.player, StudioTheme.colors, Modifier.fillMaxWidth().padding(12.dp))
+        AssetToolPanel(
+            controller = session.toolController,
+            onReset = { session.sandbox.reset() },
+            presentationToggleLabel = presentationToggleLabel,
+            onPresentationToggle = onPresentationToggle,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workspace Mode: modo de edición del Sandbox (grab handle fijo).
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -> Unit) {
+    val density = LocalDensity.current
+    val sheetPx = with(density) { SheetHeight.toPx() }
+    val handlePx = with(density) { HandleStrip.toPx() }
+    val sheet = remember(sheetPx) { StudioSheetState(sheetPx, handlePx, start = sheetPx - handlePx) }
+    val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Tablero REAL con la "cámara" del evento aplicada (reveal/escala/desplazamiento/tilt/rack-focus).
-        Box(modifier = Modifier.fillMaxSize().blur(boardBlur.dp).cameraChannels(frame?.channels)) {
-            ActorHostedBoard(session, onExit = { scope.launch { sheet.open() } })
-        }
-        // Capas overlay del evento (menú saliente, velo, luz, bloom, partículas) sobre el tablero.
-        if (frame != null) EventOverlay(frame.channels)
-
-        if (!player.active) Scrim(sheet) { scope.launch { sheet.peek() } }
+        PlayerDrivenBoard(session, sheetBlur = sheet.openProgress * 16f, onExit = { scope.launch { sheet.open() } })
+        if (!session.player.active) Scrim(sheet) { scope.launch { sheet.peek() } }
         StudioSheet(sheet, closedIsGone = false) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Event Player (reproductor universal del catálogo) — primario.
-                EventPlayerPanel(player, StudioTheme.colors, Modifier.fillMaxWidth().padding(12.dp))
-                // Herramientas de asset (Active Tool de evolución) — secundario, en el espacio restante.
-                AssetToolPanel(
-                    controller = session.toolController,
-                    onReset = { session.sandbox.reset() },
-                    presentationToggleLabel = "Entrar en Presentation Mode",
-                    onPresentationToggle = onEnterPresentation,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                )
-            }
+            SandboxConsole(session, "Entrar en Presentation Mode", onEnterPresentation)
         }
     }
 }
@@ -208,21 +227,13 @@ fun PresentationWorkspace(session: BoardSimSession, onExitPresentation: () -> Un
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize().blur((sheet.openProgress * 16f).dp)) {
-            // El BOTÓN DE OPCIONES del tapete (onExit) abre el Workspace del Studio. En el juego este
-            // mismo callback hace lo suyo (salir de la partida): la pantalla es idéntica.
-            ActorHostedBoard(session, onExit = { scope.launch { sheet.open() } })
-        }
+        // MISMO reproductor y MISMO render que el juego: la cinemática del evento se ejecuta sobre la
+        // CombatScreen real. El botón de Opciones del tapete (onExit) abre la consola.
+        PlayerDrivenBoard(session, sheetBlur = sheet.openProgress * 16f, onExit = { scope.launch { sheet.open() } })
         // Al cerrar en Presentation, el sheet se oculta del TODO (handle incluido) → pantalla limpia.
-        Scrim(sheet) { scope.launch { sheet.gone() } }
+        if (!session.player.active) Scrim(sheet) { scope.launch { sheet.gone() } }
         StudioSheet(sheet, closedIsGone = true) {
-            AssetToolPanel(
-                controller = session.toolController,
-                onReset = { session.sandbox.reset() },
-                presentationToggleLabel = "Salir de Presentation Mode",
-                onPresentationToggle = onExitPresentation,
-                modifier = Modifier.fillMaxSize(),
-            )
+            SandboxConsole(session, "Salir de Presentation Mode", onExitPresentation)
         }
     }
 }
