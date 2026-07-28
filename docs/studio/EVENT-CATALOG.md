@@ -21,10 +21,57 @@
 - **Research Package:** `Pendiente → Investigando → Referencias aprobadas → Cerrado`.
 - **Prioridad cinematográfica:** ★ (mínima) … ★★★★★ (clímax).
 - **Owner (disciplinas principales):** Camera · Lighting · Audio · VFX · UI · Gameplay · Shared.
+- **Tipo:** `Framing` (presentación, sin acción reglamentaria del TCG) · `Gameplay` (acción reglamentaria).
+- **Ancla:** `Manual` (sin transición del motor; ocurre dentro de la sesión viva) · `Motor` (disparado por un `GameEvent`/transición real) · `Mixto` (resultado del motor + presentación con decisión, p. ej. E2).
+- **Checkpoint:** escenario (`seed + mazos + decisiones deterministas`) que lleva la partida al estado JUSTO ANTES del evento. Se rellena por evento al diseñarlo.
+- **Precondición:** eventos/estado que DEBEN cumplirse para reproducir el evento legalmente (p. ej. K5 ← C6 + HP=0). **Distinto de Dependencias** (que es solo el orden narrativo): la Precondición **guía la construcción del checkpoint**.
 
 ## 🔒 Regla absoluta
 Nunca investigar dos eventos a la vez. Nunca implementar dos a la vez. **No se avanza al siguiente evento
 hasta que el actual sea `CANON`.**
+
+## 🧩 Arquitectura de simulación (permanente)
+El Board Simulator **simula una PARTIDA COMPLETA**, no un tablero. Puede **saltar a cualquier evento**
+(checkpoints) y reproducirlo, jugarlo e iterarlo sin recorrer toda la partida.
+
+- **MatchSession única y continua.** Nace al **ACEPTAR el combate** (antes de V0.1) y vive hasta la
+  pantalla final. Contiene: **jugadores, seed, RNG, listas de mazo**. V0.1/V0.2/V0.3 ocurren **dentro de
+  esa sesión viva** (aún sin cartas: el **tapete está vacío** hasta E3 reparto / E6–E7 colocación). Al
+  llegar a E2/E3 no "se crea" una partida: se **continúa** la misma que empezó al aceptar.
+- **Checkpoints por REPLAY DETERMINISTA.** `seed → mazos → decisiones deterministas → engine:rules →
+  estado válido justo antes del evento`. **Nunca** GameStates fabricados a mano. **Fuente única de verdad
+  = `engine:rules`.** (Las "decisiones" incluyen la ceremonia de setup —volado/reparto/mulligan/
+  colocación/premios/revelado— y los `GameIntent` de turno.)
+- **Reiniciar escenario ≠ Crear nueva MatchSession** (acciones distintas, permanecen separadas):
+  · **Reiniciar escenario** → vuelve al **mismo checkpoint**, **mismo seed**, **misma sesión** (para
+  iterar/comparar la misma cinemática). · **Crear nueva MatchSession** → **nueva sesión**, **nuevo seed**,
+  nueva partida.
+- **Rival según el escenario.** No se fija por diseño: el escenario cargado decide el comportamiento del
+  oponente (`scripted` · `IA` · `humano` · `remoto`). El Sandbox debe poder usar cualquiera.
+- **Separación de responsabilidades.** `engine:rules` = reglas, GameState, intents, eventos, validación.
+  El **Sandbox** = herramientas, consola, Event Catalog, variantes, comparación, Presentation Mode,
+  cámara libre, utilidades de diseño. El Sandbox **COMPONE** el motor (net-free, **sin `feature:game`**),
+  no lo absorbe ni lo reemplaza.
+- **Tres capas (decades-proof).** **Reglas** (`engine:rules`) ⟂ **Cinemática** (Event Catalog:
+  variantes/timelines) ⟂ **Director** (mapea transición del motor → evento del catálogo → variante Canon).
+  En el Studio un evento se dispara **manualmente** (para iterar) o dejando **fluir la partida**; en el
+  juego, automáticamente desde los `GameEvent` reales.
+
+### Clasificación por bloque (Tipo · Ancla por defecto)
+| Bloque | Tipo | Ancla por defecto |
+|---|---|---|
+| V (framing) | Framing | Manual |
+| E (setup) | Gameplay | Mixto/Motor (E2 = Mixto) |
+| T (turno) | Gameplay | Motor |
+| A (acciones) | Gameplay | Motor/Mixto |
+| C (combate) | Gameplay | Motor |
+| K (KO) | Gameplay | Motor |
+| P (premios) | Gameplay | Motor |
+| S (estados) | Gameplay | Motor |
+| U (utilidades) | Gameplay | Motor (reutilizable) |
+| G (final) | Gameplay | Motor |
+| R (post-partida) | Framing | Manual |
+*(Checkpoint y Precondición concretos se rellenan por evento al diseñarlo.)*
 
 ---
 
@@ -36,7 +83,8 @@ hasta que el actual sea `CANON`.**
 
 | ID | Workflow | Madurez | Research Package | Notas |
 |----|----------|---------|------------------|-------|
-| **V0.1** | 🟡 IMPLEMENTACIÓN | PLAYABLE | Referencias aprobadas | 5 propuestas (Umbral de Luz · Descenso · Materialización · Enfoque · Cruce Diegético) **jugables y comparables dentro del Board Simulator** (Event Player universal, no un Lab aparte). Pendiente: iterar a AAA + elegir CANON. |
+| **V0.1** | 🟡 ITERACIÓN | PLAYABLE | Referencias aprobadas | **Tipo Framing · Ancla Manual · Checkpoint: n/a (framing) · Precondición: MatchSession creada.** 5 propuestas jugables/comparables en el Sandbox; **P1 «Umbral de Luz» (Iteración 1) = candidata a CANON**. Pendiente: seguir iterando/validar → CANON. |
+| **V0.2** | ⚪ PENDIENTE | CONCEPTO | Pendiente | **Tipo Framing · Ancla Manual · Checkpoint: n/a (framing) · Precondición: V0.1 completado.** Siguiente a diseñar: **sobre la MatchSession real ya viva, tapete VACÍO** (sin cartas) + su cinemática; al terminar, sesión lista para V0.3/E2. |
 
 > **Arquitectura del Studio (permanente):** los eventos NO tienen un Lab propio. El **Board Simulator
 > (Sandbox)** es el **reproductor universal del Event Catalog**: carga cualquier evento, reproduce sus
