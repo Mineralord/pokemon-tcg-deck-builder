@@ -109,13 +109,19 @@ private val Lin = LinearEasing
  * (marcadores de cue). Duraciones/valores son un primer pase AAA para comparar; se iterarán.
  */
 val V01_VARIANTS: List<EventVariant> = listOf(
-    // P1 · Umbral de Luz — la luz revela; elegancia + continuidad.
+    // P1 · Umbral de Luz — la luz revela; elegancia + continuidad. [Iteración 1: ajustes justificados
+    // por referencias AAA de light-wipe, establishing shot y "calma antes de la acción".]
     EventVariant("P1", "Umbral de Luz", listOf(
-        Beat("Menú cede", 350f, In, "aire", SceneChannels(menuAlpha = 0.2f, menuBlur = 8f, menuScale = 0.98f)),
-        Beat("Cruce (luz)", 450f, InOut, "whoosh", SceneChannels(menuAlpha = 0f, arenaAlpha = 0.4f, arenaScale = 1.06f, lightBand = 1.2f, lightIntensity = 0.55f)),
-        Beat("Presentación", 600f, Out, "ambiente", SceneChannels(arenaAlpha = 1f, arenaScale = 1.0f, lightBand = 1.3f, lightIntensity = 0.2f, bloom = 0.45f)),
-        Beat("Respiración", 250f, InOut, "resonancia", SceneChannels(arenaAlpha = 1f, bloom = 0.2f, lightIntensity = 0.08f)),
-        Beat("Entrega", 200f, Out, null, SceneChannels(arenaAlpha = 1f, bloom = 0.1f)),
+        // B1: el menú CEDE casi del todo aquí (staging limpio; un foco por beat) y recula perceptible.
+        Beat("Menú cede", 320f, In, "aire", SceneChannels(menuAlpha = 0.06f, menuBlur = 12f, menuScale = 0.965f)),
+        // B2: light-wipe más brillante y deliberado que revela MÁS la arena al pasar (funde escenas).
+        Beat("Cruce (luz)", 520f, InOut, "whoosh", SceneChannels(menuAlpha = 0f, arenaAlpha = 0.6f, arenaScale = 1.06f, lightBand = 1.2f, lightIntensity = 0.72f, bloom = 0.12f)),
+        // B3: establishing — push-in que asienta + la luz suave FLORECE (serenidad), revelado gradual.
+        Beat("Presentación", 620f, Out, "ambiente", SceneChannels(arenaAlpha = 1f, arenaScale = 1.0f, lightBand = 1.35f, lightIntensity = 0.18f, bloom = 0.5f)),
+        // B4: respiración sostenida un instante más, con ease-out de asentamiento (anticipación).
+        Beat("Respiración", 300f, Out, "resonancia", SceneChannels(arenaAlpha = 1f, bloom = 0.16f, lightIntensity = 0.08f)),
+        // B5: entrega más limpia (menos bloom residual) → handoff sin costura a V0.2.
+        Beat("Entrega", 220f, Out, null, SceneChannels(arenaAlpha = 1f, bloom = 0.06f)),
     )),
     // P2 · Descenso — grúa cenital que aterriza en la mesa; peso/gravedad.
     EventVariant("P2", "Descenso", listOf(
