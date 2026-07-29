@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -83,6 +84,7 @@ import com.mineralord.tcg.engine.model.Target
 import com.mineralord.tcg.engine.rules.GameIntent
 import com.mineralord.tcg.feature.game.CoinFlipOverlay
 import com.mineralord.tcg.feature.game.DealOverlay
+import com.mineralord.tcg.feature.game.SetupUiState
 import com.mineralord.tcg.feature.game.cardTargetsPokemon
 import com.mineralord.tcg.feature.game.itemTargetChoose
 import com.mineralord.tcg.feature.game.toolAttachScope
@@ -93,6 +95,7 @@ import com.mineralord.tcg.core.designsystem.motion.MotionDialog
 import com.mineralord.tcg.core.designsystem.motion.MotionEdge
 import com.mineralord.tcg.core.designsystem.motion.MotionPanel
 import com.mineralord.tcg.core.designsystem.motion.MotionTransitions
+import com.mineralord.tcg.core.designsystem.motion.FlightHost
 import com.mineralord.tcg.core.designsystem.motion.FlightOverlay
 import com.mineralord.tcg.core.designsystem.motion.rememberFlightHost
 import com.mineralord.tcg.core.designsystem.motion.motionAppear
@@ -162,11 +165,12 @@ fun CombatScreen(
     var zonePanel by remember { mutableStateOf<Pair<String, List<Card>>?>(null) }
     // Registro de batalla (lo abre el botón de lista+lupa de la columna derecha).
     var showLog by remember { mutableStateOf(false) }
+    // Estado EFÍMERO de interacción del tablero (arrastres, bounds de zonas, foco de mano, anclas de
+    // vuelo), agrupado para reducir el acoplamiento interno; se comparte entre el compositor y sus capas.
+    val bi = remember { CombatBoardInteraction() }
     // ---- VUELO REAL entre zonas (capa Motion) ----
-    // Host de vuelos + rects de ancla por zona (coords de raíz) + última clasificación de
-    // cartas para detectar movimientos por diffing de estado (no toca lógica ni reglas).
+    // Host de vuelos + última clasificación de cartas para detectar movimientos por diffing de estado.
     val flightHost = rememberFlightHost()
-    val anchorBounds = remember { mutableStateMapOf<CardZone, Rect>() }
     var prevZones by remember { mutableStateOf<Map<CardId, CardZone>?>(null) }
     // Reloj de partida por lado (banco de tiempo mm:ss) que descuenta en el lado ACTIVO,
     // como el temporizador de las pestañas de estado de TCG Live. Arranca en 25:00.
@@ -182,29 +186,8 @@ fun CombatScreen(
             else oppClock = (oppClock - 1).coerceAtLeast(0)
         }
     }
-    // Carta de la mano tocada que espera ELEGIR un objetivo (energía → Pokémon,
-    // evolución → su pre-evolución). null = no hay jugada en curso.
-    var pendingPlay by remember { mutableStateOf<Card?>(null) }
-    // Barra inferior de la mano (Pokémon/Entrenador/Energía): al tocar un icono, la mano se
-    // DESLIZA hasta donde empieza esa categoría (como TCG Live). `handFocus` = categoría pulsada;
-    // `handFocusNonce` cambia en cada toque para re-desplazar aunque se repita la categoría.
-    var handFocus by remember { mutableStateOf<HandCat?>(null) }
-    var handFocusNonce by remember { mutableStateOf(0) }
-    // ---- Arrastre para jugar cartas de la mano ----
-    // `dragCard` = carta arrastrada; `dragPos` = posición del dedo (coords de raíz);
-    // `targetBounds` = límites de cada Pokémon propio; `benchSlotBounds`/`activeSlotBounds`
-    // = huecos para soltar un Básico; `centerBounds` = panel central (jugar Entrenadores).
-    var dragCard by remember { mutableStateOf<Card?>(null) }
-    var dragPos by remember { mutableStateOf(Offset.Zero) }
-    val targetBounds = remember { mutableStateMapOf<CardId, Rect>() }
-    val benchSlotBounds = remember { mutableStateMapOf<Int, Rect>() }
-    var activeSlotBounds by remember { mutableStateOf<Rect?>(null) }
-    var centerBounds by remember { mutableStateOf<Rect?>(null) }
-    // Retirada por arrastre: tras pulsar RETIRARSE en el detalle, se arrastra un Pokémon de
-    // la Banca sobre el Activo para reemplazarlo (GameIntent.Retreat).
-    var retreatMode by remember { mutableStateOf(false) }
-    var benchDragCard by remember { mutableStateOf<Card?>(null) }
-    var benchDragPos by remember { mutableStateOf(Offset.Zero) }
+    // El estado de mano (pendingPlay/foco), arrastre (dragCard/dragPos + bounds), y retirada
+    // (retreatMode/benchDrag*) vive en `bi` (CombatBoardInteraction), compartido por las capas.
 
     Box(modifier.fillMaxSize().background(Color(0xFF06080D))) {
 
@@ -243,8 +226,8 @@ fun CombatScreen(
                 now.forEach { (id, zone) ->
                     val old = prev[id]
                     if (old != null && old != zone) {
-                        val from = anchorBounds[old]
-                        val to = anchorBounds[zone]
+                        val from = bi.anchorBounds[old]
+                        val to = bi.anchorBounds[zone]
                         val card = cards[id]
                         if (from != null && to != null && card != null) {
                             val faceUp = zone.faceUp
@@ -283,334 +266,43 @@ fun CombatScreen(
                 // de la lente central. Solo lectura del estado; el ambiente es pura presentación.
                 val activeType = if (litSide == null) null
                     else state.activePlayer.active?.card?.types?.firstOrNull()
-                CombatMat(Modifier.matchParentSize(), litSide = litSide, activeType = activeType)
+                SceneLayer(litSide = litSide, activeType = activeType, modifier = Modifier.matchParentSize())
 
-                // Anclas invisibles por zona: capturan el rect (coords de raíz) de cada zona
-                // para que la capa de VUELO sepa de/hacia dónde viajan las cartas. Sin pointer
-                // input → no interceptan toques; se dibujan bajo el resto de zonas.
-                CardZone.values().forEach { z ->
-                    Box(
-                        Modifier.place(zoneNBox(z), boardW, boardH)
-                            .onGloballyPositioned { anchorBounds[z] = it.boundsInRoot() },
-                    )
-                }
-
-                val opp = state.opponent
-                val me = state.player
-                val faceDownOpp = inSetup || revealing
-
-                // Objetivo (Pokémon propio) bajo el dedo según lo que se arrastra:
-                //  - energía/evolución → dropTargetUnder (isPlayTarget)
-                //  - Objeto dirigido (Poción) → itemTargetUnder (ámbito del efecto, solo dañados si aplica)
-                //  - Herramienta → toolTargetUnder (Pokémon sin Herramienta)
-                fun dropTargetUnder(card: Card): CardId? =
-                    (listOfNotNull(me.active) + me.bench).firstOrNull { pip ->
-                        isPlayTarget(card, pip) && targetBounds[pip.card.id]?.contains(dragPos) == true
-                    }?.card?.id
-                fun itemTargetUnder(choose: EffectOp.ChooseTarget): CardId? {
-                    val cands = when (choose.from) {
-                        Target.OWN_ACTIVE -> listOfNotNull(me.active)
-                        Target.OWN_BENCH -> me.bench
-                        else -> me.allInPlay
-                    }.filter { !choose.onlyDamaged || it.damage > 0 }
-                    return cands.firstOrNull { targetBounds[it.card.id]?.contains(dragPos) == true }?.card?.id
-                }
-                fun toolTargetUnder(): CardId? =
-                    me.allInPlay.firstOrNull { it.attachedTools.isEmpty() && targetBounds[it.card.id]?.contains(dragPos) == true }?.card?.id
-
-                val dragging = dragCard
-                val dragItemChoose = (dragging as? TrainerCard)?.let { itemTargetChoose(it) }
-                val dragToolScope = (dragging as? TrainerCard)?.let { toolAttachScope(it) }
-                val hoverTargetId: CardId? = when {
-                    dragging == null -> null
-                    dragItemChoose != null -> itemTargetUnder(dragItemChoose)
-                    dragToolScope != null -> toolTargetUnder()
-                    else -> dropTargetUnder(dragging)
-                }
-                // El panel central solo se ilumina para Entrenadores que NO apuntan a un Pokémon.
-                val centerHot = dragging is TrainerCard && !cardTargetsPokemon(dragging) &&
-                    centerBounds?.contains(dragPos) == true
-                val activeSetupHot = inSetup && dragging is PokemonCard && dragging.isBasic &&
-                    activeSlotBounds?.contains(dragPos) == true
-
-                // Panel central (soltar Entrenadores): captura límites + glow al sobrevolar.
-                Box(
-                    Modifier.place(BoardGeometry.CenterPanel, boardW, boardH)
-                        .onGloballyPositioned { centerBounds = it.boundsInRoot() }
-                        .then(if (centerHot) Modifier.border(2.dp, CombatTheme.Gold, RoundedCornerShape(20.dp)) else Modifier),
+                // ---------- Capa PARTIDA (zonas, cartas, mano) ----------
+                MatchLayer(
+                    state = state,
+                    vm = vm,
+                    bi = bi,
+                    boardW = boardW,
+                    boardH = boardH,
+                    inSetup = inSetup,
+                    revealing = revealing,
+                    myTurn = myTurn,
+                    mustPromote = mustPromote,
+                    setup = setup,
+                    onInspect = { inspect = it },
+                    onZonePanel = { zonePanel = it },
                 )
 
-                // ---------- RIVAL ----------
-                // Mano rival (dorsos).
-                Box(Modifier.place(BoardGeometry.OppHand, boardW, boardH)) {
-                    OppHandBacks(opp.hand.size)
-                }
-                // Banca rival (por slots del panal).
-                opp.bench.forEachIndexed { i, pip ->
-                    BoardGeometry.OppBenchSlots.getOrNull(i)?.let { slot ->
-                        Box(Modifier.place(slot, boardW, boardH)) {
-                            FieldCard(pip, faceDown = faceDownOpp, onTap = { inspect = pip.card })
-                        }
-                    }
-                }
-                // Activo rival.
-                Box(Modifier.place(BoardGeometry.OppActive, boardW, boardH)) {
-                    FieldCard(opp.active, faceDown = faceDownOpp, onTap = { opp.active?.let { inspect = it.card } })
-                }
-                // Premios / mazo / descarte rival.
-                Box(Modifier.place(BoardGeometry.OppPrizes, boardW, boardH)) {
-                    PrizeFan(opp.prizesRemaining)
-                }
-                Box(
-                    Modifier.place(BoardGeometry.OppDiscard, boardW, boardH)
-                        .clickable(enabled = opp.discard.isNotEmpty()) { zonePanel = "Descarte del rival" to opp.discard },
-                ) {
-                    PileStack(opp.discard.size, faceDown = false, topCard = opp.discard.lastOrNull())
-                }
-                Box(Modifier.place(BoardGeometry.OppDeck, boardW, boardH)) {
-                    PileStack(opp.deck.size, faceDown = true)
-                }
-
-                // ---------- ESTADIO ----------
-                state.stadium?.let { stad ->
-                    Box(Modifier.place(BoardGeometry.Stadium, boardW, boardH)) {
-                        FieldCardImage(stad.artwork.small(true), stad.name.es) { inspect = stad }
-                    }
-                }
-
-                // ---------- JUGADOR ----------
-                Box(
-                    Modifier.place(BoardGeometry.MeActive, boardW, boardH)
-                        .onGloballyPositioned { c ->
-                            val r = c.boundsInRoot(); activeSlotBounds = r
-                            me.active?.card?.id?.let { targetBounds[it] = r }
-                        },
-                ) {
-                    FieldCard(
-                        me.active,
-                        selected = false,
-                        highlighted = activeSetupHot ||
-                            (hoverTargetId != null && hoverTargetId == me.active?.card?.id) ||
-                            (retreatMode && benchDragCard != null && activeSlotBounds?.contains(benchDragPos) == true),
-                        onTap = {
-                            when {
-                                inSetup -> vm.clearActive()
-                                me.active == null -> {}
-                                // Tocar el Activo = VER A DETALLE (holo/3D). Atacar = botón ⚔.
-                                else -> me.active?.let { inspect = it.card }
-                            }
-                        },
-                    )
-                }
-                me.bench.forEachIndexed { i, pip ->
-                    BoardGeometry.MeBenchSlots.getOrNull(i)?.let { slot ->
-                        Box(
-                            Modifier.place(slot, boardW, boardH)
-                                .onGloballyPositioned { targetBounds[pip.card.id] = it.boundsInRoot() },
-                        ) {
-                            FieldCard(
-                                pip,
-                                highlighted = mustPromote || (hoverTargetId == pip.card.id),
-                                onTap = {
-                                    when {
-                                        inSetup -> vm.toggleBench(pip.card.id)
-                                        mustPromote -> vm.onIntent(GameIntent.PromoteActive(pip.card.id))
-                                        // Tocar un Pokémon de Banca = VER A DETALLE (holo/3D).
-                                        else -> inspect = pip.card
-                                    }
-                                },
-                                // Retirada: arrastrar este Pokémon sobre el Activo lo reemplaza.
-                                draggable = retreatMode,
-                                onDragStart = { pos -> benchDragCard = pip.card; benchDragPos = pos },
-                                onDrag = { pos -> benchDragPos = pos },
-                                onDragEnd = {
-                                    if (retreatMode && activeSlotBounds?.contains(benchDragPos) == true) {
-                                        vm.onIntent(GameIntent.Retreat(pip.card.id))
-                                    }
-                                    benchDragCard = null; retreatMode = false
-                                },
-                            )
-                        }
-                    }
-                }
-                // Slots de Banca VACÍOS: capturan sus límites (para soltar un Básico) y se
-                // iluminan mientras se arrastra un Básico sobre ellos.
-                for (i in me.bench.size until BoardGeometry.MeBenchSlots.size) {
-                    val slot = BoardGeometry.MeBenchSlots[i]
-                    val hot = dragging is PokemonCard && dragging.isBasic &&
-                        benchSlotBounds[i]?.contains(dragPos) == true
-                    Box(
-                        Modifier.place(slot, boardW, boardH)
-                            .onGloballyPositioned { benchSlotBounds[i] = it.boundsInRoot() },
-                    ) { EmptySlot(Modifier.fillMaxSize(), highlighted = hot) }
-                }
-                // Los PREMIOS propios NO se inspeccionan (información oculta para ti mismo).
-                Box(Modifier.place(BoardGeometry.MePrizes, boardW, boardH)) {
-                    PrizeFan(me.prizesRemaining)
-                }
-                Box(
-                    Modifier.place(BoardGeometry.MeDiscard, boardW, boardH)
-                        .clickable(enabled = me.discard.isNotEmpty()) { zonePanel = "Tu descarte" to me.discard },
-                ) { PileStack(me.discard.size, faceDown = false, topCard = me.discard.lastOrNull()) }
-                // El MAZO propio NO se inspecciona (información oculta).
-                Box(Modifier.place(BoardGeometry.MeDeck, boardW, boardH)) {
-                    PileStack(me.deck.size, faceDown = true)
-                }
-
-                // Mano del jugador — REUTILIZA el HandFan de TCG Live (abanico, agrupación de
-                // copias idénticas con contador, orden por supertipo, scroll para ojear, y
-                // dimensiones 1:1 = alto·aspecto de carta). Comportamiento idéntico a
-                // la pantalla clásica; aquí se juega por TOQUE (canDrag por defecto = false).
-                // Alto MEDIDO en ref_0034 (Combate 1): carta de mano ≈0.26W → alto ≈0.163H
-                // (la "Ultra Ball" ocupa x≈0.44..0.70). Local al combate para no alterar la clásica.
-                val handCardH = boardH * 0.163f
-                val handCardW = handCardH * BoardGeometry.CardAspect
-                Box(Modifier.place(BoardGeometry.MeHand, boardW, boardH)) {
-                    HandFan(
-                        cards = sortedHandCards(me.hand),
-                        enabled = inSetup || (myTurn && state.interaction == null),
-                        // La barra no atenúa: DESLIZA la mano a la categoría pulsada.
-                        focusCategory = handFocus,
-                        focusNonce = handFocusNonce,
-                        cardW = handCardW,
-                        cardH = handCardH,
-                        selectedId = pendingPlay?.id,
-                        onSelect = { card ->
-                            when {
-                                // En preparación, tocar un Básico lo coloca (Activo/Banca).
-                                inSetup -> if (card is PokemonCard && card.isBasic) {
-                                    if (setup?.activeId == null) vm.chooseActive(card.id) else vm.toggleBench(card.id)
-                                }
-                                // En juego, tocar una carta la MUESTRA A DETALLE (holo/3D).
-                                // Para JUGARLA, arrástrala (energía→Pokémon, evolución, Básico→Banca, Entrenador→centro).
-                                else -> inspect = card
-                            }
-                        },
-                        // ---- Arrastre 1:1: energía→Pokémon, evolución→pre-evolución, Básico→
-                        //      Banca/Activo(setup), Entrenador→panel central. ----
-                        canDrag = { card ->
-                            if (inSetup) card is PokemonCard && card.isBasic
-                            else card is EnergyCard || card is PokemonCard || card is TrainerCard
-                        },
-                        onCardDragStart = { card, pos -> dragCard = card; dragPos = pos },
-                        onCardDrag = { pos -> dragPos = pos },
-                        onCardDragCancel = { dragCard = null },
-                        onCardDragEnd = {
-                            val card = dragCard
-                            if (card != null) {
-                                if (inSetup) {
-                                    if (card is PokemonCard && card.isBasic) {
-                                        when {
-                                            activeSlotBounds?.contains(dragPos) == true -> vm.chooseActive(card.id)
-                                            benchSlotBounds.values.any { it.contains(dragPos) } -> vm.toggleBench(card.id)
-                                        }
-                                    }
-                                } else {
-                                    when (card) {
-                                        is EnergyCard ->
-                                            dropTargetUnder(card)?.let { vm.onIntent(GameIntent.AttachEnergy(card.id, it)) }
-                                        is PokemonCard ->
-                                            if (card.isBasic) {
-                                                if (benchSlotBounds.values.any { it.contains(dragPos) }) {
-                                                    vm.onIntent(GameIntent.PlayBasicToBench(card.id))
-                                                }
-                                            } else {
-                                                dropTargetUnder(card)?.let { vm.onIntent(GameIntent.Evolve(card.id, it)) }
-                                            }
-                                        is TrainerCard -> {
-                                            val itemChoose = itemTargetChoose(card)
-                                            val toolScope = toolAttachScope(card)
-                                            when {
-                                                // Objeto dirigido (Poción…) soltado sobre un Pokémon válido → un gesto.
-                                                itemChoose != null ->
-                                                    itemTargetUnder(itemChoose)?.let { vm.playItemOn(card.id, it) }
-                                                // Herramienta soltada sobre un Pokémon sin Herramienta.
-                                                toolScope != null ->
-                                                    toolTargetUnder()?.let { vm.onIntent(GameIntent.AttachTool(card.id, it)) }
-                                                // Entrenador normal → panel central.
-                                                centerBounds?.contains(dragPos) == true ->
-                                                    vm.onIntent(GameIntent.PlayTrainer(card.id))
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            dragCard = null
-                        },
-                    )
-                }
-                // Barra de filtros por tipo (contador total + iconos Pokémon/Entrenador/Energía).
-                // POSICIÓN 1:1 medida en ref_0034: pill blanco al FONDO, centrado, solapando la
-                // parte baja del abanico (centro ≈ x0.50, y0.967; barra sólida y≈0.950..0.984).
-                // El pill se auto-dimensiona; la caja solo lo centra. Se dibuja DESPUÉS del abanico
-                // (queda por encima), como en TCG Live.
-                if (me.hand.isNotEmpty()) {
-                    Box(
-                        Modifier.place(BoardGeometry.NBox(0.20f, 0.945f, 0.60f, 0.044f), boardW, boardH),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        HandFilterBar(
-                            cards = me.hand,
-                            active = handFocus,
-                            onToggle = { cat -> handFocus = cat; handFocusNonce++ },
-                        )
-                    }
-                }
-
-                // ---------- HUD / rieles ----------
-                Box(Modifier.place(BoardGeometry.TopSettings, boardW, boardH)) {
-                    IconChip("⏻", CombatTheme.Foe, onExit)
-                }
-                // Columna derecha 1:1 con TCG Live: pestañas de estado (rival arriba / jugador
-                // abajo, espejo) con barra de turno + chevrones + temporizador + premios, y el
-                // botón de registro de batalla debajo.
-                Box(Modifier.place(BoardGeometry.RailStatusOpp, boardW, boardH)) {
-                    PlayerStatusPanel(
-                        prizes = opp.prizesRemaining,
-                        prizeAccent = Color(0xFFCE3B39),
-                        isOpponent = true,
-                        active = litSide == Side.OPPONENT,
-                        timerText = mmss(oppClock),
-                    )
-                }
-                Box(Modifier.place(BoardGeometry.RailStatusMe, boardW, boardH)) {
-                    PlayerStatusPanel(
-                        prizes = me.prizesRemaining,
-                        prizeAccent = Color(0xFF3977BE),
-                        isOpponent = false,
-                        active = litSide == Side.PLAYER,
-                        timerText = mmss(meClock),
-                    )
-                }
-                Box(Modifier.place(BoardGeometry.RailLog, boardW, boardH)) {
-                    BattleLogButton(onClick = { showLog = true })
-                }
-                Box(Modifier.place(BoardGeometry.RailEndTurn, boardW, boardH), contentAlignment = Alignment.Center) {
-                    val enabled = if (inSetup) (setup?.canConfirm == true) else myTurn
-                    PillButton(
-                        label = if (inSetup) "LISTO" else "FIN",
-                        enabled = enabled,
-                        accent = if (inSetup) CombatTheme.Good else CombatTheme.Gold,
-                        onClick = { if (inSetup) vm.confirmSetup() else vm.onIntent(GameIntent.EndTurn) },
-                    )
-                }
-                // (El ATAQUE y la RETIRADA viven ahora en el VISOR A DETALLE del Activo propio.)
-                // Banner de preparación / promoción.
-                val banner = when {
-                    retreatMode -> "Arrastra un Pokémon de la Banca al Activo para retirarte · toca aquí para cancelar"
-                    inSetup -> "Coloca tu Activo y tu Banca, luego pulsa LISTO"
-                    mustPromote -> "Elige tu nuevo Pokémon Activo"
-                    else -> null
-                }
-                banner?.let {
-                    Box(
-                        Modifier.place(BoardGeometry.SetupBanner, boardW, boardH)
-                            .clickable(enabled = retreatMode) { retreatMode = false; benchDragCard = null },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        BannerText(it)
-                    }
-                }
+                // ---------- HUD persistente (rieles/estado/fin de turno/banner) ----------
+                HudLayer(
+                    vm = vm,
+                    boardW = boardW,
+                    boardH = boardH,
+                    oppPrizes = state.opponent.prizesRemaining,
+                    mePrizes = state.player.prizesRemaining,
+                    litSide = litSide,
+                    oppClock = oppClock,
+                    meClock = meClock,
+                    inSetup = inSetup,
+                    canConfirmSetup = setup?.canConfirm == true,
+                    myTurn = myTurn,
+                    mustPromote = mustPromote,
+                    retreatMode = bi.retreatMode,
+                    onExit = onExit,
+                    onOpenLog = { showLog = true },
+                    onCancelRetreat = { bi.retreatMode = false; bi.benchDragCard = null },
+                )
             }
         }
 
@@ -673,7 +365,7 @@ fun CombatScreen(
                                 canRetreat = state.player.bench.isNotEmpty() &&
                                     activePip.attachedEnergyCount >= activePip.card.retreatCost.size,
                                 onAttack = { name -> inspect = null; vm.onIntent(GameIntent.Attack(name)) },
-                                onRetreat = { inspect = null; retreatMode = true },
+                                onRetreat = { inspect = null; bi.retreatMode = true },
                                 onUseAbility = { ability ->
                                     inspect = null
                                     vm.onIntent(GameIntent.UseAbility(activePip.card.id, ability.name.es))
@@ -691,33 +383,16 @@ fun CombatScreen(
             }
         }
 
-        // Fantasma del Pokémon de Banca arrastrado hacia el Activo (retirada).
-        benchDragCard?.let { c ->
-            Box(
-                Modifier
-                    .offset { IntOffset(benchDragPos.x.roundToInt() - 42, benchDragPos.y.roundToInt() - 59) }
-                    .size(84.dp, 118.dp),
-            ) {
-                CombatCard(imageUrl = c.artwork.small(true), modifier = Modifier.fillMaxSize())
-            }
-        }
-
-        // Fantasma de la carta arrastrada siguiendo el dedo (coords de raíz).
-        dragCard?.let { c ->
-            Box(
-                Modifier
-                    .offset { IntOffset(dragPos.x.roundToInt() - 42, dragPos.y.roundToInt() - 59) }
-                    .size(84.dp, 118.dp),
-            ) {
-                CombatCard(imageUrl = c.artwork.small(true), modifier = Modifier.fillMaxSize())
-            }
-        }
-
-        // Capa de VUELO entre zonas (por encima del tablero, bajo el fantasma de arrastre).
-        FlightOverlay(flightHost)
-
-        // Estallido de ataque en el lente (efímero, ~1 s, color/motivo por tipo).
-        lensFx?.let { spec -> LensAttackFx(spec) { lensFx = null } }
+        // Capa de ANIMACIÓN (fantasmas de arrastre + vuelo entre zonas + estallido de ataque).
+        AnimationLayer(
+            benchDragCard = bi.benchDragCard,
+            benchDragPos = bi.benchDragPos,
+            dragCard = bi.dragCard,
+            dragPos = bi.dragPos,
+            flightHost = flightHost,
+            lensFx = lensFx,
+            onLensEnd = { lensFx = null },
+        )
 
         // Fin de partida: fundido Motion.
         MotionContainer(
@@ -726,6 +401,469 @@ fun CombatScreen(
             exit = MotionTransitions.overlayExit(),
         ) {
             GameOverPanel(won = state.winner == Side.PLAYER, onExit = onExit)
+        }
+    }
+}
+
+/**
+ * **Capa ESCENARIO** — el tapete oficial ([CombatMat]) y nada más: sin cartas, sin HUD, sin estado de
+ * partida. Primera capa del compositor interno de [CombatScreen]. Neutra: no conoce perfiles, modos ni
+ * conceptos del Studio; solo recibe parámetros de presentación ([litSide], [activeType]).
+ */
+@Composable
+private fun SceneLayer(litSide: Side?, activeType: EnergyType?, modifier: Modifier = Modifier) {
+    CombatMat(modifier, litSide = litSide, activeType = activeType)
+}
+
+/**
+ * **Capa de ANIMACIÓN** — efectos que viven POR ENCIMA del tablero: los fantasmas de la carta y del
+ * Pokémon de Banca arrastrados, la capa de VUELO entre zonas ([FlightOverlay]) y el estallido de ataque
+ * del lente ([LensAttackFx]). Se emite en el MISMO orden z que antes (fantasmas → vuelo → estallido).
+ * Neutra: solo recibe estado de presentación; no conoce perfiles ni conceptos del Studio.
+ */
+@Composable
+private fun AnimationLayer(
+    benchDragCard: Card?,
+    benchDragPos: Offset,
+    dragCard: Card?,
+    dragPos: Offset,
+    flightHost: FlightHost,
+    lensFx: LensFxSpec?,
+    onLensEnd: () -> Unit,
+) {
+    // Fantasma del Pokémon de Banca arrastrado hacia el Activo (retirada).
+    benchDragCard?.let { c ->
+        Box(
+            Modifier
+                .offset { IntOffset(benchDragPos.x.roundToInt() - 42, benchDragPos.y.roundToInt() - 59) }
+                .size(84.dp, 118.dp),
+        ) {
+            CombatCard(imageUrl = c.artwork.small(true), modifier = Modifier.fillMaxSize())
+        }
+    }
+
+    // Fantasma de la carta arrastrada siguiendo el dedo (coords de raíz).
+    dragCard?.let { c ->
+        Box(
+            Modifier
+                .offset { IntOffset(dragPos.x.roundToInt() - 42, dragPos.y.roundToInt() - 59) }
+                .size(84.dp, 118.dp),
+        ) {
+            CombatCard(imageUrl = c.artwork.small(true), modifier = Modifier.fillMaxSize())
+        }
+    }
+
+    // Capa de VUELO entre zonas (por encima del tablero, bajo el fantasma de arrastre).
+    FlightOverlay(flightHost)
+
+    // Estallido de ataque en el lente (efímero, ~1 s, color/motivo por tipo).
+    lensFx?.let { spec -> LensAttackFx(spec, onLensEnd) }
+}
+
+/**
+ * **Capa HUD (persistente)** — los elementos SIEMPRE presentes del interfaz de combate: botón de
+ * ajustes, pestañas de estado (premios/temporizador/turno) de ambos lados, botón de registro, botón de
+ * FIN/LISTO y el banner de preparación/promoción. Se coloca dentro del board Box (usa [boardW]/[boardH]).
+ *
+ * NOTA de responsabilidades: el HUD del combate tiene DOS naturalezas distintas —
+ *   (1) **HUD persistente** (esta capa), y
+ *   (2) **Presentación modal** (diálogos: decisión, inspector de zona, Battle Log, visor a detalle,
+ *       fin de partida), que hoy permanece inline en [CombatScreen] porque su z-order NO es contiguo
+ *       (la [AnimationLayer] se dibuja entre sus sub-grupos). Se mantienen SEPARADAS conceptualmente;
+ *       la presentación modal podrá independizarse en su propia capa cuando exista un consumidor real
+ *       (p. ej. replay/espectador), sin mezclarla aquí.
+ *
+ * Neutra: no conoce perfiles ni conceptos del Studio; solo estado de presentación + el controlador.
+ */
+@Composable
+private fun HudLayer(
+    vm: CombatSceneController,
+    boardW: Dp,
+    boardH: Dp,
+    oppPrizes: Int,
+    mePrizes: Int,
+    litSide: Side?,
+    oppClock: Int,
+    meClock: Int,
+    inSetup: Boolean,
+    canConfirmSetup: Boolean,
+    myTurn: Boolean,
+    mustPromote: Boolean,
+    retreatMode: Boolean,
+    onExit: () -> Unit,
+    onOpenLog: () -> Unit,
+    onCancelRetreat: () -> Unit,
+) {
+    Box(Modifier.place(BoardGeometry.TopSettings, boardW, boardH)) {
+        IconChip("⏻", CombatTheme.Foe, onExit)
+    }
+    // Columna derecha 1:1 con TCG Live: pestañas de estado (rival arriba / jugador
+    // abajo, espejo) con barra de turno + chevrones + temporizador + premios, y el
+    // botón de registro de batalla debajo.
+    Box(Modifier.place(BoardGeometry.RailStatusOpp, boardW, boardH)) {
+        PlayerStatusPanel(
+            prizes = oppPrizes,
+            prizeAccent = Color(0xFFCE3B39),
+            isOpponent = true,
+            active = litSide == Side.OPPONENT,
+            timerText = mmss(oppClock),
+        )
+    }
+    Box(Modifier.place(BoardGeometry.RailStatusMe, boardW, boardH)) {
+        PlayerStatusPanel(
+            prizes = mePrizes,
+            prizeAccent = Color(0xFF3977BE),
+            isOpponent = false,
+            active = litSide == Side.PLAYER,
+            timerText = mmss(meClock),
+        )
+    }
+    Box(Modifier.place(BoardGeometry.RailLog, boardW, boardH)) {
+        BattleLogButton(onClick = onOpenLog)
+    }
+    Box(Modifier.place(BoardGeometry.RailEndTurn, boardW, boardH), contentAlignment = Alignment.Center) {
+        val enabled = if (inSetup) canConfirmSetup else myTurn
+        PillButton(
+            label = if (inSetup) "LISTO" else "FIN",
+            enabled = enabled,
+            accent = if (inSetup) CombatTheme.Good else CombatTheme.Gold,
+            onClick = { if (inSetup) vm.confirmSetup() else vm.onIntent(GameIntent.EndTurn) },
+        )
+    }
+    // (El ATAQUE y la RETIRADA viven ahora en el VISOR A DETALLE del Activo propio.)
+    // Banner de preparación / promoción.
+    val banner = when {
+        retreatMode -> "Arrastra un Pokémon de la Banca al Activo para retirarte · toca aquí para cancelar"
+        inSetup -> "Coloca tu Activo y tu Banca, luego pulsa LISTO"
+        mustPromote -> "Elige tu nuevo Pokémon Activo"
+        else -> null
+    }
+    banner?.let {
+        Box(
+            Modifier.place(BoardGeometry.SetupBanner, boardW, boardH)
+                .clickable(enabled = retreatMode) { onCancelRetreat() },
+            contentAlignment = Alignment.Center,
+        ) {
+            BannerText(it)
+        }
+    }
+}
+
+/**
+ * Estado EFÍMERO de interacción del tablero de combate: carta/posición arrastrada, límites (rects) de
+ * zonas y huecos, modo retirada + arrastre de Banca, foco de la mano y anclas de vuelo. Existe SOLO para
+ * reducir el acoplamiento interno de [CombatScreen] agrupando su estado transitorio compartido entre el
+ * compositor y sus capas. NO contiene lógica de negocio, ni estado de juego (GameState), ni referencias
+ * al Studio. Privado al módulo; no forma parte de ninguna API pública.
+ */
+@Stable
+private class CombatBoardInteraction {
+    var dragCard by mutableStateOf<Card?>(null)
+    var dragPos by mutableStateOf(Offset.Zero)
+    val targetBounds = mutableStateMapOf<CardId, Rect>()
+    val benchSlotBounds = mutableStateMapOf<Int, Rect>()
+    var activeSlotBounds by mutableStateOf<Rect?>(null)
+    var centerBounds by mutableStateOf<Rect?>(null)
+    var retreatMode by mutableStateOf(false)
+    var benchDragCard by mutableStateOf<Card?>(null)
+    var benchDragPos by mutableStateOf(Offset.Zero)
+    var pendingPlay by mutableStateOf<Card?>(null)
+    var handFocus by mutableStateOf<HandCat?>(null)
+    var handFocusNonce by mutableStateOf(0)
+    val anchorBounds = mutableStateMapOf<CardZone, Rect>()
+}
+
+/**
+ * **Capa PARTIDA** — las zonas, cartas y la mano dibujadas a partir del [GameState]: anclas de vuelo,
+ * panel central, lado rival (mano/banca/activo/premios/mazo/descarte), estadio, lado del jugador y el
+ * abanico de mano con su barra de filtros. Contiene los gestos de arrastre/jugada y publica hacia arriba
+ * la inspección de cartas ([onInspect]) y el inspector de zona/descartes ([onZonePanel]). Neutra: solo
+ * lee el estado + escribe el estado efímero compartido ([bi]); no conoce perfiles ni conceptos del Studio.
+ */
+@Composable
+private fun MatchLayer(
+    state: GameState,
+    vm: CombatSceneController,
+    bi: CombatBoardInteraction,
+    boardW: Dp,
+    boardH: Dp,
+    inSetup: Boolean,
+    revealing: Boolean,
+    myTurn: Boolean,
+    mustPromote: Boolean,
+    setup: SetupUiState?,
+    onInspect: (Card) -> Unit,
+    onZonePanel: (Pair<String, List<Card>>) -> Unit,
+) {
+    // Anclas invisibles por zona: capturan el rect (coords de raíz) de cada zona
+    // para que la capa de VUELO sepa de/hacia dónde viajan las cartas. Sin pointer
+    // input → no interceptan toques; se dibujan bajo el resto de zonas.
+    CardZone.values().forEach { z ->
+        Box(
+            Modifier.place(zoneNBox(z), boardW, boardH)
+                .onGloballyPositioned { bi.anchorBounds[z] = it.boundsInRoot() },
+        )
+    }
+
+    val opp = state.opponent
+    val me = state.player
+    val faceDownOpp = inSetup || revealing
+
+    // Objetivo (Pokémon propio) bajo el dedo según lo que se arrastra:
+    //  - energía/evolución → dropTargetUnder (isPlayTarget)
+    //  - Objeto dirigido (Poción) → itemTargetUnder (ámbito del efecto, solo dañados si aplica)
+    //  - Herramienta → toolTargetUnder (Pokémon sin Herramienta)
+    fun dropTargetUnder(card: Card): CardId? =
+        (listOfNotNull(me.active) + me.bench).firstOrNull { pip ->
+            isPlayTarget(card, pip) && bi.targetBounds[pip.card.id]?.contains(bi.dragPos) == true
+        }?.card?.id
+    fun itemTargetUnder(choose: EffectOp.ChooseTarget): CardId? {
+        val cands = when (choose.from) {
+            Target.OWN_ACTIVE -> listOfNotNull(me.active)
+            Target.OWN_BENCH -> me.bench
+            else -> me.allInPlay
+        }.filter { !choose.onlyDamaged || it.damage > 0 }
+        return cands.firstOrNull { bi.targetBounds[it.card.id]?.contains(bi.dragPos) == true }?.card?.id
+    }
+    fun toolTargetUnder(): CardId? =
+        me.allInPlay.firstOrNull { it.attachedTools.isEmpty() && bi.targetBounds[it.card.id]?.contains(bi.dragPos) == true }?.card?.id
+
+    val dragging = bi.dragCard
+    val dragItemChoose = (dragging as? TrainerCard)?.let { itemTargetChoose(it) }
+    val dragToolScope = (dragging as? TrainerCard)?.let { toolAttachScope(it) }
+    val hoverTargetId: CardId? = when {
+        dragging == null -> null
+        dragItemChoose != null -> itemTargetUnder(dragItemChoose)
+        dragToolScope != null -> toolTargetUnder()
+        else -> dropTargetUnder(dragging)
+    }
+    // El panel central solo se ilumina para Entrenadores que NO apuntan a un Pokémon.
+    val centerHot = dragging is TrainerCard && !cardTargetsPokemon(dragging) &&
+        bi.centerBounds?.contains(bi.dragPos) == true
+    val activeSetupHot = inSetup && dragging is PokemonCard && dragging.isBasic &&
+        bi.activeSlotBounds?.contains(bi.dragPos) == true
+
+    // Panel central (soltar Entrenadores): captura límites + glow al sobrevolar.
+    Box(
+        Modifier.place(BoardGeometry.CenterPanel, boardW, boardH)
+            .onGloballyPositioned { bi.centerBounds = it.boundsInRoot() }
+            .then(if (centerHot) Modifier.border(2.dp, CombatTheme.Gold, RoundedCornerShape(20.dp)) else Modifier),
+    )
+
+    // ---------- RIVAL ----------
+    // Mano rival (dorsos).
+    Box(Modifier.place(BoardGeometry.OppHand, boardW, boardH)) {
+        OppHandBacks(opp.hand.size)
+    }
+    // Banca rival (por slots del panal).
+    opp.bench.forEachIndexed { i, pip ->
+        BoardGeometry.OppBenchSlots.getOrNull(i)?.let { slot ->
+            Box(Modifier.place(slot, boardW, boardH)) {
+                FieldCard(pip, faceDown = faceDownOpp, onTap = { onInspect(pip.card) })
+            }
+        }
+    }
+    // Activo rival.
+    Box(Modifier.place(BoardGeometry.OppActive, boardW, boardH)) {
+        FieldCard(opp.active, faceDown = faceDownOpp, onTap = { opp.active?.let { onInspect(it.card) } })
+    }
+    // Premios / mazo / descarte rival.
+    Box(Modifier.place(BoardGeometry.OppPrizes, boardW, boardH)) {
+        PrizeFan(opp.prizesRemaining)
+    }
+    Box(
+        Modifier.place(BoardGeometry.OppDiscard, boardW, boardH)
+            .clickable(enabled = opp.discard.isNotEmpty()) { onZonePanel("Descarte del rival" to opp.discard) },
+    ) {
+        PileStack(opp.discard.size, faceDown = false, topCard = opp.discard.lastOrNull())
+    }
+    Box(Modifier.place(BoardGeometry.OppDeck, boardW, boardH)) {
+        PileStack(opp.deck.size, faceDown = true)
+    }
+
+    // ---------- ESTADIO ----------
+    state.stadium?.let { stad ->
+        Box(Modifier.place(BoardGeometry.Stadium, boardW, boardH)) {
+            FieldCardImage(stad.artwork.small(true), stad.name.es) { onInspect(stad) }
+        }
+    }
+
+    // ---------- JUGADOR ----------
+    Box(
+        Modifier.place(BoardGeometry.MeActive, boardW, boardH)
+            .onGloballyPositioned { c ->
+                val r = c.boundsInRoot(); bi.activeSlotBounds = r
+                me.active?.card?.id?.let { bi.targetBounds[it] = r }
+            },
+    ) {
+        FieldCard(
+            me.active,
+            selected = false,
+            highlighted = activeSetupHot ||
+                (hoverTargetId != null && hoverTargetId == me.active?.card?.id) ||
+                (bi.retreatMode && bi.benchDragCard != null && bi.activeSlotBounds?.contains(bi.benchDragPos) == true),
+            onTap = {
+                when {
+                    inSetup -> vm.clearActive()
+                    me.active == null -> {}
+                    // Tocar el Activo = VER A DETALLE (holo/3D). Atacar = botón ⚔.
+                    else -> me.active?.let { onInspect(it.card) }
+                }
+            },
+        )
+    }
+    me.bench.forEachIndexed { i, pip ->
+        BoardGeometry.MeBenchSlots.getOrNull(i)?.let { slot ->
+            Box(
+                Modifier.place(slot, boardW, boardH)
+                    .onGloballyPositioned { bi.targetBounds[pip.card.id] = it.boundsInRoot() },
+            ) {
+                FieldCard(
+                    pip,
+                    highlighted = mustPromote || (hoverTargetId == pip.card.id),
+                    onTap = {
+                        when {
+                            inSetup -> vm.toggleBench(pip.card.id)
+                            mustPromote -> vm.onIntent(GameIntent.PromoteActive(pip.card.id))
+                            // Tocar un Pokémon de Banca = VER A DETALLE (holo/3D).
+                            else -> onInspect(pip.card)
+                        }
+                    },
+                    // Retirada: arrastrar este Pokémon sobre el Activo lo reemplaza.
+                    draggable = bi.retreatMode,
+                    onDragStart = { pos -> bi.benchDragCard = pip.card; bi.benchDragPos = pos },
+                    onDrag = { pos -> bi.benchDragPos = pos },
+                    onDragEnd = {
+                        if (bi.retreatMode && bi.activeSlotBounds?.contains(bi.benchDragPos) == true) {
+                            vm.onIntent(GameIntent.Retreat(pip.card.id))
+                        }
+                        bi.benchDragCard = null; bi.retreatMode = false
+                    },
+                )
+            }
+        }
+    }
+    // Slots de Banca VACÍOS: capturan sus límites (para soltar un Básico) y se
+    // iluminan mientras se arrastra un Básico sobre ellos.
+    for (i in me.bench.size until BoardGeometry.MeBenchSlots.size) {
+        val slot = BoardGeometry.MeBenchSlots[i]
+        val hot = dragging is PokemonCard && dragging.isBasic &&
+            bi.benchSlotBounds[i]?.contains(bi.dragPos) == true
+        Box(
+            Modifier.place(slot, boardW, boardH)
+                .onGloballyPositioned { bi.benchSlotBounds[i] = it.boundsInRoot() },
+        ) { EmptySlot(Modifier.fillMaxSize(), highlighted = hot) }
+    }
+    // Los PREMIOS propios NO se inspeccionan (información oculta para ti mismo).
+    Box(Modifier.place(BoardGeometry.MePrizes, boardW, boardH)) {
+        PrizeFan(me.prizesRemaining)
+    }
+    Box(
+        Modifier.place(BoardGeometry.MeDiscard, boardW, boardH)
+            .clickable(enabled = me.discard.isNotEmpty()) { onZonePanel("Tu descarte" to me.discard) },
+    ) { PileStack(me.discard.size, faceDown = false, topCard = me.discard.lastOrNull()) }
+    // El MAZO propio NO se inspecciona (información oculta).
+    Box(Modifier.place(BoardGeometry.MeDeck, boardW, boardH)) {
+        PileStack(me.deck.size, faceDown = true)
+    }
+
+    // Mano del jugador — REUTILIZA el HandFan de TCG Live (abanico, agrupación de
+    // copias idénticas con contador, orden por supertipo, scroll para ojear, y
+    // dimensiones 1:1 = alto·aspecto de carta). Comportamiento idéntico a
+    // la pantalla clásica; aquí se juega por TOQUE (canDrag por defecto = false).
+    // Alto MEDIDO en ref_0034 (Combate 1): carta de mano ≈0.26W → alto ≈0.163H
+    // (la "Ultra Ball" ocupa x≈0.44..0.70). Local al combate para no alterar la clásica.
+    val handCardH = boardH * 0.163f
+    val handCardW = handCardH * BoardGeometry.CardAspect
+    Box(Modifier.place(BoardGeometry.MeHand, boardW, boardH)) {
+        HandFan(
+            cards = sortedHandCards(me.hand),
+            enabled = inSetup || (myTurn && state.interaction == null),
+            // La barra no atenúa: DESLIZA la mano a la categoría pulsada.
+            focusCategory = bi.handFocus,
+            focusNonce = bi.handFocusNonce,
+            cardW = handCardW,
+            cardH = handCardH,
+            selectedId = bi.pendingPlay?.id,
+            onSelect = { card ->
+                when {
+                    // En preparación, tocar un Básico lo coloca (Activo/Banca).
+                    inSetup -> if (card is PokemonCard && card.isBasic) {
+                        if (setup?.activeId == null) vm.chooseActive(card.id) else vm.toggleBench(card.id)
+                    }
+                    // En juego, tocar una carta la MUESTRA A DETALLE (holo/3D).
+                    // Para JUGARLA, arrástrala (energía→Pokémon, evolución, Básico→Banca, Entrenador→centro).
+                    else -> onInspect(card)
+                }
+            },
+            // ---- Arrastre 1:1: energía→Pokémon, evolución→pre-evolución, Básico→
+            //      Banca/Activo(setup), Entrenador→panel central. ----
+            canDrag = { card ->
+                if (inSetup) card is PokemonCard && card.isBasic
+                else card is EnergyCard || card is PokemonCard || card is TrainerCard
+            },
+            onCardDragStart = { card, pos -> bi.dragCard = card; bi.dragPos = pos },
+            onCardDrag = { pos -> bi.dragPos = pos },
+            onCardDragCancel = { bi.dragCard = null },
+            onCardDragEnd = {
+                val card = bi.dragCard
+                if (card != null) {
+                    if (inSetup) {
+                        if (card is PokemonCard && card.isBasic) {
+                            when {
+                                bi.activeSlotBounds?.contains(bi.dragPos) == true -> vm.chooseActive(card.id)
+                                bi.benchSlotBounds.values.any { it.contains(bi.dragPos) } -> vm.toggleBench(card.id)
+                            }
+                        }
+                    } else {
+                        when (card) {
+                            is EnergyCard ->
+                                dropTargetUnder(card)?.let { vm.onIntent(GameIntent.AttachEnergy(card.id, it)) }
+                            is PokemonCard ->
+                                if (card.isBasic) {
+                                    if (bi.benchSlotBounds.values.any { it.contains(bi.dragPos) }) {
+                                        vm.onIntent(GameIntent.PlayBasicToBench(card.id))
+                                    }
+                                } else {
+                                    dropTargetUnder(card)?.let { vm.onIntent(GameIntent.Evolve(card.id, it)) }
+                                }
+                            is TrainerCard -> {
+                                val itemChoose = itemTargetChoose(card)
+                                val toolScope = toolAttachScope(card)
+                                when {
+                                    // Objeto dirigido (Poción…) soltado sobre un Pokémon válido → un gesto.
+                                    itemChoose != null ->
+                                        itemTargetUnder(itemChoose)?.let { vm.playItemOn(card.id, it) }
+                                    // Herramienta soltada sobre un Pokémon sin Herramienta.
+                                    toolScope != null ->
+                                        toolTargetUnder()?.let { vm.onIntent(GameIntent.AttachTool(card.id, it)) }
+                                    // Entrenador normal → panel central.
+                                    bi.centerBounds?.contains(bi.dragPos) == true ->
+                                        vm.onIntent(GameIntent.PlayTrainer(card.id))
+                                }
+                            }
+                        }
+                    }
+                }
+                bi.dragCard = null
+            },
+        )
+    }
+    // Barra de filtros por tipo (contador total + iconos Pokémon/Entrenador/Energía).
+    // POSICIÓN 1:1 medida en ref_0034: pill blanco al FONDO, centrado, solapando la
+    // parte baja del abanico (centro ≈ x0.50, y0.967; barra sólida y≈0.950..0.984).
+    // El pill se auto-dimensiona; la caja solo lo centra. Se dibuja DESPUÉS del abanico
+    // (queda por encima), como en TCG Live.
+    if (me.hand.isNotEmpty()) {
+        Box(
+            Modifier.place(BoardGeometry.NBox(0.20f, 0.945f, 0.60f, 0.044f), boardW, boardH),
+            contentAlignment = Alignment.Center,
+        ) {
+            HandFilterBar(
+                cards = me.hand,
+                active = bi.handFocus,
+                onToggle = { cat -> bi.handFocus = cat; bi.handFocusNonce++ },
+            )
         }
     }
 }
