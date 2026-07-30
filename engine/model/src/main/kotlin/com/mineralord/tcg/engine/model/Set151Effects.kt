@@ -484,6 +484,32 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     // encuentres allí en el fondo de su baraja. Pausa con una decisión sobre la mano RIVAL.
     put(EffectId("sv3pt5-162"), Effect(ops = listOf(EffectOp.PutOppHandPokemonToBottomOfDeck)))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 47: reimpresiones de mecánicas ya implementadas -----
+    // Cartas cuyo efecto es IDÉNTICO a uno ya cubierto; solo faltaba enlazar el printing.
+
+    // Antique Dome Fossil — Caparazón Domo (Domed Armor): pasivo, recibe 30 de daño menos
+    // (mismo ModKind.REDUCE_DAMAGE que la Banda Rígida). Fósil Básico que aguanta en la Banca/Activo.
+    put(abiKey("sv3pt5-152", "Domed Armor"),
+        Effect(passives = listOf(PassiveModifier(ModKind.REDUCE_DAMAGE, 30, Target.SELF))))
+
+    // Blastoise ex — Cañones Gemelos (Twin Cannons), artes alt 184/200: idéntico a -9.
+    run {
+        val twinCannons = Effect(ops = listOf(EffectOp.DiscardFromHandForDamage(
+            CardFilter(supertype = Supertype.ENERGY, type = EnergyType.WATER), maxCount = 2, perCard = 140)))
+        put(atkKey("sv3pt5-184", "Twin Cannons"), twinCannons)
+        put(atkKey("sv3pt5-200", "Twin Cannons"), twinCannons)
+    }
+
+    // Golem ex — arte alt 189: Giro Dinámico (+120 tu próximo turno) y Explosión Roca (ignora Resistencia).
+    put(atkKey("sv3pt5-189", "Dynamic Roll"), Effect(ops = listOf(EffectOp.SelfAttackBonusNextTurn(120))))
+    put(atkKey("sv3pt5-189", "Rock Blaster"), Effect(ignoresResistance = true))
+
+    // Nidoking — Rey Entusiasta (Enthusiastic King), arte alt 174: ataques gratis si tienes Nidoqueen.
+    put(abiKey("sv3pt5-174", "Enthusiastic King"), Effect(freeAttackIfAllyNamed = "Nidoqueen"))
+
+    // Psyduck — Cavilar (Overthink), arte alt 175: las monedas del rival cuentan como cruz su próximo turno.
+    put(atkKey("sv3pt5-175", "Overthink"), Effect(ops = listOf(EffectOp.ForceOpponentCoinsTailsNextTurn)))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).
