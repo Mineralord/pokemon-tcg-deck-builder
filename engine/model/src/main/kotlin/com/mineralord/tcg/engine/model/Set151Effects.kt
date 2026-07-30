@@ -473,6 +473,17 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(abiKey("sv3pt5-104", "Cheering Bone"),
         Effect(boostAlliedAttackerNamed = "Marowak", boostAlliedAttackerAmount = 30))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 45: revelar la mano del rival (primitivo) -----
+    // Zubat — Eco Revelador (Revealing Echo) 41: 1/turno, si está en el Activo, puedes hacer que
+    // tu rival enseñe las cartas de su mano. Informativo (emite GameEvent.HandRevealed).
+    put(abiKey("sv3pt5-41", "Revealing Echo"),
+        Effect(ops = listOf(EffectOp.RevealOpponentHand), oncePerTurn = true, activeOnly = true))
+
+    // ------------------- SET 151 (sv3pt5) — Fase 46: manipular la mano del rival (selección) -----
+    // Agarrador Mecánico (Grabber) 162 — Objeto: tu rival enseña su mano y pones 1 Pokémon que
+    // encuentres allí en el fondo de su baraja. Pausa con una decisión sobre la mano RIVAL.
+    put(EffectId("sv3pt5-162"), Effect(ops = listOf(EffectOp.PutOppHandPokemonToBottomOfDeck)))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).

@@ -30,6 +30,8 @@ sealed interface GameEvent {
     data class CardsDrawn(override val side: Side, val count: Int) : GameEvent
     data class CardsDiscarded(override val side: Side, val count: Int) : GameEvent
     data class DeckShuffled(override val side: Side) : GameEvent
+    /** El jugador [side] enseña las cartas de su mano ([count]) por un efecto rival (Zubat — Eco Revelador). */
+    data class HandRevealed(override val side: Side, val count: Int) : GameEvent
 
     // --- Despliegue ---
     data class PokemonPlayed(override val side: Side, val card: CardId, val toBench: Boolean) : GameEvent

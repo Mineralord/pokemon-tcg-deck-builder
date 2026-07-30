@@ -674,6 +674,31 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 44 - Cavilar hace que las monedas del rival cuenten como cruz`() {
+        val overthink = attack("Overthink", 0, EffectsDb.atkKey("sv3pt5-54", "Overthink"))
+        val bubble = attack("Bubble", 10, EffectsDb.atkKey("sv3pt5-60", "Bubble"))
+        val psyduck = PokemonInPlay(mon("psyduck", 70, EnergyType.WATER, overthink))
+        val poliwag = PokemonInPlay(mon("poliwag", 200, EnergyType.WATER, bubble))
+
+        // Psyduck usa Cavilar: marca al lado rival (OPPONENT) para su próximo turno (turn + 1 = 4).
+        val res = GameEngine(SeededRng(1)).apply(duel(psyduck, poliwag), GameIntent.Attack("Overthink"))
+        assertEquals(Side.OPPONENT, res.state.coinsAsTailsSide)
+        assertEquals(4, res.state.coinsAsTailsOnTurn)
+        assertEquals(4, res.state.turn)                  // ahora juega el rival
+
+        // El rival ataca con Bubble y FixedRng(true): pese a "cara", la moneda cuenta como CRUZ
+        // → NO paraliza al Defensor (Psyduck) y se emite CoinFlipped(false).
+        val forced = GameEngine(FixedRng(true)).apply(res.state, GameIntent.Attack("Bubble"))
+        assertTrue(forced.state.player.active!!.statuses.isEmpty())
+        assertTrue(forced.events.filterIsInstance<GameEvent.CoinFlipped>().all { !it.heads })
+
+        // Control: sin la marca, la MISMA moneda "cara" SÍ paraliza (prueba que el gate es la causa).
+        val unmarked = res.state.copy(coinsAsTailsSide = null, coinsAsTailsOnTurn = null)
+        val normal = GameEngine(FixedRng(true)).apply(unmarked, GameIntent.Attack("Bubble"))
+        assertTrue(normal.state.player.active!!.statuses.contains(Status.PARALYZED))
+    }
+
+    @Test
     fun `FASE 25 - Aguijon Nadir con mano vacia suma 120 y aplica Veneno+Paralisis`() {
         val a = attack("Nadir Needle", 0, EffectsDb.atkKey("sv3pt5-15", "Nadir Needle"))
         val attacker = PokemonInPlay(mon("beedrill", 120, EnergyType.GRASS, a))
@@ -2223,5 +2248,44 @@ class Set151EffectsTest {
         assertTrue(res.events.any { it is GameEvent.CoinFlipped && !it.heads })
         assertEquals(CardId("foeActive"), res.state.opponent.active?.card?.id, "sin cara, el Activo no cambia")
         assertTrue(res.state.opponent.bench.any { it.card.id.raw == "foeBench" }, "el de Banca sigue en Banca")
+    }
+
+    @Test
+    fun `FASE 45 - Zubat Eco Revelador hace que el rival ensene su mano`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val zubat = mon("zubat", 60, EnergyType.DARKNESS, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Eco Revelador", "Revealing Echo"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-41", "Revealing Echo"))),
+        )
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.FIRE, dummy))
+        val foeHand = (1..3).map { energy("h$it", EnergyType.FIRE) }
+        val st = duel(PokemonInPlay(zubat), foe, foeHand)
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("zubat"), "Revealing Echo"))
+        assertTrue(res.accepted, res.rejection)
+        val revealed = res.events.filterIsInstance<GameEvent.HandRevealed>().single()
+        assertEquals(Side.OPPONENT, revealed.side)
+        assertEquals(3, revealed.count)
+        assertTrue(CardId("zubat") in res.state.abilitiesUsedThisTurn)
+        assertEquals(3, res.state.opponent.hand.size)   // informativo: la mano no cambia
+    }
+
+    @Test
+    fun `FASE 45 - Eco Revelador solo se puede usar una vez por turno`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val zubat = mon("zubat", 60, EnergyType.DARKNESS, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Eco Revelador", "Revealing Echo"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-41", "Revealing Echo"))),
+        )
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.FIRE, dummy))
+        val st = duel(PokemonInPlay(zubat), foe, listOf(energy("h1", EnergyType.FIRE)))
+        val engine = GameEngine(SeededRng(1))
+
+        val first = engine.apply(st, GameIntent.UseAbility(CardId("zubat"), "Revealing Echo"))
+        assertTrue(first.accepted)
+        val second = engine.apply(first.state, GameIntent.UseAbility(CardId("zubat"), "Revealing Echo"))
+        assertFalse(second.accepted, "no debe poder usarse dos veces en el mismo turno")
     }
 }

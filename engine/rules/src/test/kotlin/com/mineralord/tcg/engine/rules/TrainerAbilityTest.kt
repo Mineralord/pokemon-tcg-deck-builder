@@ -476,4 +476,44 @@ class TrainerAbilityTest {
         assertFalse(ended.state.supporterPlayedThisTurn)
         assertTrue(ended.state.abilitiesUsedThisTurn.isEmpty())
     }
+
+    // --------------------------------------------------- Fase 46: mano del rival (Agarrador Mecánico)
+
+    @Test
+    fun `Agarrador Mecanico pone un Pokemon de la mano rival al fondo de su baraja`() {
+        val grabber = trainer("sv3pt5-162", TrainerKind.Item())   // PutOppHandPokemonToBottomOfDeck
+        val base = baseState(hand = listOf(grabber))
+        val oppState = base.opponent.copy(
+            hand = listOf(mon("oppHandMon"), energy("oe1")),
+            deck = listOf(energy("od1"), energy("od2")),
+        )
+        val state = base.copy(opponent = oppState)
+
+        val played = engine.apply(state, GameIntent.PlayTrainer(CardId("sv3pt5-162")))
+        assertTrue(played.accepted, played.rejection)
+        assertTrue(played.state.awaitingDecision)
+        val d = played.state.interaction!!.decision as PendingDecision.SearchCards
+        assertTrue(d.fromOpponentHand)
+        assertEquals(listOf(CardId("oppHandMon")), d.candidates, "solo el Pokémon, no la Energía")
+
+        val resolved = engine.apply(played.state, GameIntent.ResolveDecision(listOf(CardId("oppHandMon"))))
+        assertTrue(resolved.accepted, resolved.rejection)
+        assertNull(resolved.state.interaction)
+        assertFalse(resolved.state.opponent.hand.any { it.id == CardId("oppHandMon") }, "salió de la mano rival")
+        assertEquals(CardId("oppHandMon"), resolved.state.opponent.deck.last().id, "quedó al fondo de su baraja")
+        assertEquals(1, resolved.state.opponent.hand.size)
+    }
+
+    @Test
+    fun `Agarrador Mecanico sin Pokemon en la mano rival se juega sin abrir decision`() {
+        val grabber = trainer("sv3pt5-162", TrainerKind.Item())
+        val base = baseState(hand = listOf(grabber))
+        val oppState = base.opponent.copy(hand = listOf(energy("oe1")), deck = listOf(energy("od1")))
+        val state = base.copy(opponent = oppState)
+
+        val played = engine.apply(state, GameIntent.PlayTrainer(CardId("sv3pt5-162")))
+        assertTrue(played.accepted, played.rejection)
+        assertFalse(played.state.awaitingDecision, "sin Pokémon en la mano rival no abre decisión")
+        assertTrue(played.state.player.discard.any { it.id == CardId("sv3pt5-162") }, "el Objeto se jugó igualmente")
+    }
 }

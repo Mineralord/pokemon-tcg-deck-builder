@@ -277,8 +277,32 @@ inerte). Tests: `AbilityLockAndStadiumTest` (registry inyectado con efectos sint
 **Contexto:** implementando TODOS los efectos del set 151 (`sv3pt5`) por fases. Inventario vivo en
 **`docs/inventario-efectos-151.md`** (regenerar con `python tools/scripts/gen_inventario_151.py`, cruza
 `cards/sv3pt5.json` × `Set151Effects.kt`; textos SIEMPRE del bloque `es` = español impreso, NUNCA inglés).
-Progreso: **178/198 efectos únicos** (Fases 1–44, tests verdes). Registros en `Set151Effects.kt`
-(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 20.**
+Progreso: **180/198 efectos únicos** (Fases 1–46, tests verdes). Registros en `Set151Effects.kt`
+(NO en EffectsDb.kt, ver arriba). Base de daño puro ya funcionaba sin registro. **Faltan 18.**
+
+### ✅ FASE 46 HECHA (30 Jul) — selección sobre la MANO del rival (Agarrador Mecánico)
+**Agarrador Mecánico (Grabber) 162** (Objeto): el rival enseña su mano y pones 1 Pokémon que
+encuentres allí en el FONDO de su baraja. Op nueva `EffectOp.PutOppHandPokemonToBottomOfDeck`
+(data object). **Reusa `PendingDecision.SearchCards`** con un flag NUEVO `fromOpponentHand=true`:
+`pendingFor` construye candidatos = Pokémon de la mano RIVAL (sin ninguno → no pausa, el Objeto se
+juega igual); en `resolve`, la rama SearchCards enruta a `applyOpponentHandToBottom` (saca la carta
+de la mano del rival → fondo de su baraja; emite `HandRevealed`). `side` de la decisión = quien
+decide; el rival es `other()`. **Sin cambios en netplay** (host autoritativo; `SearchCards.toDto`
+no envía el flag y el cliente colapsa a ChooseTargets) ni en SmartAgent (ya resuelve SearchCards con
+`candidates.take(count)`). Registrado en bloque "Fase 46" (1 sola printing). 2 tests en `TrainerAbilityTest`.
+**PATRÓN REUTILIZABLE para el resto del clúster mano-rival:** `SearchCards(fromOpponentHand=true)` +
+applier dedicado. **Pendiente (deuda anotada):** Invitación de Erika 160 (Básico de la mano rival → SU
+Banca + cambiarlo por su Activo) necesita un applier distinto (destino Banca rival + swap) y encadenar el
+swap; y validar el render de candidatos "mano rival" en la UI online (feature:combat) — no verificable aquí.
+
+### ✅ FASE 45 HECHA (30 Jul) — primitivo "el rival enseña su mano" (Zubat)
+**Zubat *Eco Revelador/Revealing Echo* 41** (habilidad `oncePerTurn`+`activeOnly`): puramente informativa.
+Op nueva `EffectOp.RevealOpponentHand` (data object) → el intérprete emite `GameEvent.HandRevealed(foeSide,
+count)` SIN cambiar el estado. Evento nuevo en `engine:events` (solo `CombatLog` es exhaustivo sobre GameEvent →
+2 ramas ES/EN; `toFxCue` tiene `else`→null, netplay no conmuta sobre GameEvent = sin ripple). Registrado en
+bloque "Fase 45". 2 tests (revela nº de cartas + no altera la mano; rechaza segundo uso en el mismo turno).
+Es el PRIMITIVO del clúster "manipular la mano/zonas del RIVAL": Agarrador Mecánico 162 e Invitación de Erika 160
+lo extenderán con una decisión REAL sobre la mano rival (aún sin montar; requiere PendingDecision nueva + netplay + UI).
 
 ### ✅ FASE 44 HECHA (21 Jul) — "monedas del rival como cruz" (flip gateado)
 **Psyduck *Cavilar/Overthink* 54** (sin daño): durante el próximo turno del rival, cada moneda que lance ese

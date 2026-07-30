@@ -22,6 +22,7 @@ class CombatLog(
         is GameEvent.CardsDrawn -> "${sideName(e.side)} ha robado ${cards(e.count)}."
         is GameEvent.CardsDiscarded -> "${sideName(e.side)} ha descartado ${cards(e.count)}."
         is GameEvent.DeckShuffled -> "${sideName(e.side)} ha barajado su mazo."
+        is GameEvent.HandRevealed -> "${sideName(e.side)} ha enseñado su mano (${cards(e.count)})."
         is GameEvent.PokemonPlayed ->
             "${sideName(e.side)} ha jugado ${cardName(e.card)}" +
                 if (e.toBench) " en la Banca." else " en el Puesto Activo."
@@ -56,6 +57,7 @@ class CombatLog(
         is GameEvent.CardsDrawn -> "${sideName(e.side)} drew ${e.count} card(s)."
         is GameEvent.CardsDiscarded -> "${sideName(e.side)} discarded ${e.count} card(s)."
         is GameEvent.DeckShuffled -> "${sideName(e.side)} shuffled their deck."
+        is GameEvent.HandRevealed -> "${sideName(e.side)} revealed their hand (${e.count} card(s))."
         is GameEvent.PokemonPlayed ->
             "${sideName(e.side)} played ${cardName(e.card)}" +
                 if (e.toBench) " to the Bench." else " to the Active Spot."

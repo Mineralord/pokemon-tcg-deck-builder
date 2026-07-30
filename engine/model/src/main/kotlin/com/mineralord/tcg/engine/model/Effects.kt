@@ -487,6 +487,19 @@ sealed interface EffectOp {
     ) : EffectOp
 
     /**
+     * El rival enseña su mano y TÚ pones 1 Pokémon que encuentres allí en la parte INFERIOR
+     * de su baraja (Agarrador Mecánico sv3pt5-162). Pausa con una decisión sobre la mano RIVAL
+     * (reusa [PendingDecision.SearchCards] con `fromOpponentHand = true`): candidatos = Pokémon
+     * de la mano del rival. Si no hay ninguno, no hace nada (no pausa). */
+    data object PutOppHandPokemonToBottomOfDeck : EffectOp
+
+    /**
+     * Hace que el RIVAL enseñe las cartas de su mano (Zubat — Eco Revelador sv3pt5-41).
+     * Es puramente informativo: no cambia el estado, solo emite [GameEvent.HandRevealed]
+     * con el nº de cartas de la mano rival para el registro/animación. */
+    data object RevealOpponentHand : EffectOp
+
+    /**
      * Si [target] tiene el estado [status], queda Fuera de Combate (Jynx ex — Beso
      * de Infarto: si el Activo rival está Dormido, queda KO). Se modela infligiendo
      * daño igual a sus PS impresos (daño CRUDO, sin Debilidad/Resistencia); el motor

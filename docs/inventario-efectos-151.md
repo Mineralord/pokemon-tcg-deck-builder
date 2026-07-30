@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **223**  ·  Sin registrar: **35**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **177**  ·  totalmente ausentes: **21**.
+- Registradas en `EffectsDb`: **226**  ·  Sin registrar: **32**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **180**  ·  totalmente ausentes: **18**.
 
 ## Efectos únicos SIN implementar
 
@@ -16,8 +16,6 @@
 | Pidgeot (`sv3pt5-18`) | Pokémon | Vuelo | Lanza 1 moneda. Si sale cruz, este ataque no hace nada. Si sale cara, durante el próximo turno de tu rival, se evitan todo el daño y todos los efectos de los ataques infligidos a este Pokémon. |
 | Spearow (`sv3pt5-21`) | Pokémon | Ventaja Evolutiva | Si sales en segundo lugar, este Pokémon puede evolucionar durante tu primer turno. |
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
-| Zubat (`sv3pt5-41`) | Pokémon | Eco Revelador | Una vez durante tu turno, si este Pokémon está en el Puesto Activo, puedes hacer que tu rival enseñe las cartas de su mano. |
-| Psyduck (`sv3pt5-54`) | Pokémon | Cavilar | Durante el próximo turno de tu rival, cada vez que este lance una moneda, se considerará que ha salido cruz. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
 | Haunter (`sv3pt5-93`) | Pokémon | Espíritu Retorno | Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes poner 1 carta de Partidario de la pila de descartes de tu rival en su mano. |
 | Chansey (`sv3pt5-113`) | Pokémon | Regalo Fortuito | Si has cogido este Pokémon de entre las cartas de Premio que están boca abajo durante tu turno y tu Banca no está llena, antes de ponerlo en tu mano, puedes ponerlo en tu Banca. Si pones este Pokémon en tu Banca de esta manera, lanza 1 moneda. Si sale cara, coge 1 carta de Premio más. |
@@ -37,11 +35,11 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 | Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
 | Invitación de Erika (`sv3pt5-160`) | Trainer | Trainer | Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon Básico que encuentres entre ellas en la Banca de tu rival. Si pones un Pokémon en su Banca de esta manera, cambia ese Pokémon por el Pokémon que esté en el Puesto Activo. |
-| Agarrador Mecánico (`sv3pt5-162`) | Trainer | Trainer | Tu rival enseña las cartas de su mano, y tú pones 1 Pokémon que encuentres entre ellas en la parte inferior de su baraja. |
 
 ## Efectos con al menos un printing implementado
 
 - Aerodactyl — Ataque: Rayo Involutivo
+- Agarrador Mecánico — Trainer: Trainer
 - Alakazam ex — Ataque: Levantamente
 - Arbok ex — Ataque: Amarrar
 - Arbok ex — Ataque: Colmillos Amenazantes
@@ -79,8 +77,8 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Dragonite — Habilidad: Travesía Propulsión
 - Eevee — Ataque: Amigos Coloridos
 - Ekans — Ataque: Bomba Ácida
-- Electrode — Ataque: Cadena Bum Bum
 - Electabuzz — Ataque: Combo Eléctrico
+- Electrode — Ataque: Cadena Bum Bum
 - Exeggcute — Ataque: Rodabola
 - Exeggutor — Ataque: Psíquico
 - Farfetch'd — Ataque: Paquete Ganga
@@ -136,6 +134,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Mankey — Ataque: Saña
 - Marowak — Ataque: Lanzamiento Óseo
 - Marowak — Ataque: Poder Ilimitado
+- Meowth — Ataque: Ven Aquí Ya
 - Metapod — Ataque: Postura Defensiva
 - Mew ex — Habilidad: Reinicio
 - Mewtwo — Ataque: Barrera Reflectante
@@ -158,6 +157,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Onix — Ataque: Alud Descomunal
 - Paras — Ataque: Bola Espora
 - Parasect — Ataque: Filamentos Dispersos
+- Pegatinas de Energía — Trainer: Trainer
 - Persian — Habilidad: Llamar al Rocket
 - Pidgey — Ataque: Llamar a la Familia
 - Pikachu — Ataque: Carga
@@ -170,6 +170,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Porygon — Ataque: Conversión 4
 - Primeape — Ataque: Despotricar
 - Primeape — Ataque: Golpe Rabioso
+- Psyduck — Ataque: Cavilar
 - Raichu — Ataque: Trueno
 - Raichu — Habilidad: Toma de Tierra
 - Rapidash — Ataque: Quemadura
@@ -199,6 +200,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Tauros — Ataque: Furia
 - Tentacruel — Ataque: Látigo Venenoso
 - Tentacruel — Ataque: Pánico Tentacular
+- Transferencia de Bill — Trainer: Trainer
 - Vaporeon — Ataque: Drenaje Espiral
 - Vaporeon — Ataque: Remolino Luchador
 - Venomoth — Ataque: Polvareda Desconcertante
@@ -215,3 +217,4 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Wigglytuff ex — Habilidad: Cuerpo Expansivo
 - Zapdos ex — Ataque: Relámpago Multidisparo
 - Zapdos ex — Habilidad: Flotación Voltaica
+- Zubat — Habilidad: Eco Revelador

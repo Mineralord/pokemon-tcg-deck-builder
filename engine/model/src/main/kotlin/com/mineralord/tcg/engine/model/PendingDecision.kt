@@ -52,6 +52,13 @@ sealed interface PendingDecision {
          * y el Activo rival recibe [damagePerDiscardToOppActive] CRUDO por cada una. Los
          * campos [from]/[destination] se ignoran cuando esto es true. */
         val fromAttachedTools: Boolean = false,
+        /**
+         * true solo para las cartas que operan sobre la MANO del RIVAL (Agarrador Mecánico
+         * sv3pt5-162: "tu rival enseña su mano y pones 1 Pokémon en el fondo de su baraja").
+         * Los [candidates] son cartas de la mano del rival (no del lado que decide); al resolver,
+         * la carta elegida sale de la mano del rival y va al FONDO de su baraja ([destination]
+         * se interpreta como esa zona rival). [side] sigue siendo el jugador que decide. */
+        val fromOpponentHand: Boolean = false,
     ) : PendingDecision
 
     /**

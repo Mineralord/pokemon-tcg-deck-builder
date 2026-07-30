@@ -118,7 +118,9 @@ class EffectInterpreter {
 
         // 1) Aplicar la decisión concreta.
         val applied: EffectResult = when (val d = interaction.decision) {
-            is PendingDecision.SearchCards -> applySearch(d, chosen, cleared, shuffle)
+            is PendingDecision.SearchCards ->
+                if (d.fromOpponentHand) applyOpponentHandToBottom(d, chosen, cleared)
+                else applySearch(d, chosen, cleared, shuffle)
             is PendingDecision.MoveEnergy -> applyMoveEnergy(d, chosen, cleared)
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
             is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle, flip)
@@ -309,6 +311,25 @@ class EffectInterpreter {
                     candidates = cands,
                 )
             }
+            is EffectOp.PutOppHandPokemonToBottomOfDeck -> {
+                // Agarrador Mecánico: candidatos = Pokémon en la MANO del rival. Sin ninguno, no pausa.
+                val foe = state.sideState(src.actingSide.other())
+                val cands = foe.hand.filter { it.supertype == Supertype.POKEMON }.map { it.id }
+                if (cands.isEmpty()) null
+                else PendingDecision.SearchCards(
+                    src.actingSide,
+                    LocalizedText(
+                        "Elige un Pokémon de la mano de tu rival para ponerlo en el fondo de su baraja",
+                        "Choose a Pokémon from your opponent's hand to put on the bottom of their deck",
+                    ),
+                    from = Zone.HAND,
+                    filter = CardFilter(supertype = Supertype.POKEMON),
+                    destination = Zone.DECK,
+                    count = 1,
+                    candidates = cands,
+                    fromOpponentHand = true,
+                )
+            }
             is EffectOp.CoinFlipDraw -> PendingDecision.CoinFlip(
                 src.actingSide,
                 LocalizedText("Lanza la moneda", "Flip a coin"),
@@ -423,6 +444,11 @@ class EffectInterpreter {
                     }
                     EffectResult(working, events)
                 }
+            }
+            is EffectOp.RevealOpponentHand -> {
+                // Zubat — Eco Revelador: el rival enseña su mano. Informativo (no cambia estado).
+                val foeSide = src.actingSide.other()
+                EffectResult(state, listOf(GameEvent.HandRevealed(foeSide, state.sideState(foeSide).hand.size)))
             }
             is EffectOp.DrawCards -> draw(src.actingSide, op.count, state)
             is EffectOp.DrawUntil -> {
@@ -659,6 +685,17 @@ class EffectInterpreter {
                     }
                 }
                 EffectResult(working, emptyList())
+            }
+            is EffectOp.ForceOpponentCoinsTailsNextTurn -> {
+                // Marca al RIVAL del que ataca: durante su próximo turno (turn + 1) sus monedas
+                // se considerarán cruz. Lo aplica el flip gateado de GameEngine.
+                EffectResult(
+                    state.copy(
+                        coinsAsTailsSide = src.actingSide.other(),
+                        coinsAsTailsOnTurn = state.turn + 1,
+                    ),
+                    emptyList(),
+                )
             }
             is EffectOp.ScheduleDelayedDamage -> {
                 // Marca a los objetivos (Victreebel: el Activo rival) para recibir daño diferido
@@ -940,7 +977,7 @@ class EffectInterpreter {
             is EffectOp.ChooseTarget, is EffectOp.SearchDeck, is EffectOp.MoveEnergy,
             is EffectOp.RecoverFromDiscard, is EffectOp.PlaceCounters,
             is EffectOp.DiscardFromHandForDamage, is EffectOp.CoinFlipSearchToBench,
-            is EffectOp.DiscardOwnToolsForDamage ->
+            is EffectOp.DiscardOwnToolsForDamage, is EffectOp.PutOppHandPokemonToBottomOfDeck ->
                 EffectResult(state, emptyList())
         }
 
@@ -1030,6 +1067,28 @@ class EffectInterpreter {
     }
 
     // ------------------------------------------------------- resolución de elección
+
+    /**
+     * Agarrador Mecánico: la carta [chosen] elegida de la MANO del rival sale de su mano y va al
+     * FONDO de su baraja. `d.side` es el jugador que decide → el rival es su `other()`. Emite
+     * [GameEvent.HandRevealed] (la mano se enseñó) con el nº de cartas restante. Solo mueve 1.
+     */
+    private fun applyOpponentHandToBottom(
+        d: PendingDecision.SearchCards,
+        chosen: List<CardId>,
+        state: GameState,
+    ): EffectResult {
+        val foeSide = d.side.other()
+        val foe = state.sideState(foeSide)
+        val pickedId = chosen.firstOrNull { it in d.candidates }
+        val card = pickedId?.let { id -> foe.hand.firstOrNull { it.id == id } }
+        if (card == null) return EffectResult(state, listOf(GameEvent.HandRevealed(foeSide, foe.hand.size)))
+        val updated = foe.copy(hand = foe.hand - card, deck = foe.deck + card)
+        return EffectResult(
+            withPlayer(state, updated, foeSide),
+            listOf(GameEvent.HandRevealed(foeSide, updated.hand.size)),
+        )
+    }
 
     /** Mueve las cartas [chosen] del mazo a la zona destino y baraja el resto. */
     private fun applySearch(
