@@ -50,9 +50,10 @@ import com.mineralord.tcg.studio.assets.AssetStatus
 fun AssetToolPanel(
     controller: ToolController,
     onReset: () -> Unit,
-    presentationToggleLabel: String,
-    onPresentationToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Si no es null, muestra un botón de PANTALLA COMPLETA (toggle) arriba del panel. */
+    fullscreenLabel: String? = null,
+    onToggleFullscreen: () -> Unit = {},
 ) {
     val scheme = StudioTheme.colors
     Column(
@@ -62,7 +63,7 @@ fun AssetToolPanel(
         verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
     ) {
         BasicText(text = "Asset Tool", style = coloredTool(PanelStyle.titleStyle, scheme.contentEmphasis))
-        ToolButton(scheme, ButtonVariant.Primary, presentationToggleLabel, onPresentationToggle)
+        if (fullscreenLabel != null) ToolButton(scheme, ButtonVariant.Primary, fullscreenLabel, onToggleFullscreen)
 
         val active = controller.active
         if (active == null) {

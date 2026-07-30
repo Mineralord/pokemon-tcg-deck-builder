@@ -1,3 +1,9 @@
+// feature:match — LA PARTIDA como concepto arquitectónico propio (network-free).
+//
+// Contiene la orquestación de una partida reutilizable por CUALQUIER anfitrión: PvE (GameViewModel +
+// SmartAgent), y —vía GameCore/GameController— también el modo Online, replays y espectadores. NO conoce
+// red ni Firebase (eso vive en feature:game / data:netplay). Por ser network-free, el Studio puede
+// depender de este módulo sin violar la Arquitectura Dual.
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -5,7 +11,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mineralord.tcg.feature.game"
+    namespace = "com.mineralord.tcg.feature.match"
     compileSdk = 35
 
     defaultConfig {
@@ -24,26 +30,17 @@ android {
 }
 
 dependencies {
-    // LA PARTIDA (orquestación PvE + GameCore + GameController), extraída a su propio módulo network-free.
-    // `api` para que el juego (app) siga viendo GameViewModel/GameController sin cambios de import.
-    api(project(":feature:match"))
-    // La pantalla de combate compartida (UI canónica). El juego provee sus controladores
-    // (GameViewModel/OnlineGameController) a esa misma pantalla vía el contrato neutral.
+    // La pantalla de combate compartida (contrato neutral CombatSceneController + view-state GameUiState).
     implementation(project(":feature:combat"))
     implementation(project(":core:designsystem"))
     // :engine:rules reexporta (api) model/events/effects.
     implementation(project(":engine:rules"))
     implementation(project(":data:cards"))
     implementation(project(":data:profile"))
-    // Protocolo de red (host-autoritativo): NetMessage/DTOs + interfaz de transporte.
-    implementation(project(":data:netplay"))
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.coil.compose)
     implementation(platform(libs.compose.bom))
-    implementation(libs.compose.material3)
-    implementation(libs.compose.ui.tooling.preview)
-    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.compose.ui)
 }

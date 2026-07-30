@@ -35,6 +35,12 @@ data class SceneChannels(
     val bloom: Float = 0f,           // 0..1 destello central
     // Partículas
     val particles: Float = 0f,       // 0..1
+    // Viñeta cinematográfica: oscurece los bordes → profundidad y encuadre de "lugar" (LoR/cine).
+    val vignette: Float = 0f,        // 0..1
+    // V0.2 · «El tablero toma bando»: intensidad de la FRONTERA central (división) y definición de los
+    // dos TERRITORIOS. Semánticos: cada dirección artística (A/B) los interpreta visualmente distinto.
+    val frontier: Float = 0f,        // 0..1
+    val territory: Float = 0f,       // 0..1
 )
 
 /** Estado inicial "en el menú" del que parten todas las propuestas. */
@@ -49,11 +55,15 @@ class Beat(
     val target: SceneChannels,
 )
 
-/** Una propuesta = secuencia de beats. Es el "dato" que el Studio Player reproduce. */
+/**
+ * Una propuesta = secuencia de beats. Es el "dato" que el Studio Player reproduce. [start] = estado del
+ * que parte el beat 0 (por defecto `SceneStart`; V0.2 arranca en `SCENE_REST` para blend con V0.1).
+ */
 class EventVariant(
     val id: String,
     val name: String,
     val beats: List<Beat>,
+    val start: SceneChannels = SceneStart,
 ) {
     val totalMs: Float = beats.fold(0f) { acc, b -> acc + b.durationMs }
 }
@@ -64,20 +74,20 @@ data class Frame(val channels: SceneChannels, val beat: String, val cue: String?
 /** Resuelve el fotograma en [elapsedMs] interpolando linealmente entre objetivos de beats con easing. */
 fun EventVariant.frameAt(elapsedMs: Float): Frame {
     val t = elapsedMs.coerceIn(0f, totalMs)
-    var start = 0f
-    var from = SceneStart
+    var acc = 0f
+    var from = start
     for ((index, beat) in beats.withIndex()) {
-        val end = start + beat.durationMs
+        val end = acc + beat.durationMs
         val last = index == beats.lastIndex
         if (t <= end || last) {
-            val local = if (beat.durationMs <= 0f) 1f else ((t - start) / beat.durationMs).coerceIn(0f, 1f)
+            val local = if (beat.durationMs <= 0f) 1f else ((t - acc) / beat.durationMs).coerceIn(0f, 1f)
             val e = beat.easing.transform(local)
             return Frame(lerp(from, beat.target, e), beat.name, beat.cue, t / totalMs)
         }
-        start = end
+        acc = end
         from = beat.target
     }
-    return Frame(SceneStart, beats.first().name, null, 0f)
+    return Frame(start, beats.first().name, null, 0f)
 }
 
 private fun l(a: Float, b: Float, t: Float): Float = a + (b - a) * t
@@ -96,6 +106,9 @@ private fun lerp(a: SceneChannels, b: SceneChannels, t: Float): SceneChannels = 
     lightIntensity = l(a.lightIntensity, b.lightIntensity, t),
     bloom = l(a.bloom, b.bloom, t),
     particles = l(a.particles, b.particles, t),
+    vignette = l(a.vignette, b.vignette, t),
+    frontier = l(a.frontier, b.frontier, t),
+    territory = l(a.territory, b.territory, t),
 )
 
 // Atajos de easing (mapeo del lenguaje de dirección a curvas de Compose).
@@ -105,25 +118,68 @@ private val In = FastOutLinearInEasing
 private val Lin = LinearEasing
 
 /**
- * Las 5 propuestas de V0.1 (misma estructura de 5 beats; distinta dirección). Solo audio ambiental
- * (marcadores de cue). Duraciones/valores son un primer pase AAA para comparar; se iterarán.
+ * **Reposo de escena (contrato del BLEND V0.1 → V0.2).** Estado en reposo del escenario oficial sobre el
+ * que arranca la ceremonia de inicio. La cinemática de V0.1 termina EXACTAMENTE aquí para que el paso a
+ * la partida no tenga costura. Cualquier ajuste del "look" en reposo se cambia en un solo sitio.
  */
-val V01_VARIANTS: List<EventVariant> = listOf(
-    // P1 · Umbral de Luz — la luz revela; elegancia + continuidad. [Iteración 1: ajustes justificados
-    // por referencias AAA de light-wipe, establishing shot y "calma antes de la acción".]
-    EventVariant("P1", "Umbral de Luz", listOf(
-        // B1: el menú CEDE casi del todo aquí (staging limpio; un foco por beat) y recula perceptible.
-        Beat("Menú cede", 320f, In, "aire", SceneChannels(menuAlpha = 0.06f, menuBlur = 12f, menuScale = 0.965f)),
-        // B2: light-wipe más brillante y deliberado que revela MÁS la arena al pasar (funde escenas).
-        Beat("Cruce (luz)", 520f, InOut, "whoosh", SceneChannels(menuAlpha = 0f, arenaAlpha = 0.6f, arenaScale = 1.06f, lightBand = 1.2f, lightIntensity = 0.72f, bloom = 0.12f)),
-        // B3: establishing — push-in que asienta + la luz suave FLORECE (serenidad), revelado gradual.
-        Beat("Presentación", 620f, Out, "ambiente", SceneChannels(arenaAlpha = 1f, arenaScale = 1.0f, lightBand = 1.35f, lightIntensity = 0.18f, bloom = 0.5f)),
-        // B4: respiración sostenida un instante más, con ease-out de asentamiento (anticipación).
-        Beat("Respiración", 300f, Out, "resonancia", SceneChannels(arenaAlpha = 1f, bloom = 0.16f, lightIntensity = 0.08f)),
-        // B5: entrega más limpia (menos bloom residual) → handoff sin costura a V0.2.
-        Beat("Entrega", 220f, Out, null, SceneChannels(arenaAlpha = 1f, bloom = 0.06f)),
+val SCENE_REST: SceneChannels = SceneChannels(
+    arenaAlpha = 1f, arenaScale = 1f, arenaBlur = 0f,
+    bloom = 0.05f, lightIntensity = 0f, vignette = 0.24f,
+)
+
+/**
+ * **V0.1 — CINEMÁTICA CANÓNICA ÚNICA (AAA).**
+ *
+ * Una sola secuencia continua, dirigida como si fuera de un único autor (nueva filosofía: no hay 5
+ * variantes activas). Reproduce la dirección aprobada en la investigación AAA para la APERTURA del arco:
+ * escenario VIVO con profundidad (LoR) + ritmo tenso sin aire muerto (Marvel Snap) + firma de luz
+ * «Umbral de Luz», sobre el TAPETE OFICIAL vacío. Arco de esta pieza: anticipación → asombro (el terreno
+ * es real) → settle cargado → HANDOFF limpio hacia V0.2. Solo audio ambiental (marcadores de cue).
+ *
+ * Los beats son internos: el jugador percibe UNA experiencia continua. Duraciones ajustadas al conjunto.
+ */
+val V01_CINEMATIC: EventVariant = EventVariant("V01", "Entrada al combate", listOf(
+    // B1 · ANTICIPACIÓN — el menú cede rápido y con propósito; el terreno existe pero aún SIN FOCO
+    // (rack-focus + viñeta cerrada); una semilla de luz late en el centro de la lente. Foco: la semilla.
+    Beat("Anticipación", 460f, In, "aire", SceneChannels(
+        menuAlpha = 0f, menuBlur = 14f, menuScale = 0.96f,
+        scrimAlpha = 0.5f, arenaAlpha = 0.14f, arenaBlur = 26f, arenaScale = 1.10f,
+        bloom = 0.10f, vignette = 0.55f,
     )),
-    // P2 · Descenso — grúa cenital que aterriza en la mesa; peso/gravedad.
+    // B2 · UMBRAL DE LUZ — la luz ENCIENDE y barre; el escenario ENTRA EN FOCO (rack-focus resolviendo)
+    // revelando el "lugar". Foco: el frente de luz que descubre la arena.
+    Beat("Umbral de luz", 820f, InOut, "whoosh", SceneChannels(
+        menuAlpha = 0f, scrimAlpha = 0.12f, arenaAlpha = 0.82f, arenaBlur = 6f, arenaScale = 1.05f,
+        lightBand = 1.15f, lightIntensity = 0.85f, bloom = 0.34f, vignette = 0.42f,
+    )),
+    // B3 · ASOMBRO — push-in que DESACELERA hasta el encuadre de juego; el recinto ya es un LUGAR con
+    // profundidad; floración cálida que se abre. Foco: la arena completa como espacio real.
+    Beat("Asombro", 980f, Out, "ambiente", SceneChannels(
+        arenaAlpha = 1f, arenaBlur = 0f, arenaScale = 1.0f,
+        lightBand = 1.4f, lightIntensity = 0.22f, bloom = 0.5f, vignette = 0.34f,
+    )),
+    // B4 · RESPIRACIÓN — settle cargado, breve (sin aire muerto); la luz se calma. Foco: el terreno en
+    // reposo, listo.
+    Beat("Respiración", 460f, Out, "resonancia", SceneChannels(
+        arenaAlpha = 1f, bloom = 0.18f, lightIntensity = 0.08f, vignette = 0.28f,
+    )),
+    // B5 · BLEND (entrega → inicio de partida) — NO es un cierre cinematográfico: el arco ATERRIZA en el
+    // REPOSO DE JUEGO exacto sobre el que aparecerá la ceremonia (volado). El último fotograma de V0.1 ==
+    // el fotograma en reposo de la escena de V0.2 ⇒ transición IMPERCEPTIBLE. Foco: la partida que empieza.
+    // Contrato de continuidad (SCENE_REST): arena plena · sin luz · bloom ambiental mínimo · viñeta de juego.
+    Beat("Inicio de partida", 420f, Out, null, SCENE_REST),
+))
+
+/** Catálogo ACTIVO de V0.1: UNA sola experiencia canónica (nueva filosofía del proyecto). */
+val V01_VARIANTS: List<EventVariant> = listOf(V01_CINEMATIC)
+
+/**
+ * **LEGACY** — las 4 direcciones exploratorias iniciales (Descenso · Materialización · Enfoque · Cruce
+ * Diegético). **No forman parte del flujo activo** del evento; se conservan SOLO como referencia interna.
+ * No se reproducen (no están en `PREP_EVENTS`). Se mantienen para consulta/comparación histórica.
+ */
+@Suppress("unused")
+val V01_LEGACY_VARIANTS: List<EventVariant> = listOf(
     EventVariant("P2", "Descenso", listOf(
         Beat("Menú cede", 300f, In, "aire", SceneChannels(menuAlpha = 0f, menuScale = 1.1f)),
         Beat("Cruce (caída)", 450f, In, "aire de descenso", SceneChannels(scrimAlpha = 0.35f, arenaAlpha = 0.5f, arenaScale = 1.2f, rootOffsetY = -110f)),
@@ -131,7 +187,6 @@ val V01_VARIANTS: List<EventVariant> = listOf(
         Beat("Aterrizaje", 300f, Out, "impacto", SceneChannels(arenaAlpha = 1f, arenaScale = 1.0f, rootOffsetY = 0f, bloom = 0.15f)),
         Beat("Respiración", 200f, InOut, "resonancia", SceneChannels(arenaAlpha = 1f, bloom = 0.08f)),
     )),
-    // P3 · Materialización — el tapete se ensambla desde energía; identidad Pokémon.
     EventVariant("P3", "Materialización", listOf(
         Beat("Disolución", 300f, In, "disolución", SceneChannels(menuAlpha = 0f, particles = 0.6f)),
         Beat("Ensamblaje", 500f, InOut, "materialización", SceneChannels(arenaAlpha = 0.7f, arenaScale = 0.98f, particles = 1f, bloom = 0.4f)),
@@ -139,7 +194,6 @@ val V01_VARIANTS: List<EventVariant> = listOf(
         Beat("La energía calma", 300f, InOut, "resonancia", SceneChannels(arenaAlpha = 1f, particles = 0.12f, bloom = 0.18f)),
         Beat("Entrega", 200f, Out, null, SceneChannels(arenaAlpha = 1f, particles = 0f, bloom = 0.1f)),
     )),
-    // P4 · Enfoque — rack-focus contenido; máxima elegancia/accesibilidad.
     EventVariant("P4", "Enfoque", listOf(
         Beat("Desenfoque", 300f, In, "aire", SceneChannels(menuAlpha = 0.3f, menuBlur = 14f, scrimAlpha = 0.3f)),
         Beat("Cruce breve", 300f, InOut, "whoosh suave", SceneChannels(menuAlpha = 0f, scrimAlpha = 0.2f, arenaAlpha = 0.4f, arenaBlur = 20f)),
@@ -147,7 +201,6 @@ val V01_VARIANTS: List<EventVariant> = listOf(
         Beat("Respiración", 250f, InOut, "resonancia", SceneChannels(arenaAlpha = 1f, bloom = 0.15f)),
         Beat("Entrega", 150f, Out, null, SceneChannels(arenaAlpha = 1f, bloom = 0.08f)),
     )),
-    // P5 · Cruce Diegético — travelling continuo menú→arena; inmersión.
     EventVariant("P5", "Cruce Diegético", listOf(
         Beat("Parte el viaje", 300f, In, "whoosh largo", SceneChannels(menuAlpha = 0.5f, menuScale = 1.25f, arenaAlpha = 0.3f, arenaScale = 1.4f, rootOffsetY = 45f, rootRotation = 2f)),
         Beat("Viaje", 500f, Lin, "viaje", SceneChannels(menuAlpha = 0f, arenaAlpha = 0.75f, arenaScale = 1.12f, rootOffsetY = 16f, rootRotation = 1f)),

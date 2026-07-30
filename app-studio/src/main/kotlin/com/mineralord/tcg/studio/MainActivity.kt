@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,16 +62,25 @@ class MainActivity : ComponentActivity() {
             StudioTheme {
                 // Sesión del Board Simulator HOISTADA por encima del Shell: así la MISMA CombatScreen y
                 // su controlador sobreviven al conmutar entre modos (no se reinician ni se duplican).
-                val session = rememberBoardSimSession()
-                // Dos modos: Workspace (Shell + consola con grab handle fijo) y Presentation (la
-                // CombatScreen LIMPIA, indistinguible del juego; el acceso al Studio es el botón de
-                // Opciones del tapete). Se puentea el Shell en Presentation.
+                val session = rememberStudioSession()
+                // Contenido a PANTALLA COMPLETA que PUENTEA el Shell (sin Toolbar/Rail/StatusBar): lo usan
+                // las experiencias inmersivas del Studio — Presentation Mode (Event Lab) y el Modo Partida
+                // (Match Builder: partida real vs IA). Mientras haya contenido fullscreen, el Shell se oculta.
                 var presentation by remember { mutableStateOf(false) }
-                Crossfade(targetState = presentation, animationSpec = tween(320), label = "studioMode") { pres ->
-                    if (pres) {
-                        PresentationWorkspace(session = session, onExitPresentation = { presentation = false })
-                    } else {
-                        StudioShell(labs = studioLabs(session = session, onEnterPresentation = { presentation = true }))
+                var fullscreen by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
+                val fs = fullscreen
+                Crossfade(targetState = presentation || fs != null, animationSpec = tween(320), label = "studioMode") { immersive ->
+                    when {
+                        presentation -> PresentationWorkspace(session = session, onExitPresentation = { presentation = false })
+                        immersive && fs != null -> fs()
+                        else -> StudioShell(
+                            labs = studioLabs(
+                                session = session,
+                                onEnterPresentation = { presentation = true },
+                                onEnterFullscreen = { content -> fullscreen = content },
+                                onExitFullscreen = { fullscreen = null },
+                            ),
+                        )
                     }
                 }
             }

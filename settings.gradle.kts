@@ -41,6 +41,9 @@ include(":core:designsystem")
 // --- feature:combat — la ÚNICA pantalla de combate (UI canónica), compartida por juego y Studio.
 //     Sólo UI + modelos canónicos (engine/data:cards); NUNCA red/matchmaking/Firebase. ---
 include(":feature:combat")
+// --- feature:match — LA PARTIDA (orquestación PvE + GameCore), network-free. Compartida por juego y
+//     Studio; el Studio depende de ella SIN arrastrar red/Firebase. ---
+include(":feature:match")
 include(":feature:packs")
 include(":feature:decks")
 include(":feature:game")

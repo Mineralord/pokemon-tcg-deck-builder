@@ -1,5 +1,17 @@
 # 🎬 STUDIO · CATÁLOGO CANÓNICO DE EVENTOS (v1 — CERRADO)
 
+> ## ⚖️ Dependencia Canónica
+> Toda implementación definida en este catálogo debe respetar **obligatoriamente** la
+> **[Visual Language Bible](design/VISUAL-LANGUAGE-BIBLE.md)**, autoridad máxima sobre movimiento, cámara,
+> ritmo, iluminación, composición, UI, VFX, feedback y **gramática visual**.
+>
+> - **El Event Catalog define QUÉ sucede y en qué orden.**
+> - **La Visual Language Bible define CÓMO debe sentirse.**
+>
+> Separación de responsabilidades del proyecto: **Event Catalog** = estructura narrativa y funcional ·
+> **Visual Language Bible** = lenguaje audiovisual (constitución visual) · **Plan Maestro** = estrategia de
+> ejecución. Ante cualquier duda visual, la Bible tiene prioridad sobre este catálogo.
+
 > **Fuente oficial de verdad** de la experiencia cinematográfica del proyecto. Pertenece al **Studio**
 > (no al motor, ni al AnimationDirector, ni al renderer). Es el **vocabulario** con el que se investiga,
 > diseña, implementa, documenta y discute TODO evento visual del juego.
@@ -77,14 +89,15 @@ El Board Simulator **simula una PARTIDA COMPLETA**, no un tablero. Puede **salta
 
 ## 1) 🟢🟡⚪ TABLERO DE PROGRESO (vivo)
 
-**EVENTO ACTIVO:** `V0.1` — Entrada al combate.
+**EVENTO ACTIVO:** `V0.2` — Formación del tablero  ·  **PRODUCCIÓN 002** (línea de producción cronológica).
+*(PRODUCCIÓN 001 = `V0.1` Entrada al combate → 🟢 CANON.)*
 
 **Por defecto, todo evento no listado abajo está en:** Workflow `PENDIENTE` · Madurez `CONCEPTO` · Research `Pendiente`.
 
 | ID | Workflow | Madurez | Research Package | Notas |
 |----|----------|---------|------------------|-------|
-| **V0.1** | 🟡 ITERACIÓN | PLAYABLE | Referencias aprobadas | **Tipo Framing · Ancla Manual · Checkpoint: n/a (framing) · Precondición: MatchSession creada.** 5 propuestas jugables/comparables en el Sandbox; **P1 «Umbral de Luz» (Iteración 1) = candidata a CANON**. Pendiente: seguir iterando/validar → CANON. |
-| **V0.2** | ⚪ PENDIENTE | CONCEPTO | Pendiente | **Tipo Framing · Ancla Manual · Checkpoint: n/a (framing) · Precondición: V0.1 completado.** Siguiente a diseñar: **sobre la MatchSession real ya viva, tapete VACÍO** (sin cartas) + su cinemática; al terminar, sesión lista para V0.3/E2. |
+| **V0.1** | 🟢 CANON | AAA | Referencias aprobadas | **PRODUCCIÓN 001 · CANON.** Tipo Framing · Ancla Manual · Precondición: MatchSession creada. Cinemática **única AAA** «Umbral de Luz» (5 beats, cierre en `SCENE_REST` = reposo de partida para blend imperceptible con V0.2). P2–P5 archivadas como `V01_LEGACY_VARIANTS`. |
+| **V0.2** | 🟡 INVESTIGACIÓN | CONCEPTO | Investigando (G2) | **PRODUCCIÓN 002 · ACTIVO.** Alcance reconciliado (regla estricta un-evento-por-sprint): V0.2 = **el recinto revelado en V0.1 se convierte en CAMPO DE JUEGO** (las zonas/estructura se definen sobre el escenario ya revelado). NO re-materializa el tapete (eso ya ocurre en V0.1); aporta el paso emocional "esto ya es el campo donde duelaremos". Research: `docs/studio/research/V0.2-investigacion-aaa.md`. **Objetivo emocional (aprobado):** orden + preparación **y** que el jugador sienta que el espacio YA se ha convertido en el campo de batalla donde ocurrirá el duelo. **Estructura V0.2 aprobada con variante:** el **acento del centro ocurre ANTES** de revelar las zonas de los jugadores (punto de referencia desde el inicio). **Dirección favorita:** P1 «Ensamblaje por luz» (evolución del lenguaje de V0.1; descartar solo si tras implementar+probar no logra el efecto). **P5 NO debe depender de otro barrido principal** (evitar repetir el recurso de V0.1). **Infra mínima aprobada (bajo demanda):** andamiaje para una MatchSession real con **tapete VACÍO**, construido **solo según lo que exija la candidata** (sin capacidades "por si acaso"). **Estructura 5 beats** (B1 centro → B2 expansión → B3 zonas → B4 asentamiento → **B5 handoff a V0.3**). **A implementar primero: P1 «Ensamblaje por luz» + P5 «Enfoque del terreno»** (dos direcciones para comparar en el Studio); P2/P3/P4 documentadas, solo se implementan si aportan una dimensión que P1/P5 no cubran. Diseño en `docs/studio/design/V0.2-formacion-del-tablero.md`. |
 
 > **Arquitectura del Studio (permanente):** los eventos NO tienen un Lab propio. El **Board Simulator
 > (Sandbox)** es el **reproductor universal del Event Catalog**: carga cualquier evento, reproduce sus
@@ -95,6 +108,14 @@ El Board Simulator **simula una PARTIDA COMPLETA**, no un tablero. Puede **salta
 ### Canon transversal ya fijado (aplica a todos los eventos)
 - **Lenguaje base:** **"Elegancia Cinematográfica"** — peso, precisión, claridad, intención, elegancia; contención que **acelera en los clímax** (KO, Evolución, Revelación, Victoria).
 - **6 Principios Maestros de Dirección:** (1) toda acción importante se anuncia; (2) un solo foco visual; (3) la cámara nunca duda; (4) claridad sobre espectáculo; (5) los VFX acompañan, no dominan; (6) toda transición prepara el siguiente evento (secuencia continua).
+- **Regla permanente de FOCO POR BEAT (obligatoria, todos los eventos):** cada beat DEBE declarar explícitamente su **Foco visual principal** (el único elemento que dirige la mirada en ese beat). Sirve para garantizar el cumplimiento del Principio 2 ("un solo foco visual"): si un beat no puede nombrar un foco único, el beat está mal cortado y debe dividirse. Esta declaración forma parte del lenguaje de diseño de todo evento a partir de ahora y debe figurar en el storyboard/beats de cada propuesta.
+- **Patrón permanente de HANDOFF (beat de entrega final, todos los eventos):** todo evento **cierra con un beat de entrega/handoff** cuyo foco es **preparar explícitamente el siguiente evento** (situar mirada, luz y estado en el punto desde el que arranca lo siguiente, sin corte). Materializa el Principio 6 ("toda transición prepara el siguiente evento") y da a cada evento la misma claridad con la que V0.1 entrega el control. La estructura de beats de referencia son **5 beats** cerrando en handoff (como V0.1 y V0.2).
+- **Principio permanente de INFRAESTRUCTURA BAJO DEMANDA (todos los eventos):** la infraestructura se construye **únicamente según las necesidades de la propuesta candidata elegida**, nunca capacidades preventivas o "por si acaso". No se generaliza ni se abstrae hasta que un segundo caso real lo exija. (Refuerza la política anti-sobreingeniería de `implementacion-continua`.)
+- **Regla permanente de NACIMIENTO DE CANALES VISUALES:** un canal de `SceneChannels` **solo puede nacer cuando una propuesta concreta no pueda expresarse con los canales existentes**. Nunca se crea un canal por conveniencia, por previsión ni porque "podría servir después". Primero aparece la necesidad artística real; después nace el canal. (Corolario del principio anterior aplicado al vocabulario visual, para evitar que crezca sin control con los años.)
+- **Rol permanente del STUDIO = LABORATORIO DE VALIDACIÓN (no editor de animaciones):** el Studio **no crea** animaciones ni efectos ni es un editor; su única función es **validar la implementación** usando **exactamente el mismo motor y render que el APK Game**. Permite: reproducir eventos · inspeccionar resultados · comparar implementaciones · repetir pruebas · validar la experiencia · detectar problemas. Nada más.
+- **Responsabilidad permanente de la IMPLEMENTACIÓN (Claude Code):** para cada evento, Claude Code (1) **investiga exhaustivamente referencias AAA** —no solo Pokémon TCG Live: videojuegos AAA, juegos de cartas, interfaces, cinematografía, motion design, UX, animación, cualquier referencia útil—; (2) selecciona las mejores; (3) analiza cómo funcionan; (4) **replica la experiencia 1:1** con la arquitectura existente (no "inventar" cuando existe una referencia claramente superior; reproducir la *sensación* de la referencia); (5) integra respetando la arquitectura (sin conceptos del Studio en el Game, sin romper separación de responsabilidades, sin deuda técnica). Tras implementar, el Studio se usa para probar/repetir/inspeccionar/validar/aprobar; si no cumple el objetivo, se **modifica la implementación** y se vuelve a probar.
+- **Flujo oficial (permanente):** Objetivo del evento → Investigación AAA → Implementación (Claude Code) → Prueba en Studio → Ajustes → Validación → Aprobación → **disponible automáticamente para Game y Studio** (comparten el mismo código).
+- **Separación permanente ESCENARIO ⟂ PARTIDA:** el **escenario** (espacio físico del duelo: tapete, geometría de zonas, iluminación, cámara) es un concepto **distinto y desacoplado** de la **partida** (estado jugable: cartas, jugadores, manos, banca, Active, reglas, turnos, HUD). Los eventos de **formación del tablero** (V0.x) se reproducen sobre una **superficie de escenario propia** (tapete vacío), **nunca** sobre la representación de partida (`CombatScreen`). Cada elemento de partida se incorpora al escenario **solo** cuando un evento futuro concreto (E3 reparto, E6/E7 colocación, V10 HUD…) lo exige.
 - **Regla emocional permanente (por evento):** responder *"¿Qué debe sentir exactamente el jugador al terminar este evento?"* antes de diseñar.
 - **Música:** aún NO existe identidad musical; hasta entonces se diseña solo con **diseño sonoro ambiental** (ambiente, whoosh, aire, resonancias).
 
@@ -224,7 +245,7 @@ El Board Simulator **simula una PARTIDA COMPLETA**, no un tablero. Puede **salta
 2. Investigación exhaustiva con Skills (videojuegos AAA, TCG digitales, juegos de mesa digitales, cualquier dirección relevante).
 3. Crear el **Research Package** (referencias, vídeos, capturas, análisis, decisiones, justificaciones, referencias descartadas).
 4. Extraer únicamente **principios reutilizables** (nunca copiar/clonar/reproducir).
-5. Diseñar **CINCO propuestas** distintas — cada una con: objetivo emocional · storyboard · beats · cámara · ritmo · iluminación · audio · VFX · transiciones · ventajas · desventajas · riesgos.
+5. Diseñar **CINCO propuestas** distintas — cada una con: objetivo emocional · storyboard · beats · cámara · ritmo · iluminación · audio · VFX · transiciones · ventajas · desventajas · riesgos. **Cada beat debe declarar su Foco visual principal** (ver "Regla permanente de FOCO POR BEAT").
 6. **Implementar las CINCO propuestas dentro del Studio**, todas reproducibles con Play (seleccionables como variantes del evento).
 7. **Iterar las CINCO hasta calidad AAA** (sin límite de iteraciones; cada una debe poder juzgarse como candidata definitiva).
 8. **Comparar las CINCO en el Studio** (cambio instantáneo entre variantes; reproducir, pausar, FF, slow-motion, repetir).

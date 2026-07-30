@@ -27,14 +27,14 @@ import kotlinx.coroutines.delay
  */
 
 /** El otro lado del tablero. */
-internal fun Side.other(): Side = if (this == Side.PLAYER) Side.OPPONENT else Side.PLAYER
+fun Side.other(): Side = if (this == Side.PLAYER) Side.OPPONENT else Side.PLAYER
 
 /**
  * Mapea un [GameEvent] del motor al "cue" visual de la UI, normalizando el lado que
  * muestra el FX. Único para ambos modos: así el daño/embate/KO/premio/curación/moneda
  * se animan igual en PvE y PvP.
  */
-internal fun GameEvent.toFxCue(): FxCue? = when (this) {
+fun GameEvent.toFxCue(): FxCue? = when (this) {
     is GameEvent.Attacked -> FxCue.Attack(side)
     // El daño lo recibe el rival del atacante.
     is GameEvent.DamageDealt -> FxCue.Damage(side.other(), amount, weaknessApplied, resistanceApplied)
@@ -50,7 +50,7 @@ internal fun GameEvent.toFxCue(): FxCue? = when (this) {
  * golpes para que las animaciones no se solapen (feel de TCG Live). [emitCue] entrega
  * cada señal al flujo de FX del controlador correspondiente.
  */
-internal suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) -> Unit) {
+suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) -> Unit) {
     for (e in events) {
         val cue = e.toFxCue() ?: continue
         emitCue(cue)
@@ -71,7 +71,7 @@ internal suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) ->
  * elegir objetivo de Banca, etc.). Si no aparece en juego (id impreso genérico), cae
  * al repositorio por `id.printed`.
  */
-internal fun lookupCard(state: GameState?, repo: CardRepository, id: CardId): Card? {
+fun lookupCard(state: GameState?, repo: CardRepository, id: CardId): Card? {
     val s = state ?: return repo[id.printed]
     val pool = listOf(s.player, s.opponent).flatMap { ps ->
         ps.hand + ps.deck + ps.discard + ps.prizes + ps.lostZone +
@@ -83,7 +83,7 @@ internal fun lookupCard(state: GameState?, repo: CardRepository, id: CardId): Ca
 }
 
 /** Nombre legible (español) de una carta por su id. */
-internal fun cardNameOf(repo: CardRepository, id: CardId): String =
+fun cardNameOf(repo: CardRepository, id: CardId): String =
     repo[id.printed]?.name?.es ?: id.printed.raw
 
 // Los helpers de targeting de UI (itemTargetChoose/toolAttachScope/cardTargetsPokemon) se movieron

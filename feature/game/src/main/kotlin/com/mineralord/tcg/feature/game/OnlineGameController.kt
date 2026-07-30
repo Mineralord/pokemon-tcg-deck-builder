@@ -2,6 +2,8 @@ package com.mineralord.tcg.feature.game
 
 import android.app.Application
 import com.mineralord.tcg.data.cards.CardRepository
+import com.mineralord.tcg.data.netplay.GameIntentDto
+import com.mineralord.tcg.data.netplay.GameReplay
 import com.mineralord.tcg.data.netplay.MatchRole
 import com.mineralord.tcg.data.netplay.MatchTransport
 import com.mineralord.tcg.data.netplay.NetMessage
@@ -24,9 +26,11 @@ import com.mineralord.tcg.feature.game.anim.FxCue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -56,7 +60,13 @@ class OnlineGameController(
     private val role: MatchRole = transport.role
     private val isHost get() = role == MatchRole.HOST
 
-    private val rng = SeededRng(System.nanoTime())
+    // Semilla ÚNICA compartida por el reparto y el motor: capturarla permite reconstruir
+    // la partida entera de forma determinista (ver [GameReplay]).
+    private val seed: Long = System.nanoTime()
+    private val rng = SeededRng(seed)
+
+    /** Log autoritativo (host) de intents ACEPTADOS, en orden. Base para replay/export (§A). */
+    private val replayLog = mutableListOf<GameIntentDto>()
 
     /** Núcleo compartido con el modo PvE: dueño del estado, la preparación y el pipeline. */
     private val core = GameCore(scope)
@@ -83,6 +93,10 @@ class OnlineGameController(
     private var myDealtHand: List<Card> = emptyList()
 
     private var snapshotSeq = 0
+
+    /** Se pone a true al cerrar para detener el bucle de re-suscripción resiliente. */
+    @Volatile
+    private var closed = false
 
     init {
         scope.launch {
@@ -112,8 +126,23 @@ class OnlineGameController(
             // Punto de extensión para recompensas de PvP (aún sin premio concreto).
             core.onGameFinished = { winner -> onGameFinished(winner) }
 
-            // Escucha del rival.
-            scope.launch { transport.incoming.collect { onMessage(it) } }
+            // Escucha del rival con re-suscripción RESILIENTE: si el flujo termina o
+            // falla (p. ej. Firestore cerró el listener por un error transitorio),
+            // re-colecta tras un backoff en vez de morir para siempre. El transporte
+            // deduplica por `seq`, así que re-suscribirse NO repite la ceremonia; y al
+            // reconectar el guest pide el snapshot actual por si perdió alguno.
+            scope.launch {
+                var backoffMs = 1_000L
+                var firstAttempt = true
+                while (isActive && !closed) {
+                    if (!firstAttempt && !isHost) send(NetMessage.RequestSnapshot)
+                    firstAttempt = false
+                    runCatching { transport.incoming.collect { onMessage(it) } }
+                    if (!isActive || closed) break
+                    delay(backoffMs)
+                    backoffMs = (backoffMs * 2).coerceAtMost(15_000L)
+                }
+            }
             // Preséntate con tu mazo (nombre + cartas).
             send(NetMessage.Hello(playerName, myDeckPrintedIds, myDeckName))
             core.log += "Tu baraja: «$myDeckName» (${myDeckPrintedIds.size} cartas)."
@@ -139,6 +168,7 @@ class OnlineGameController(
             is NetMessage.SetupChoice -> if (isHost) onGuestSetupChoice(msg)
             is NetMessage.Snapshot -> if (!isHost) onSnapshot(msg)
             is NetMessage.Intent -> if (isHost) onGuestIntent(msg)
+            is NetMessage.RequestSnapshot -> if (isHost) broadcast()
             is NetMessage.LogLine -> { core.log += msg.text; core.emit() }
             is NetMessage.Fx -> onFx(msg)
             is NetMessage.Bye -> { core.log += "El rival abandonó (${msg.reason})."; core.emit() }
@@ -411,6 +441,7 @@ class OnlineGameController(
         if (isHost) {
             // El host aplica con el motor compartido (publica el rechazo si es ilegal).
             val res = core.applyLocal(intent) ?: return
+            replayLog += intent.toDto()
             afterHostApply(res.events)
         } else {
             // GUEST: manda el intent al host autoritativo.
@@ -424,7 +455,11 @@ class OnlineGameController(
         if (isHost) {
             // Atómico en el host (jugar Objeto + resolver objetivo); un solo broadcast/FX.
             val results = core.applyItemOnTarget(cardId, targetId)
-            if (results.isNotEmpty()) afterHostApply(results.flatMap { it.events })
+            if (results.isNotEmpty()) {
+                replayLog += GameIntent.PlayTrainer(cardId).toDto()
+                if (results.size >= 2) replayLog += GameIntent.ResolveDecision(listOf(targetId)).toDto()
+                afterHostApply(results.flatMap { it.events })
+            }
         } else {
             // GUEST: manda los dos intents en orden; el host los aplica secuencialmente.
             send(NetMessage.Intent(GameIntent.PlayTrainer(cardId).toDto()))
@@ -435,6 +470,7 @@ class OnlineGameController(
     /** HOST: aplica una jugada recibida del guest (ignora en silencio las ilegales). */
     private fun onGuestIntent(msg: NetMessage.Intent) {
         val res = core.applyLocal(msg.intent.toIntent(), surfaceRejection = false) ?: return
+        replayLog += msg.intent
         afterHostApply(res.events)
     }
 
@@ -486,6 +522,18 @@ class OnlineGameController(
 
     override fun card(id: CardId): Card? = lookupCard(core.state, core.repo, id)
 
+    /**
+     * PARIDAD ONLINE: `legalIntents` es una función PURA del [GameState], y el invitado ya recibe
+     * el snapshot COMPLETO del host (incluido `abilitiesUsedThisTurn`), reconstruido desde su
+     * propia perspectiva (guest = [Side.PLAYER]). Por eso el invitado calcula la legalidad con un
+     * motor de SOLO LECTURA (no autoritativo, no muta nada) y obtiene exactamente las mismas
+     * habilidades manuales disponibles que el host. El `rng` es irrelevante para esta consulta.
+     */
+    private val queryEngine: GameEngine by lazy { core.engine ?: GameEngine(SeededRng(0)) }
+
+    override fun legalIntents(): List<GameIntent> =
+        core.state?.let { queryEngine.legalIntents(it) } ?: emptyList()
+
     /** Reconstruye cartas desde ids de instancia (del host) usando el repo local. */
     private fun cardsFromIds(ids: List<String>): List<Card> =
         ids.mapNotNull { raw -> val cid = CardId(raw); core.repo[cid.printed]?.withId(cid) }
@@ -495,9 +543,37 @@ class OnlineGameController(
         // TODO(recompensas): otorgar recompensa de PvP según el resultado del jugador local.
     }
 
+    /**
+     * HOST: exporta la partida como [GameReplay] serializable (semilla + preparación +
+     * intents aceptados). Reconstruible de forma determinista con
+     * [com.mineralord.tcg.data.netplay.reconstructFinal]. Devuelve `null` si aún no se
+     * finalizó la preparación o si no somos el host (única fuente autoritativa del log).
+     */
+    fun exportReplay(): GameReplay? {
+        if (!isHost) return null
+        val hc = hostChoice ?: return null
+        val gc = guestChoice ?: return null
+        val gd = guestDeckPrinted ?: return null
+        return GameReplay(
+            seed = seed,
+            hostDeck = myDeckPrintedIds,
+            guestDeck = gd,
+            firstSideIsHost = firstSide == Side.PLAYER,
+            hostActiveId = hc.activeId.raw,
+            hostBenchIds = hc.benchIds.map { it.raw },
+            guestActiveId = gc.activeId.raw,
+            guestBenchIds = gc.benchIds.map { it.raw },
+            intents = replayLog.toList(),
+        )
+    }
+
     fun close() {
-        scope.launch { runCatching { transport.send(NetMessage.Bye("cerró la app")) } }
-        scope.launch { runCatching { transport.close() } }
+        closed = true
+        scope.launch {
+            runCatching { transport.send(NetMessage.Bye("cerró la app")) }
+            runCatching { transport.close() }
+            scope.cancel() // detiene el bucle de re-suscripción y libera el listener
+        }
     }
 
     private companion object {

@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
  * como `var`/`lateinit` para poder construir el core en el field-initializer del
  * controlador (y así exponer [ui]/[fx] de inmediato).
  */
-internal class GameCore(private val scope: CoroutineScope) {
+class GameCore(private val scope: CoroutineScope) {
 
     lateinit var repo: CardRepository
     lateinit var combatLog: CombatLog

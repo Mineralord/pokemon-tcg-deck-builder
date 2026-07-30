@@ -51,6 +51,10 @@ dependencies {
     // modelos canónicos (engine:rules→model, data:cards) y el núcleo visual (core:designsystem).
     // NO arrastra red/matchmaking/Firebase (eso vive en feature:game, del que el Studio NO depende).
     implementation(project(":feature:combat"))
+    // LA PARTIDA (network-free): el Modo Partida del Match Builder hospeda el controlador REAL del juego
+    // (GameViewModel: GameEngine + SmartAgent) reutilizando feature:match. NO arrastra red/Firebase
+    // (eso vive en feature:game, del que el Studio SIGUE sin depender): Arquitectura Dual intacta.
+    implementation(project(":feature:match"))
     // Motor de animaciones compartido (núcleo): el Studio HOSPEDA el mismo pipeline que el juego.
     // Es núcleo compartido (Compose puro, sin reglas de juego/red/Firebase): compatible con la
     // Arquitectura Dual y la Regla de Oro. `core:animation` llega transitivamente (api).
@@ -58,6 +62,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)

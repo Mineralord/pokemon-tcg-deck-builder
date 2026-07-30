@@ -1,5 +1,6 @@
 package com.mineralord.tcg.studio
 
+import androidx.compose.runtime.Composable
 import com.mineralord.tcg.studio.shell.Lab
 
 /**
@@ -17,9 +18,21 @@ import com.mineralord.tcg.studio.shell.Lab
  * Añadir un Lab futuro = añadir un `Lab(...)` más a esta lista con su propio `content`; el mecanismo
  * de conmutación del Shell ya lo cubre sin cambios.
  */
-fun studioLabs(session: BoardSimSession, onEnterPresentation: () -> Unit): List<Lab> = listOf(
-    Lab(id = "board-simulator", title = "Board Simulator") {
-        BoardSimulatorLabContent(session = session, onEnterPresentation = onEnterPresentation)
+fun studioLabs(
+    session: StudioSession,
+    onEnterPresentation: () -> Unit,
+    onEnterFullscreen: (@Composable () -> Unit) -> Unit,
+    onExitFullscreen: () -> Unit,
+): List<Lab> = listOf(
+    Lab(id = "event-lab", title = "Event Lab") {
+        EventLabContent(session = session, onEnterPresentation = onEnterPresentation)
+    },
+    Lab(id = "match-builder", title = "Match Builder") {
+        MatchBuilderContent(
+            session = session,
+            onEnterFullscreen = onEnterFullscreen,
+            onExitFullscreen = onExitFullscreen,
+        )
     },
     Lab(id = "animation-gallery", title = "Galería de Animaciones") {
         AnimationGalleryLabContent(session.registry)

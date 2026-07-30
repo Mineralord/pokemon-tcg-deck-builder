@@ -7,9 +7,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,6 +24,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
@@ -44,13 +48,18 @@ import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirect
 import com.mineralord.tcg.core.animationcompose.trackBounds
 import com.mineralord.tcg.core.designsystem.actor.ActorVisualController
 import com.mineralord.tcg.core.designsystem.actor.LocalActorVisuals
+import androidx.compose.foundation.text.BasicText
 import com.mineralord.tcg.core.designsystem.tokens.StudioColorTokens
 import com.mineralord.tcg.core.designsystem.tokens.StudioTheme
+import com.mineralord.tcg.core.designsystem.tokens.StudioTypographyTokens
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.feature.game.board.BoardGeometry
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mineralord.tcg.feature.game.GameViewModel
 import com.mineralord.tcg.feature.game.combat.CombatScreen
 import com.mineralord.tcg.feature.game.combat.LocalCombatAutoMotion
 import com.mineralord.tcg.studio.assets.AssetRegistry
+import com.mineralord.tcg.studio.preparation.EmptyMat
 import com.mineralord.tcg.studio.preparation.EventOverlay
 import com.mineralord.tcg.studio.preparation.EventPlayerPanel
 import com.mineralord.tcg.studio.preparation.EventPlayerState
@@ -62,12 +71,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * **Sesión del Board Simulator: el estado compartido entre Workspace y Presentation.**
+ * **StudioSession: el estado compartido por los Labs del Studio (Event Lab · Match Builder).**
  *
  * Hoistada por encima del Shell (en `MainActivity`): existe **una única CombatScreen** y un único
- * controlador vivos; al conmutar de modo no se reinicia ni se duplica nada, sólo cambia el marco.
+ * controlador vivos; al conmutar de Lab o de modo no se reinicia ni se duplica nada, sólo cambia el marco.
  */
-class BoardSimSession(
+class StudioSession(
     val registry: AssetRegistry,
     val sandbox: SandboxController,
     val toolController: ToolController,
@@ -81,7 +90,7 @@ class BoardSimSession(
 
 /** Crea (una vez) y recuerda la sesión: controladores, motor canónico y siembra del tapete real. */
 @Composable
-fun rememberBoardSimSession(): BoardSimSession {
+fun rememberStudioSession(): StudioSession {
     val registry = remember { studioAssetRegistry() }
     val toolController = remember { ToolController(registry, studioTools()) }
     val sandbox = remember { SandboxController(onInteraction = { toolController.onInteraction(it) }) }
@@ -97,7 +106,7 @@ fun rememberBoardSimSession(): BoardSimSession {
     }
     LaunchedEffect(director) { toolController.attachEngine { request -> director.submit(request) } }
 
-    return remember { BoardSimSession(registry, sandbox, toolController, coordinates, renderState, actors, player) }
+    return remember { StudioSession(registry, sandbox, toolController, coordinates, renderState, actors, player) }
 }
 
 /**
@@ -106,7 +115,7 @@ fun rememberBoardSimSession(): BoardSimSession {
  * ([EvolveActorBridge]). No dibuja placeholders: la carta real es el actor.
  */
 @Composable
-private fun ActorHostedBoard(session: BoardSimSession, onExit: () -> Unit) {
+private fun ActorHostedBoard(session: StudioSession, onExit: () -> Unit) {
     // Actor id REACTIVO: la carta actualmente en el Activo. Se actualiza al aterrizar la evolución, de
     // modo que el puente controla SIEMPRE la carta real visible (corrige el actor obsoleto).
     val ui by session.sandbox.ui.collectAsState()
@@ -150,12 +159,13 @@ private fun EventPlayerClock(player: EventPlayerState) {
 }
 
 /**
- * El tablero REAL con la "cámara" del evento aplicada + el overlay del fotograma. Es EXACTAMENTE el
- * mismo render que verá el juego: la cinemática se ejecuta sobre la `CombatScreen` real (no hay
- * renderer paralelo). Con evento cerrado, el tablero es el Sandbox normal.
+ * **Tablero del EVENT LAB (board-first).** Escenario OFICIAL vacío (`EmptyMat`) con la "cámara" del evento
+ * aplicada + el overlay del fotograma. El Event Lab reproduce eventos sobre el escenario oficial; la
+ * PARTIDA sembrada (CombatScreen real) NO vive aquí — pertenece a Match Builder (principio Un Lab = Un
+ * Dominio). Sin evento cargado, se ve el escenario oficial vacío en reposo.
  */
 @Composable
-private fun PlayerDrivenBoard(session: BoardSimSession, sheetBlur: Float, onExit: () -> Unit) {
+private fun EventLabBoard(session: StudioSession, sheetBlur: Float) {
     val player = session.player
     EventPlayerClock(player)
     val frame = if (player.active) player.frame() else null
@@ -163,33 +173,39 @@ private fun PlayerDrivenBoard(session: BoardSimSession, sheetBlur: Float, onExit
     val boardBlur = if (player.active) 0f else sheetBlur
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize().blur(boardBlur.dp).cameraChannels(frame?.channels)) {
-            ActorHostedBoard(session, onExit = onExit)
+            EmptyMat()
         }
-        if (frame != null) EventOverlay(frame.channels)
+        if (frame != null) EventOverlay(frame.channels, player.variant.id)
     }
 }
 
-/** Consola común (bottom sheet): Event Player (primario) + herramientas de asset (secundario). */
+/** Consola del Event Lab: SOLO el Event Player (catálogo + transporte) + acceso a Presentation Mode.
+ *  Nada de partidas ni herramientas de asset (eso es Match Builder). */
 @Composable
-private fun SandboxConsole(session: BoardSimSession, presentationToggleLabel: String, onPresentationToggle: () -> Unit) {
+private fun EventConsole(session: StudioSession, presentationToggleLabel: String, onPresentationToggle: () -> Unit) {
+    val scheme = StudioTheme.colors
     Column(modifier = Modifier.fillMaxSize()) {
-        EventPlayerPanel(session.player, StudioTheme.colors, Modifier.fillMaxWidth().padding(12.dp))
-        AssetToolPanel(
-            controller = session.toolController,
-            onReset = { session.sandbox.reset() },
-            presentationToggleLabel = presentationToggleLabel,
-            onPresentationToggle = onPresentationToggle,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-        )
+        EventPlayerPanel(session.player, scheme, Modifier.fillMaxWidth().padding(12.dp))
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(scheme.surfaceRaised)
+                .clickable { onPresentationToggle() }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        ) {
+            BasicText(presentationToggleLabel, style = StudioTypographyTokens.Role.Label.copy(color = scheme.contentEmphasis))
+        }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Workspace Mode: modo de edición del Sandbox (grab handle fijo).
+// EVENT LAB — Workspace Mode: tablero protagonista + consola de eventos retráctil.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -> Unit) {
+fun EventLabContent(session: StudioSession, onEnterPresentation: () -> Unit) {
     val density = LocalDensity.current
     val sheetPx = with(density) { SheetHeight.toPx() }
     val handlePx = with(density) { HandleStrip.toPx() }
@@ -197,10 +213,10 @@ fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -
     val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        PlayerDrivenBoard(session, sheetBlur = sheet.openProgress * 16f, onExit = { scope.launch { sheet.open() } })
+        EventLabBoard(session, sheetBlur = sheet.openProgress * 16f)
         if (!session.player.active) Scrim(sheet) { scope.launch { sheet.peek() } }
         StudioSheet(sheet, closedIsGone = false) {
-            SandboxConsole(session, "Entrar en Presentation Mode", onEnterPresentation)
+            EventConsole(session, "Entrar en Presentation Mode", onEnterPresentation)
         }
     }
 }
@@ -212,7 +228,7 @@ fun BoardSimulatorLabContent(session: BoardSimSession, onEnterPresentation: () -
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-fun PresentationWorkspace(session: BoardSimSession, onExitPresentation: () -> Unit) {
+fun PresentationWorkspace(session: StudioSession, onExitPresentation: () -> Unit) {
     val density = LocalDensity.current
     val sheetPx = with(density) { SheetHeight.toPx() }
     val handlePx = with(density) { HandleStrip.toPx() }
@@ -227,14 +243,125 @@ fun PresentationWorkspace(session: BoardSimSession, onExitPresentation: () -> Un
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // MISMO reproductor y MISMO render que el juego: la cinemática del evento se ejecuta sobre la
-        // CombatScreen real. El botón de Opciones del tapete (onExit) abre la consola.
-        PlayerDrivenBoard(session, sheetBlur = sheet.openProgress * 16f, onExit = { scope.launch { sheet.open() } })
+        // MISMO reproductor y escenario oficial: la cinemática del evento se ejecuta sobre el tablero limpio.
+        EventLabBoard(session, sheetBlur = sheet.openProgress * 16f)
         // Al cerrar en Presentation, el sheet se oculta del TODO (handle incluido) → pantalla limpia.
         if (!session.player.active) Scrim(sheet) { scope.launch { sheet.gone() } }
         StudioSheet(sheet, closedIsGone = true) {
-            SandboxConsole(session, "Salir de Presentation Mode", onExitPresentation)
+            EventConsole(session, "Salir de Presentation Mode", onExitPresentation)
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MATCH BUILDER — dominio: la partida. MODO CONFIGURACIÓN (único modo por ahora).
+// Absorbe la preparación del antiguo lab mixto: tablero sembrado real (CombatScreen) +
+// herramientas de preparación (Nueva partida · Lanzar partida sembrada · Asset Tools).
+// El «Modo Partida» (GameViewModel + IA + checkpoints) es el Punto 4 del roadmap: NO aquí.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun MatchBuilderContent(
+    session: StudioSession,
+    onEnterFullscreen: (@Composable () -> Unit) -> Unit,
+    onExitFullscreen: () -> Unit,
+) {
+    // Modo Configuración vive dentro del Shell (es una herramienta). "Jugar" cambia al Modo Partida,
+    // que se presenta a PANTALLA COMPLETA (puentea el Shell, como Presentation Mode): una partida real
+    // no debe llevar cromo del Studio. Mismo dominio (la partida), distinto MODO.
+    MatchBuilderConfig(session, onPlay = {
+        onEnterFullscreen { MatchBuilderPlay(session = session, onExitFullscreen = onExitFullscreen) }
+    })
+}
+
+// ── Modo Configuración: preparar la partida (tablero sembrado + herramientas). ──────────────────
+@Composable
+private fun MatchBuilderConfig(session: StudioSession, onPlay: () -> Unit) {
+    val density = LocalDensity.current
+    val sheetPx = with(density) { SheetHeight.toPx() }
+    val handlePx = with(density) { HandleStrip.toPx() }
+    val sheet = remember(sheetPx) { StudioSheetState(sheetPx, handlePx, start = sheetPx - handlePx) }
+    val scope = rememberCoroutineScope()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().blur((sheet.openProgress * 16f).dp)) {
+            ActorHostedBoard(session, onExit = { scope.launch { sheet.open() } })
+        }
+        Scrim(sheet) { scope.launch { sheet.peek() } }
+        StudioSheet(sheet, closedIsGone = false) {
+            MatchBuilderConsole(session, onPlay = onPlay)
+        }
+    }
+}
+
+// ── Modo Partida: partida REAL vs IA con el controlador del juego (GameViewModel), misma CombatScreen,
+// a PANTALLA COMPLETA. Reutiliza feature:match (GameEngine + SmartAgent) SIN duplicar lógica → FIN, ataques,
+// etc. pasan por el MOTOR real. El botón de AJUSTES del tapete (onExit) abre la consola (Asset Tool); su
+// botón de PANTALLA COMPLETA sale del modo (vuelve a Configuración). La consola arranca OCULTA (juego limpio).
+@Composable
+private fun MatchBuilderPlay(session: StudioSession, onExitFullscreen: () -> Unit) {
+    val gameVm: GameViewModel = viewModel()
+    val density = LocalDensity.current
+    val sheetPx = with(density) { SheetHeight.toPx() }
+    val handlePx = with(density) { HandleStrip.toPx() }
+    val sheet = remember(sheetPx) { StudioSheetState(sheetPx, handlePx, start = sheetPx) }
+    val scope = rememberCoroutineScope()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Motor real: el botón de Opciones del tapete (onExit) abre la consola (no sale del fullscreen).
+        CombatScreen(onExit = { scope.launch { sheet.open() } }, vm = gameVm)
+        Scrim(sheet) { scope.launch { sheet.gone() } }
+        StudioSheet(sheet, closedIsGone = true) {
+            AssetToolPanel(
+                controller = session.toolController,
+                onReset = { session.sandbox.reset() },
+                fullscreenLabel = "⤢ Salir de pantalla completa",
+                onToggleFullscreen = onExitFullscreen,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+/** Consola del Match Builder · Modo Configuración: preparación de la partida + entrada al Modo Partida. */
+@Composable
+private fun MatchBuilderConsole(session: StudioSession, onPlay: () -> Unit) {
+    val scheme = StudioTheme.colors
+    Column(modifier = Modifier.fillMaxSize()) {
+        BasicText(
+            "🧩 Match Builder · Modo Configuración",
+            style = StudioTypographyTokens.Role.Title.copy(color = scheme.contentEmphasis),
+            modifier = Modifier.padding(12.dp),
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ConfigButton("🆕 Nueva partida (sandbox)", scheme) { session.sandbox.reset() }
+            ConfigButton("🎬 Partida sembrada (sandbox)", scheme) { session.sandbox.startRitual() }
+        }
+        // Botón de PANTALLA COMPLETA en el Asset Tool → entra al Modo Partida (partida REAL vs IA, con
+        // motor: FIN/ataques funcionan). El sandbox de arriba es solo previsualización SIN motor.
+        AssetToolPanel(
+            controller = session.toolController,
+            onReset = { session.sandbox.reset() },
+            fullscreenLabel = "⤢ Pantalla completa · Jugar (vs IA)",
+            onToggleFullscreen = onPlay,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun ConfigButton(label: String, scheme: StudioColorTokens.Scheme, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(scheme.surfaceRaised)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        BasicText(label, style = StudioTypographyTokens.Role.Label.copy(color = scheme.contentEmphasis))
     }
 }
 

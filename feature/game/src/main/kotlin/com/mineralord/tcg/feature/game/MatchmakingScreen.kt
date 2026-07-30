@@ -1,11 +1,9 @@
 package com.mineralord.tcg.feature.game
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import com.mineralord.tcg.core.designsystem.motion.AnimationDurations
+import com.mineralord.tcg.core.designsystem.motion.AnimationSpecs
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -232,7 +230,7 @@ private fun SearchingBar() {
     val angle by transition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = AnimationSpecs.loopLinear(AnimationDurations.Shimmer),
         label = "spin",
     )
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

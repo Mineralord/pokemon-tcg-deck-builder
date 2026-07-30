@@ -10,9 +10,18 @@ import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.rules.GameIntent
+import com.mineralord.tcg.feature.game.CoinFlipUiState
+import com.mineralord.tcg.feature.game.CoinPhase
+import com.mineralord.tcg.feature.game.DealUiState
 import com.mineralord.tcg.feature.game.GameUiState
+import com.mineralord.tcg.feature.game.SetupUiState
 import com.mineralord.tcg.feature.game.anim.FxCue
 import com.mineralord.tcg.feature.game.combat.CombatSceneController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -48,6 +57,9 @@ class SandboxController(
     override val fx: SharedFlow<FxCue> = _fx.asSharedFlow()
 
     private var byId: Map<CardId, Card> = emptyMap()
+
+    /** Scope del Studio para el guion de ceremonia (spins, delays). No corre reglas del motor. */
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     /** Construye el tapete inicial con cartas reales. Llamar fuera del hilo principal (carga JSON). */
     fun seed(repo: CardRepository) {
@@ -162,12 +174,95 @@ class SandboxController(
     override fun onResolve(chosen: List<CardId>) { /* no hay decisiones del motor en el sandbox */ }
     override fun playItemOn(cardId: CardId, targetId: CardId) { /* no-op en v1 */ }
 
-    // ---- Ceremonia inicial: el sandbox arranca ya en juego (sin moneda/reparto/preparación). ----
-    override fun chooseCoin(heads: Boolean) {}
-    override fun chooseFirst(playerFirst: Boolean) {}
-    override fun onDealComplete() {}
-    override fun chooseActive(id: CardId) {}
-    override fun clearActive() {}
-    override fun toggleBench(id: CardId) {}
-    override fun confirmSetup() {}
+    // ─────────────────────────────────────────────────────────────────────────
+    // V0.2 · RITUAL DE INICIO — guion de ceremonia del STUDIO (laboratorio de validación).
+    //
+    // Recorre las MISMAS fases y overlays reales (volado→reparto→setup→revelado→turno 1) que el juego,
+    // pero guionizadas de forma determinista para poder REPRODUCIR y VALIDAR la presentación. NO ejecuta
+    // reglas del motor ni las modifica; solo produce el `GameUiState` por fases (código compartido).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Arranca el RITUAL de inicio sobre el escenario oficial: construye un estado de comienzo (Activo
+     * vacío + mano inicial con Básicos) y abre el volado. A partir de aquí, el jugador recorre la
+     * ceremonia real; cada fase se presenta con su overlay compartido.
+     */
+    fun startRitual() {
+        val repo = this.repo ?: return
+        fun pokemon(number: Int): PokemonCard? = repo[CardId("sv3pt5-$number")] as? PokemonCard
+        val bulbasaur = pokemon(1) ?: return
+        val ivysaur = pokemon(2); val venusaur = pokemon(3); val charmander = pokemon(4)
+        // Mano inicial de 7 cartas con Básicos jugables (para elegir Activo/Banca en la preparación).
+        val hand = listOfNotNull(bulbasaur, charmander, ivysaur, venusaur, bulbasaur, charmander, ivysaur)
+        val me = PlayerState(
+            side = Side.PLAYER, active = null, hand = hand,
+            deck = List(33) { bulbasaur as Card }, prizes = emptyList(),
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = charmander?.let { PokemonInPlay(card = it) },
+            deck = List(40) { bulbasaur as Card }, prizes = emptyList(),
+        )
+        val state = GameState(player = me, opponent = opponent, turn = 1, activeSide = Side.PLAYER, phase = Phase.MAIN)
+        byId = allCardsById(state)
+        _ui.value = GameUiState(loading = false, state = state, coinFlip = CoinFlipUiState(CoinPhase.CHOOSING))
+    }
+
+    // ---- Volado (E2): el jugador elige cara/cruz → giro → resultado → (ganador) elige quién empieza. ----
+    override fun chooseCoin(heads: Boolean) {
+        _ui.value = _ui.value.copy(coinFlip = CoinFlipUiState(CoinPhase.SPINNING, call = heads))
+        scope.launch {
+            delay(1100)
+            _ui.value = _ui.value.copy(coinFlip = CoinFlipUiState(CoinPhase.RESULT, call = heads, result = heads, playerWon = true, message = "Has ganado el lanzamiento"))
+            delay(1100)
+            _ui.value = _ui.value.copy(coinFlip = CoinFlipUiState(CoinPhase.CHOOSE_ORDER, result = heads, playerWon = true))
+        }
+    }
+
+    override fun chooseFirst(playerFirst: Boolean) {
+        // Fin del volado → reparto de la mano inicial (E3).
+        val hand = _ui.value.state?.player?.hand ?: emptyList()
+        _ui.value = _ui.value.copy(coinFlip = null, dealing = DealUiState(hand))
+    }
+
+    override fun onDealComplete() {
+        // Reparto terminado → preparación (E6/E7): elegir Activo y Banca.
+        val st = _ui.value.state ?: return
+        val hand = st.player.hand
+        val basics = hand.filterIsInstance<PokemonCard>().filter { it.isBasic }
+        _ui.value = _ui.value.copy(dealing = null, setup = SetupUiState(hand = hand, basics = basics))
+    }
+
+    override fun chooseActive(id: CardId) {
+        _ui.value = _ui.value.copy(setup = _ui.value.setup?.copy(activeId = id))
+    }
+
+    override fun clearActive() {
+        _ui.value = _ui.value.copy(setup = _ui.value.setup?.copy(activeId = null))
+    }
+
+    override fun toggleBench(id: CardId) {
+        val s = _ui.value.setup ?: return
+        val bench = if (id in s.benchIds) s.benchIds - id else s.benchIds + id
+        _ui.value = _ui.value.copy(setup = s.copy(benchIds = bench))
+    }
+
+    override fun confirmSetup() {
+        val setup = _ui.value.setup ?: return
+        val st = _ui.value.state ?: return
+        val me = st.player
+        val activeCard = setup.activeId?.let { id -> me.hand.firstOrNull { it.id == id } as? PokemonCard } ?: return
+        val benchCards = setup.benchIds.mapNotNull { id -> me.hand.firstOrNull { it.id == id } as? PokemonCard }
+        val placed = (listOf(activeCard.id) + benchCards.map { it.id }).toSet()
+        // Colocación + reparto de 6 Premios (E8). Revelado (E9) → juego (turno 1).
+        val newMe = me.copy(
+            active = PokemonInPlay(card = activeCard),
+            bench = benchCards.map { PokemonInPlay(card = it) },
+            hand = me.hand.filterNot { it.id in placed },
+            prizes = List(6) { me.deck.first() },
+        )
+        val newState = st.copy(player = newMe)
+        byId = allCardsById(newState)
+        _ui.value = _ui.value.copy(state = newState, setup = null, revealing = true)
+        scope.launch { delay(1400); _ui.value = _ui.value.copy(revealing = false) }
+    }
 }

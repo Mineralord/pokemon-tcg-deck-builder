@@ -87,7 +87,8 @@ fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         if (hosting != null && !started) {
             CodeWaitingCard(code = hosting.code, onCancel = onExit, modifier = modifier)
         } else {
-            GameScreen(onExit = onExit, modifier = modifier, vm = ctrl)
+            // Mismo tapete canónico que el modo vs IA.
+            com.mineralord.tcg.feature.game.combat.CombatScreen(onExit = onExit, modifier = modifier, vm = ctrl)
         }
         return
     }
