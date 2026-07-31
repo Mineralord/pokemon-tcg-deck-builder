@@ -2,6 +2,7 @@ package com.mineralord.tcg.studio
 
 import com.mineralord.tcg.core.animation.AnimationRequest
 import com.mineralord.tcg.core.animationcompose.EvolveVariants
+import com.mineralord.tcg.core.animationcompose.activeSlotId
 import com.mineralord.tcg.studio.assets.AnimationAsset
 import com.mineralord.tcg.studio.assets.AssetRegistry
 import com.mineralord.tcg.studio.assets.AssetStatus
@@ -59,7 +60,95 @@ private fun animationAssets(): List<AnimationAsset> = buildList {
         ),
     )
     addAll(evolutionAssets())
+    addAll(bannerAssets())
+    addAll(abilityGlowAssets())
 }
+
+/** Rótulos de anuncio (familia Banner), NUEVA (Experimental) a la espera de aprobación. */
+private fun bannerAssets(): List<AnimationAsset> = listOf(
+    AnimationAsset(
+        id = "BANNER_ATK_IN",
+        name = "Ataque entrante (rival → mí)",
+        category = "Rótulo · Ataque entrante",
+        status = AssetStatus.Canon,
+        request = AnimationRequest.AttackStarted("rival", "Rayo Trueno", incoming = true),
+        author = "Claude Code",
+        createdAt = "2026-07-30",
+        inspiration = "Marvel Snap (reveal) + Legends of Runeterra (anuncio de hechizo)",
+        description = "Lower-third que barre desde la derecha con tinte cálido/rojo: el rival ataca. NUEVA, pendiente de aprobación.",
+        durationMillis = 1500,
+        tags = listOf("banner", "ataque", "entrante", "rival"),
+    ),
+    AnimationAsset(
+        id = "BANNER_ATK_OUT",
+        name = "Tu ataque (yo → rival)",
+        category = "Rótulo · Ataque saliente",
+        status = AssetStatus.Canon,
+        request = AnimationRequest.AttackStarted(PREVIEW_PLAYER, "Lanzallamas", incoming = false),
+        author = "Claude Code",
+        createdAt = "2026-07-30",
+        inspiration = "Marvel Snap (reveal) + Legends of Runeterra (anuncio de hechizo)",
+        description = "Lower-third que barre desde la izquierda con tinte frío/cian: atacas tú. NUEVA, pendiente de aprobación.",
+        durationMillis = 1500,
+        tags = listOf("banner", "ataque", "saliente"),
+    ),
+    AnimationAsset(
+        id = "BANNER_ABILITY_MANUAL",
+        name = "Habilidad manual",
+        category = "Rótulo · Habilidad manual",
+        status = AssetStatus.Canon,
+        request = AnimationRequest.AbilityActivated("pkmn", "Gardevoir", "Fuerza de Voluntad", manual = true),
+        author = "Claude Code",
+        createdAt = "2026-07-30",
+        inspiration = "Legends of Runeterra (kicker + título) + Hearthstone",
+        description = "Rótulo dorado con sheen intenso para una habilidad activada manualmente. NUEVA, pendiente de aprobación.",
+        durationMillis = 1500,
+        tags = listOf("banner", "habilidad", "manual"),
+    ),
+    AnimationAsset(
+        id = "BANNER_ABILITY_PASSIVE",
+        name = "Habilidad pasiva",
+        category = "Rótulo · Habilidad pasiva",
+        status = AssetStatus.Canon,
+        request = AnimationRequest.AbilityActivated("pkmn", "Venusaur", "Cuerpo Maldito", manual = false),
+        author = "Claude Code",
+        createdAt = "2026-07-30",
+        inspiration = "Legends of Runeterra (kicker + título) + Hearthstone",
+        description = "Rótulo carmesí más sobrio para una habilidad pasiva/disparada. NUEVA, pendiente de aprobación.",
+        durationMillis = 1500,
+        tags = listOf("banner", "habilidad", "pasiva"),
+    ),
+)
+
+/** Auras de habilidad (familia Glow) sobre el Activo del preview, NUEVA (Experimental). */
+private fun abilityGlowAssets(): List<AnimationAsset> = listOf(
+    AnimationAsset(
+        id = "GLOW_PASSIVE",
+        name = "Aura pasiva (rojo)",
+        category = "Aura de habilidad · pasiva",
+        status = AssetStatus.Canon,
+        request = AnimationRequest.AbilityGlowRequested("pkmn", activeSlotId(PREVIEW_PLAYER).value, manual = false),
+        author = "Claude Code",
+        createdAt = "2026-07-30",
+        inspiration = "Hearthstone (glow ambiental de estado)",
+        description = "Glow rojo estable bajo la carta y en sus bordes: el Pokémon ejerce una habilidad pasiva. NUEVA, pendiente de aprobación.",
+        durationMillis = 2600,
+        tags = listOf("glow", "aura", "pasiva", "rojo"),
+    ),
+    AnimationAsset(
+        id = "GLOW_MANUAL",
+        name = "Aura manual (dorado)",
+        category = "Aura de habilidad · manual",
+        status = AssetStatus.Canon,
+        request = AnimationRequest.AbilityGlowRequested("pkmn", activeSlotId(PREVIEW_PLAYER).value, manual = true),
+        author = "Claude Code",
+        createdAt = "2026-07-30",
+        inspiration = "Hearthstone (glow dorado de carta jugable / call-to-action)",
+        description = "Glow dorado brillante con shimmer que recorre el borde: la habilidad puede activarse manualmente. NUEVA, pendiente de aprobación.",
+        durationMillis = 2600,
+        tags = listOf("glow", "aura", "manual", "dorado"),
+    ),
+)
 
 /** Las cinco variantes de Evolución (I+D AAA), todas `Experimental`: comparten motor, renderer y capa. */
 private fun evolutionAssets(): List<AnimationAsset> = listOf(
