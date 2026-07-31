@@ -91,7 +91,8 @@ class LegalMovesAndAgentTest {
             mon("sv3pt5-145", attacks = listOf(atk("Multishot Lightning", effect = EffectsDb.atkKey("sv3pt5-145", "Multishot Lightning")))),
         )
         val p2 = player.copy(active = zap, prizes = (1..6).map { energy("p$it") })
-        val o2 = opp.copy(active = PokemonInPlay(mon("tgt", hp = 200)), bench = listOf(PokemonInPlay(mon("b1"))))
+        // Multishot Lightning apunta a un Pokémon de Banca CON daño → el banco debe tener daño.
+        val o2 = opp.copy(active = PokemonInPlay(mon("tgt", hp = 200)), bench = listOf(PokemonInPlay(mon("b1"), damage = 10)))
         val res = engine.apply(GameState(p2, o2, 2, Side.PLAYER, Phase.MAIN), GameIntent.Attack("Multishot Lightning"))
         assertTrue(res.state.awaitingDecision)
         assertTrue(engine.legalIntents(res.state).isEmpty())
@@ -121,7 +122,7 @@ class LegalMovesAndAgentTest {
         val player = PlayerState(Side.PLAYER, active = zap, deck = listOf(energy("d1")), prizes = (1..6).map { energy("p$it") })
         val opp = PlayerState(
             Side.OPPONENT, active = PokemonInPlay(mon("tgt", hp = 200)),
-            bench = listOf(PokemonInPlay(mon("b1", hp = 200))),
+            bench = listOf(PokemonInPlay(mon("b1", hp = 200), damage = 10)),
             deck = listOf(energy("od")), prizes = (1..6).map { energy("q$it") },
         )
         val state = GameState(player, opp, 2, Side.PLAYER, Phase.MAIN)
@@ -137,7 +138,8 @@ class LegalMovesAndAgentTest {
         assertTrue(decision is GameIntent.ResolveDecision)
         val resolved = engine.apply(attacked.state, decision)
         assertTrue(resolved.accepted, resolved.rejection)
-        assertEquals(90, resolved.state.opponent.bench.first { it.card.id == CardId("b1") }.damage)
+        // b1 partía con 10 de daño + 90 del ataque = 100.
+        assertEquals(100, resolved.state.opponent.bench.first { it.card.id == CardId("b1") }.damage)
         assertEquals(Side.OPPONENT, resolved.state.activeSide)   // atacar terminó el turno al resolver
     }
 }

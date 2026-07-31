@@ -35,10 +35,11 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(atkKey("sv3pt5-124", "Icy Wind"),
         Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.ASLEEP)))))
 
-    // Zapdos ex — Multishot Lightning: 90 a 1 Pokémon de la Banca rival.
+    // Zapdos ex — Multishot Lightning: 90 a 1 Pokémon de la Banca rival QUE TENGA DAÑO.
+    // (Texto oficial: "un Pokémon de la Banca del rival que tenga contadores de daño".)
     put(atkKey("sv3pt5-145", "Multishot Lightning"),
         Effect(ops = listOf(
-            EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt("Elige un Pokémon de la Banca rival (90 de daño)", "Choose a Benched Pokémon (90 damage)"), optional = true),
+            EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt("Elige un Pokémon dañado de la Banca rival (90 de daño)", "Choose a damaged Benched Pokémon (90 damage)"), optional = true, onlyDamaged = true),
             EffectOp.Damage(Target.CHOSEN, Amount.Fixed(90)),
         )))
 
@@ -509,6 +510,17 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
 
     // Psyduck — Cavilar (Overthink), arte alt 175: las monedas del rival cuentan como cruz su próximo turno.
     put(atkKey("sv3pt5-175", "Overthink"), Effect(ops = listOf(EffectOp.ForceOpponentCoinsTailsNextTurn)))
+
+    // ------------------- SET 151 (sv3pt5) — Fase 48: Zapdos ex «Multishot Lightning» (printings alt) -----
+    // Mismo efecto que la base -145 (90 a un Pokémon dañado de la Banca rival). Artes alt 192/202.
+    run {
+        val multishot = Effect(ops = listOf(
+            EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt("Elige un Pokémon dañado de la Banca rival (90 de daño)", "Choose a damaged Benched Pokémon (90 damage)"), optional = true, onlyDamaged = true),
+            EffectOp.Damage(Target.CHOSEN, Amount.Fixed(90)),
+        ))
+        put(atkKey("sv3pt5-192", "Multishot Lightning"), multishot)
+        put(atkKey("sv3pt5-202", "Multishot Lightning"), multishot)
+    }
 
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
