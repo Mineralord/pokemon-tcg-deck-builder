@@ -524,6 +524,13 @@ class GameEngine(
      * bloqueo de Habilidades tipo Camino hacia la Cima) lo leen los helpers de pasivos/bloqueo.
      */
     private fun playStadium(state: GameState, card: TrainerCard): EngineResult {
+        // Fósil Hélix Antiguo — Oleaje Helicoidal: mientras esté en el Activo rival, no puedes jugar
+        // Estadios. Respeta el bloqueo de Habilidades (habilidad suprimible).
+        val foeActive = state.sideState(state.activeSide.other()).active
+        if (foeActive != null && abilityPassives(state, state.activeSide.other(), foeActive)
+                .any { it.mod == ModKind.BLOCK_OPPONENT_STADIUM }) {
+            return EngineResult.reject(state, "No puedes jugar Estadios: el Activo rival lo impide")
+        }
         val prev = state.stadium
         if (prev != null && (prev.name.en == card.name.en || prev.name.es == card.name.es)) {
             return EngineResult.reject(state, "Ya hay un Estadio con ese nombre en juego")

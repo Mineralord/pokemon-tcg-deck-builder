@@ -62,6 +62,8 @@ enum class ModKind {
     REDUCE_DAMAGE, EXTRA_HP, RETREAT_COST, ATTACK_COST,
     IMMUNE_STATUS, PROVIDES_ENERGY, EXTRA_DAMAGE,
     BLOCK_ABILITY, NO_RETREAT, NO_WEAKNESS,
+    /** Mientras el portador está Activo, el RIVAL no puede jugar Estadios (Fósil Hélix Antiguo). */
+    BLOCK_OPPONENT_STADIUM,
 }
 
 data class PassiveModifier(

@@ -530,6 +530,12 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         coinFlipOrNothing = true,
         ops = listOf(EffectOp.PreventDamageNextTurn(Target.SELF, coinFlip = false))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 50: Fósil Hélix Antiguo «Oleaje Helicoidal» -----
+    // Habilidad pasiva: mientras esté en el Activo, el rival no puede jugar Estadios de su mano.
+    // Lo comprueba GameEngine.playStadium (respeta el bloqueo de Habilidades).
+    put(abiKey("sv3pt5-153", "Helical Swell"),
+        Effect(passives = listOf(PassiveModifier(ModKind.BLOCK_OPPONENT_STADIUM, 0, Target.SELF))))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).
