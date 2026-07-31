@@ -50,6 +50,7 @@ import com.mineralord.tcg.core.designsystem.tokens.StudioColorTokens
 import com.mineralord.tcg.core.designsystem.tokens.StudioTheme
 import com.mineralord.tcg.core.designsystem.tokens.StudioTypographyTokens
 import com.mineralord.tcg.core.designsystem.tokens.VisualState
+import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.studio.assets.AnimationAsset
 import com.mineralord.tcg.studio.assets.AssetRegistry
 import com.mineralord.tcg.studio.assets.AssetStatus
@@ -128,8 +129,48 @@ fun AnimationGalleryLabContent(registry: AssetRegistry) {
             }
             DetailPanel(scheme, selected)
         }
+
+        // ── Interacciones (UI/UX) ── además de animaciones, la Galería muestra los COMPONENTES de UI
+        // funcionales que usarán las cartas. Selector de acción estilo «Discover» para «Hackeo Genómico»
+        // y decisiones similares de "elige un ataque/acción". Es interactivo (se puede probar aquí).
+        BasicText(text = "Interacciones (UI)", style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis))
+        BasicText(
+            text = "Componentes de UX reutilizables · funcionales",
+            style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
+        )
+        ActionChoicePicker(
+            kicker = "Mew ex · Hackeo Genómico",
+            prompt = "Elige un ataque del Activo rival para copiarlo",
+            options = genomeHackingSample(),
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
+
+/** Datos de muestra del selector: los ataques del Activo rival que «Hackeo Genómico» puede copiar. */
+private fun genomeHackingSample(): List<ActionOption> = listOf(
+    ActionOption(
+        id = "explosive-vortex",
+        title = "Vórtice Explosivo",
+        cost = listOf(EnergyType.FIRE, EnergyType.FIRE, EnergyType.COLORLESS),
+        damage = 330,
+        text = "Descarta 3 Energías de este Pokémon.",
+    ),
+    ActionOption(
+        id = "brave-wing",
+        title = "Ala Osada",
+        cost = listOf(EnergyType.FIRE, EnergyType.COLORLESS),
+        damage = 60,
+        text = "60+. Si este Pokémon tiene daño, hace 100 más.",
+    ),
+    ActionOption(
+        id = "dangerous-toxwhip",
+        title = "Toxilatigazo",
+        cost = listOf(EnergyType.GRASS, EnergyType.PSYCHIC),
+        damage = 120,
+        text = "El Activo rival queda Confundido y Envenenado.",
+    ),
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Árbol de categorías/variantes (todo desde el registro)
