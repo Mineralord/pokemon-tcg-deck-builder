@@ -636,6 +636,12 @@ data class Effect(
      * resetea el contador; un Fase 1 en el Activo con 0 turnos evolucionó este turno). */
     val noEffectIfEvolvedThisTurn: Boolean = false,
     /**
+     * "Lanza 1 moneda. Si sale cruz, este ataque no hace nada" (Pidgeot — Vuelo sv3pt5-18). Si es
+     * true, `GameEngine.attack` lanza UNA moneda gateada tras `Attacked`: con cruz anula el daño base
+     * Y las ops (igual que [noEffectUnlessSelfConfused]); con cara el ataque procede normal (daño +
+     * ops, p. ej. la prevención de daño del próximo turno). Una sola moneda decide todo el ataque. */
+    val coinFlipOrNothing: Boolean = false,
+    /**
      * "Si un Pokémon rival queda Fuera de Combate por el daño de ESTE ataque, coge 1 Premio más"
      * (Clefable — Más Luna sv3pt5-36). `GameEngine.attack` pasa 1 premio extra a handleKnockouts
      * del Defensor cuando este ataque lo noquea. */

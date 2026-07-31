@@ -68,6 +68,16 @@ class GameEngine(
     private val interpreter: EffectInterpreter = EffectInterpreter(),
 ) {
 
+    /**
+     * Lanzamiento de moneda GATEADO por [GameState.coinsAsTailsSide] (Psyduck — Cavilar): si el
+     * jugador activo es el marcado y estamos en su turno marcado, la moneda se considera CRUZ
+     * (false) sin consultar el [rng]. En cualquier otro caso, moneda normal. Las monedas del
+     * turno activo (ataques/habilidades/coste-para-atacar) pasan por aquí.
+     */
+    private fun gatedFlip(s: GameState): Boolean =
+        if (s.coinsAsTailsSide == s.activeSide && s.coinsAsTailsOnTurn == s.turn) false
+        else rng.flipCoin()
+
     fun apply(state: GameState, intent: GameIntent): EngineResult {
         if (state.isOver) return EngineResult.reject(state, "La partida ha terminado")
         // Tras un KO hay que elegir el nuevo Activo ANTES que nada: mientras haya
@@ -149,10 +159,13 @@ class GameEngine(
         // Habilidades "al evolucionar desde la mano" (Gyarados — Indomable descarta 5;
         // Hypno — Toma Hipnosis duerme al Activo rival). Se disparan AQUÍ, no vía UseAbility.
         // El Pokémon recién evolucionado conserva su posición pero ahora tiene id = evoId.
-        val trigger = evo.abilities.firstNotNullOfOrNull { ab ->
-            ab.effect?.let { effects[it] }?.takeIf { it.triggerOnEvolve }
+        val trigAbility = evo.abilities.firstOrNull { ab ->
+            ab.effect?.let { effects[it] }?.triggerOnEvolve == true
         }
+        val trigger = trigAbility?.effect?.let { effects[it] }
         if (trigger != null) {
+            // Habilidad PASIVA disparada automáticamente: anuncio canónico (aura roja) sobre el evo.
+            events += GameEvent.AbilityUsed(state.activeSide, evoId, trigAbility.name.es, manual = false)
             val res = interpreter.execute(
                 trigger, EffectSource(state.activeSide, evoId), working,
                 shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
@@ -298,7 +311,7 @@ class GameEngine(
         // turno, se lanzan ahora; si sale cruz en alguna, el ataque "no se lleva a cabo"
         // (sin daño ni efecto), pero el turno termina igualmente.
         if (attacker.flipsToAttackOnTurn == state.turn && attacker.flipsToAttackCount > 0) {
-            val flips = (1..attacker.flipsToAttackCount).map { rng.flipCoin() }
+            val flips = (1..attacker.flipsToAttackCount).map { gatedFlip(state) }
             flips.forEach { events += GameEvent.CoinFlipped(state.activeSide, it) }
             if (flips.any { !it }) {
                 val ended = endTurn(state)
@@ -340,11 +353,21 @@ class GameEngine(
             (atk.baseDamage as? com.mineralord.tcg.engine.model.Damage.Fixed)?.value ?: 0
         }
         val atkEffect = effects[atk.effect]
+        // Pidgeot — Vuelo (Fly): "Lanza 1 moneda. Si cruz, este ataque no hace nada." UNA moneda
+        // gateada, tras `Attacked` y antes del daño, decide TODO el ataque: cara = procede (daño +
+        // ops, p. ej. prevención); cruz = no hace nada. Se reutiliza el mecanismo `attackFizzles`.
+        val coinGateHeads = if (atkEffect?.coinFlipOrNothing == true) {
+            val f = gatedFlip(state)
+            events += GameEvent.CoinFlipped(state.activeSide, f)
+            f
+        } else true
         // "Este ataque no hace nada si…" (Primeape: no Confundido; Slowbro: evolucionó este
-        // turno). Anula daño Y efecto. El daño no es un efecto, pero "no hace nada" cubre ambos.
+        // turno; Pidgeot: moneda cruz). Anula daño Y efecto. El daño no es un efecto, pero "no hace
+        // nada" cubre ambos.
         val attackFizzles =
             (atkEffect?.noEffectUnlessSelfConfused == true && Status.CONFUSED !in attacker.statuses) ||
-            (atkEffect?.noEffectIfEvolvedThisTurn == true && attacker.turnsInPlay == 0)
+            (atkEffect?.noEffectIfEvolvedThisTurn == true && attacker.turnsInPlay == 0) ||
+            (atkEffect?.coinFlipOrNothing == true && !coinGateHeads)
         val dmgBase = if (attackFizzles) 0 else base
         // Bonus "próximo turno este Pokémon +X" (Golem ex Giro Dinámico, Hitmonchan Puño
         // Exaltado): se suma al daño base ANTES de Debilidad/Resistencia. Solo si hay daño.
@@ -415,7 +438,7 @@ class GameEngine(
             val res = interpreter.execute(
                 effect, EffectSource(state.activeSide, attacker.card.id), working,
                 endsTurnOnResolve = true,
-                shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
+                shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) },
             )
             working = res.state
             events += res.events
@@ -477,7 +500,7 @@ class GameEngine(
         val events = mutableListOf<GameEvent>(GameEvent.TrainerPlayed(state.activeSide, cardId))
         val res = interpreter.execute(
             effect, EffectSource(state.activeSide, null), working,
-            shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
+            shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) },
         )
         // Si el efecto abre una elección de objetivo SIN candidatos (p. ej. Poción sin
         // ningún Pokémon dañado), la carta no haría nada → rechazar sin gastarla.
@@ -550,10 +573,13 @@ class GameEngine(
             working = working.copy(abilitiesUsedThisTurn = working.abilitiesUsedThisTurn + pokemonId)
         }
 
-        val events = mutableListOf<GameEvent>()
+        // Anuncio canónico ANTES del efecto: el rótulo/aura (dorado manual) precede a la resolución.
+        val events = mutableListOf<GameEvent>(
+            GameEvent.AbilityUsed(state.activeSide, pokemonId, abilityName, manual = true),
+        )
         val res = interpreter.execute(
             effect, EffectSource(state.activeSide, pokemonId), working,
-            shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
+            shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) },
         )
         // Igual que en los Entrenadores: una habilidad que solo apunta a Pokémon dañados
         // (curación) no puede usarse si no hay ninguno con daño.
@@ -578,7 +604,7 @@ class GameEngine(
         validateChoice(interaction.decision, chosen)?.let { return EngineResult.reject(state, it) }
 
         val endsTurn = interaction.endsTurnOnResolve
-        val res = interpreter.resolve(state, chosen, shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() })
+        val res = interpreter.resolve(state, chosen, shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) })
         var working = res.state
         val events = res.events.toMutableList()
 

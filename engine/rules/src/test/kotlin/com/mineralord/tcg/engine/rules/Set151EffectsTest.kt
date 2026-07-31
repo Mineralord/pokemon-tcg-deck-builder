@@ -781,6 +781,28 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `Vuelo con cara hace 150 y marca prevención en sí mismo`() {
+        val a = attack("Fly", 150, EffectsDb.atkKey("sv3pt5-18", "Fly"))
+        val pidgeot = PokemonInPlay(mon("pidgeot", 280, EnergyType.COLORLESS, a))
+        val foe = PokemonInPlay(mon("foe", 400, EnergyType.LIGHTNING, a))
+
+        val heads = GameEngine(FixedRng(true)).apply(duel(pidgeot, foe), GameIntent.Attack("Fly"))
+        assertEquals(150, heads.state.opponent.active!!.damage)
+        assertEquals(4, heads.state.player.active!!.preventDamageOnTurn) // turno 3 → próximo turno rival (4)
+    }
+
+    @Test
+    fun `Vuelo con cruz no hace nada`() {
+        val a = attack("Fly", 150, EffectsDb.atkKey("sv3pt5-18", "Fly"))
+        val pidgeot = PokemonInPlay(mon("pidgeot", 280, EnergyType.COLORLESS, a))
+        val foe = PokemonInPlay(mon("foe", 400, EnergyType.LIGHTNING, a))
+
+        val tails = GameEngine(FixedRng(false)).apply(duel(pidgeot, foe), GameIntent.Attack("Fly"))
+        assertEquals(0, tails.state.opponent.active!!.damage)
+        assertNull(tails.state.player.active!!.preventDamageOnTurn)
+    }
+
+    @Test
     fun `Bind Down marca al defensor y le bloquea la retirada`() {
         val a = attack("Bind Down", 70, EffectsDb.atkKey("sv3pt5-24", "Bind Down"))
         val arbok = PokemonInPlay(mon("arbok", 180, EnergyType.DARKNESS, a))

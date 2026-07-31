@@ -522,6 +522,14 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         put(atkKey("sv3pt5-202", "Multishot Lightning"), multishot)
     }
 
+    // ------------------- SET 151 (sv3pt5) — Fase 49: Pidgeot «Vuelo» (moneda o nada + prevención) -----
+    // Vuelo (Fly) 150: lanza 1 moneda; si cruz, el ataque no hace nada; si cara, durante el próximo
+    // turno del rival se evita todo el daño a este Pokémon. (La prevención de "efectos" no se modela;
+    // sí el daño, como en Refugio.) La moneda gatea todo el ataque vía Effect.coinFlipOrNothing.
+    put(atkKey("sv3pt5-18", "Fly"), Effect(
+        coinFlipOrNothing = true,
+        ops = listOf(EffectOp.PreventDamageNextTurn(Target.SELF, coinFlip = false))))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).
