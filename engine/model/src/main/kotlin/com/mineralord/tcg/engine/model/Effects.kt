@@ -682,6 +682,13 @@ data class Effect(
      * evolucionar durante tu primer turno" cuando ese primer turno es el del 2º jugador (turno 2).
      * Lo comprueba [GameEngine.evolve] sobre el objetivo a evolucionar (respeta el bloqueo). */
     val evolvesFirstTurnIfSecond: Boolean = false,
+    /**
+     * Habilidad pasiva: "Evita todos los efectos de los ataques del rival infligidos a este Pokémon
+     * (el daño no es un efecto)" (Kakuna — Manto de Capullo sv3pt5-14). Si el DEFENSOR portador la
+     * tiene (no bloqueada), [GameEngine.attack] descarta los ops del ataque dirigidos al defensor
+     * (condiciones especiales, descarte de Energía, no-retirarse/atacar, recargos), manteniendo el
+     * daño. No aplica si el ataque ignora los efectos del Defensor (Staryu — Meteoros). */
+    val immuneToAttackEffects: Boolean = false,
 )
 
 /**

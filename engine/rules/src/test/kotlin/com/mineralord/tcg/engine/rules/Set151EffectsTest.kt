@@ -283,6 +283,25 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 52 - Manto de Capullo evita la condición del ataque pero no el daño`() {
+        val poisonHorn = attack("Poison Horn", 20, EffectsDb.atkKey("sv3pt5-29", "Poison Horn"))
+        val attacker = PokemonInPlay(mon("nidoranm", 60, EnergyType.PSYCHIC, poisonHorn))
+        val kakuna = PokemonInPlay(mon("kakuna", 80, EnergyType.GRASS, attack("x", 0, EffectId("none"))).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Manto de Capullo", "Cocoon Cover"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-14", "Cocoon Cover")))))
+
+        val res = GameEngine(SeededRng(1)).apply(duel(attacker, kakuna), GameIntent.Attack("Poison Horn"))
+        assertEquals(20, res.state.opponent.active!!.damage)                          // el daño sí entra
+        assertFalse(res.state.opponent.active!!.statuses.contains(Status.POISONED))   // el efecto no
+
+        // Control: sin la habilidad, el mismo ataque sí Envenena.
+        val plain = PokemonInPlay(mon("plain", 80, EnergyType.GRASS, attack("x", 0, EffectId("none"))))
+        val res2 = GameEngine(SeededRng(1)).apply(duel(attacker, plain), GameIntent.Attack("Poison Horn"))
+        assertTrue(res2.state.opponent.active!!.statuses.contains(Status.POISONED))
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

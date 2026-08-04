@@ -541,6 +541,11 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     // (exime de la regla del primer turno en el turno 2). Lo comprueba GameEngine.evolve.
     put(abiKey("sv3pt5-21", "Evolutionary Advantage"), Effect(evolvesFirstTurnIfSecond = true))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 52: Kakuna «Manto de Capullo» -----
+    // Habilidad pasiva: evita todos los EFECTOS de los ataques rivales infligidos a este Pokémon
+    // (el daño NO es un efecto). Lo aplica GameEngine.attack filtrando los ops dirigidos al defensor.
+    put(abiKey("sv3pt5-14", "Cocoon Cover"), Effect(immuneToAttackEffects = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).

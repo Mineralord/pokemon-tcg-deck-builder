@@ -22,6 +22,7 @@ import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.SpecialEnergy
 import com.mineralord.tcg.engine.model.Status
+import com.mineralord.tcg.engine.model.EffectOp
 import com.mineralord.tcg.engine.model.Target
 import com.mineralord.tcg.engine.model.ToolTarget
 import com.mineralord.tcg.engine.model.TrainerCard
@@ -438,11 +439,17 @@ class GameEngine(
         // (objetivo/búsqueda) viajan como [pending] para que el jugador/IA resuelva.
         var pending = emptyList<PendingDecision>()
         val effect = effects[atk.effect]
-        if (effect != null && !attackFizzles) {
+        // Kakuna — Manto de Capullo: el DEFENSOR es inmune a los EFECTOS del ataque (no al daño). Se
+        // descartan los ops dirigidos al defensor. No aplica si el ataque ignora los efectos del Defensor.
+        val defenderImmuneToEffects = !ignoresDefEffects &&
+            abilityEffects(state, foeSide, defender).any { it.immuneToAttackEffects }
+        val runEffect = if (effect != null && defenderImmuneToEffects)
+            effect.copy(ops = effect.ops.filterNot { opTargetsDefender(it) }) else effect
+        if (runEffect != null && !attackFizzles) {
             // endsTurnOnResolve = true: si el efecto deja una decisión, el turno se
             // cerrará al resolverla (ver resolveDecision), no aquí.
             val res = interpreter.execute(
-                effect, EffectSource(state.activeSide, attacker.card.id), working,
+                runEffect, EffectSource(state.activeSide, attacker.card.id), working,
                 endsTurnOnResolve = true,
                 shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) },
             )
@@ -744,6 +751,25 @@ class GameEngine(
     ): List<com.mineralord.tcg.engine.model.Effect> {
         val active = pip.card.effectiveAbilities(isAbilityLocked(state, side, pip))
         return active.mapNotNull { it.effect }.mapNotNull { effects[it] }
+    }
+
+    /**
+     * ¿Este op del ATAQUE aplica un EFECTO al Pokémon DEFENSOR (Target.OPP_ACTIVE o una restricción del
+     * Defensor)? Se usa para la inmunidad de Kakuna — Manto de Capullo (el daño NO es un efecto, así que
+     * los ops de daño no se filtran; sí los de condición especial, descarte de Energía y restricciones).
+     */
+    private fun opTargetsDefender(op: EffectOp): Boolean = when (op) {
+        is EffectOp.ApplyStatus -> op.target == Target.OPP_ACTIVE
+        is EffectOp.CoinFlipStatus -> op.target == Target.OPP_ACTIVE
+        is EffectOp.ApplyStatusIfEmptyHand -> op.target == Target.OPP_ACTIVE
+        is EffectOp.KoIfStatus -> op.target == Target.OPP_ACTIVE
+        is EffectOp.DiscardEnergy -> op.target == Target.OPP_ACTIVE
+        is EffectOp.RequireCoinsToAttackNextTurn -> op.target == Target.OPP_ACTIVE
+        EffectOp.DefenderCannotRetreatNextTurn -> true
+        EffectOp.DefenderCannotAttackNextTurn -> true
+        is EffectOp.BumpDefenderRetreatCostNextTurn -> true
+        is EffectOp.BumpDefenderAttackCostNextTurn -> true
+        else -> false
     }
 
     private fun nameMatches(pip: PokemonInPlay, needle: String): Boolean =
