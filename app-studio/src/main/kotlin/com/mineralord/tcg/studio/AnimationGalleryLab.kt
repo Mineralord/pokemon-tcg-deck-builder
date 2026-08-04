@@ -50,7 +50,12 @@ import com.mineralord.tcg.core.designsystem.tokens.StudioColorTokens
 import com.mineralord.tcg.core.designsystem.tokens.StudioTheme
 import com.mineralord.tcg.core.designsystem.tokens.StudioTypographyTokens
 import com.mineralord.tcg.core.designsystem.tokens.VisualState
+import com.mineralord.tcg.core.designsystem.tilt.Finish
+import com.mineralord.tcg.engine.model.Attack
+import com.mineralord.tcg.engine.model.Damage
 import com.mineralord.tcg.engine.model.EnergyType
+import com.mineralord.tcg.engine.model.LocalizedText
+import com.mineralord.tcg.feature.game.combat.AttackPanel
 import com.mineralord.tcg.studio.assets.AnimationAsset
 import com.mineralord.tcg.studio.assets.AssetRegistry
 import com.mineralord.tcg.studio.assets.AssetStatus
@@ -130,45 +135,73 @@ fun AnimationGalleryLabContent(registry: AssetRegistry) {
             DetailPanel(scheme, selected)
         }
 
-        // ── Interacciones (UI/UX) ── además de animaciones, la Galería muestra los COMPONENTES de UI
-        // funcionales que usarán las cartas. Selector de acción estilo «Discover» para «Hackeo Genómico»
-        // y decisiones similares de "elige un ataque/acción". Es interactivo (se puede probar aquí).
-        BasicText(text = "Interacciones (UI)", style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis))
-        BasicText(
-            text = "Componentes de UX reutilizables · funcionales",
-            style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
-        )
-        ActionChoicePicker(
-            kicker = "Mew ex · Hackeo Genómico",
-            prompt = "Elige un ataque del Activo rival para copiarlo",
-            options = genomeHackingSample(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // ── Interacciones (UI/UX) ── la Galería muestra también los COMPONENTES de UI funcionales que
+        // usarán las cartas, IDÉNTICOS a TCG Live: para «Hackeo Genómico» se reutiliza el MISMO panel de
+        // ataque del combate (AttackPanel), poblado con los ataques del Activo rival. Interactivo.
+        BasicText(text = "Interacciones (UI) · idéntico a TCG Live", style = coloredText(PanelStyle.titleStyle, scheme.contentEmphasis))
+        GenomeHackingShowcase(scheme)
     }
 }
 
-/** Datos de muestra del selector: los ataques del Activo rival que «Hackeo Genómico» puede copiar. */
-private fun genomeHackingSample(): List<ActionOption> = listOf(
-    ActionOption(
-        id = "explosive-vortex",
-        title = "Vórtice Explosivo",
-        cost = listOf(EnergyType.FIRE, EnergyType.FIRE, EnergyType.COLORLESS),
-        damage = 330,
-        text = "Descarta 3 Energías de este Pokémon.",
-    ),
-    ActionOption(
-        id = "brave-wing",
-        title = "Ala Osada",
+/**
+ * Vitrina de «Hackeo Genómico»: presenta los ataques del Activo rival con el MISMO panel de ataque que
+ * usa el combate real ([AttackPanel]) — marco cromado, textura de tipo, esferas de coste, daño y botón
+ * «USAR ATAQUE». No es un prototipo aparte: es exactamente el componente de TCG Live que ya vive en el
+ * juego. Tocar «USAR ATAQUE» elige ese ataque para copiarlo.
+ */
+@Composable
+private fun GenomeHackingShowcase(scheme: StudioColorTokens.Scheme) {
+    var chosen by remember { mutableStateOf<String?>(null) }
+    val attacks = remember { genomeHackingAttacks() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(ListRowStyle.radius))
+            .background(PanelStyle.material.surface(scheme))
+            .padding(PanelStyle.contentPadding),
+        verticalArrangement = Arrangement.spacedBy(PanelStyle.contentGap),
+    ) {
+        BasicText(
+            text = "Mew ex · Hackeo Genómico — elige un ataque del Activo rival para copiarlo",
+            style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentMuted),
+        )
+        attacks.forEach { atk ->
+            AttackPanel(
+                attack = atk,
+                type = EnergyType.FIRE,
+                finish = Finish.DOUBLE_RARE, // Charizard ex → panel holográfico, como en TCG Live
+                enabled = true,
+                used = false,
+                description = atk.text.es,
+                onUse = { chosen = atk.name.es },
+            )
+        }
+        if (chosen != null) {
+            BasicText(
+                text = "✓ Copiarás: $chosen",
+                style = coloredText(StudioTypographyTokens.Role.Status, scheme.contentPrimary),
+            )
+        }
+    }
+}
+
+/** Ataques de muestra del Activo rival (Charizard ex) que «Hackeo Genómico» puede copiar. */
+private fun genomeHackingAttacks(): List<Attack> = listOf(
+    Attack(
+        name = LocalizedText("Ala Osada", "Brave Wing"),
         cost = listOf(EnergyType.FIRE, EnergyType.COLORLESS),
-        damage = 60,
-        text = "60+. Si este Pokémon tiene daño, hace 100 más.",
+        convertedCost = 2,
+        baseDamage = Damage.Fixed(60),
+        effect = null,
+        text = LocalizedText("60+. Si este Pokémon tiene daño, hace 100 de daño más.", ""),
     ),
-    ActionOption(
-        id = "dangerous-toxwhip",
-        title = "Toxilatigazo",
-        cost = listOf(EnergyType.GRASS, EnergyType.PSYCHIC),
-        damage = 120,
-        text = "El Activo rival queda Confundido y Envenenado.",
+    Attack(
+        name = LocalizedText("Vórtice Explosivo", "Explosive Vortex"),
+        cost = listOf(EnergyType.FIRE, EnergyType.FIRE, EnergyType.COLORLESS),
+        convertedCost = 3,
+        baseDamage = Damage.Fixed(330),
+        effect = null,
+        text = LocalizedText("Descarta 3 Energías de este Pokémon.", ""),
     ),
 )
 
