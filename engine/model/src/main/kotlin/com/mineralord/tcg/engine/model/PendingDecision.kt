@@ -59,6 +59,11 @@ sealed interface PendingDecision {
          * la carta elegida sale de la mano del rival y va al FONDO de su baraja ([destination]
          * se interpreta como esa zona rival). [side] sigue siendo el jugador que decide. */
         val fromOpponentHand: Boolean = false,
+        /**
+         * true = la búsqueda opera sobre las zonas del RIVAL ([from] y [destination] se leen en el
+         * lado contrario a [side]): Haunter — Regreso Espiritual (descarte rival → mano rival). El
+         * host es autoritativo; para el invitado (netplay) es render-only. */
+        val onOpponent: Boolean = false,
     ) : PendingDecision
 
     /**

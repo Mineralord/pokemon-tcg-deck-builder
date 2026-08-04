@@ -323,6 +323,35 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 54 - Regreso Espiritual coge un Partidario del descarte rival a su mano`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val gastly = PokemonInPlay(mon("Gastly", 60, EnergyType.PSYCHIC, dummy)).copy(turnsInPlay = 1)
+        val haunter = mon("haunter", 90, EnergyType.PSYCHIC, dummy).copy(
+            stage = Stage.Stage1, evolvesFrom = "Gastly",
+            abilities = listOf(Ability(
+                LocalizedText("Regreso Espiritual", "Spirit Return"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-93", "Spirit Return"))))
+        val support = TrainerCard(
+            CardId("sup1"), LocalizedText("Investigación del Profesor", "Professor's Research"), set(),
+            Rarity.RARE, "H", art(), TrainerKind.Supporter(), LocalizedText("", ""), EffectId("none"))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.DARKNESS, dummy))
+        val base = duel(gastly, foe)
+        val st = base.copy(
+            player = base.player.copy(hand = listOf(haunter)),
+            opponent = base.opponent.copy(discard = listOf(support)),
+        )
+
+        // 1) Evolucionar dispara la habilidad → decisión sobre el descarte RIVAL.
+        val evolved = GameEngine(SeededRng(1)).apply(st, GameIntent.Evolve(CardId("haunter"), CardId("Gastly")))
+        assertTrue(evolved.state.awaitingDecision)
+
+        // 2) Elegir el Partidario → pasa a la MANO del rival y sale de su descarte.
+        val done = GameEngine(SeededRng(1)).apply(evolved.state, GameIntent.ResolveDecision(listOf(CardId("sup1"))))
+        assertTrue(done.state.opponent.hand.any { it.id == CardId("sup1") })
+        assertTrue(done.state.opponent.discard.none { it.id == CardId("sup1") })
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

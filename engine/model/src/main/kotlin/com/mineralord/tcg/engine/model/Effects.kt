@@ -148,6 +148,12 @@ sealed interface EffectOp {
      * ninguna carta que case, no hace nada.
      */
     data class RecoverFromDiscard(val filter: CardFilter, val count: Int) : EffectOp
+
+    /**
+     * Recupera cartas del descarte del RIVAL a la mano del RIVAL (Haunter — Regreso Espiritual
+     * sv3pt5-93: "puedes poner una carta de Partidario del descarte de tu rival en su mano"). Pausa
+     * con una [PendingDecision.SearchCards] `onOpponent=true` sobre el descarte rival; opcional. */
+    data class RecoverOppFromDiscard(val filter: CardFilter, val count: Int) : EffectOp
     /**
      * Descarta HASTA [maxCount] cartas de la MANO que casen [filter] (elección del
      * jugador) y hace [perCard] de daño al Activo rival por cada carta descartada

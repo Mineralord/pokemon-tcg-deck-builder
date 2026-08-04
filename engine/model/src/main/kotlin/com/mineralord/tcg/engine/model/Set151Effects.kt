@@ -556,6 +556,13 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         put(atkKey("sv3pt5-205", "Genome Hacking"), genome)
     }
 
+    // ------------------- SET 151 (sv3pt5) — Fase 54: Haunter «Regreso Espiritual» -----
+    // Al evolucionar desde la mano, puedes poner 1 Partidario del descarte del RIVAL en su mano.
+    // Pausa con una decisión sobre el descarte rival (onOpponent). Opcional ("puedes").
+    put(abiKey("sv3pt5-93", "Spirit Return"), Effect(
+        triggerOnEvolve = true,
+        ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).

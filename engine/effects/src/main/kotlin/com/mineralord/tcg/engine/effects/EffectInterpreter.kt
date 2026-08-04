@@ -313,6 +313,26 @@ class EffectInterpreter {
                     candidates = cands,
                 )
             }
+            is EffectOp.RecoverOppFromDiscard -> {
+                // Haunter — Regreso Espiritual: candidatos = cartas del descarte RIVAL que casan el
+                // filtro (Partidario). Sin ninguna, no pausa. Van a la MANO del rival (onOpponent).
+                val foe = state.sideState(src.actingSide.other())
+                val cands = matching(foe.discard, op.filter)
+                if (cands.isEmpty()) null
+                else PendingDecision.SearchCards(
+                    src.actingSide,
+                    LocalizedText(
+                        "Puedes poner una carta de Partidario del descarte de tu rival en su mano",
+                        "You may put a Supporter card from your opponent's discard pile into their hand",
+                    ),
+                    from = Zone.DISCARD,
+                    filter = op.filter,
+                    destination = Zone.HAND,
+                    count = op.count,
+                    candidates = cands,
+                    onOpponent = true,
+                )
+            }
             is EffectOp.PutOppHandPokemonToBottomOfDeck -> {
                 // Agarrador Mecánico: candidatos = Pokémon en la MANO del rival. Sin ninguno, no pausa.
                 val foe = state.sideState(src.actingSide.other())
@@ -977,7 +997,7 @@ class EffectInterpreter {
             // Las ops de elección las captura runFrom/pendingFor: nunca llegan aquí
             // (RecoverFromDiscard solo cae aquí si el descarte no tenía nada que recuperar).
             is EffectOp.ChooseTarget, is EffectOp.SearchDeck, is EffectOp.MoveEnergy,
-            is EffectOp.RecoverFromDiscard, is EffectOp.PlaceCounters,
+            is EffectOp.RecoverFromDiscard, is EffectOp.RecoverOppFromDiscard, is EffectOp.PlaceCounters,
             is EffectOp.DiscardFromHandForDamage, is EffectOp.CoinFlipSearchToBench,
             is EffectOp.DiscardOwnToolsForDamage, is EffectOp.PutOppHandPokemonToBottomOfDeck ->
                 EffectResult(state, emptyList())
@@ -1099,7 +1119,8 @@ class EffectInterpreter {
         state: GameState,
         shuffle: (List<Card>) -> List<Card>,
     ): EffectResult {
-        val side = d.side
+        // onOpponent (Haunter — Regreso Espiritual): las zonas [from]/[destination] son del RIVAL.
+        val side = if (d.onOpponent) d.side.other() else d.side
         // Electrode — Cadena Bum Bum: descarte de Herramientas enganchadas (no de una zona).
         if (d.fromAttachedTools) return applyDiscardTools(d, chosen, state)
         val ps = state.sideState(side)
