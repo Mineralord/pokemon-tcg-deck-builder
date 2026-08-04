@@ -11,6 +11,7 @@ class RenderLayerTest {
         assertEquals(
             listOf(
                 RenderLayer.Board,
+                RenderLayer.Underglow,
                 RenderLayer.Cards,
                 RenderLayer.Flight,
                 RenderLayer.Particles,
@@ -54,6 +55,7 @@ class RenderLayerTest {
         // Fija los valores del contrato: cambiarlos es una decisión consciente que
         // debe romper este test a propósito.
         assertEquals(0, RenderLayer.Board.zOrder)
+        assertEquals(50, RenderLayer.Underglow.zOrder)
         assertEquals(100, RenderLayer.Cards.zOrder)
         assertEquals(200, RenderLayer.Flight.zOrder)
         assertEquals(300, RenderLayer.Particles.zOrder)

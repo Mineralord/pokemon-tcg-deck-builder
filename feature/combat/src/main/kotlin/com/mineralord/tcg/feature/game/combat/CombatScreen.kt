@@ -104,6 +104,13 @@ import com.mineralord.tcg.core.designsystem.motion.motionPress
 import com.mineralord.tcg.core.designsystem.EnergySphere
 import com.mineralord.tcg.core.designsystem.typeColor
 import com.mineralord.tcg.core.designsystem.tilt.resolveFinish
+import com.mineralord.tcg.core.animation.AnimationRequest
+import com.mineralord.tcg.core.animationcompose.AnimationRenderState
+import com.mineralord.tcg.core.animationcompose.AnimationStage
+import com.mineralord.tcg.core.animationcompose.CoordinateRegistry
+import com.mineralord.tcg.core.animationcompose.SlotId
+import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirector
+import com.mineralord.tcg.core.animationcompose.trackBounds
 import com.mineralord.tcg.feature.game.board.BoardGeometry
 import com.mineralord.tcg.feature.game.board.HandCat
 import com.mineralord.tcg.feature.game.board.HandFan
@@ -156,6 +163,53 @@ fun CombatScreen(
                     motif = motifFor(type),
                     // fromPlayer = ataca el jugador → impacto arriba (activo rival golpeado).
                     fromPlayer = cue.side == Side.OPPONENT,
+                )
+            }
+        }
+    }
+
+    // ---- Motor de animación CANÓNICO (rótulos AAA + auras de habilidad): MISMO pipeline que el
+    // Studio (contribuidores/ejecutores canónicos). Dos anfitriones de dibujo: uno para las auras
+    // (bajo las cartas) y otro para los rótulos (al frente). El anfitrión sólo aporta dónde dibujar.
+    val bannerCoords = remember { CoordinateRegistry() }
+    val bannerRender = remember { AnimationRenderState() }
+    val bannerDirector = rememberCanonicalAnimationDirector(bannerCoords, bannerRender)
+    val glowCoords = remember { CoordinateRegistry() }
+    val glowRender = remember { AnimationRenderState() }
+    val glowDirector = rememberCanonicalAnimationDirector(glowCoords, glowRender)
+
+    // Rótulo de ATAQUE: anuncio cinematográfico (dirección por lado). El impacto (FxCue.Damage) llega
+    // después por el espaciado de `playFx`, cumpliendo el orden anuncio → acción.
+    LaunchedEffect(Unit) {
+        vm.fx.collect { cue ->
+            if (cue is FxCue.Attack) {
+                bannerDirector.submit(
+                    AnimationRequest.AttackStarted(
+                        attackerId = cue.side.name,
+                        attackName = cue.attackName.ifBlank { "Ataque" },
+                        incoming = cue.side == Side.OPPONENT,
+                    ),
+                )
+            }
+        }
+    }
+
+    // Habilidad (manual o pasiva/al evolucionar): rótulo con el NOMBRE DEL POKÉMON + aura sobre su
+    // carta (dorado manual / rojo pasiva). Dirigido por el EVENTO del motor → también anima las
+    // habilidades del rival y las pasivas automáticas. El efecto llega después (orden anuncio → acción).
+    LaunchedEffect(Unit) {
+        vm.fx.collect { cue ->
+            if (cue is FxCue.AbilityUse) {
+                bannerDirector.submit(
+                    AnimationRequest.AbilityActivated(
+                        sourcePokemonId = cue.pokemon.raw,
+                        pokemonName = vm.cardName(cue.pokemon),
+                        abilityName = "",
+                        manual = cue.manual,
+                    ),
+                )
+                glowDirector.submit(
+                    AnimationRequest.AbilityGlowRequested(cue.pokemon.raw, glowSlot(cue.pokemon.raw).value, cue.manual),
                 )
             }
         }
@@ -268,6 +322,35 @@ fun CombatScreen(
                     else state.activePlayer.active?.card?.types?.firstOrNull()
                 SceneLayer(litSide = litSide, activeType = activeType, modifier = Modifier.matchParentSize())
 
+                // ---------- Capa AURAS (canónica, POR DEBAJO de las cartas) ----------
+                // Rastrea los Activos en el registro de coordenadas del motor; el glow (pasivo rojo /
+                // manual dorado) se dibuja en la capa Underglow, quedando bajo la carta real.
+                AnimationStage(
+                    modifier = Modifier.matchParentSize(),
+                    registry = glowCoords,
+                    renderState = glowRender,
+                    board = {
+                        // Rastrea TODOS los Pokémon en juego (Activo + Banca, ambos lados) por CardId,
+                        // para que el aura pueda encenderse sobre cualquiera que active una Habilidad.
+                        state.player.active?.let { pip ->
+                            Box(Modifier.place(BoardGeometry.MeActive, boardW, boardH).trackBounds(glowSlot(pip.card.id.raw), glowCoords))
+                        }
+                        state.player.bench.forEachIndexed { i, pip ->
+                            BoardGeometry.MeBenchSlots.getOrNull(i)?.let { slot ->
+                                Box(Modifier.place(slot, boardW, boardH).trackBounds(glowSlot(pip.card.id.raw), glowCoords))
+                            }
+                        }
+                        state.opponent.active?.let { pip ->
+                            Box(Modifier.place(BoardGeometry.OppActive, boardW, boardH).trackBounds(glowSlot(pip.card.id.raw), glowCoords))
+                        }
+                        state.opponent.bench.forEachIndexed { i, pip ->
+                            BoardGeometry.OppBenchSlots.getOrNull(i)?.let { slot ->
+                                Box(Modifier.place(slot, boardW, boardH).trackBounds(glowSlot(pip.card.id.raw), glowCoords))
+                            }
+                        }
+                    },
+                )
+
                 // ---------- Capa PARTIDA (zonas, cartas, mano) ----------
                 MatchLayer(
                     state = state,
@@ -302,6 +385,15 @@ fun CombatScreen(
                     onExit = onExit,
                     onOpenLog = { showLog = true },
                     onCancelRetreat = { bi.retreatMode = false; bi.benchDragCard = null },
+                )
+
+                // ---------- Capa RÓTULOS (canónica, AL FRENTE) ----------
+                // Centrada exactamente en el medio del tapete (matchParentSize del board Box). No
+                // intercepta toques (sin gestos), así el HUD y las cartas siguen siendo interactivos.
+                AnimationStage(
+                    modifier = Modifier.matchParentSize(),
+                    registry = bannerCoords,
+                    renderState = bannerRender,
                 )
             }
         }
@@ -367,6 +459,8 @@ fun CombatScreen(
                                 onAttack = { name -> inspect = null; vm.onIntent(GameIntent.Attack(name)) },
                                 onRetreat = { inspect = null; bi.retreatMode = true },
                                 onUseAbility = { ability ->
+                                    // El rótulo/aura los dispara el EVENTO del motor (AbilityUsed),
+                                    // no la UI: así también animan al rival y las pasivas automáticas.
                                     inspect = null
                                     vm.onIntent(GameIntent.UseAbility(activePip.card.id, ability.name.es))
                                 },
@@ -992,6 +1086,9 @@ private fun BattleLogBody(log: List<String>, onDismiss: () -> Unit) {
         }
     }
 }
+
+/** Slot id canónico del aura de un Pokémon (por id de instancia): sirve para Activo y Banca. */
+private fun glowSlot(cardIdRaw: String): SlotId = SlotId("glow:$cardIdRaw")
 
 /** Coloca un Composable en su caja normalizada [BoardGeometry.NBox] (offset + size). */
 private fun Modifier.place(b: BoardGeometry.NBox, boardW: Dp, boardH: Dp): Modifier =

@@ -95,12 +95,41 @@ private fun RenderLayerContent(
     when (layer) {
         RenderLayer.Board -> board()
         RenderLayer.Cards -> cards()
+        // Aura de habilidad por debajo de las cartas (glow pasivo/manual).
+        RenderLayer.Underglow -> NodeLayer(RenderLayer.Underglow)
         // Primera capa REAL conectada: overlay de vuelo de cartas.
         RenderLayer.Flight -> FlightLayer()
         // Capas preparadas y vacías (se implementan en fases posteriores):
         RenderLayer.Particles -> Unit // Canvas de partículas (un lienzo, withFrameNanos)
-        RenderLayer.Effects -> Unit   // FX a pantalla completa
-        RenderLayer.Overlay -> Unit   // texto flotante / indicadores
+        RenderLayer.Effects -> NodeLayer(RenderLayer.Effects) // FX a pantalla completa
+        RenderLayer.Overlay -> NodeLayer(RenderLayer.Overlay)  // rótulos / indicadores
+    }
+}
+
+/**
+ * Renderiza una capa GENÉRICA por despacho de tipo de nodo (Open-Closed): lee los nodos vivos de
+ * [layer] del [AnimationRenderState] y delega cada uno a su renderer. Comparte con [FlightLayer] la
+ * captura del origen de la capa en coords de raíz ([LocalFlightOrigin]) para dibujar correcto sea
+ * cual sea el punto de montaje del Stage. Un tipo de nodo sin renderer se ignora (aún no existe).
+ */
+@Composable
+private fun NodeLayer(layer: RenderLayer) {
+    val renderState = LocalAnimationRenderState.current
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { origin = it.positionInRoot() },
+    ) {
+        CompositionLocalProvider(LocalFlightOrigin provides origin) {
+            renderState.nodesOf(layer).forEach { node ->
+                when (node) {
+                    is AbilityGlowRenderNode -> AbilityGlowNodeRenderer(node)
+                    is BannerRenderNode -> BannerNodeRenderer(node)
+                    else -> Unit // otros tipos de nodo: su renderer llegará en fases futuras
+                }
+            }
+        }
     }
 }
 

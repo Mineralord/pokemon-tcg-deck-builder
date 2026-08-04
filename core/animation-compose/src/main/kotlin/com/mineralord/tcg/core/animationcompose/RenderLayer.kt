@@ -20,6 +20,12 @@ enum class RenderLayer(val zOrder: Int) {
     /** Fondo estático: tablero, zonas, banca. No se anima. */
     Board(0),
 
+    /**
+     * Auras/glows por DEBAJO de las cartas (habilidad pasiva/manual). Entre [Board] y [Cards]
+     * para que la carta se apoye sobre el aura y el bloom bleede alrededor de sus bordes.
+     */
+    Underglow(50),
+
     /** Cartas en su posición de reposo dentro de sus celdas. */
     Cards(100),
 

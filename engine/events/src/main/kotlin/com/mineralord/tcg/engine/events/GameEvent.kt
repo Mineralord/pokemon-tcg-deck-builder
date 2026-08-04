@@ -51,6 +51,18 @@ sealed interface GameEvent {
     /** Un Pokémon de la Banca sube al puesto Activo tras un KO (promoción elegida). */
     data class Promoted(override val side: Side, val pokemon: CardId) : GameEvent
     data class Attacked(override val side: Side, val attacker: CardId, val attackName: String) : GameEvent
+
+    /**
+     * Un Pokémon activó una Habilidad. [manual] = `true` si la activó el jugador (vía `UseAbility`);
+     * `false` si se disparó automáticamente (pasiva / al evolucionar). Alimenta el rótulo de anuncio y
+     * el aura sobre [pokemon] (dorado = manual, rojo = pasiva).
+     */
+    data class AbilityUsed(
+        override val side: Side,
+        val pokemon: CardId,
+        val abilityName: String,
+        val manual: Boolean,
+    ) : GameEvent
     data class DamageDealt(
         override val side: Side,
         val target: CardId,

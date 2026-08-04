@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
+import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.Side
 import kotlin.math.sin
 
@@ -22,8 +23,17 @@ import kotlin.math.sin
 sealed interface FxCue {
     val side: Side?
 
-    /** Embate del atacante de [side] (se mueve hacia el rival). */
-    data class Attack(override val side: Side) : FxCue
+    /**
+     * Embate del atacante de [side] (se mueve hacia el rival). [attackName] alimenta el rótulo
+     * cinematográfico de anuncio de ataque (dirección derivada del lado).
+     */
+    data class Attack(override val side: Side, val attackName: String = "") : FxCue
+
+    /**
+     * Un Pokémon de [side] activó una Habilidad: rótulo de anuncio + aura sobre [pokemon]
+     * ([manual] = dorado; pasiva = rojo).
+     */
+    data class AbilityUse(override val side: Side, val pokemon: CardId, val manual: Boolean) : FxCue
 
     /** Daño recibido por el Pokémon de [side]: número flotante + sacudida + flash. */
     data class Damage(

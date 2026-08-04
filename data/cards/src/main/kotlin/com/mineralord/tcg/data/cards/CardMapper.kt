@@ -113,9 +113,10 @@ object CardMapper {
             types = dto.tipos.map { energyType(it) },
             evolvesFrom = dto.evolucionaDe,
             abilities = dto.habilidades.mapIndexed { i, it ->
-                // Nombre/texto ES del dataset (bloque `es.habilidades`) si existe; si no, el inglés.
+                // Nombre/texto ES del dataset (bloque `es.habilidades`) si existe; si no, el nombre
+                // OFICIAL en español ([AbilityNames]); como último recurso, el inglés impreso.
                 val esa = dto.es?.habilidades?.getOrNull(i)
-                val esName = esa?.name?.takeIf { s -> s.isNotBlank() } ?: it.name
+                val esName = esa?.name?.takeIf { s -> s.isNotBlank() } ?: AbilityNames.es(it.name)
                 val esText = esa?.text?.takeIf { s -> s.isNotBlank() } ?: (it.text ?: "")
                 Ability(
                     name = LocalizedText(esName, it.name),
@@ -135,6 +136,10 @@ object CardMapper {
                 // el mapa de traducción [AttackNames]; como último recurso, el inglés.
                 val rawEs = dto.es?.ataques?.getOrNull(i)?.name?.takeIf { it.isNotBlank() }
                 val esName = rawEs ?: AttackNames.es(a.name)
+                // Texto de regla IMPRESO (ES del dataset si existe; si no, el inglés). Los ataques
+                // sin texto quedan en blanco → la UI no les pinta descripción.
+                val enText = a.text ?: ""
+                val esText = dto.es?.ataques?.getOrNull(i)?.text?.takeIf { it.isNotBlank() } ?: enText
                 Attack(
                     name = LocalizedText(esName, a.name),
                     cost = a.cost.map { energyType(it) },
@@ -142,6 +147,7 @@ object CardMapper {
                     baseDamage = damage(a.damage),
                     // Puntero al efecto autorado (clave por id+nombre); null si no hay comportamiento.
                     effect = EffectsDb.atkKey(dto.id, a.name).takeIf { id -> EffectsDb.registry.has(id) },
+                    text = LocalizedText(esText, enText),
                 )
             },
             weaknesses = dto.debilidades.map { TypeModifier(energyType(it.type), it.value) },
@@ -232,56 +238,71 @@ object CardMapper {
 }
 
 /**
- * Traducción ES de nombres de ataque para las cartas cuyo dataset NO trae el nombre
- * en español (41 ataques, sobre todo de las barajas de inicio SV1). Se usa como
- * respaldo en [CardMapper] cuando `es.ataques[i].name` falta o está en blanco, para
- * que el panel de combate nunca muestre el ataque en inglés. Clave = nombre en inglés.
+ * Nombres OFICIALES en español de los ataques cuyo dataset NO trae el bloque `es.ataques[i].name`
+ * (cartas de barajas de inicio y promos SV). Se usan como respaldo en [CardMapper] para que el
+ * panel/rótulo de combate muestre el nombre IMPRESO en la carta española, no una traducción
+ * inventada ni el inglés. Fuente: TCGdex (localización ES oficial). Clave = nombre impreso en inglés.
  */
 private object AttackNames {
     private val ES = mapOf(
-        "Armor Cannon" to "Cañón Blindado",
+        "Armor Cannon" to "Cañón Armadura",
         "Bite" to "Mordisco",
-        "Blazing Shout" to "Grito Ardiente",
-        "Collect" to "Recolectar",
+        "Blazing Shout" to "Grito Abrasador",
+        "Collect" to "Coleccionar",
         "Concentrated Fire" to "Fuego Concentrado",
-        "Cross-Cut" to "Corte Cruzado",
+        "Cross-Cut" to "Atajar",
         "Cut" to "Corte",
-        "Dark Edge" to "Filo Oscuro",
+        "Dark Edge" to "Filo Siniestro",
         "Elbow Strike" to "Codazo",
         "Electric Claws" to "Garras Eléctricas",
-        "Electro Ball" to "Bola Eléctrica",
+        "Electro Ball" to "Bola Voltio",
         "Fire Blast" to "Llamarada",
-        "Flame Cloak" to "Manto Llameante",
-        "Flare" to "Fogonazo",
-        "Gentle Slap" to "Palmada Suave",
-        "Glide" to "Planear",
-        "Headbutt" to "Cabezazo",
-        "Heat Blast" to "Ráfaga de Calor",
+        "Flame Cloak" to "Manto Ígneo",
+        "Flare" to "Llama",
+        "Gentle Slap" to "Bofetada Gentil",
+        "Glide" to "Planeo",
+        "Headbutt" to "Golpe Cabeza",
+        "Heat Blast" to "Explosión de Calor",
         "Hyper Voice" to "Vozarrón",
-        "Jet Wing" to "Ala a Reacción",
-        "Lightning Ball" to "Bola Rayo",
+        "Jet Wing" to "Ala Propulsión",
+        "Lightning Ball" to "Bola Relámpago",
         "Linear Attack" to "Ataque Lineal",
-        "Live Coal" to "Brasa",
+        "Live Coal" to "Carbón Activado",
         "Mach Bolt" to "Rayo Mach",
-        "Magnum Punch" to "Puño Magnum",
+        "Magnum Punch" to "Puño Mágnum",
         "Passionate Singing" to "Canto Apasionado",
         "Peck" to "Picotazo",
-        "Pierce" to "Perforación",
-        "Poltergeist" to "Poltergeist",
-        "Ram" to "Embestida",
-        "Rolling Tackle" to "Placaje Rodante",
+        "Pierce" to "Perforar",
+        "Ram" to "Apisonar",
+        "Rolling Tackle" to "Placaje Giro",
         "Rollout" to "Rodar",
         "Scratch" to "Arañazo",
         "Sharp Fang" to "Colmillo Afilado",
-        "Slicing Blade" to "Hoja Cortante",
-        "Speed Attack" to "Ataque Rápido",
+        "Slicing Blade" to "Cuchilla Cortante",
+        "Speed Attack" to "Ataque Fugaz",
         "Stampede" to "Estampida",
-        "Steady Firebreathing" to "Aliento Ígneo Constante",
-        "Suffocating Gas" to "Gas Asfixiante",
+        "Steady Firebreathing" to "Lanzallamas Continuo",
+        "Suffocating Gas" to "Gas Sofocante",
         "Take Down" to "Derribo",
-        "Touring" to "Gira",
+        "Touring" to "De Gira",
     )
 
-    /** Nombre ES del ataque [en] (o el propio inglés si no hay traducción registrada). */
+    /** Nombre ES oficial del ataque [en] (o el propio inglés si no hay ninguno registrado). */
+    fun es(en: String): String = ES[en] ?: en
+}
+
+/**
+ * Nombres OFICIALES en español de las Habilidades cuyo dataset NO trae `es.habilidades[i].name`
+ * (fósiles antiguos de 151). Evita mostrarlas en inglés. Fuente: TCGdex (localización ES oficial).
+ * Clave = nombre impreso en inglés.
+ */
+private object AbilityNames {
+    private val ES = mapOf(
+        "Domed Armor" to "Caparazón Domo",
+        "Helical Swell" to "Oleaje Helicoidal",
+        "Amber Protection" to "Protección Ámbar",
+    )
+
+    /** Nombre ES oficial de la Habilidad [en] (o el propio inglés si no hay ninguno registrado). */
     fun es(en: String): String = ES[en] ?: en
 }

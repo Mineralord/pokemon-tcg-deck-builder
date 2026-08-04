@@ -43,6 +43,8 @@ dependencies {
     api(project(":data:cards"))
     // Núcleo visual compartido (tokens, Motion, FlightOverlay, CardDetailDialog…).
     api(project(":core:designsystem"))
+    // Motor de animación canónico compartido (rótulos/auras AAA): mismo pipeline que el Studio.
+    implementation(project(":core:animation-compose"))
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

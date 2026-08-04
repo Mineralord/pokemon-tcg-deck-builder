@@ -28,6 +28,8 @@ val CanonicalAnimationContributors = listOf(
     DrawCardAnimations,
     MoveAnimations,
     EvolveAnimations,
+    BannerAnimations,
+    AbilityGlowAnimations,
 )
 
 /**
@@ -41,6 +43,8 @@ fun canonicalStepExecutors(
     register(AnimationStep.DrawCard::class, DrawCardExecutor(coordinates, renderState))
     register(AnimationStep.Move::class, MoveExecutor(coordinates, renderState))
     register(AnimationStep.Evolve::class, EvolveExecutor(coordinates, renderState))
+    register(AnimationStep.Banner::class, BannerExecutor(renderState))
+    register(AnimationStep.AbilityGlow::class, AbilityGlowExecutor(coordinates, renderState))
 }
 
 /**

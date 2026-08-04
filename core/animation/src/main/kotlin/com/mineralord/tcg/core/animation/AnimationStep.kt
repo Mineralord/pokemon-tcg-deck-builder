@@ -90,6 +90,36 @@ sealed interface AnimationStep {
         val visual: EvolveVisual,
     ) : AnimationStep
 
+    /**
+     * Rótulo/banner AAA a pantalla completa que anuncia un ataque o una habilidad (lower-third
+     * tipo Marvel Snap / Legends of Runeterra). NO viaja por ranuras: es un overlay que barre,
+     * sostiene y sale. Su identidad (dirección, tinte, énfasis) son DATOS ([visual]); el texto
+     * ([kicker]/[title]) también. Separado de [ShowText] a propósito: [ShowText] es texto flotante
+     * anclado a un objetivo; esto es un rótulo cinematográfico de anuncio con placa y barrido de luz.
+     *
+     * Añadir esta hoja NO toca el `AnimationPlayer` (Open-Closed): su ejecutor la enruta a
+     * `BannerExecutor`, que la publica como nodo de la capa de overlay.
+     */
+    data class Banner(
+        val kicker: String,
+        val title: String,
+        val duration: Duration,
+        val visual: BannerVisual,
+    ) : AnimationStep
+
+    /**
+     * Aura de habilidad EN una ranura (banca o activo): bloom radial por debajo de la carta + rim-glow
+     * en los bordes, con respiración/shimmer. Comunica que el Pokémon está ejerciendo una habilidad.
+     * El COLOR y el carácter (rojo estable = pasiva; dorado invitador = manual) son DATOS ([visual]);
+     * un único ejecutor/renderer sirve ambos modos. La ranura se referencia por `String` (no `SlotId`)
+     * para no acoplar el módulo puro. Enrutada a `AbilityGlowExecutor` (Open-Closed).
+     */
+    data class AbilityGlow(
+        val slotId: String,
+        val duration: Duration,
+        val visual: GlowVisual,
+    ) : AnimationStep
+
     /** Escala un objetivo hasta un factor. */
     data class Scale(val targetId: String, val factor: Float) : AnimationStep
 

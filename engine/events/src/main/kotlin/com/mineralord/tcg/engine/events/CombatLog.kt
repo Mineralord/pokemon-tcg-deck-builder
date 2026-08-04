@@ -36,6 +36,7 @@ class CombatLog(
         is GameEvent.Retreated -> "${sideName(e.side)} ha retirado ${cardName(e.from)} por ${cardName(e.to)}."
         is GameEvent.Promoted -> "${sideName(e.side)} ha subido ${cardName(e.pokemon)} al Puesto Activo."
         is GameEvent.Attacked -> "${cardName(e.attacker)} de ${sideName(e.side)} ha usado ${e.attackName}."
+        is GameEvent.AbilityUsed -> "${cardName(e.pokemon)} de ${sideName(e.side)} ha usado la Habilidad ${e.abilityName}."
         is GameEvent.DamageDealt -> buildString {
             append("${cardName(e.target)} ha recibido ${e.amount} puntos de daño")
             if (e.weaknessApplied) append(" (Debilidad)")
@@ -71,6 +72,7 @@ class CombatLog(
         is GameEvent.Retreated -> "${sideName(e.side)} retreated ${cardName(e.from)} for ${cardName(e.to)}."
         is GameEvent.Promoted -> "${sideName(e.side)} promoted ${cardName(e.pokemon)} to the Active Spot."
         is GameEvent.Attacked -> "${sideName(e.side)}'s ${cardName(e.attacker)} used ${e.attackName}."
+        is GameEvent.AbilityUsed -> "${sideName(e.side)}'s ${cardName(e.pokemon)} used the Ability ${e.abilityName}."
         is GameEvent.DamageDealt -> buildString {
             append("${cardName(e.target)} took ${e.amount} damage")
             if (e.weaknessApplied) append(" (Weakness)")

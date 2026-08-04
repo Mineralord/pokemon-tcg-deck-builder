@@ -62,18 +62,41 @@ sealed interface AnimationRequest {
         val variantId: String,
     ) : AnimationRequest
 
-    /** Comienza la secuencia de ataque de un Pokémon. */
+    /**
+     * Comienza la secuencia de ataque de un Pokémon. [incoming] codifica la DIRECCIÓN para el
+     * rótulo: `true` = ataque del RIVAL hacia mí (barre entrante, tinte cálido); `false` = ataque
+     * MÍO hacia el rival (barre saliente, tinte frío). El contribuidor resuelve el `BannerVisual`.
+     */
     data class AttackStarted(
         val attackerId: String,
         val attackName: String,
+        val incoming: Boolean = false,
     ) : AnimationRequest {
         override val priority: AnimationPriority get() = AnimationPriority.High
     }
 
-    /** Se activa una habilidad (manual o disparada). */
+    /**
+     * Se activa una habilidad. El rótulo muestra como texto principal el NOMBRE DEL POKÉMON
+     * ([pokemonName], p. ej. "Venusaur"), no el de la habilidad. [manual] distingue el tono:
+     * `true` = habilidad manual (dorada, accionable); `false` = pasiva/disparada (carmesí, ambiental).
+     * [abilityName] se conserva para logs/depuración aunque el rótulo no lo muestre.
+     */
     data class AbilityActivated(
         val sourcePokemonId: String,
+        val pokemonName: String,
         val abilityName: String,
+        val manual: Boolean = false,
+    ) : AnimationRequest
+
+    /**
+     * Un Pokémon (en banca o activo) está EJERCIENDO una habilidad: enciende el aura bajo su carta.
+     * [manual] elige el carácter: `true` = dorado invitador (puede activarse manualmente);
+     * `false` = rojo estable (pasiva en curso). [slotId] es la ranura donde se dibuja el aura.
+     */
+    data class AbilityGlowRequested(
+        val sourcePokemonId: String,
+        val slotId: String,
+        val manual: Boolean = false,
     ) : AnimationRequest
 
     /** Se aplica daño a un Pokémon objetivo. */

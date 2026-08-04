@@ -35,7 +35,8 @@ fun Side.other(): Side = if (this == Side.PLAYER) Side.OPPONENT else Side.PLAYER
  * se animan igual en PvE y PvP.
  */
 fun GameEvent.toFxCue(): FxCue? = when (this) {
-    is GameEvent.Attacked -> FxCue.Attack(side)
+    is GameEvent.Attacked -> FxCue.Attack(side, attackName)
+    is GameEvent.AbilityUsed -> FxCue.AbilityUse(side, pokemon, manual)
     // El daño lo recibe el rival del atacante.
     is GameEvent.DamageDealt -> FxCue.Damage(side.other(), amount, weaknessApplied, resistanceApplied)
     is GameEvent.Healed -> FxCue.Heal(side, amount)
@@ -55,7 +56,9 @@ suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) -> Unit) {
         val cue = e.toFxCue() ?: continue
         emitCue(cue)
         when (cue) {
-            is FxCue.Attack -> delay(220)
+            // El rótulo actúa como ANUNCIO cinematográfico: se lee ANTES de que impacte la acción.
+            is FxCue.Attack -> delay(1150)
+            is FxCue.AbilityUse -> delay(1150)
             is FxCue.Damage -> delay(360)
             is FxCue.Knockout -> delay(420)
             is FxCue.Prize -> delay(200)
