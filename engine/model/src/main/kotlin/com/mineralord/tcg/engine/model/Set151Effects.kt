@@ -536,6 +536,11 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(abiKey("sv3pt5-153", "Helical Swell"),
         Effect(passives = listOf(PassiveModifier(ModKind.BLOCK_OPPONENT_STADIUM, 0, Target.SELF))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 51: Spearow «Ventaja Evolutiva» -----
+    // Habilidad pasiva: si vas segundo, este Pokémon puede evolucionar durante tu primer turno
+    // (exime de la regla del primer turno en el turno 2). Lo comprueba GameEngine.evolve.
+    put(abiKey("sv3pt5-21", "Evolutionary Advantage"), Effect(evolvesFirstTurnIfSecond = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).

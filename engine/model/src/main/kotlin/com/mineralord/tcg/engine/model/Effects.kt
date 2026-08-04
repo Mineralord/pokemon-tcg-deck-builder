@@ -676,6 +676,12 @@ data class Effect(
      * está en el Puesto Activo, cúrale 20 puntos de daño"). 0 = no aplica. Lo procesa
      * [GameEngine.endTurn] sobre el Activo del jugador que termina su turno. */
     val healSelfEndOfTurnIfActive: Int = 0,
+    /**
+     * Habilidad pasiva: "Si vas segundo, este Pokémon puede evolucionar durante tu primer turno"
+     * (Spearow — Ventaja Evolutiva sv3pt5-21). Exime al Pokémon portador de la regla "no puedes
+     * evolucionar durante tu primer turno" cuando ese primer turno es el del 2º jugador (turno 2).
+     * Lo comprueba [GameEngine.evolve] sobre el objetivo a evolucionar (respeta el bloqueo). */
+    val evolvesFirstTurnIfSecond: Boolean = false,
 )
 
 /**

@@ -136,9 +136,15 @@ class GameEngine(
         if (evo.evolvesFrom != target.card.name.en && evo.evolvesFrom != target.card.name.es) {
             return EngineResult.reject(state, "${evo.name.es} no evoluciona de ${target.card.name.es}")
         }
-        // Regla oficial: no se puede evolucionar en el primer turno de la partida.
-        if (state.turn == 1) {
-            return EngineResult.reject(state, "No puedes evolucionar en el primer turno de la partida")
+        // Regla oficial: no se puede evolucionar durante TU primer turno (turno 1 = 1er jugador;
+        // turno 2 = primer turno del 2º jugador). Excepción: Spearow — Ventaja Evolutiva permite
+        // evolucionarlo si vas segundo (turno 2), comprobando la habilidad del OBJETIVO (respeta el bloqueo).
+        if (state.turn <= 2) {
+            val exempt = state.turn == 2 &&
+                abilityEffects(state, state.activeSide, target).any { it.evolvesFirstTurnIfSecond }
+            if (!exempt) {
+                return EngineResult.reject(state, "No puedes evolucionar durante tu primer turno")
+            }
         }
         // Regla oficial: no se puede evolucionar un Pokémon el turno en que entró en juego
         // (turnsInPlay se pone a 0 al colocarlo/evolucionarlo; sube al iniciar tu turno).

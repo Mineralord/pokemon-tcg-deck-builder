@@ -252,6 +252,37 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 51 - Ventaja Evolutiva deja evolucionar a Spearow en tu primer turno yendo segundo`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val spearow = PokemonInPlay(mon("Spearow", 60, EnergyType.COLORLESS, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Ventaja Evolutiva", "Evolutionary Advantage"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-21", "Evolutionary Advantage"))))).copy(turnsInPlay = 1)
+        val fearow = mon("fearow", 110, EnergyType.COLORLESS, dummy).copy(stage = Stage.Stage1, evolvesFrom = "Spearow")
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.LIGHTNING, dummy))
+        val base = duel(spearow, foe)
+        // Turno 2 = primer turno del 2º jugador (el que actúa).
+        val st = base.copy(turn = 2, player = base.player.copy(hand = listOf(fearow)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Evolve(CardId("fearow"), CardId("Spearow")))
+        assertTrue(res.accepted, res.rejection)
+        assertEquals(CardId("fearow"), res.state.player.active?.card?.id)
+    }
+
+    @Test
+    fun `FASE 51 - un Básico normal NO puede evolucionar en tu primer turno`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val basic = PokemonInPlay(mon("Base", 60, EnergyType.COLORLESS, dummy)).copy(turnsInPlay = 1)
+        val evo = mon("evo", 110, EnergyType.COLORLESS, dummy).copy(stage = Stage.Stage1, evolvesFrom = "Base")
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.LIGHTNING, dummy))
+        val base = duel(basic, foe)
+        val st = base.copy(turn = 2, player = base.player.copy(hand = listOf(evo)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Evolve(CardId("evo"), CardId("Base")))
+        assertFalse(res.accepted)
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)
