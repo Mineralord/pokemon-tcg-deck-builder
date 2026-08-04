@@ -302,6 +302,27 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 53 - Hackeo Genómico copia y ejecuta un ataque del Activo rival`() {
+        val genome = attack("Genome Hacking", 0, EffectsDb.atkKey("sv3pt5-151", "Genome Hacking"))
+        val mew = PokemonInPlay(mon("mew", 180, EnergyType.PSYCHIC, genome))
+        // Activo rival con 2 ataques; copiaremos el índice 0 (Golpe, 60 de daño).
+        val punch = Attack(LocalizedText("Golpe", "Punch"), listOf(EnergyType.COLORLESS), 1, com.mineralord.tcg.engine.model.Damage.Fixed(60), null)
+        val tackle = Attack(LocalizedText("Placaje", "Tackle"), listOf(EnergyType.COLORLESS), 1, com.mineralord.tcg.engine.model.Damage.Fixed(20), null)
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.DARKNESS, punch).copy(attacks = listOf(punch, tackle)))
+        val st = duel(mew, foe)
+
+        // 1) Genome Hacking abre la elección de ataque (no termina el turno).
+        val used = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Genome Hacking"))
+        assertTrue(used.state.awaitingDecision)
+
+        // 2) Elegir el ataque 0 (Golpe, 60) → el Activo rival recibe 60 y el turno acaba.
+        val chosen = PendingDecision.encodeAttackIndex(0)
+        val resolved = GameEngine(SeededRng(1)).apply(used.state, GameIntent.ResolveDecision(listOf(chosen)))
+        assertEquals(60, resolved.state.opponent.active!!.damage)
+        assertEquals(Side.OPPONENT, resolved.state.activeSide) // atacar terminó el turno
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

@@ -29,9 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mineralord.tcg.core.designsystem.tilt.resolveFinish
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.PendingDecision
+import com.mineralord.tcg.engine.model.PokemonCard
 
 /**
  * CAPA DE DECISIONES: cuando el motor pausa un efecto esperando una elección del
@@ -82,6 +84,8 @@ fun DecisionPanel(
             }
             is PendingDecision.ChooseEnergyType ->
                 EnergyTypePicker(decision, onResolve)
+            is PendingDecision.ChooseAttack ->
+                AttackCopyPicker(decision, cardOf, onResolve)
         }
     }
 }
@@ -127,6 +131,46 @@ private fun SelectGrid(
         }
         if (allowNone) {
             DButton("Ninguna", enabled = true, accent = CombatTheme.Muted) { onResolve(emptyList()) }
+        }
+    }
+}
+
+/**
+ * Elegir 1 ataque del Activo rival para copiarlo (Mew ex — Hackeo Genómico). Se presenta con el MISMO
+ * panel de ataque del combate ([AttackPanel]) — idéntico a TCG Live —; «USAR ATAQUE» resuelve con el
+ * índice del ataque elegido. Respaldo con botones por nombre si no se resuelve la carta rival.
+ */
+@Composable
+private fun AttackCopyPicker(
+    decision: PendingDecision.ChooseAttack,
+    cardOf: (CardId) -> Card?,
+    onResolve: (List<CardId>) -> Unit,
+) {
+    val pokemon = cardOf(decision.fromPokemon) as? PokemonCard
+    Column(
+        Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (pokemon != null) {
+            val type = pokemon.types.firstOrNull()
+            val finish = resolveFinish(pokemon.rarity)
+            pokemon.attacks.forEachIndexed { i, atk ->
+                AttackPanel(
+                    attack = atk,
+                    type = type,
+                    finish = finish,
+                    enabled = true,
+                    used = false,
+                    description = atk.text.es,
+                    onUse = { onResolve(listOf(PendingDecision.encodeAttackIndex(i))) },
+                )
+            }
+        } else {
+            decision.attackNames.forEachIndexed { i, name ->
+                DButton(name, enabled = true, accent = CombatTheme.Gold) {
+                    onResolve(listOf(PendingDecision.encodeAttackIndex(i)))
+                }
+            }
         }
     }
 }

@@ -113,6 +113,9 @@ data class GameStateDto(
     val abilitiesUsedThisTurn: List<String> = emptyList(),
     /** Lados que deben promover un nuevo Activo tras un KO (en el marco del receptor). */
     val pendingPromotion: List<String> = emptyList(),
+    /** Psyduck — Cavilar: lado cuyas monedas cuentan como cruz (en el marco del receptor) y turno. */
+    val coinsAsTailsSide: String? = null,
+    val coinsAsTailsOnTurn: Int? = null,
 )
 
 // ----------------------------------------------------------------- a DTO
@@ -132,6 +135,8 @@ fun GameState.toDto(): GameStateDto = GameStateDto(
     energyAttachedThisTurn = energyAttachedThisTurn,
     abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { it.raw },
     pendingPromotion = pendingPromotion.map { it.name },
+    coinsAsTailsSide = coinsAsTailsSide?.name,
+    coinsAsTailsOnTurn = coinsAsTailsOnTurn,
 )
 
 /**
@@ -158,6 +163,8 @@ fun GameState.toDtoFor(viewer: Side): GameStateDto {
         energyAttachedThisTurn = energyAttachedThisTurn,
         abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { it.raw },
         pendingPromotion = pendingPromotion.map { frame(it).name },
+        coinsAsTailsSide = coinsAsTailsSide?.let { frame(it).name },
+        coinsAsTailsOnTurn = coinsAsTailsOnTurn,
     )
 }
 
@@ -245,6 +252,11 @@ private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisi
     is PendingDecision.ChooseEnergyType -> PendingDecisionDto(
         DecisionKindDto.CHOOSE_ENERGY_TYPE, frame(side).name, prompt.es, prompt.en, candidateIds.map { it.raw }, 1,
     )
+    // Render-only: los ataques del Activo rival a copiar (Hackeo Genómico) viajan como candidatos
+    // centinela; el host conserva la decisión real y re-ejecuta el ataque al resolver.
+    is PendingDecision.ChooseAttack -> PendingDecisionDto(
+        DecisionKindDto.CHOOSE_TARGETS, frame(side).name, prompt.es, prompt.en, candidateIds.map { it.raw }, 1,
+    )
 }
 
 // ----------------------------------------------------------------- de DTO
@@ -275,6 +287,8 @@ fun GameStateDto.toGameState(repo: CardRepository): GameState {
         energyAttachedThisTurn = energyAttachedThisTurn,
         abilitiesUsedThisTurn = abilitiesUsedThisTurn.map { CardId(it) }.toSet(),
         pendingPromotion = pendingPromotion.map { Side.valueOf(it) }.toSet(),
+        coinsAsTailsSide = coinsAsTailsSide?.let { Side.valueOf(it) },
+        coinsAsTailsOnTurn = coinsAsTailsOnTurn,
     )
 }
 

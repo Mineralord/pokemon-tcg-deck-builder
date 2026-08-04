@@ -689,6 +689,11 @@ data class Effect(
      * (condiciones especiales, descarte de Energía, no-retirarse/atacar, recargos), manteniendo el
      * daño. No aplica si el ataque ignora los efectos del Defensor (Staryu — Meteoros). */
     val immuneToAttackEffects: Boolean = false,
+    /**
+     * Ataque que COPIA un ataque del Activo rival (Mew ex — Hackeo Genómico sv3pt5-151): en vez de
+     * hacer su propio daño/efecto, abre una [PendingDecision.ChooseAttack] con los ataques del Activo
+     * rival; al resolver, [GameEngine] re-ejecuta el ataque elegido como si lo usara este Pokémon. */
+    val copiesOppActiveAttack: Boolean = false,
 )
 
 /**

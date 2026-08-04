@@ -546,6 +546,16 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     // (el daño NO es un efecto). Lo aplica GameEngine.attack filtrando los ops dirigidos al defensor.
     put(abiKey("sv3pt5-14", "Cocoon Cover"), Effect(immuneToAttackEffects = true))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 53: Mew ex «Hackeo Genómico» (copiar ataque) -----
+    // Elige 1 ataque del Activo rival y úsalo como este ataque. Abre PendingDecision.ChooseAttack;
+    // el motor re-ejecuta el ataque elegido con Mew ex como atacante. 3 printings.
+    run {
+        val genome = Effect(copiesOppActiveAttack = true)
+        put(atkKey("sv3pt5-151", "Genome Hacking"), genome)
+        put(atkKey("sv3pt5-193", "Genome Hacking"), genome)
+        put(atkKey("sv3pt5-205", "Genome Hacking"), genome)
+    }
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).

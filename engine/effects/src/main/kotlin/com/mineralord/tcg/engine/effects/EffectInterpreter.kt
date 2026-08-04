@@ -125,6 +125,8 @@ class EffectInterpreter {
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
             is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle, flip)
             is PendingDecision.ChooseTargets -> EffectResult(cleared, emptyList())
+            // Hackeo Genómico: la resuelve GameEngine (re-ejecuta el ataque); nunca llega aquí.
+            is PendingDecision.ChooseAttack -> EffectResult(cleared, emptyList())
             is PendingDecision.ChooseEnergyType -> {
                 // Porygon — Conversión 4: fija el TIPO de Debilidad-override en el Activo rival.
                 val type = chosen.firstNotNullOfOrNull { PendingDecision.decodeType(it) }

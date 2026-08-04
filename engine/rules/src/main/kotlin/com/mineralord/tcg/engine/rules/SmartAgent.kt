@@ -145,6 +145,12 @@ class SmartAgent(
             }
             GameIntent.ResolveDecision(ordered.take(decision.count))
         }
+        // Hackeo Genómico: copia el ataque de MÁS daño fijo del Activo rival (o el primero).
+        is PendingDecision.ChooseAttack -> {
+            val attacks = state.sideState(side.other()).active?.card?.attacks.orEmpty()
+            val bestIdx = attacks.indices.maxByOrNull { attacks[it].fixedDamage() } ?: 0
+            GameIntent.ResolveDecision(listOf(PendingDecision.encodeAttackIndex(bestIdx)))
+        }
         // Reparte contadores: uno por objetivo empezando por el de menos HP (round-robin
         // sobre los candidatos ordenados) hasta agotar los [count] contadores.
         is PendingDecision.PlaceCounters -> {

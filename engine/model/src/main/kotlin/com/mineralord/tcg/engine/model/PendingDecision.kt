@@ -137,11 +137,31 @@ sealed interface PendingDecision {
         val candidateIds: List<CardId> get() = candidates.map { encodeType(it) }
     }
 
+    /**
+     * Elegir 1 de los ataques del Activo RIVAL para usarlo como propio (Mew ex — Hackeo Genómico).
+     * Cada ataque se identifica por su ÍNDICE, codificado como CardId centinela; [attackNames] son
+     * los nombres (ES) en el mismo orden para que la UI los muestre. [fromPokemon] es el Activo rival
+     * cuyos ataques se ofrecen. Lo resuelve el MOTOR (no el intérprete): re-ejecuta el ataque elegido.
+     */
+    data class ChooseAttack(
+        override val side: Side,
+        override val prompt: LocalizedText,
+        val fromPokemon: CardId,
+        val attackNames: List<String>,
+    ) : PendingDecision {
+        val candidateIds: List<CardId> get() = attackNames.indices.map { encodeAttackIndex(it) }
+    }
+
     companion object {
         /** Centinela CardId para transportar un [EnergyType] por el canal `chosen`. */
         fun encodeType(type: EnergyType): CardId = CardId("energytype:${type.name}")
         fun decodeType(id: CardId): EnergyType? =
             id.raw.removePrefix("energytype:").let { name -> EnergyType.entries.firstOrNull { it.name == name } }
+
+        /** Centinela CardId para transportar el ÍNDICE del ataque elegido (Hackeo Genómico). */
+        fun encodeAttackIndex(i: Int): CardId = CardId("attackidx:$i")
+        fun decodeAttackIndex(id: CardId): Int? =
+            if (id.raw.startsWith("attackidx:")) id.raw.removePrefix("attackidx:").toIntOrNull() else null
     }
 
     data class AttachFromRevealed(

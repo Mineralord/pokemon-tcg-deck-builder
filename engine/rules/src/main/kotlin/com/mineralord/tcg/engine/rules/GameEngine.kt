@@ -22,7 +22,9 @@ import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.SpecialEnergy
 import com.mineralord.tcg.engine.model.Status
+import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.EffectOp
+import com.mineralord.tcg.engine.model.PendingInteraction
 import com.mineralord.tcg.engine.model.Target
 import com.mineralord.tcg.engine.model.ToolTarget
 import com.mineralord.tcg.engine.model.TrainerCard
@@ -289,7 +291,7 @@ class GameEngine(
 
     // ------------------------------------------------------------------- ataque
 
-    private fun attack(state: GameState, attackName: String): EngineResult {
+    private fun attack(state: GameState, attackName: String, overrideAttack: Attack? = null): EngineResult {
         val me = state.activePlayer
         val foeSide = state.activeSide.other()
         val foe = state.sideState(foeSide)
@@ -297,7 +299,10 @@ class GameEngine(
             ?: return EngineResult.reject(state, "No hay Pokémon Activo para atacar")
         val defender = foe.active
             ?: return EngineResult.reject(state, "El rival no tiene Pokémon Activo")
-        val atk = attacker.card.attacks.firstOrNull { it.name.es == attackName || it.name.en == attackName }
+        // [overrideAttack] = ataque COPIADO (Hackeo Genómico): se ejecuta como propio, sin buscarlo en
+        // los ataques de este Pokémon ni cobrar coste (ya se pagó el de Genome Hacking).
+        val atk = overrideAttack
+            ?: attacker.card.attacks.firstOrNull { it.name.es == attackName || it.name.en == attackName }
             ?: return EngineResult.reject(state, "Ataque desconocido: $attackName")
         // Regla oficial: quien empieza (turno 1) no puede atacar en su primer turno.
         if (state.turn == 1) {
@@ -307,12 +312,38 @@ class GameEngine(
         if (attacker.cannotAttackOnTurn == state.turn) {
             return EngineResult.reject(state, "${attacker.card.name.es} no puede atacar este turno")
         }
-        if (attacker.attachedEnergyCount < effectiveAttackCost(atk, attacker, state, state.activeSide)) {
+        if (overrideAttack == null &&
+            attacker.attachedEnergyCount < effectiveAttackCost(atk, attacker, state, state.activeSide)) {
             return EngineResult.reject(state, "Energía insuficiente para ${atk.name.es}")
         }
 
         val events = mutableListOf<GameEvent>()
         events += GameEvent.Attacked(state.activeSide, attacker.card.id, atk.name.es)
+
+        // Mew ex — Hackeo Genómico: en vez de su propio daño/efecto, abre la elección de UN ataque del
+        // Activo rival para copiarlo. Sólo el ataque REAL (no uno ya copiado). Sin ataques que copiar,
+        // no hace nada y el turno acaba.
+        if (overrideAttack == null && effects[atk.effect]?.copiesOppActiveAttack == true) {
+            val copyable = defender.card.attacks
+            if (copyable.isEmpty()) {
+                val ended = endTurn(state)
+                return EngineResult(ended.state, events + ended.events)
+            }
+            val decision = PendingDecision.ChooseAttack(
+                side = state.activeSide,
+                prompt = com.mineralord.tcg.engine.model.LocalizedText(
+                    "Elige un ataque del Activo rival para copiarlo",
+                    "Choose one of your opponent's Active Pokémon's attacks",
+                ),
+                fromPokemon = defender.card.id,
+                attackNames = copyable.map { it.name.es },
+            )
+            val interaction = PendingInteraction(
+                decision = decision, remainingOps = emptyList(),
+                side = state.activeSide, sourceId = attacker.card.id, endsTurnOnResolve = true,
+            )
+            return EngineResult(state.copy(interaction = interaction), events, pending = listOf(decision))
+        }
 
         // Seadra — Tinta Cegadora: si el Activo debe lanzar monedas para poder atacar este
         // turno, se lanzan ahora; si sale cruz en alguna, el ataque "no se lleva a cabo"
@@ -623,6 +654,18 @@ class GameEngine(
         }
         validateChoice(interaction.decision, chosen)?.let { return EngineResult.reject(state, it) }
 
+        // Hackeo Genómico: elegir un ataque del Activo rival lo resuelve el MOTOR re-ejecutando ese
+        // ataque como propio (no el intérprete). El defensor sigue siendo el Activo rival.
+        val decision = interaction.decision
+        if (decision is PendingDecision.ChooseAttack) {
+            val idx = PendingDecision.decodeAttackIndex(chosen.first())
+                ?: return EngineResult.reject(state, "Ataque elegido no válido")
+            val source = state.sideState(state.activeSide.other()).active
+            val copied = source?.card?.attacks?.getOrNull(idx)
+                ?: return EngineResult.reject(state, "El ataque a copiar ya no está disponible")
+            return attack(state.copy(interaction = null), copied.name.es, overrideAttack = copied)
+        }
+
         val endsTurn = interaction.endsTurnOnResolve
         val res = interpreter.resolve(state, chosen, shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) })
         var working = res.state
@@ -679,6 +722,13 @@ class GameEngine(
             when {
                 chosen.size != 1 -> "Debes elegir exactamente 1 tipo"
                 chosen.single() !in decision.candidateIds -> "Tipo no válido"
+                else -> null
+            }
+        // ChooseAttack: exactamente 1 ataque, y debe estar entre los candidatos (Hackeo Genómico).
+        is PendingDecision.ChooseAttack ->
+            when {
+                chosen.size != 1 -> "Debes elegir exactamente 1 ataque"
+                chosen.single() !in decision.candidateIds -> "Ataque no válido"
                 else -> null
             }
     }
