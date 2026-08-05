@@ -78,6 +78,7 @@ class EffectInterpreter {
         state: GameState,
         chosen: List<CardId>,
         flip: () -> Boolean = { true },
+        rules: RuleHook = RuleHook.NONE,
         shuffle: (List<Card>) -> List<Card>,
     ): EffectResult {
         val interaction = state.interaction ?: return EffectResult(state, emptyList())
@@ -121,7 +122,7 @@ class EffectInterpreter {
             is PendingDecision.SearchCards ->
                 if (d.switchOppActive) applyErikaInvitation(d, chosen, cleared)
                 else if (d.fromOpponentHand) applyOpponentHandToBottom(d, chosen, cleared)
-                else applySearch(d, chosen, cleared, shuffle)
+                else applySearch(d, chosen, cleared, shuffle, rules)
             is PendingDecision.MoveEnergy -> applyMoveEnergy(d, chosen, cleared)
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
             is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle, flip)
@@ -1224,6 +1225,7 @@ class EffectInterpreter {
         chosen: List<CardId>,
         state: GameState,
         shuffle: (List<Card>) -> List<Card>,
+        rules: RuleHook = RuleHook.NONE,
     ): EffectResult {
         // onOpponent (Haunter — Regreso Espiritual): las zonas [from]/[destination] son del RIVAL.
         val side = if (d.onOpponent) d.side.other() else d.side
@@ -1251,6 +1253,10 @@ class EffectInterpreter {
                 seen.add(t)
             }
         }
+        // Regla de movimiento entre zonas ([RuleHook]): el host puede vetar mover ciertas cartas
+        // (p.ej. Sand Screen impide que los Entrenadores del descarte del rival vuelvan a su mazo).
+        // Las vetadas se quedan en su zona de origen. Genérico: el intérprete no conoce la carta.
+        picked = rules.allowedZoneMove(state, side, picked, d.from, d.destination)
         if (picked.isEmpty()) {
             // Mano/descarte: no se baraja nada. Mazo: se baraja al haberlo mirado.
             if (!fromDeck) return EffectResult(state, emptyList())

@@ -5,7 +5,9 @@ import com.mineralord.tcg.engine.model.Ability
 import com.mineralord.tcg.engine.model.ArtworkRefs
 import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.BasicEnergy
+import com.mineralord.tcg.engine.model.CardFilter
 import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.PendingInteraction
 import com.mineralord.tcg.engine.model.Damage as DamageModel
 import com.mineralord.tcg.engine.model.EffectId
 import com.mineralord.tcg.engine.model.EffectsDb
@@ -637,6 +639,59 @@ class Set151EffectsTest {
         assertFalse(res.state.awaitingDecision)
         assertEquals(CardId("butterfree"), res.state.player.active?.card?.id)   // sigue en juego
         assertEquals(Side.OPPONENT, res.state.activeSide)                        // el turno terminó
+    }
+
+    // --- Fase 61: Sandshrew «Pantalla de Arena» (RuleHook genérico descarte→mazo) ---
+    /** Estado con una decisión pendiente "recicla del descarte al mazo" (Entrenador + Energía). */
+    private fun recycleState(oppBench: List<PokemonInPlay>): GameState {
+        val dummy = attack("x", 0, EffectId("none"))
+        val trainerCard = TrainerCard(
+            CardId("sup"), LocalizedText("Apoyo", "Support"), set(), Rarity.COMMON, "G", art(),
+            TrainerKind.Supporter(), LocalizedText("", ""), EffectId("none"))
+        val base = duel(
+            PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy)),
+            PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy)),
+        )
+        return base.copy(
+            player = base.player.copy(discard = listOf(trainerCard, energy("de1", EnergyType.LIGHTNING)), deck = emptyList()),
+            opponent = base.opponent.copy(bench = oppBench),
+            interaction = PendingInteraction(
+                PendingDecision.SearchCards(
+                    Side.PLAYER, LocalizedText("Recicla", "Recycle"),
+                    from = Zone.DISCARD, filter = CardFilter(), destination = Zone.DECK, count = 2,
+                    candidates = listOf(CardId("sup"), CardId("de1")),
+                ),
+                remainingOps = emptyList(), side = Side.PLAYER, sourceId = null,
+            ),
+        )
+    }
+
+    @Test
+    fun `FASE 61 - Sand Screen impide que los Entrenadores del rival vuelvan a su mazo`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val sandshrew = PokemonInPlay(mon("sandshrew", 70, EnergyType.FIGHTING, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Pantalla de Arena", "Sand Screen"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-27", "Sand Screen")))))
+        val st = recycleState(oppBench = listOf(sandshrew))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.ResolveDecision(listOf(CardId("sup"), CardId("de1"))))
+        // El Entrenador queda vetado: sigue en el descarte, no vuelve al mazo.
+        assertTrue(res.state.player.discard.any { it.id == CardId("sup") })
+        assertFalse(res.state.player.deck.any { it.id == CardId("sup") })
+        // La Energía (no es Entrenador) sí vuelve al mazo.
+        assertTrue(res.state.player.deck.any { it.id == CardId("de1") })
+    }
+
+    @Test
+    fun `FASE 61 - sin Sand Screen el Entrenador vuelve al mazo con normalidad`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val plain = PokemonInPlay(mon("plain", 70, EnergyType.FIGHTING, dummy))
+        val st = recycleState(oppBench = listOf(plain))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.ResolveDecision(listOf(CardId("sup"), CardId("de1"))))
+        assertTrue(res.state.player.deck.any { it.id == CardId("sup") })      // sin veto, vuelve al mazo
+        assertFalse(res.state.player.discard.any { it.id == CardId("sup") })
     }
 
     @Test

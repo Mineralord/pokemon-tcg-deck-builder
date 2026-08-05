@@ -4,14 +4,13 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **251**  ·  Sin registrar: **7**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **195**  ·  totalmente ausentes: **3**.
+- Registradas en `EffectsDb`: **252**  ·  Sin registrar: **6**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **196**  ·  totalmente ausentes: **2**.
 
 ## Efectos únicos SIN implementar
 
 | Carta | Tipo | Nombre | Texto (español) |
 |---|---|---|---|
-| Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
 | Ámbar Viejo Antiguo (`sv3pt5-154`) | Pokémon | Amber Protection |  |
 | Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
 
@@ -172,6 +171,7 @@
 - Restos — Trainer: Trainer
 - Rhydon — Ataque: Taladro Carismático
 - Rhyhorn — Ataque: Oprimir
+- Sandshrew — Habilidad: Pantalla de Arena
 - Sandslash — Ataque: Retumbar
 - Sandslash — Ataque: Púas Desgarradoras
 - Scyther — Ataque: Tajo Útil

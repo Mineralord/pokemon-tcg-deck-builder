@@ -563,6 +563,13 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 61: Sandshrew «Pantalla de Arena» -----
+    // Habilidad pasiva: mientras Sandshrew esté en juego, las cartas de Entrenador del descarte del
+    // RIVAL no pueden volver a su mazo por efectos de sus Objetos/Partidarios. Lo aplica el RuleHook
+    // del motor (movimiento descarte→mazo del rival), no un caso especial en el intérprete.
+    put(abiKey("sv3pt5-27", "Sand Screen"),
+        Effect(passives = listOf(PassiveModifier(ModKind.BLOCK_OPPONENT_TRAINER_RECYCLE, 0, Target.SELF))))
+
     // ------------------- SET 151 (sv3pt5) — Fase 60: Butterfree «Adiós, Vuelo» -----
     // Elige 1 Pokémon de la Banca rival → se baraja en su mazo con lo unido; después Butterfree
     // (el atacante) se baraja en TU mazo con lo unido (Activo vacío → promoción). Sin Banca rival,

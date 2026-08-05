@@ -68,6 +68,12 @@ enum class ModKind {
     BLOCK_ABILITY, NO_RETREAT, NO_WEAKNESS,
     /** Mientras el portador está Activo, el RIVAL no puede jugar Estadios (Fósil Hélix Antiguo). */
     BLOCK_OPPONENT_STADIUM,
+    /**
+     * Mientras el portador está en juego, las cartas de Entrenador del descarte del RIVAL no pueden
+     * volver a su mazo por efectos de sus Objetos/Partidarios (Sandshrew — Pantalla de Arena). Lo
+     * aplica el [RuleHook] del motor filtrando los movimientos descarte→mazo del rival.
+     */
+    BLOCK_OPPONENT_TRAINER_RECYCLE,
 }
 
 data class PassiveModifier(

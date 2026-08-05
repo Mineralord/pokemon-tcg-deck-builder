@@ -72,6 +72,30 @@ class GameEngine(
 ) {
 
     /**
+     * Regla de movimiento entre zonas que el intérprete consulta antes de mover cartas (ver
+     * [com.mineralord.tcg.engine.effects.RuleHook]). Genérica: aquí se resuelven las habilidades
+     * pasivas en juego que restringen un movimiento. Hoy solo Sandshrew — Pantalla de Arena
+     * (los Entrenadores del descarte del rival no vuelven a su mazo), pero cualquier regla futura
+     * del mismo tipo se añade aquí sin tocar el intérprete.
+     */
+    private val ruleHook = com.mineralord.tcg.engine.effects.RuleHook { state, side, cards, from, to ->
+        if (from == com.mineralord.tcg.engine.model.Zone.DISCARD &&
+            to == com.mineralord.tcg.engine.model.Zone.DECK
+        ) {
+            val blocked = state.sideState(side.other()).allInPlay.any { pip ->
+                !isAbilityLocked(state, side.other(), pip) &&
+                    pip.card.effectiveAbilities(false).any { ab ->
+                        ab.effect?.let { effects[it] }?.passives?.any {
+                            it.mod == com.mineralord.tcg.engine.model.ModKind.BLOCK_OPPONENT_TRAINER_RECYCLE
+                        } == true
+                    }
+            }
+            if (blocked) cards.filterNot { it.supertype == com.mineralord.tcg.engine.model.Supertype.TRAINER }
+            else cards
+        } else cards
+    }
+
+    /**
      * Lanzamiento de moneda GATEADO por [GameState.coinsAsTailsSide] (Psyduck — Cavilar): si el
      * jugador activo es el marcado y estamos en su turno marcado, la moneda se considera CRUZ
      * (false) sin consultar el [rng]. En cualquier otro caso, moneda normal. Las monedas del
@@ -749,7 +773,7 @@ class GameEngine(
         }
 
         val endsTurn = interaction.endsTurnOnResolve
-        val res = interpreter.resolve(state, chosen, shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) })
+        val res = interpreter.resolve(state, chosen, shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) }, rules = ruleHook)
         var working = res.state
         val events = res.events.toMutableList()
 
