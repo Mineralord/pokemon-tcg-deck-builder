@@ -201,6 +201,14 @@ object CardMapper {
             else -> error("Subtipo de Entrenador desconocido: '$fase' (${dto.id})")
         }
         val text = dto.reglas.firstOrNull() ?: ""
+        // Objeto jugado como Pokémon (Fósiles Antiguos): un Entrenador con PS impresos. Se sintetiza
+        // el Pokémon Básico {C} en que se convierte reutilizando el mapeo de Pokémon (PS + Habilidad
+        // ya cableados), forzando tipo Incoloro (los fósiles traen `tipos` vacío) y Básico/Normal.
+        val playsAs = if (dto.ps != null) pokemon(dto).copy(
+            types = listOf(EnergyType.COLORLESS),
+            stage = Stage.Basic,
+            mechanic = PokemonMechanic.Normal,
+        ) else null
         return TrainerCard(
             id = CardId(dto.id),
             name = name(dto),
@@ -211,6 +219,7 @@ object CardMapper {
             kind = kind,
             text = LocalizedText(text, text),
             effect = EffectId(dto.id),       // el comportamiento se autora por id
+            playsAs = playsAs,
         )
     }
 

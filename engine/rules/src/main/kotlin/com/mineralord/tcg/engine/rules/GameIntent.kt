@@ -60,6 +60,13 @@ sealed interface GameIntent {
      */
     data class ResolveLuckyBonus(val chansey: CardId, val toBench: Boolean) : GameIntent
 
+    /**
+     * Descarta del juego un Objeto-jugado-como-Pokémon (Fósil Antiguo) que controlas, en tu turno
+     * ("en cualquier momento durante tu turno, puedes descartar esta carta del juego"). [target] es
+     * el id de instancia del fósil en juego (Activo o Banca).
+     */
+    data class DiscardFossil(val target: CardId) : GameIntent
+
     /** Termina el turno voluntariamente. */
     data object EndTurn : GameIntent
 }

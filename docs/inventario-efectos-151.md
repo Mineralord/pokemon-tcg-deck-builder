@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **246**  ·  Sin registrar: **12**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **190**  ·  totalmente ausentes: **8**.
+- Registradas en `EffectsDb`: **249**  ·  Sin registrar: **9**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **193**  ·  totalmente ausentes: **5**.
 
 ## Efectos únicos SIN implementar
 
@@ -14,16 +14,7 @@
 | Butterfree (`sv3pt5-12`) | Pokémon | Adiós, Vuelo | Elige 1 de los Pokémon en Banca de tu rival. Ese Pokémon y todas las cartas unidas a él se ponen en su baraja y se barajan todas. Después, pon este Pokémon y todas las cartas unidas a él en tu baraja, y baraja todas las cartas. Si tu rival no tiene ningún Pokémon en Banca, este ataque no hace nada. |
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
-| Fósil Domo Antiguo (`sv3pt5-152`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
-
-En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
-| Fósil Hélix Antiguo (`sv3pt5-153`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
-
-En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 | Ámbar Viejo Antiguo (`sv3pt5-154`) | Pokémon | Amber Protection |  |
-| Ámbar Viejo Antiguo (`sv3pt5-154`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
-
-En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 | Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
 
 ## Efectos con al menos un printing implementado
@@ -78,7 +69,9 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Flareon — Ataque: Llama Destructiva
 - Flareon — Ataque: Llamarada Luchadora
 - Fósil Domo Antiguo — Ataque: Domed Armor
+- Fósil Domo Antiguo — Trainer: Trainer
 - Fósil Hélix Antiguo — Ataque: Helical Swell
+- Fósil Hélix Antiguo — Trainer: Trainer
 - Gafas de Seguridad — Trainer: Trainer
 - Gengar — Ataque: Poltergeist
 - Gengar — Ataque: Embestida Hueca
@@ -218,3 +211,4 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Zapdos ex — Ataque: Relámpago Multidisparo
 - Zapdos ex — Habilidad: Flotación Voltaica
 - Zubat — Habilidad: Eco Revelador
+- Ámbar Viejo Antiguo — Trainer: Trainer

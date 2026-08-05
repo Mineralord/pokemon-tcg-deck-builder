@@ -1081,6 +1081,8 @@ class EffectInterpreter {
         var working = state
         val events = mutableListOf<GameEvent>()
         for (r in targets(op.target, src, state, chosenIds)) {
+            // Fósiles Antiguos: inmunes a todas las Condiciones Especiales.
+            if (r.immuneToSpecialConditions) continue
             working = updatePokemon(working, r.card.id) { it.copy(statuses = it.statuses + op.states) }
             op.states.forEach { events += GameEvent.StatusApplied(src.actingSide, r.card.id, it) }
         }

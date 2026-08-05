@@ -563,6 +563,17 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 58: Fósiles Antiguos (Objeto jugado como Pokémon) -----
+    // Domo (152), Hélix (153), Ámbar (154): se juegan en la Banca como un Pokémon Básico {C} 60 PS
+    // (inmune a Condiciones Especiales, no se retira, descartable del juego). El comportamiento vive
+    // en el MOTOR (GameEngine.playFossil / discardFossil, activado por TrainerCard.playsAs), NO en el
+    // DSL de efectos. Se registran estas claves VACÍAS solo para que el inventario los cuente; nunca
+    // se ejecutan (playTrainer intercepta los fósiles antes de resolver su Effect). Sus Habilidades
+    // (Caparazón Domo / Oleaje Helicoidal) van por separado con abiKey y sí funcionan en juego.
+    put(EffectId("sv3pt5-152"), Effect())
+    put(EffectId("sv3pt5-153"), Effect())
+    put(EffectId("sv3pt5-154"), Effect())
+
     // ------------------- SET 151 (sv3pt5) — Fase 57: Invitación de Erika (Partidario) -----
     // Tu rival enseña su mano; pones 1 Pokémon Básico de ella en su Banca y lo cambias al Activo
     // (su Activo anterior baja a la Banca). Pausa con la decisión sobre la mano rival.

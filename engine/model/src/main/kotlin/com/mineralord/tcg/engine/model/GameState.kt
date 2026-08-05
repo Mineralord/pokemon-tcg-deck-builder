@@ -115,10 +115,32 @@ data class PokemonInPlay(
      * Lo fija el intérprete al resolver la elección de tipo y lo LEE [GameEngine.attack] al calcular
      * el daño (vía [Damage.calculate]). Se REINICIA (null) cuando el Pokémon pasa de Activo a Banca. */
     val weaknessOverrideType: EnergyType? = null,
+    /**
+     * Entrenador ORIGINAL cuando este "Pokémon" es en realidad un Objeto jugado como Pokémon
+     * (Fósiles Antiguos sv3pt5-152/153/154: "juega esta carta como si fuera un Pokémon {C}
+     * Básico de 60 PS"). Si no es null, al dejar el juego (KO o descarte voluntario) es ESTA
+     * carta la que va al descarte, no el [PokemonCard] sintético con el que se representa en
+     * el tablero. null = Pokémon normal. */
+    val sourceCard: Card? = null,
+    /** true = inmune a todas las Condiciones Especiales (Fósiles Antiguos). Lo respeta el
+     *  intérprete al aplicar estados. */
+    val immuneToSpecialConditions: Boolean = false,
+    /** true = no puede retirarse NUNCA (Fósiles Antiguos). Lo comprueba [GameEngine.retreat]. */
+    val cannotRetreat: Boolean = false,
 ) {
     val remainingHp: Int get() = (card.hp - damage).coerceAtLeast(0)
     val isKnockedOut: Boolean get() = damage >= card.hp
     val attachedEnergyCount: Int get() = attachedEnergy.size
+
+    /** true si este "Pokémon" es en realidad un Entrenador jugado como Pokémon (fósil). */
+    val isPlayedAsPokemon: Boolean get() = sourceCard != null
+
+    /**
+     * Cartas que van al descarte cuando este Pokémon deja el juego (KO/descarte). Para un fósil
+     * es el Entrenador original ([sourceCard]); para un Pokémon normal, su carta y su pila de
+     * evolución. En ambos casos se suman Energías y Herramientas unidas. */
+    fun cardsWhenLeavingPlay(): List<Card> =
+        (sourceCard?.let { listOf(it) } ?: (evolutionStack + card)) + attachedEnergy + attachedTools
 }
 
 /** Estado completo de un jugador. */

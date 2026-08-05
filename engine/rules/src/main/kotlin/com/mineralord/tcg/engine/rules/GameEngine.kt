@@ -111,6 +111,7 @@ class GameEngine(
             is GameIntent.UseAbility -> useAbility(state, intent.pokemon, intent.abilityName)
             is GameIntent.ResolveDecision -> resolveDecision(state, intent.chosen)
             is GameIntent.ResolveLuckyBonus -> resolveLuckyBonus(state, intent.chansey, intent.toBench)
+            is GameIntent.DiscardFossil -> discardFossil(state, intent.target)
             GameIntent.EndTurn -> endTurn(state)
         }
     }
@@ -268,6 +269,10 @@ class GameEngine(
         // Restricción "no puede retirarse este turno" (Amarrar/Rumble y similares).
         if (active.cannotRetreatOnTurn == state.turn) {
             return EngineResult.reject(state, "${active.card.name.es} no puede retirarse este turno")
+        }
+        // Fósiles Antiguos: no pueden retirarse nunca.
+        if (active.cannotRetreat) {
+            return EngineResult.reject(state, "${active.card.name.es} no puede retirarse")
         }
         // Bloqueo por habilidad rival (Omastar Tentáculos Primordiales).
         if (retreatBlockedByOpponent(state, state.activeSide)) {
@@ -526,6 +531,8 @@ class GameEngine(
         val card = me.hand.firstOrNull { it.id == cardId }
             ?: return EngineResult.reject(state, "La carta no está en la mano")
         if (card !is TrainerCard) return EngineResult.reject(state, "Esa carta no es un Entrenador")
+        // Objeto jugado como Pokémon (Fósiles Antiguos): se coloca en la Banca, no va al descarte.
+        if (card.playsAs != null) return playFossil(state, card)
         val kind = card.kind
         if (kind is TrainerKind.Stadium) return playStadium(state, card)
         if (kind !is TrainerKind.Supporter && kind !is TrainerKind.Item) {
@@ -657,6 +664,57 @@ class GameEngine(
         working = handleKnockouts(working, state.activeSide, events)
         if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = res.pending)
         return EngineResult(working, events, pending = res.pending)
+    }
+
+    /**
+     * Fósil Antiguo (Objeto con [TrainerCard.playsAs]): se coloca en la Banca como el Pokémon
+     * Básico {C} 60 PS sintético, con `sourceCard` = el Entrenador (para devolverlo al descarte al
+     * dejar el juego), inmune a Condiciones Especiales y sin poder retirarse. El Pokémon sintético
+     * recibe el id de INSTANCIA del Entrenador (único), conservando el puntero de efecto de su
+     * Habilidad (que se cablea por id IMPRESO). Velocidad de Objeto: cualquier número por turno.
+     */
+    private fun playFossil(state: GameState, card: TrainerCard): EngineResult {
+        val me = state.activePlayer
+        if (me.bench.size >= BENCH_LIMIT) return EngineResult.reject(state, "La Banca está llena")
+        val mon = card.playsAs!!.copy(id = card.id)
+        val inPlay = PokemonInPlay(
+            card = mon,
+            sourceCard = card,
+            immuneToSpecialConditions = true,
+            cannotRetreat = true,
+            turnsInPlay = 0,
+        )
+        val updated = me.copy(hand = me.hand - card, bench = me.bench + inPlay)
+        return EngineResult(
+            withPlayer(state, updated),
+            listOf(GameEvent.PokemonPlayed(state.activeSide, card.id, toBench = true)),
+        )
+    }
+
+    /**
+     * Descarta del juego un Fósil Antiguo en juego ("en cualquier momento de tu turno"): el
+     * Entrenador ([PokemonInPlay.sourceCard]) va al descarte junto con lo que llevara unido. Si era
+     * el Activo, se marca la promoción pendiente (debes subir un Pokémon de la Banca); no se permite
+     * dejarte sin ningún Pokémon en juego.
+     */
+    private fun discardFossil(state: GameState, targetId: CardId): EngineResult {
+        val me = state.activePlayer
+        val mon = me.allInPlay.firstOrNull { it.card.id == targetId }
+            ?: return EngineResult.reject(state, "Ese Pokémon no está en juego")
+        if (!mon.isPlayedAsPokemon) return EngineResult.reject(state, "Solo puedes descartar del juego un Fósil")
+        val isActive = me.active?.card?.id == targetId
+        if (isActive && me.bench.isEmpty()) {
+            return EngineResult.reject(state, "No puedes descartar tu único Pokémon en juego")
+        }
+        val discarded = mon.cardsWhenLeavingPlay()
+        val updated = me.copy(
+            active = if (isActive) null else me.active,
+            bench = me.bench.filterNot { it.card.id == targetId },
+            discard = me.discard + discarded,
+        )
+        var next = withPlayer(state, updated)
+        if (isActive) next = next.copy(pendingPromotion = next.pendingPromotion + state.activeSide)
+        return EngineResult(next, listOf(GameEvent.CardsDiscarded(state.activeSide, discarded.size)))
     }
 
     private fun resolveDecision(state: GameState, chosen: List<CardId>): EngineResult {
@@ -1061,11 +1119,11 @@ class GameEngine(
         )
         if (prizesToTake > 0) events += GameEvent.PrizeTaken(attackerSide, prizesToTake)
 
-        // El noqueado va al descarte (con lo que llevaba encima).
-        val koalition = active.evolutionStack + active.card
+        // El noqueado va al descarte (con lo que llevaba encima). Si es un Fósil (Objeto jugado como
+        // Pokémon), va el Entrenador original en vez del Pokémon sintético (cardsWhenLeavingPlay).
         val targetAfter = target.copy(
             active = null,
-            discard = target.discard + koalition + active.attachedEnergy + active.attachedTools,
+            discard = target.discard + active.cardsWhenLeavingPlay(),
         )
 
         var next = state
@@ -1383,12 +1441,16 @@ class GameEngine(
         // Retirarse si hay Activo con energía suficiente (coste efectivo, considerando
         // habilidades de Flotación/Travesía) y no está bloqueado por una habilidad rival.
         val active = me.active
-        if (active != null && active.cannotRetreatOnTurn != state.turn &&
+        if (active != null && !active.cannotRetreat && active.cannotRetreatOnTurn != state.turn &&
             !retreatBlockedByOpponent(state, state.activeSide) &&
             active.attachedEnergyCount >= effectiveRetreatCost(state, state.activeSide)
         ) {
             me.bench.forEach { intents += GameIntent.Retreat(it.card.id) }
         }
+
+        // Descartar del juego un Fósil Antiguo en juego (Objeto jugado como Pokémon).
+        me.allInPlay.filter { it.isPlayedAsPokemon }
+            .forEach { intents += GameIntent.DiscardFossil(it.card.id) }
 
         // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
         // o si el Activo está restringido este turno por Jet Wing y similares).
@@ -1399,6 +1461,12 @@ class GameEngine(
 
         // Jugar Entrenadores (Apoyo/Objeto) con efecto registrado.
         me.hand.filterIsInstance<TrainerCard>().forEach { trainer ->
+            // Fósil Antiguo (Objeto jugado como Pokémon): no tiene Effect registrado; su jugabilidad
+            // depende solo de que quede hueco en la Banca.
+            if (trainer.playsAs != null) {
+                if (me.bench.size < BENCH_LIMIT) intents += GameIntent.PlayTrainer(trainer.id)
+                return@forEach
+            }
             val kind = trainer.kind
             val effect = effects[trainer.effect]
             val playable = (kind is TrainerKind.Item) ||

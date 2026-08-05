@@ -201,6 +201,13 @@ data class TrainerCard(
     val kind: TrainerKind,
     val text: LocalizedText,
     val effect: EffectId,
+    /**
+     * Si no es null, este Objeto se JUEGA como un Pokémon (Fósiles Antiguos sv3pt5-152/153/154:
+     * "juega esta carta como si fuera un Pokémon {C} Básico de 60 PS"). El [PokemonCard] describe
+     * en qué se convierte en el tablero (PS, tipo, Habilidad). El motor lo coloca en la Banca como
+     * un [PokemonInPlay] con `sourceCard` = este Entrenador; los rasgos comunes de fósil (inmune a
+     * Condiciones Especiales, no se retira) los fija el motor al colocarlo. null = Objeto normal. */
+    val playsAs: PokemonCard? = null,
 ) : Card {
     override val supertype get() = Supertype.TRAINER
 }

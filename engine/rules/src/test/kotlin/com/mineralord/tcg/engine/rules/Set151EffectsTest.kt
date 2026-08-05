@@ -32,6 +32,7 @@ import com.mineralord.tcg.engine.model.Zone
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -493,6 +494,103 @@ class Set151EffectsTest {
         assertEquals(CardId("foeBasic"), done.state.opponent.active!!.card.id)
         assertTrue(done.state.opponent.bench.any { it.card.id == CardId("foeActive") })
         assertFalse(done.state.opponent.hand.any { it.id == CardId("foeBasic") })
+    }
+
+    // --- Fase 58: Fósiles Antiguos (Objeto jugado como Pokémon) ---
+    private fun domeFossilPokemon() = PokemonCard(
+        id = CardId("sv3pt5-152"), name = LocalizedText("Fósil Domo Antiguo", "Antique Dome Fossil"),
+        set = set(), rarity = Rarity.COMMON, regulationMark = "G", artwork = art(),
+        stage = Stage.Basic, mechanic = PokemonMechanic.Normal, hp = 60,
+        types = listOf(EnergyType.COLORLESS), evolvesFrom = null, abilities = emptyList(),
+        attacks = emptyList(), weaknesses = emptyList(), resistances = emptyList(),
+        retreatCost = emptyList(), rulesText = emptyList(),
+    )
+
+    /** Fósil en la mano, con id de instancia [id]; al jugarlo se coloca en la Banca. */
+    private fun domeFossil(id: String) = TrainerCard(
+        CardId(id), LocalizedText("Fósil Domo Antiguo", "Antique Dome Fossil"), set(),
+        Rarity.COMMON, "G", art(), TrainerKind.Item(), LocalizedText("", ""),
+        EffectId("sv3pt5-152"), playsAs = domeFossilPokemon(),
+    )
+
+    /** Fósil ya en juego (Objeto jugado como Pokémon) con id de instancia [id]. */
+    private fun domeFossilInPlay(id: String) = PokemonInPlay(
+        card = domeFossilPokemon().copy(id = CardId(id)), sourceCard = domeFossil(id),
+        immuneToSpecialConditions = true, cannotRetreat = true,
+    )
+
+    @Test
+    fun `FASE 58 - Fosil se juega en la Banca como Pokemon y sale de la mano`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val base = duel(PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy)),
+            PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy)))
+        val st = base.copy(player = base.player.copy(hand = listOf(domeFossil("dome"))))
+
+        val played = GameEngine(SeededRng(1)).apply(st, GameIntent.PlayTrainer(CardId("dome")))
+        assertTrue(played.accepted)
+        val f = played.state.player.bench.firstOrNull { it.card.id == CardId("dome") }
+        assertNotNull(f)
+        assertTrue(f!!.isPlayedAsPokemon)
+        assertTrue(f.immuneToSpecialConditions)
+        assertTrue(f.cannotRetreat)
+        assertFalse(played.state.player.hand.any { it.id == CardId("dome") })
+    }
+
+    @Test
+    fun `FASE 58 - Fosil es inmune a Condiciones Especiales pero recibe dano`() {
+        // Poison Horn (sv3pt5-29): 0 daño base + Envenena al Activo rival. El fósil no se envenena.
+        val poison = attack("Poison Horn", 0, EffectsDb.atkKey("sv3pt5-29", "Poison Horn"))
+        val attacker = PokemonInPlay(mon("attacker", 100, EnergyType.GRASS, poison))
+        val fossil = domeFossilInPlay("dome")
+        val foeBench = PokemonInPlay(mon("foeBench", 100, EnergyType.WATER, attack("x", 0, EffectId("none"))))
+        val base = duel(attacker, fossil)
+        val st = base.copy(opponent = base.opponent.copy(bench = listOf(foeBench)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Poison Horn"))
+        assertTrue(res.state.opponent.active!!.statuses.isEmpty())   // inmune: no queda Envenenado
+    }
+
+    @Test
+    fun `FASE 58 - Fosil noqueado devuelve el Entrenador al descarte y da 1 premio`() {
+        val hit = attack("Hit", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("attacker", 100, EnergyType.COLORLESS, hit))
+        val fossil = domeFossilInPlay("dome")   // 60 PS
+        val foeBench = PokemonInPlay(mon("foeBench", 100, EnergyType.WATER, hit))
+        val base = duel(attacker, fossil)
+        val st = base.copy(opponent = base.opponent.copy(bench = listOf(foeBench)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Hit"))
+        // El Entrenador (Objeto) va al descarte, no un PokemonCard sintético.
+        val discarded = res.state.opponent.discard.firstOrNull { it.id == CardId("dome") }
+        assertNotNull(discarded)
+        assertTrue(discarded is TrainerCard)
+        assertEquals(5, res.state.player.prizesRemaining)          // cogió 1 premio
+    }
+
+    @Test
+    fun `FASE 58 - Fosil no puede retirarse`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val fossilActive = domeFossilInPlay("dome")
+        val bench = PokemonInPlay(mon("bench", 60, EnergyType.COLORLESS, dummy))
+        val base = duel(fossilActive, PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy)))
+        val st = base.copy(player = base.player.copy(bench = listOf(bench)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Retreat(CardId("bench")))
+        assertFalse(res.accepted)
+    }
+
+    @Test
+    fun `FASE 58 - Fosil se puede descartar del juego en tu turno`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val fossil = domeFossilInPlay("dome")
+        val base = duel(PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy)),
+            PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy)))
+        val st = base.copy(player = base.player.copy(bench = listOf(fossil)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.DiscardFossil(CardId("dome")))
+        assertTrue(res.accepted)
+        assertFalse(res.state.player.bench.any { it.card.id == CardId("dome") })
+        assertTrue(res.state.player.discard.any { it.id == CardId("dome") && it is TrainerCard })
     }
 
     @Test
