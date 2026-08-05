@@ -83,6 +83,12 @@ class GameEngine(
 
     fun apply(state: GameState, intent: GameIntent): EngineResult {
         if (state.isOver) return EngineResult.reject(state, "La partida ha terminado")
+        // Regalo Fortuito de Chansey: el atacante debe terminar de coger premios (decidir
+        // mano/Banca) ANTES de que el rival promueva o de que el turno avance.
+        if (state.awaitingLuckyBonus) {
+            return if (intent is GameIntent.ResolveLuckyBonus) resolveLuckyBonus(state, intent.chansey, intent.toBench)
+            else EngineResult.reject(state, "Debes decidir si pones a Chansey en tu Banca (Regalo Fortuito)")
+        }
         // Tras un KO hay que elegir el nuevo Activo ANTES que nada: mientras haya
         // promociones pendientes, solo se acepta PromoteActive (de un lado pendiente).
         if (state.awaitingPromotion) {
@@ -104,6 +110,7 @@ class GameEngine(
             is GameIntent.PlayTrainer -> playTrainer(state, intent.card)
             is GameIntent.UseAbility -> useAbility(state, intent.pokemon, intent.abilityName)
             is GameIntent.ResolveDecision -> resolveDecision(state, intent.chosen)
+            is GameIntent.ResolveLuckyBonus -> resolveLuckyBonus(state, intent.chansey, intent.toBench)
             GameIntent.EndTurn -> endTurn(state)
         }
     }
@@ -503,9 +510,9 @@ class GameEngine(
 
         if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = pending)
 
-        // Si el efecto dejó una decisión pendiente, el turno sigue abierto hasta
-        // que se resuelva; sólo entonces se cierra.
-        if (working.awaitingDecision) return EngineResult(working, events, pending = pending)
+        // Si el efecto dejó una decisión pendiente (o un Regalo Fortuito de Chansey por resolver),
+        // el turno sigue abierto hasta que se resuelva; sólo entonces se cierra.
+        if (working.awaitingDecision || working.awaitingLuckyBonus) return EngineResult(working, events, pending = pending)
 
         // Atacar termina el turno.
         val ended = endTurn(working)
@@ -609,6 +616,9 @@ class GameEngine(
         }
         if (effect.triggerOnActiveDamaged || effect.triggerOnActiveKO) {
             return EngineResult.reject(state, "Esta habilidad se activa sola al recibir daño")
+        }
+        if (effect.luckyBonusOnPrized) {
+            return EngineResult.reject(state, "Esta habilidad se activa sola al cogerla de tus Premios")
         }
         if (ability.kind.suppressibleByAbilityLock && isAbilityLocked(state, state.activeSide, mon)) {
             return EngineResult.reject(state, "Las Habilidades de ${mon.card.name.es} están bloqueadas")
@@ -1078,10 +1088,95 @@ class GameEngine(
             events += GameEvent.GameWon(attackerSide)
             return next.copy(winner = attackerSide, phase = Phase.GAME_OVER)
         }
+        // Chansey — Regalo Fortuito: si el ATACANTE (en su turno) cogió ≥1 Chansey de sus Premios
+        // y su Banca no está llena, deja pendiente la decisión mano/Banca (con moneda → +1 Premio).
+        // Se resuelve ANTES de que el rival promueva. luckyBonusEndsTurn = byAttack (un ataque cierra
+        // el turno al resolverla; una habilidad/evolución que noqueó, no).
+        if (attackerSide == state.activeSide) {
+            val chanseys = taken.filter { cardHasLuckyBonus(it) }.map { it.id }
+            if (chanseys.isNotEmpty() && attackerAfter.bench.size < BENCH_LIMIT) {
+                next = next.copy(
+                    pendingLuckyBonus = next.pendingLuckyBonus + chanseys,
+                    luckyBonusSide = attackerSide,
+                    luckyBonusEndsTurn = byAttack,
+                )
+            }
+        }
         // Con Banca: el lado Noqueado ELIGE su nuevo Activo (arrastrando una carta de la
         // Banca al centro). No se auto-promueve el primero: se marca la promoción pendiente
         // y el motor bloquea el resto de acciones hasta resolverla.
         return next.copy(pendingPromotion = next.pendingPromotion + koSide)
+    }
+
+    /** True si [card] es un Pokémon con una Habilidad Regalo Fortuito registrada (Chansey). */
+    private fun cardHasLuckyBonus(card: com.mineralord.tcg.engine.model.Card): Boolean =
+        card is PokemonCard && card.abilities.any { ab ->
+            ab.effect?.let { effects[it]?.luckyBonusOnPrized } == true
+        }
+
+    /**
+     * Resuelve el Regalo Fortuito de Chansey (Lucky Bonus sv3pt5-113). [toBench]=false la deja en
+     * la mano (ya está). [toBench]=true la mueve de la mano a la Banca (si hay hueco), lanza 1 moneda
+     * y con cara coge 1 Premio más (que puede a su vez ser otra Chansey → nueva decisión). Al vaciar
+     * la cola, si vino de un ataque ([luckyBonusEndsTurn]) cierra el turno.
+     */
+    private fun resolveLuckyBonus(state: GameState, chanseyId: CardId, toBench: Boolean): EngineResult {
+        val side = state.luckyBonusSide
+            ?: return EngineResult.reject(state, "No hay ningún Regalo Fortuito pendiente")
+        if (chanseyId !in state.pendingLuckyBonus) {
+            return EngineResult.reject(state, "Esa Chansey no está pendiente de Regalo Fortuito")
+        }
+        var next = state.copy(pendingLuckyBonus = state.pendingLuckyBonus - chanseyId)
+        val events = mutableListOf<GameEvent>()
+
+        if (toBench) {
+            val ps = state.sideState(side)
+            val card = ps.hand.firstOrNull { it.id == chanseyId } as? PokemonCard
+            if (card != null && ps.bench.size < BENCH_LIMIT) {
+                next = withPlayer(next, ps.copy(hand = ps.hand - card, bench = ps.bench + PokemonInPlay(card)), side)
+                events += GameEvent.PokemonPlayed(side, chanseyId, toBench = true)
+                // Moneda gateada: con cara, 1 Premio más.
+                val heads = gatedFlip(next)
+                events += GameEvent.CoinFlipped(side, heads)
+                if (heads) {
+                    val taker = next.sideState(side)
+                    val extra = taker.prizes.take(1)
+                    if (extra.isNotEmpty()) {
+                        val afterPrize = taker.copy(
+                            prizes = taker.prizes - extra.toSet(),
+                            prizesRemaining = (taker.prizesRemaining - 1).coerceAtLeast(0),
+                            hand = taker.hand + extra,
+                        )
+                        next = withPlayer(next, afterPrize, side)
+                        events += GameEvent.PrizeTaken(side, 1)
+                        if (afterPrize.prizesRemaining <= 0) {
+                            events += GameEvent.GameWon(side)
+                            return EngineResult(
+                                next.copy(winner = side, phase = Phase.GAME_OVER, pendingLuckyBonus = emptyList()),
+                                events,
+                            )
+                        }
+                        // El Premio extra podría ser OTRA Chansey → encadena su decisión.
+                        val extraCard = extra.first()
+                        if (side == next.activeSide && cardHasLuckyBonus(extraCard) &&
+                            next.sideState(side).bench.size < BENCH_LIMIT
+                        ) {
+                            next = next.copy(pendingLuckyBonus = next.pendingLuckyBonus + extraCard.id)
+                        }
+                    }
+                }
+            }
+        }
+
+        // ¿Quedan más Chansey pendientes? Si no, limpia y (si vino de ataque) cierra el turno.
+        if (next.pendingLuckyBonus.isNotEmpty()) return EngineResult(next, events)
+        val endsTurn = next.luckyBonusEndsTurn
+        next = next.copy(luckyBonusSide = null, luckyBonusEndsTurn = false)
+        if (endsTurn) {
+            val ended = endTurn(next)
+            return EngineResult(ended.state, events + ended.events)
+        }
+        return EngineResult(next, events)
     }
 
     /**
@@ -1245,6 +1340,12 @@ class GameEngine(
      */
     fun legalIntents(state: GameState): List<GameIntent> {
         if (state.isOver) return emptyList()
+        // Regalo Fortuito pendiente: la única jugada legal es decidir mano/Banca para cada Chansey.
+        if (state.awaitingLuckyBonus) {
+            return state.pendingLuckyBonus.flatMap { id ->
+                listOf(GameIntent.ResolveLuckyBonus(id, toBench = true), GameIntent.ResolveLuckyBonus(id, toBench = false))
+            }
+        }
         // Promoción pendiente: la única jugada legal es subir un Básico de la Banca del
         // lado Noqueado. Se ofrecen todas las opciones (la IA/UI elige cuál).
         if (state.awaitingPromotion) {

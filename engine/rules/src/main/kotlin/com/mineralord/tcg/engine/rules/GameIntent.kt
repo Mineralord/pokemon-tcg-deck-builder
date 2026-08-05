@@ -31,6 +31,13 @@ sealed interface GameIntent {
     /** Retira el Activo a la Banca pagando el coste de retirada. */
     data class Retreat(val benchTarget: CardId) : GameIntent
 
+    /**
+     * Promueve un Pokémon de la Banca al puesto Activo tras un KO. Solo es legal
+     * mientras el lado dueño de [benchTarget] esté en [GameState.pendingPromotion]
+     * (su Activo fue Noqueado y debe elegir el reemplazo).
+     */
+    data class PromoteActive(val benchTarget: CardId) : GameIntent
+
     /** El Activo ataca; en el TCG, atacar termina el turno. */
     data class Attack(val attackName: String) : GameIntent
 
@@ -45,6 +52,13 @@ sealed interface GameIntent {
 
     /** Resuelve la decisión pendiente eligiendo las cartas [chosen]. */
     data class ResolveDecision(val chosen: List<CardId>) : GameIntent
+
+    /**
+     * Resuelve el Regalo Fortuito de Chansey (Lucky Bonus): [toBench] = true la pone en tu Banca
+     * (y lanza 1 moneda: cara = +1 Premio); false la deja en tu mano. Solo es legal mientras
+     * [chansey] esté en [GameState.pendingLuckyBonus].
+     */
+    data class ResolveLuckyBonus(val chansey: CardId, val toBench: Boolean) : GameIntent
 
     /** Termina el turno voluntariamente. */
     data object EndTurn : GameIntent

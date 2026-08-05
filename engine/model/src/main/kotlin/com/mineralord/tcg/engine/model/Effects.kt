@@ -714,6 +714,13 @@ data class Effect(
      * rival; al resolver, [GameEngine] re-ejecuta el ataque elegido como si lo usara este Pokémon. */
     val copiesOppActiveAttack: Boolean = false,
     /**
+     * Habilidad que se dispara al COGER a este Pokémon como carta de Premio durante tu turno
+     * (Chansey — Regalo Fortuito sv3pt5-113): si tu Banca no está llena, antes de ponerlo en tu
+     * mano, puedes ponerlo en tu Banca; si lo haces, lanza 1 moneda y con cara coges 1 Premio más.
+     * No es manual: [GameEngine.handleKnockouts] la detecta al repartir premios y PAUSA con
+     * [GameState.pendingLuckyBonus] (resuelta por [GameIntent.ResolveLuckyBonus]). */
+    val luckyBonusOnPrized: Boolean = false,
+    /**
      * Si es true, esta habilidad manual solo puede usarse durante TU primer turno (Ditto —
      * Inicio Transformador sv3pt5-132: "Una vez durante tu primer turno…"). Como una habilidad
      * solo se activa en tu propio turno, el primer turno propio equivale a `state.turn <= 2`

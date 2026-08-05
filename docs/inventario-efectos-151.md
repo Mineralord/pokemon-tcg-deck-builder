@@ -4,8 +4,8 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **227**  ·  Sin registrar: **31**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **181**  ·  totalmente ausentes: **17**.
+- Registradas en `EffectsDb`: **228**  ·  Sin registrar: **30**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **182**  ·  totalmente ausentes: **16**.
 
 ## Efectos únicos SIN implementar
 
@@ -18,7 +18,6 @@
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
 | Haunter (`sv3pt5-93`) | Pokémon | Espíritu Retorno | Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes poner 1 carta de Partidario de la pila de descartes de tu rival en su mano. |
-| Chansey (`sv3pt5-113`) | Pokémon | Regalo Fortuito | Si has cogido este Pokémon de entre las cartas de Premio que están boca abajo durante tu turno y tu Banca no está llena, antes de ponerlo en tu mano, puedes ponerlo en tu Banca. Si pones este Pokémon en tu Banca de esta manera, lanza 1 moneda. Si sale cara, coge 1 carta de Premio más. |
 | Mew ex (`sv3pt5-151`) | Pokémon | Hackeo Genoma | Elige uno de los ataques del Pokémon Activo de tu rival y úsalo para este ataque. |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Pokémon | Domed Armor |  |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
@@ -60,6 +59,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Charizard ex — Ataque: Vórtice Explosivo
 - Charmander — Ataque: Destrucción Abrasadora
 - Charmeleon — Ataque: Llamarada
+- Chansey — Habilidad: Regalo Fortuito
 - Cinturón Rígido — Trainer: Trainer
 - Clefable — Ataque: Señuelo
 - Clefable — Ataque: Más Luna

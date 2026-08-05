@@ -16,10 +16,12 @@ sealed interface GameIntentDto {
     @Serializable data class AttachEnergy(val energy: String, val to: String) : GameIntentDto
     @Serializable data class AttachTool(val tool: String, val target: String) : GameIntentDto
     @Serializable data class Retreat(val benchTarget: String) : GameIntentDto
+    @Serializable data class PromoteActive(val benchTarget: String) : GameIntentDto
     @Serializable data class Attack(val attackName: String) : GameIntentDto
     @Serializable data class PlayTrainer(val card: String) : GameIntentDto
     @Serializable data class UseAbility(val pokemon: String, val abilityName: String) : GameIntentDto
     @Serializable data class ResolveDecision(val chosen: List<String>) : GameIntentDto
+    @Serializable data class ResolveLuckyBonus(val chansey: String, val toBench: Boolean) : GameIntentDto
     @Serializable data object EndTurn : GameIntentDto
 }
 
@@ -29,10 +31,12 @@ fun GameIntent.toDto(): GameIntentDto = when (this) {
     is GameIntent.AttachEnergy -> GameIntentDto.AttachEnergy(energy.raw, to.raw)
     is GameIntent.AttachTool -> GameIntentDto.AttachTool(tool.raw, target.raw)
     is GameIntent.Retreat -> GameIntentDto.Retreat(benchTarget.raw)
+    is GameIntent.PromoteActive -> GameIntentDto.PromoteActive(benchTarget.raw)
     is GameIntent.Attack -> GameIntentDto.Attack(attackName)
     is GameIntent.PlayTrainer -> GameIntentDto.PlayTrainer(card.raw)
     is GameIntent.UseAbility -> GameIntentDto.UseAbility(pokemon.raw, abilityName)
     is GameIntent.ResolveDecision -> GameIntentDto.ResolveDecision(chosen.map { it.raw })
+    is GameIntent.ResolveLuckyBonus -> GameIntentDto.ResolveLuckyBonus(chansey.raw, toBench)
     GameIntent.EndTurn -> GameIntentDto.EndTurn
 }
 
@@ -42,10 +46,12 @@ fun GameIntentDto.toIntent(): GameIntent = when (this) {
     is GameIntentDto.AttachEnergy -> GameIntent.AttachEnergy(CardId(energy), CardId(to))
     is GameIntentDto.AttachTool -> GameIntent.AttachTool(CardId(tool), CardId(target))
     is GameIntentDto.Retreat -> GameIntent.Retreat(CardId(benchTarget))
+    is GameIntentDto.PromoteActive -> GameIntent.PromoteActive(CardId(benchTarget))
     is GameIntentDto.Attack -> GameIntent.Attack(attackName)
     is GameIntentDto.PlayTrainer -> GameIntent.PlayTrainer(CardId(card))
     is GameIntentDto.UseAbility -> GameIntent.UseAbility(CardId(pokemon), abilityName)
     is GameIntentDto.ResolveDecision -> GameIntent.ResolveDecision(chosen.map { CardId(it) })
+    is GameIntentDto.ResolveLuckyBonus -> GameIntent.ResolveLuckyBonus(CardId(chansey), toBench)
     GameIntentDto.EndTurn -> GameIntent.EndTurn
 }
 
@@ -74,6 +80,13 @@ sealed interface NetMessage {
      *  [GameState.toDtoFor]). */
     @Serializable
     data class Snapshot(val seq: Int, val state: GameStateDto) : NetMessage
+
+    /** Guest → host: pide que le reenvíen el snapshot ACTUAL (tras un corte o hueco).
+     *  El host responde con un nuevo [Snapshot]; es idempotente en el guest, que
+     *  descarta los de `seq` menor al último visto. Transport-agnóstico: indispensable
+     *  para transportes NO durables (p. ej. Nearby, que pierde paquetes sin cola). */
+    @Serializable
+    data object RequestSnapshot : NetMessage
 
     // ---- Ceremonia inicial (host-autoritativo) ----
 

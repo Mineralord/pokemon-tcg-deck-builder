@@ -405,6 +405,74 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 56 - Chansey Regalo Fortuito a la Banca con cara coge un Premio extra`() {
+        val hit = attack("Hit", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("attacker", 100, EnergyType.COLORLESS, hit))
+        val foeActive = PokemonInPlay(mon("foe", 60, EnergyType.WATER, hit))
+        val foeBench = PokemonInPlay(mon("foeBench", 60, EnergyType.WATER, hit))
+        val chansey = mon("chansey", 110, EnergyType.COLORLESS, hit).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Regalo Fortuito", "Lucky Bonus"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-113", "Lucky Bonus"))))
+        val player = PlayerState(
+            side = Side.PLAYER, active = attacker,
+            deck = (1..3).map { energy("d$it", EnergyType.LIGHTNING) },
+            prizes = listOf(chansey) + (1..5).map { energy("pz$it", EnergyType.LIGHTNING) },
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = foeActive, bench = listOf(foeBench),
+            deck = (1..3).map { energy("od$it", EnergyType.WATER) },
+            prizes = (1..6).map { energy("opz$it", EnergyType.WATER) },
+        )
+        val st = GameState(player, opponent, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+
+        // Atacar noquea al Activo rival y cojo a Chansey de Premios → pausa Regalo Fortuito.
+        val used = GameEngine(FixedRng(true)).apply(st, GameIntent.Attack("Hit"))
+        assertTrue(used.state.awaitingLuckyBonus)
+        assertEquals(Side.PLAYER, used.state.activeSide)         // el turno NO ha terminado aún
+        assertTrue(used.state.pendingLuckyBonus.contains(CardId("chansey")))
+        assertTrue(used.state.player.hand.any { it.id == CardId("chansey") })  // por ahora, en la mano
+
+        // Decido ponerla en la Banca → moneda cara → +1 Premio; se cierra el turno.
+        val done = GameEngine(FixedRng(true)).apply(used.state, GameIntent.ResolveLuckyBonus(CardId("chansey"), toBench = true))
+        assertTrue(done.state.player.bench.any { it.card.id == CardId("chansey") })
+        assertFalse(done.state.player.hand.any { it.id == CardId("chansey") })
+        assertEquals(4, done.state.player.prizesRemaining)       // 6 − 1 base − 1 extra = 4
+        assertFalse(done.state.awaitingLuckyBonus)
+    }
+
+    @Test
+    fun `FASE 56 - Chansey Regalo Fortuito en la mano no coge Premio extra`() {
+        val hit = attack("Hit", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("attacker", 100, EnergyType.COLORLESS, hit))
+        val foeActive = PokemonInPlay(mon("foe", 60, EnergyType.WATER, hit))
+        val foeBench = PokemonInPlay(mon("foeBench", 60, EnergyType.WATER, hit))
+        val chansey = mon("chansey", 110, EnergyType.COLORLESS, hit).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Regalo Fortuito", "Lucky Bonus"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-113", "Lucky Bonus"))))
+        val player = PlayerState(
+            side = Side.PLAYER, active = attacker,
+            deck = (1..3).map { energy("d$it", EnergyType.LIGHTNING) },
+            prizes = listOf(chansey) + (1..5).map { energy("pz$it", EnergyType.LIGHTNING) },
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = foeActive, bench = listOf(foeBench),
+            deck = (1..3).map { energy("od$it", EnergyType.WATER) },
+            prizes = (1..6).map { energy("opz$it", EnergyType.WATER) },
+        )
+        val st = GameState(player, opponent, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+
+        val used = GameEngine(FixedRng(true)).apply(st, GameIntent.Attack("Hit"))
+        // Decido dejarla en la mano → sin moneda ni Premio extra; se cierra el turno.
+        val done = GameEngine(FixedRng(true)).apply(used.state, GameIntent.ResolveLuckyBonus(CardId("chansey"), toBench = false))
+        assertTrue(done.state.player.hand.any { it.id == CardId("chansey") })
+        assertFalse(done.state.player.bench.any { it.card.id == CardId("chansey") })
+        assertEquals(5, done.state.player.prizesRemaining)       // solo el Premio base
+        assertFalse(done.state.awaitingLuckyBonus)
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

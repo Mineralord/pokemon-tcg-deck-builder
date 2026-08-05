@@ -563,6 +563,12 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 56: Chansey «Regalo Fortuito» -----
+    // Al coger a esta Chansey de tus Premios en tu turno con la Banca no llena, puedes ponerla
+    // en la Banca (moneda → cara = +1 Premio) en vez de en la mano. La dispara GameEngine al
+    // repartir premios (no es manual): pausa con GameState.pendingLuckyBonus.
+    put(abiKey("sv3pt5-113", "Lucky Bonus"), Effect(luckyBonusOnPrized = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 55: Ditto «Inicio Transformador» -----
     // Una vez durante tu PRIMER turno, si está en el Activo, busca 1 Pokémon Básico del mazo
     // (excepto Ditto); descarta a Ditto y todo lo unido a él, y pon el elegido en su lugar; baraja.

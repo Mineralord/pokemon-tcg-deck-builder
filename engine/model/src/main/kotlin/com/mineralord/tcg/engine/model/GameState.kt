@@ -190,6 +190,16 @@ data class GameState(
      */
     val coinsAsTailsSide: Side? = null,
     val coinsAsTailsOnTurn: Int? = null,
+    /**
+     * Chansey — Regalo Fortuito (Lucky Bonus sv3pt5-113): ids de las Chansey que acabas de coger
+     * de tus Premios durante tu turno (ya en la mano de [luckyBonusSide]) y sobre las que puedes
+     * decidir ponerlas en la Banca (con moneda → posible +1 Premio) en vez de en la mano. Mientras
+     * no esté vacío, el motor solo acepta [GameIntent.ResolveLuckyBonus]. Se resuelven ANTES que
+     * [pendingPromotion] (el atacante termina de coger premios antes de que el rival promueva). */
+    val pendingLuckyBonus: List<CardId> = emptyList(),
+    val luckyBonusSide: Side? = null,
+    /** true si resolver el último Regalo Fortuito pendiente debe cerrar el turno (vino de un ataque). */
+    val luckyBonusEndsTurn: Boolean = false,
 ) {
     fun sideState(side: Side): PlayerState = if (side == Side.PLAYER) player else opponent
     val activePlayer: PlayerState get() = sideState(activeSide)
@@ -200,4 +210,7 @@ data class GameState(
 
     /** Hay al menos un lado que debe elegir su nuevo Pokémon Activo tras un KO. */
     val awaitingPromotion: Boolean get() = pendingPromotion.isNotEmpty()
+
+    /** Hay al menos una Chansey cogida de Premios pendiente de la decisión Regalo Fortuito. */
+    val awaitingLuckyBonus: Boolean get() = pendingLuckyBonus.isNotEmpty()
 }
