@@ -4,26 +4,19 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **229**  ·  Sin registrar: **29**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **183**  ·  totalmente ausentes: **15**.
+- Registradas en `EffectsDb`: **246**  ·  Sin registrar: **12**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **190**  ·  totalmente ausentes: **8**.
 
 ## Efectos únicos SIN implementar
 
 | Carta | Tipo | Nombre | Texto (español) |
 |---|---|---|---|
 | Butterfree (`sv3pt5-12`) | Pokémon | Adiós, Vuelo | Elige 1 de los Pokémon en Banca de tu rival. Ese Pokémon y todas las cartas unidas a él se ponen en su baraja y se barajan todas. Después, pon este Pokémon y todas las cartas unidas a él en tu baraja, y baraja todas las cartas. Si tu rival no tiene ningún Pokémon en Banca, este ataque no hace nada. |
-| Kakuna (`sv3pt5-14`) | Pokémon | Capullo Caparazón | Se evitan todos los efectos de los ataques usados por los Pokémon de tu rival e infligidos a este Pokémon. (El daño no es un efecto). |
-| Pidgeot (`sv3pt5-18`) | Pokémon | Vuelo | Lanza 1 moneda. Si sale cruz, este ataque no hace nada. Si sale cara, durante el próximo turno de tu rival, se evitan todo el daño y todos los efectos de los ataques infligidos a este Pokémon. |
-| Spearow (`sv3pt5-21`) | Pokémon | Ventaja Evolutiva | Si sales en segundo lugar, este Pokémon puede evolucionar durante tu primer turno. |
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
 | Alakazam ex (`sv3pt5-65`) | Pokémon | Mano Dimensional | Este ataque se puede usar incluso si este Pokémon está en la Banca. |
-| Haunter (`sv3pt5-93`) | Pokémon | Espíritu Retorno | Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes poner 1 carta de Partidario de la pila de descartes de tu rival en su mano. |
-| Mew ex (`sv3pt5-151`) | Pokémon | Hackeo Genoma | Elige uno de los ataques del Pokémon Activo de tu rival y úsalo para este ataque. |
-| Fósil Domo Antiguo (`sv3pt5-152`) | Pokémon | Domed Armor |  |
 | Fósil Domo Antiguo (`sv3pt5-152`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
 
 En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
-| Fósil Hélix Antiguo (`sv3pt5-153`) | Pokémon | Helical Swell |  |
 | Fósil Hélix Antiguo (`sv3pt5-153`) | Trainer | Trainer | Juega esta carta como si fuera un Pokémon {C} Básico de 60 PS. Esta carta no puede verse afectada por ninguna Condición Especial y no puede retirarse.
 
 En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
@@ -54,11 +47,11 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Cambio — Trainer: Trainer
 - Carisma de Giovanni — Trainer: Trainer
 - Caterpie — Ataque: Mascahojas
+- Chansey — Habilidad: Regalo Fortuito
 - Charizard ex — Ataque: Ala Osada
 - Charizard ex — Ataque: Vórtice Explosivo
 - Charmander — Ataque: Destrucción Abrasadora
 - Charmeleon — Ataque: Llamarada
-- Chansey — Habilidad: Regalo Fortuito
 - Cinturón Rígido — Trainer: Trainer
 - Clefable — Ataque: Señuelo
 - Clefable — Ataque: Más Luna
@@ -84,6 +77,8 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Fearow — Ataque: Captura Pico
 - Flareon — Ataque: Llama Destructiva
 - Flareon — Ataque: Llamarada Luchadora
+- Fósil Domo Antiguo — Ataque: Domed Armor
+- Fósil Hélix Antiguo — Ataque: Helical Swell
 - Gafas de Seguridad — Trainer: Trainer
 - Gengar — Ataque: Poltergeist
 - Gengar — Ataque: Embestida Hueca
@@ -100,11 +95,12 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Growlithe — Ataque: Vaporizar
 - Gyarados — Ataque: Hiperrayo
 - Gyarados — Habilidad: Indomable
-- Invitación de Erika — Trainer: Trainer
+- Haunter — Habilidad: Espíritu Retorno
 - Hitmonchan — Ataque: Puño Exaltado
 - Hitmonchan — Habilidad: Contragolpe
 - Hitmonlee — Ataque: Patada Torbellino
 - Hypno — Habilidad: Toma Hipnosis
+- Invitación de Erika — Trainer: Trainer
 - Ivysaur — Ataque: Drenadoras
 - Jigglypuff — Ataque: Liderazgo
 - Jigglypuff — Ataque: Pisotonazo
@@ -116,6 +112,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Kabutops — Ataque: Cuchilla Drenaje
 - Kabutops — Habilidad: Modo Ancestral
 - Kadabra — Ataque: Ataque Teleportador
+- Kakuna — Habilidad: Capullo Caparazón
 - Kangaskhan ex — Ataque: Triple Robo
 - Kangaskhan ex — Ataque: Puñetazo Incesante
 - Kingler — Ataque: Machada
@@ -136,6 +133,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Marowak — Ataque: Poder Ilimitado
 - Meowth — Ataque: Ven Aquí Ya
 - Metapod — Ataque: Postura Defensiva
+- Mew ex — Ataque: Hackeo Genoma
 - Mew ex — Habilidad: Reinicio
 - Mewtwo — Ataque: Barrera Reflectante
 - Mewtwo — Ataque: Golpe Psíquico
@@ -159,6 +157,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Parasect — Ataque: Filamentos Dispersos
 - Pegatinas de Energía — Trainer: Trainer
 - Persian — Habilidad: Llamar al Rocket
+- Pidgeot — Ataque: Vuelo
 - Pidgey — Ataque: Llamar a la Familia
 - Pikachu — Ataque: Carga
 - Pinsir — Ataque: Lanzamiento Audaz
@@ -192,6 +191,7 @@ En cualquier momento durante tu turno, puedes descartar esta carta del juego. |
 - Slowpoke — Ataque: Baño de Mar
 - Snorlax — Ataque: Presión Sorda
 - Snorlax — Habilidad: Glotonería
+- Spearow — Habilidad: Ventaja Evolutiva
 - Squirtle — Ataque: Refugio
 - Starmie — Habilidad: Cometa Misterioso
 - Staryu — Ataque: Meteoros
