@@ -563,6 +563,14 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 55: Ditto «Inicio Transformador» -----
+    // Una vez durante tu PRIMER turno, si está en el Activo, busca 1 Pokémon Básico del mazo
+    // (excepto Ditto); descarta a Ditto y todo lo unido a él, y pon el elegido en su lugar; baraja.
+    put(abiKey("sv3pt5-132", "Transformative Start"), Effect(
+        ops = listOf(EffectOp.TransformIntoBasicFromDeck(
+            CardFilter(supertype = Supertype.POKEMON, isBasic = true, nameExcludes = "Ditto"))),
+        oncePerTurn = true, activeOnly = true, firstTurnOnly = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 37: des-evolución del Activo rival -----
     // Aerodactyl — Rayo Involutivo (Devolution Ray) 142: 100 base (daño puro) + si el Activo
     // rival está evolucionado, lo involuciona (la carta de fase más alta vuelve a su mano).

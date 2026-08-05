@@ -64,6 +64,12 @@ sealed interface PendingDecision {
          * lado contrario a [side]): Haunter — Regreso Espiritual (descarte rival → mano rival). El
          * host es autoritativo; para el invitado (netplay) es render-only. */
         val onOpponent: Boolean = false,
+        /**
+         * true solo para Ditto — Inicio Transformador (sv3pt5-132): al resolver (from=DECK,
+         * destination=ACTIVE, count=1), el Activo actual de [side] y TODAS sus cartas unidas
+         * (energías, Herramientas y la pila de evolución) van al descarte, y el Pokémon Básico
+         * elegido pasa a ser el nuevo Activo; después se baraja el mazo. */
+        val replaceActiveWithSource: Boolean = false,
     ) : PendingDecision
 
     /**

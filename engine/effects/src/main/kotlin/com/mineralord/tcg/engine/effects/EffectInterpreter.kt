@@ -352,6 +352,25 @@ class EffectInterpreter {
                     fromOpponentHand = true,
                 )
             }
+            is EffectOp.TransformIntoBasicFromDeck -> {
+                // Ditto — Inicio Transformador: candidatos = Pokémon Básicos del mazo que casan
+                // el filtro (excepto Ditto). Es "puedes": sin candidatos no pausa (no hace nada).
+                val cands = matching(state.sideState(src.actingSide).deck, op.filter)
+                if (cands.isEmpty()) null
+                else PendingDecision.SearchCards(
+                    src.actingSide,
+                    LocalizedText(
+                        "Elige un Pokémon Básico en el que transformar a Ditto",
+                        "Choose a Basic Pokémon to transform Ditto into",
+                    ),
+                    from = Zone.DECK,
+                    filter = op.filter,
+                    destination = Zone.ACTIVE,
+                    count = 1,
+                    candidates = cands,
+                    replaceActiveWithSource = true,
+                )
+            }
             is EffectOp.CoinFlipDraw -> PendingDecision.CoinFlip(
                 src.actingSide,
                 LocalizedText("Lanza la moneda", "Flip a coin"),
@@ -999,7 +1018,8 @@ class EffectInterpreter {
             is EffectOp.ChooseTarget, is EffectOp.SearchDeck, is EffectOp.MoveEnergy,
             is EffectOp.RecoverFromDiscard, is EffectOp.RecoverOppFromDiscard, is EffectOp.PlaceCounters,
             is EffectOp.DiscardFromHandForDamage, is EffectOp.CoinFlipSearchToBench,
-            is EffectOp.DiscardOwnToolsForDamage, is EffectOp.PutOppHandPokemonToBottomOfDeck ->
+            is EffectOp.DiscardOwnToolsForDamage, is EffectOp.PutOppHandPokemonToBottomOfDeck,
+            is EffectOp.TransformIntoBasicFromDeck ->
                 EffectResult(state, emptyList())
         }
 
@@ -1150,6 +1170,28 @@ class EffectInterpreter {
             if (!fromDeck) return EffectResult(state, emptyList())
             val shuffled = ps.copy(deck = shuffle(ps.deck))
             return EffectResult(withPlayer(state, shuffled, side), listOf(GameEvent.DeckShuffled(side)))
+        }
+        // Ditto — Inicio Transformador: reemplaza el Activo por el Básico elegido. El Activo
+        // actual (Ditto) y TODO lo unido (energías, Herramientas, pila de evolución) van al
+        // descarte; el mazo se baraja tras retirar el elegido.
+        if (d.replaceActiveWithSource) {
+            val newBasic = picked.filterIsInstance<PokemonCard>().firstOrNull()
+            val oldActive = ps.active
+            if (newBasic == null || oldActive == null) {
+                val shuffled = ps.copy(deck = shuffle(ps.deck))
+                return EffectResult(withPlayer(state, shuffled, side), listOf(GameEvent.DeckShuffled(side)))
+            }
+            val discardedCards: List<Card> = listOf(oldActive.card) +
+                oldActive.evolutionStack + oldActive.attachedEnergy + oldActive.attachedTools
+            val updated = ps.copy(
+                deck = shuffle(ps.deck - picked.toSet()),
+                active = PokemonInPlay(newBasic),
+                discard = ps.discard + discardedCards,
+            )
+            return EffectResult(
+                withPlayer(state, updated, side),
+                listOf(GameEvent.CardsDiscarded(side, discardedCards.size), GameEvent.DeckShuffled(side)),
+            )
         }
         // Retira lo elegido de su zona origen (solo el mazo se baraja).
         val remainingDeck = if (fromDeck) shuffle(ps.deck - picked.toSet()) else ps.deck
@@ -1374,6 +1416,7 @@ class EffectInterpreter {
                 (filter.isBasic == null || (c is PokemonCard && c.isBasic == filter.isBasic)) &&
                 (filter.type == null || (c is PokemonCard && filter.type in c.types) || (c is BasicEnergy && c.type == filter.type)) &&
                 (filter.nameContains == null || c.name.es.contains(filter.nameContains!!, true) || c.name.en.contains(filter.nameContains!!, true)) &&
+                (filter.nameExcludes == null || !(c.name.es.contains(filter.nameExcludes!!, true) || c.name.en.contains(filter.nameExcludes!!, true))) &&
                 (filter.trainerKind == null || (c is TrainerCard && trainerCategoryOf(c.kind) == filter.trainerKind))
         }.map { it.id }
 

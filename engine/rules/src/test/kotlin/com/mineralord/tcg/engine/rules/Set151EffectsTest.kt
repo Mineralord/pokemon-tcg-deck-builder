@@ -352,6 +352,59 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 55 - Ditto Inicio Transformador transforma en un Basico del mazo en tu primer turno`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val ditto = mon("ditto", 60, EnergyType.COLORLESS, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Inicio Transformador", "Transformative Start"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-132", "Transformative Start"))))
+        val dittoInPlay = PokemonInPlay(ditto).copy(attachedEnergy = listOf(energy("e1", EnergyType.LIGHTNING)))
+        val pikachu = mon("Pikachu", 60, EnergyType.LIGHTNING, dummy)
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, dummy))
+        val player = PlayerState(
+            side = Side.PLAYER, active = dittoInPlay,
+            deck = listOf(pikachu) + (1..4).map { energy("d$it", EnergyType.LIGHTNING) },
+            prizes = (1..6).map { energy("pz$it", EnergyType.LIGHTNING) },
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = foe,
+            deck = (1..5).map { energy("od$it", EnergyType.WATER) },
+            prizes = (1..6).map { energy("opz$it", EnergyType.WATER) },
+        )
+        val st = GameState(player, opponent, turn = 1, activeSide = Side.PLAYER, phase = Phase.MAIN)
+
+        // 1) Usar la habilidad en el primer turno → pausa con la búsqueda del Básico.
+        val used = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("ditto"), "Inicio Transformador"))
+        assertTrue(used.accepted)
+        val d = used.state.interaction!!.decision as PendingDecision.SearchCards
+        assertTrue(d.candidates.contains(CardId("Pikachu")))     // Pikachu es candidato
+        assertFalse(d.candidates.contains(CardId("ditto")))      // "excepto Ditto"
+
+        // 2) Elegir Pikachu → pasa a ser el Activo; Ditto y su Energía van al descarte.
+        val done = GameEngine(SeededRng(1)).apply(used.state, GameIntent.ResolveDecision(listOf(CardId("Pikachu"))))
+        assertEquals(CardId("Pikachu"), done.state.player.active!!.card.id)
+        assertTrue(done.state.player.discard.any { it.id == CardId("ditto") })
+        assertTrue(done.state.player.discard.any { it.id == CardId("e1") })
+        assertFalse(done.state.player.deck.any { it.id == CardId("Pikachu") })
+    }
+
+    @Test
+    fun `FASE 55 - Ditto Inicio Transformador no puede usarse pasado tu primer turno`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val ditto = mon("ditto", 60, EnergyType.COLORLESS, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Inicio Transformador", "Transformative Start"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-132", "Transformative Start"))))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, dummy))
+        // duel() sitúa el turno en 3 (ya no es tu primer turno).
+        val st = duel(PokemonInPlay(ditto), foe).let {
+            it.copy(player = it.player.copy(deck = listOf(mon("Pikachu", 60, EnergyType.LIGHTNING, dummy))))
+        }
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("ditto"), "Inicio Transformador"))
+        assertFalse(res.accepted)
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

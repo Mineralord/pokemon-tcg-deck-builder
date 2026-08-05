@@ -45,6 +45,10 @@ data class CardFilter(
     val type: EnergyType? = null,
     val nameContains: String? = null,
     /**
+     * Si no es null, EXCLUYE las cartas cuyo nombre (ES o EN) contenga este texto
+     * (Ditto — Inicio Transformador sv3pt5-132: "1 Pokémon Básico… excepto Ditto"). */
+    val nameExcludes: String? = null,
+    /**
      * Solo casa cartas de Entrenador de esta categoría (Jigglypuff — Liderazgo busca
      * 1 Partidario; Magneton — Imán de Chatarra recupera Objetos). Implica Entrenador.
      */
@@ -513,6 +517,15 @@ sealed interface EffectOp {
      * daño igual a sus PS impresos (daño CRUDO, sin Debilidad/Resistencia); el motor
      * resuelve el KO y los premios. Si no tiene el estado, no hace nada. */
     data class KoIfStatus(val target: Target, val status: Status) : EffectOp
+
+    /**
+     * "Busca en tu baraja un Pokémon Básico que case [filter], descarta este Pokémon
+     * (el Activo origen) y todas las cartas unidas a él, y pon el elegido en su lugar;
+     * luego baraja" (Ditto — Inicio Transformador sv3pt5-132). Pausa con una
+     * [PendingDecision.SearchCards] `replaceActiveWithSource = true` (from=DECK,
+     * destination=ACTIVE); al resolver, el intérprete reemplaza el Activo. Es "puedes":
+     * si no hay candidatos en el mazo, no pausa y no hace nada. */
+    data class TransformIntoBasicFromDeck(val filter: CardFilter) : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */
@@ -700,6 +713,13 @@ data class Effect(
      * hacer su propio daño/efecto, abre una [PendingDecision.ChooseAttack] con los ataques del Activo
      * rival; al resolver, [GameEngine] re-ejecuta el ataque elegido como si lo usara este Pokémon. */
     val copiesOppActiveAttack: Boolean = false,
+    /**
+     * Si es true, esta habilidad manual solo puede usarse durante TU primer turno (Ditto —
+     * Inicio Transformador sv3pt5-132: "Una vez durante tu primer turno…"). Como una habilidad
+     * solo se activa en tu propio turno, el primer turno propio equivale a `state.turn <= 2`
+     * (turno 1 = 1.er jugador, turno 2 = 2.º jugador). Lo comprueban [GameEngine.useAbility] y
+     * [GameEngine.legalIntents]. */
+    val firstTurnOnly: Boolean = false,
 )
 
 /**

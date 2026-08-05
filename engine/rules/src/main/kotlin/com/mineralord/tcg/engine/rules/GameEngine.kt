@@ -616,6 +616,9 @@ class GameEngine(
         if (effect.activeOnly && me.active?.card?.id != pokemonId) {
             return EngineResult.reject(state, "Esta habilidad solo puede usarla el Activo")
         }
+        if (effect.firstTurnOnly && state.turn > 2) {
+            return EngineResult.reject(state, "Esta habilidad solo puede usarse en tu primer turno")
+        }
         if (effect.oncePerTurn && pokemonId in state.abilitiesUsedThisTurn) {
             return EngineResult.reject(state, "Esta habilidad ya se usó este turno")
         }
@@ -1337,6 +1340,7 @@ class GameEngine(
                     !eff.triggerOnEvolve &&                  // se dispara sola al evolucionar
                     !eff.triggerOnActiveDamaged && !eff.triggerOnActiveKO &&  // se disparan solas al recibir daño
                     (!eff.activeOnly || me.active?.card?.id == p.card.id) &&
+                    (!eff.firstTurnOnly || state.turn <= 2) &&
                     (!eff.oncePerTurn || p.card.id !in state.abilitiesUsedThisTurn)
                 ) {
                     intents += GameIntent.UseAbility(p.card.id, ability.name.es)
