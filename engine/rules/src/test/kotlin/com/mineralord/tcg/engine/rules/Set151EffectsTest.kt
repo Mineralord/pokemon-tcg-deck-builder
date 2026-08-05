@@ -594,6 +594,52 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 60 - Butterfree Adios Vuelo baraja el elegido rival y a si mismo en sus mazos`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val bye = attack("Bye-Bye Flight", 0, EffectsDb.atkKey("sv3pt5-12", "Bye-Bye Flight"))
+        val butterfree = PokemonInPlay(mon("butterfree", 120, EnergyType.GRASS, bye))
+        val myBench = PokemonInPlay(mon("myBench", 60, EnergyType.GRASS, dummy))
+        val foeActive = PokemonInPlay(mon("foeActive", 100, EnergyType.WATER, dummy))
+        val foeBench = PokemonInPlay(mon("oppBench", 60, EnergyType.WATER, dummy))
+        val player = PlayerState(
+            side = Side.PLAYER, active = butterfree, bench = listOf(myBench),
+            deck = (1..3).map { energy("d$it", EnergyType.LIGHTNING) },
+            prizes = (1..6).map { energy("pz$it", EnergyType.LIGHTNING) },
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = foeActive, bench = listOf(foeBench),
+            deck = (1..3).map { energy("od$it", EnergyType.WATER) },
+            prizes = (1..6).map { energy("opz$it", EnergyType.WATER) },
+        )
+        val st = GameState(player, opponent, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+
+        // 1) Atacar → pide elegir un Pokémon de la Banca rival.
+        val used = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Bye-Bye Flight"))
+        assertTrue(used.state.awaitingDecision)
+
+        // 2) Elegir el de la Banca rival → se baraja en su mazo; Butterfree se baraja en el tuyo.
+        val done = GameEngine(SeededRng(1)).apply(used.state, GameIntent.ResolveDecision(listOf(CardId("oppBench"))))
+        assertFalse(done.state.opponent.bench.any { it.card.id == CardId("oppBench") })
+        assertTrue(done.state.opponent.deck.any { it.id == CardId("oppBench") })
+        assertTrue(done.state.player.deck.any { it.id == CardId("butterfree") })
+        assertNull(done.state.player.active)             // Butterfree dejó el Activo
+        assertTrue(done.state.awaitingPromotion)         // debes promover uno nuevo
+    }
+
+    @Test
+    fun `FASE 60 - Adios Vuelo no hace nada si el rival no tiene Banca`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val bye = attack("Bye-Bye Flight", 0, EffectsDb.atkKey("sv3pt5-12", "Bye-Bye Flight"))
+        val butterfree = PokemonInPlay(mon("butterfree", 120, EnergyType.GRASS, bye))
+        val base = duel(butterfree, PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy)))  // rival sin Banca
+
+        val res = GameEngine(SeededRng(1)).apply(base, GameIntent.Attack("Bye-Bye Flight"))
+        assertFalse(res.state.awaitingDecision)
+        assertEquals(CardId("butterfree"), res.state.player.active?.card?.id)   // sigue en juego
+        assertEquals(Side.OPPONENT, res.state.activeSide)                        // el turno terminó
+    }
+
+    @Test
     fun `FASE 59 - Alakazam ex Mano Dimensional ataca desde la Banca`() {
         val dummy = attack("x", 0, EffectId("none"))
         val dim = attack("Dimensional Hand", 120, EffectsDb.atkKey("sv3pt5-65", "Dimensional Hand"))

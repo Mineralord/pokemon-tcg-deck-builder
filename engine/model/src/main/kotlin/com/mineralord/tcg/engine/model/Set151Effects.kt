@@ -563,6 +563,20 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 60: Butterfree «Adiós, Vuelo» -----
+    // Elige 1 Pokémon de la Banca rival → se baraja en su mazo con lo unido; después Butterfree
+    // (el atacante) se baraja en TU mazo con lo unido (Activo vacío → promoción). Sin Banca rival,
+    // no hace nada. Sin daño base (la carta hace 0). optional = true para poder atacar sin efecto.
+    put(atkKey("sv3pt5-12", "Bye-Bye Flight"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(
+            Target.OPP_BENCH, 1,
+            prompt("Elige un Pokémon de la Banca rival para barajarlo en su mazo",
+                "Choose a Benched Pokémon to shuffle into their deck"),
+            optional = true,
+        ),
+        EffectOp.ByeByeFlightBounce,
+    )))
+
     // ------------------- SET 151 (sv3pt5) — Fase 59: Alakazam ex «Mano Dimensional» -----
     // Ataque de 120 (daño base de la carta) que puede usarse aunque Alakazam ex esté en la Banca.
     // El flag lo comprueba GameEngine.attack; golpea al Activo rival y termina el turno.

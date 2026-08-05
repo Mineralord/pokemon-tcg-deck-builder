@@ -521,6 +521,27 @@ class EffectInterpreter {
                 val foeSide = src.actingSide.other()
                 EffectResult(state, listOf(GameEvent.HandRevealed(foeSide, state.sideState(foeSide).hand.size)))
             }
+            is EffectOp.ByeByeFlightBounce -> {
+                // Butterfree — Adiós, Vuelo: baraja el Pokémon rival elegido (CHOSEN) en el mazo rival
+                // y, si lo hubo, al atacante (SELF) en el propio. Sin elección (Banca rival vacía), nada.
+                val chosen = targets(Target.CHOSEN, src, state, chosenIds)
+                if (chosen.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    var working = state
+                    val events = mutableListOf<GameEvent>()
+                    val foeSide = src.actingSide.other()
+                    for (r in chosen) {
+                        val (s, ev) = shuffleMonIntoOwnerDeck(working, foeSide, r, shuffle)
+                        working = s; events += ev
+                    }
+                    val self = targets(Target.SELF, src, working, chosenIds).firstOrNull()
+                    if (self != null) {
+                        val (s, ev) = shuffleMonIntoOwnerDeck(working, src.actingSide, self, shuffle)
+                        working = s; events += ev
+                    }
+                    EffectResult(working, events)
+                }
+            }
             is EffectOp.DrawCards -> draw(src.actingSide, op.count, state)
             is EffectOp.DrawUntil -> {
                 val have = state.sideState(src.actingSide).hand.size
@@ -1499,6 +1520,31 @@ class EffectInterpreter {
 
     private fun inPlay(state: GameState, id: CardId): PokemonInPlay? =
         (state.player.allInPlay + state.opponent.allInPlay).firstOrNull { it.card.id == id }
+
+    /**
+     * Retira [mon] del juego de [side] y baraja todas sus cartas (Pokémon + pila de evolución +
+     * Energías + Herramientas; o el Entrenador original si es un Fósil) dentro de la baraja de [side].
+     * Si [mon] era el Activo y queda Banca, marca la promoción pendiente (reusa [pendingPromotion]).
+     * Devuelve el nuevo estado y el evento [GameEvent.DeckShuffled]. Usado por Adiós, Vuelo. */
+    private fun shuffleMonIntoOwnerDeck(
+        state: GameState,
+        side: Side,
+        mon: PokemonInPlay,
+        shuffle: (List<Card>) -> List<Card>,
+    ): Pair<GameState, List<GameEvent>> {
+        val ps = state.sideState(side)
+        val wasActive = ps.active?.card?.id == mon.card.id
+        val updated = ps.copy(
+            deck = shuffle(ps.deck + mon.cardsWhenLeavingPlay()),
+            active = if (wasActive) null else ps.active,
+            bench = ps.bench.filterNot { it.card.id == mon.card.id },
+        )
+        var next = withPlayer(state, updated, side)
+        if (wasActive && updated.bench.isNotEmpty()) {
+            next = next.copy(pendingPromotion = next.pendingPromotion + side)
+        }
+        return next to listOf(GameEvent.DeckShuffled(side))
+    }
 
     /** Aplica una transformación al Pokémon (activo o de banca) con ese id, en ambos lados. */
     private fun updatePokemon(

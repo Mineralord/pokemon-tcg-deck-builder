@@ -4,14 +4,13 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **250**  ·  Sin registrar: **8**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **194**  ·  totalmente ausentes: **4**.
+- Registradas en `EffectsDb`: **251**  ·  Sin registrar: **7**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **195**  ·  totalmente ausentes: **3**.
 
 ## Efectos únicos SIN implementar
 
 | Carta | Tipo | Nombre | Texto (español) |
 |---|---|---|---|
-| Butterfree (`sv3pt5-12`) | Pokémon | Adiós, Vuelo | Elige 1 de los Pokémon en Banca de tu rival. Ese Pokémon y todas las cartas unidas a él se ponen en su baraja y se barajan todas. Después, pon este Pokémon y todas las cartas unidas a él en tu baraja, y baraja todas las cartas. Si tu rival no tiene ningún Pokémon en Banca, este ataque no hace nada. |
 | Sandshrew (`sv3pt5-27`) | Pokémon | Pantalla de Arena | Las cartas de Entrenador en la pila de descartes de tu rival no pueden ponerse en su baraja por ningún efecto de las cartas de Objeto o de Partidario de tu rival. |
 | Ámbar Viejo Antiguo (`sv3pt5-154`) | Pokémon | Amber Protection |  |
 | Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
@@ -35,6 +34,7 @@
 - Blastoise ex — Habilidad: Caparazón Sólido
 - Bulbasaur — Ataque: Drenadoras
 - Butterfree — Ataque: Remolino
+- Butterfree — Ataque: Adiós, Vuelo
 - Cambio — Trainer: Trainer
 - Carisma de Giovanni — Trainer: Trainer
 - Caterpie — Ataque: Mascahojas

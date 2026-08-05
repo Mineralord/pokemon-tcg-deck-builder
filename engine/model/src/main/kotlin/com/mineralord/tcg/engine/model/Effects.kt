@@ -535,6 +535,14 @@ sealed interface EffectOp {
      * = Básicos de la mano rival, solo si su Banca no está llena). Sin candidatos, solo se enseña
      * la mano (emite [GameEvent.HandRevealed]) y no hace nada más. */
     data object ErikaInvitation : EffectOp
+
+    /**
+     * Adiós, Vuelo (Butterfree sv3pt5-12): tras elegir 1 Pokémon de la Banca rival (con una
+     * [ChooseTarget] previa sobre [Target.OPP_BENCH], `optional = true`), lo baraja en la baraja del
+     * rival con todo lo unido; después baraja al ATACANTE (SELF) en TU baraja con todo lo unido (deja
+     * el Activo vacío → promoción pendiente). Si no hay Pokémon elegido (Banca rival vacía → la
+     * [ChooseTarget] se saltó), el ataque NO hace nada (tampoco baraja al atacante). */
+    data object ByeByeFlightBounce : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */

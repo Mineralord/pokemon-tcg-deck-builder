@@ -112,8 +112,10 @@ class EffectsDbTest {
 
     @Test
     fun `cartas aun no modeladas NO estan registradas`() {
-        // Butterfree — Adiós, Vuelo (sv3pt5-12, "Bye-Bye Flight": barajar un Pokémon de Banca
-        // rival + este Pokémon a sus mazos) sigue pendiente de modelar.
-        assertFalse(registry.has(EffectsDb.atkKey("sv3pt5-12", "Bye-Bye Flight")))
+        // Butterfree — Adiós, Vuelo (sv3pt5-12, "Bye-Bye Flight") YA está modelada: baraja un
+        // Pokémon de la Banca rival y este Pokémon en sus mazos (EffectOp.ByeByeFlightBounce).
+        assertTrue(registry[EffectsDb.atkKey("sv3pt5-12", "Bye-Bye Flight")]!!.ops.any { it is EffectOp.ByeByeFlightBounce })
+        // Camino de Bicis (Estadio sv3pt5-157: descartar 1 Energía Básica → robar) sigue pendiente.
+        assertFalse(registry.has(EffectId("sv3pt5-157")))
     }
 }
