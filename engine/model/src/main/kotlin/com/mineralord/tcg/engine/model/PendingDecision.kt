@@ -60,6 +60,11 @@ sealed interface PendingDecision {
          * se interpreta como esa zona rival). [side] sigue siendo el jugador que decide. */
         val fromOpponentHand: Boolean = false,
         /**
+         * true solo para Invitación de Erika (sv3pt5-160): el Básico elegido de la mano del rival
+         * se pone en SU Banca y acto seguido se cambia al Puesto Activo (el Activo anterior baja a
+         * la Banca). Implica [fromOpponentHand] = true. */
+        val switchOppActive: Boolean = false,
+        /**
          * true = la búsqueda opera sobre las zonas del RIVAL ([from] y [destination] se leen en el
          * lado contrario a [side]): Haunter — Regreso Espiritual (descarte rival → mano rival). El
          * host es autoritativo; para el invitado (netplay) es render-only. */

@@ -563,6 +563,11 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 57: Invitación de Erika (Partidario) -----
+    // Tu rival enseña su mano; pones 1 Pokémon Básico de ella en su Banca y lo cambias al Activo
+    // (su Activo anterior baja a la Banca). Pausa con la decisión sobre la mano rival.
+    put(EffectId("sv3pt5-160"), Effect(ops = listOf(EffectOp.ErikaInvitation)))
+
     // ------------------- SET 151 (sv3pt5) — Fase 56: Chansey «Regalo Fortuito» -----
     // Al coger a esta Chansey de tus Premios en tu turno con la Banca no llena, puedes ponerla
     // en la Banca (moneda → cara = +1 Premio) en vez de en la mano. La dispara GameEngine al

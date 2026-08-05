@@ -526,6 +526,15 @@ sealed interface EffectOp {
      * destination=ACTIVE); al resolver, el intérprete reemplaza el Activo. Es "puedes":
      * si no hay candidatos en el mazo, no pausa y no hace nada. */
     data class TransformIntoBasicFromDeck(val filter: CardFilter) : EffectOp
+
+    /**
+     * Invitación de Erika (sv3pt5-160): tu rival enseña su mano; tú pones 1 Pokémon Básico que
+     * encuentres allí en la Banca del RIVAL y, si lo haces, lo cambias por su Pokémon Activo (el
+     * Básico pasa al Puesto Activo y el Activo anterior baja a la Banca). Pausa con una
+     * [PendingDecision.SearchCards] `fromOpponentHand = true` + `switchOppActive = true` (candidatos
+     * = Básicos de la mano rival, solo si su Banca no está llena). Sin candidatos, solo se enseña
+     * la mano (emite [GameEvent.HandRevealed]) y no hace nada más. */
+    data object ErikaInvitation : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */

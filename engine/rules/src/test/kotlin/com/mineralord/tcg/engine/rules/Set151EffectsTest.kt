@@ -473,6 +473,29 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 57 - Invitacion de Erika sube un Basico de la mano rival a su Activo`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val myActive = PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy))
+        val foeActive = PokemonInPlay(mon("foeActive", 100, EnergyType.WATER, dummy))
+        val foeBasic = mon("foeBasic", 60, EnergyType.WATER, dummy)   // Básico en la mano rival
+        val erika = TrainerCard(
+            CardId("erika"), LocalizedText("Invitación de Erika", "Erika's Invitation"), set(),
+            Rarity.COMMON, "G", art(), TrainerKind.Supporter(), LocalizedText("", ""), EffectId("sv3pt5-160"))
+        val base = duel(myActive, foeActive, foeHand = listOf(foeBasic))
+        val st = base.copy(player = base.player.copy(hand = listOf(erika)))
+
+        // 1) Jugar el Partidario → enseña la mano rival y pausa para elegir el Básico.
+        val played = GameEngine(SeededRng(1)).apply(st, GameIntent.PlayTrainer(CardId("erika")))
+        assertTrue(played.state.awaitingDecision)
+
+        // 2) Elegir el Básico → pasa al Activo rival; el Activo anterior baja a su Banca.
+        val done = GameEngine(SeededRng(1)).apply(played.state, GameIntent.ResolveDecision(listOf(CardId("foeBasic"))))
+        assertEquals(CardId("foeBasic"), done.state.opponent.active!!.card.id)
+        assertTrue(done.state.opponent.bench.any { it.card.id == CardId("foeActive") })
+        assertFalse(done.state.opponent.hand.any { it.id == CardId("foeBasic") })
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

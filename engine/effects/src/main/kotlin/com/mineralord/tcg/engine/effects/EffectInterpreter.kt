@@ -119,7 +119,8 @@ class EffectInterpreter {
         // 1) Aplicar la decisión concreta.
         val applied: EffectResult = when (val d = interaction.decision) {
             is PendingDecision.SearchCards ->
-                if (d.fromOpponentHand) applyOpponentHandToBottom(d, chosen, cleared)
+                if (d.switchOppActive) applyErikaInvitation(d, chosen, cleared)
+                else if (d.fromOpponentHand) applyOpponentHandToBottom(d, chosen, cleared)
                 else applySearch(d, chosen, cleared, shuffle)
             is PendingDecision.MoveEnergy -> applyMoveEnergy(d, chosen, cleared)
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
@@ -371,6 +372,29 @@ class EffectInterpreter {
                     replaceActiveWithSource = true,
                 )
             }
+            is EffectOp.ErikaInvitation -> {
+                // Candidatos = Pokémon Básicos en la MANO del rival, solo si su Banca no está llena
+                // (hace falta hueco para que baje el Activo tras el cambio). Sin candidatos, no pausa
+                // (la mano se enseña igualmente en applyOp).
+                val foe = state.sideState(src.actingSide.other())
+                val cands = if (foe.bench.size >= 5) emptyList()
+                    else foe.hand.filter { it is PokemonCard && it.isBasic }.map { it.id }
+                if (cands.isEmpty()) null
+                else PendingDecision.SearchCards(
+                    src.actingSide,
+                    LocalizedText(
+                        "Elige un Pokémon Básico de la mano de tu rival para pasarlo a su Activo",
+                        "Choose a Basic Pokémon from your opponent's hand to switch into their Active Spot",
+                    ),
+                    from = Zone.HAND,
+                    filter = CardFilter(supertype = Supertype.POKEMON, isBasic = true),
+                    destination = Zone.BENCH,
+                    count = 1,
+                    candidates = cands,
+                    fromOpponentHand = true,
+                    switchOppActive = true,
+                )
+            }
             is EffectOp.CoinFlipDraw -> PendingDecision.CoinFlip(
                 src.actingSide,
                 LocalizedText("Lanza la moneda", "Flip a coin"),
@@ -488,6 +512,12 @@ class EffectInterpreter {
             }
             is EffectOp.RevealOpponentHand -> {
                 // Zubat — Eco Revelador: el rival enseña su mano. Informativo (no cambia estado).
+                val foeSide = src.actingSide.other()
+                EffectResult(state, listOf(GameEvent.HandRevealed(foeSide, state.sideState(foeSide).hand.size)))
+            }
+            is EffectOp.ErikaInvitation -> {
+                // Solo llega aquí si pendingFor devolvió null (sin Básicos en la mano rival o su Banca
+                // llena): la mano se enseña igualmente, pero no se pone ni cambia nada.
                 val foeSide = src.actingSide.other()
                 EffectResult(state, listOf(GameEvent.HandRevealed(foeSide, state.sideState(foeSide).hand.size)))
             }
@@ -1129,6 +1159,39 @@ class EffectInterpreter {
         return EffectResult(
             withPlayer(state, updated, foeSide),
             listOf(GameEvent.HandRevealed(foeSide, updated.hand.size)),
+        )
+    }
+
+    /**
+     * Invitación de Erika: el Básico [chosen] elegido de la MANO del rival sale de su mano, entra a
+     * su Banca y se cambia al Puesto Activo (el Activo anterior baja a la Banca). Emite
+     * [GameEvent.HandRevealed] (la mano se enseñó), [GameEvent.PokemonPlayed] (entra a la Banca) y
+     * [GameEvent.Promoted] (pasa al Activo). `d.side` es quien juega la carta → el rival es su `other()`.
+     */
+    private fun applyErikaInvitation(
+        d: PendingDecision.SearchCards,
+        chosen: List<CardId>,
+        state: GameState,
+    ): EffectResult {
+        val foeSide = d.side.other()
+        val foe = state.sideState(foeSide)
+        val pickedId = chosen.firstOrNull { it in d.candidates }
+        val basic = pickedId?.let { id -> foe.hand.firstOrNull { it.id == id } } as? PokemonCard
+        if (basic == null) return EffectResult(state, listOf(GameEvent.HandRevealed(foeSide, foe.hand.size)))
+        // El Básico entra al Activo; el Activo anterior (si lo hay) baja a la Banca.
+        val newActive = PokemonInPlay(basic)
+        val updated = foe.copy(
+            hand = foe.hand - basic,
+            active = newActive,
+            bench = foe.bench + listOfNotNull(foe.active?.copy(weaknessOverrideType = null)),
+        )
+        return EffectResult(
+            withPlayer(state, updated, foeSide),
+            listOf(
+                GameEvent.HandRevealed(foeSide, updated.hand.size),
+                GameEvent.PokemonPlayed(foeSide, basic.id, toBench = true),
+                GameEvent.Promoted(foeSide, basic.id),
+            ),
         )
     }
 
