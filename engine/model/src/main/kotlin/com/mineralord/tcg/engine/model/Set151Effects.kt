@@ -563,6 +563,11 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 59: Alakazam ex «Mano Dimensional» -----
+    // Ataque de 120 (daño base de la carta) que puede usarse aunque Alakazam ex esté en la Banca.
+    // El flag lo comprueba GameEngine.attack; golpea al Activo rival y termina el turno.
+    put(atkKey("sv3pt5-65", "Dimensional Hand"), Effect(usableFromBench = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 58: Fósiles Antiguos (Objeto jugado como Pokémon) -----
     // Domo (152), Hélix (153), Ámbar (154): se juegan en la Banca como un Pokémon Básico {C} 60 PS
     // (inmune a Condiciones Especiales, no se retira, descartable del juego). El comportamiento vive

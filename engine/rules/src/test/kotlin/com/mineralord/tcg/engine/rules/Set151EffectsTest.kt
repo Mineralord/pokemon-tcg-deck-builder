@@ -594,6 +594,35 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 59 - Alakazam ex Mano Dimensional ataca desde la Banca`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val dim = attack("Dimensional Hand", 120, EffectsDb.atkKey("sv3pt5-65", "Dimensional Hand"))
+        val alakazam = PokemonInPlay(mon("alakazam", 310, EnergyType.PSYCHIC, dim))
+        val myActive = PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, dummy))
+        val base = duel(myActive, foe)
+        val st = base.copy(player = base.player.copy(bench = listOf(alakazam)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Dimensional Hand", attacker = CardId("alakazam")))
+        assertTrue(res.accepted)
+        assertEquals(120, res.state.opponent.active!!.damage)   // golpea al Activo rival
+        assertEquals(Side.OPPONENT, res.state.activeSide)        // atacar cierra el turno
+    }
+
+    @Test
+    fun `FASE 59 - un ataque normal no puede usarse desde la Banca`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val benchMon = PokemonInPlay(mon("bencher", 100, EnergyType.PSYCHIC, attack("Hit", 50, EffectId("none"))))
+        val myActive = PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, dummy))
+        val base = duel(myActive, foe)
+        val st = base.copy(player = base.player.copy(bench = listOf(benchMon)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Hit", attacker = CardId("bencher")))
+        assertFalse(res.accepted)
+    }
+
+    @Test
     fun `FASE 29 - Gloom Floracion Parcial revela 3 y une Energia al evolucionar`() {
         val dummy = attack("x", 0, EffectId("none"))
         val oddish = PokemonInPlay(mon("Oddish", 60, EnergyType.GRASS, dummy)).copy(turnsInPlay = 1)

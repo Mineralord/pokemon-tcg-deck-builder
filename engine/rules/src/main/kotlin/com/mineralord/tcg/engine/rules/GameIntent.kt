@@ -38,8 +38,12 @@ sealed interface GameIntent {
      */
     data class PromoteActive(val benchTarget: CardId) : GameIntent
 
-    /** El Activo ataca; en el TCG, atacar termina el turno. */
-    data class Attack(val attackName: String) : GameIntent
+    /**
+     * Un Pokémon ataca; en el TCG, atacar termina el turno. [attacker] = null → ataca el Activo (caso
+     * normal). Si no es null, ataca ese Pokémon (usado por ataques que pueden lanzarse desde la Banca,
+     * p. ej. Alakazam ex — Mano Dimensional); el motor exige que el ataque tenga `usableFromBench`.
+     */
+    data class Attack(val attackName: String, val attacker: CardId? = null) : GameIntent
 
     /**
      * Juega un Entrenador de la mano (Apoyo o Objeto). Resuelve su efecto

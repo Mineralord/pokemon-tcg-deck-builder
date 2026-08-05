@@ -106,7 +106,7 @@ class GameEngine(
             is GameIntent.AttachTool -> attachTool(state, intent.tool, intent.target)
             is GameIntent.Retreat -> retreat(state, intent.benchTarget)
             is GameIntent.PromoteActive -> promoteActive(state, intent.benchTarget)
-            is GameIntent.Attack -> attack(state, intent.attackName)
+            is GameIntent.Attack -> attack(state, intent.attackName, attackerId = intent.attacker)
             is GameIntent.PlayTrainer -> playTrainer(state, intent.card)
             is GameIntent.UseAbility -> useAbility(state, intent.pokemon, intent.abilityName)
             is GameIntent.ResolveDecision -> resolveDecision(state, intent.chosen)
@@ -303,12 +303,18 @@ class GameEngine(
 
     // ------------------------------------------------------------------- ataque
 
-    private fun attack(state: GameState, attackName: String, overrideAttack: Attack? = null): EngineResult {
+    private fun attack(
+        state: GameState,
+        attackName: String,
+        overrideAttack: Attack? = null,
+        attackerId: CardId? = null,
+    ): EngineResult {
         val me = state.activePlayer
         val foeSide = state.activeSide.other()
         val foe = state.sideState(foeSide)
-        val attacker = me.active
-            ?: return EngineResult.reject(state, "No hay Pokémon Activo para atacar")
+        // Atacante: el Activo (caso normal) o un Pokémon concreto (ataques usables desde la Banca).
+        val attacker = (if (attackerId != null) me.allInPlay.firstOrNull { it.card.id == attackerId } else me.active)
+            ?: return EngineResult.reject(state, "No hay Pokémon para atacar")
         val defender = foe.active
             ?: return EngineResult.reject(state, "El rival no tiene Pokémon Activo")
         // [overrideAttack] = ataque COPIADO (Hackeo Genómico): se ejecuta como propio, sin buscarlo en
@@ -316,6 +322,11 @@ class GameEngine(
         val atk = overrideAttack
             ?: attacker.card.attacks.firstOrNull { it.name.es == attackName || it.name.en == attackName }
             ?: return EngineResult.reject(state, "Ataque desconocido: $attackName")
+        // Atacar desde la Banca solo si el ataque lo permite (Alakazam ex — Mano Dimensional).
+        val fromBench = me.active?.card?.id != attacker.card.id
+        if (fromBench && effects[atk.effect]?.usableFromBench != true) {
+            return EngineResult.reject(state, "Solo el Pokémon Activo puede usar ${atk.name.es}")
+        }
         // Regla oficial: quien empieza (turno 1) no puede atacar en su primer turno.
         if (state.turn == 1) {
             return EngineResult.reject(state, "El jugador que empieza no puede atacar en su primer turno")
@@ -1457,6 +1468,18 @@ class GameEngine(
         if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn) {
             active?.card?.attacks?.filter { active.attachedEnergyCount >= effectiveAttackCost(it, active, state, state.activeSide) }
                 ?.forEach { intents += GameIntent.Attack(it.name.es) }
+        }
+        // Ataques usables desde la Banca (Alakazam ex — Mano Dimensional): golpean al Activo rival.
+        if (state.turn > 1 && state.sideState(state.activeSide.other()).active != null) {
+            me.bench.forEach { b ->
+                if (b.cannotAttackOnTurn == state.turn) return@forEach
+                b.card.attacks
+                    .filter {
+                        effects[it.effect]?.usableFromBench == true &&
+                            b.attachedEnergyCount >= effectiveAttackCost(it, b, state, state.activeSide)
+                    }
+                    .forEach { intents += GameIntent.Attack(it.name.es, attacker = b.card.id) }
+            }
         }
 
         // Jugar Entrenadores (Apoyo/Objeto) con efecto registrado.

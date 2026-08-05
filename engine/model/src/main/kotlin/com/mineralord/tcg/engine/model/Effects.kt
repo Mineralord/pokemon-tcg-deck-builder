@@ -723,6 +723,12 @@ data class Effect(
      * rival; al resolver, [GameEngine] re-ejecuta el ataque elegido como si lo usara este Pokémon. */
     val copiesOppActiveAttack: Boolean = false,
     /**
+     * Si es true, este ataque puede usarse INCLUSO si el Pokémon está en la Banca (Alakazam ex —
+     * Mano Dimensional sv3pt5-65: "este ataque se puede usar aunque este Pokémon esté en la Banca").
+     * El atacante sigue golpeando al Activo rival, paga su propia Energía, aplica Debilidad/Resistencia
+     * por su tipo y cierra el turno. Lo comprueba [GameEngine.attack] al permitir un atacante de Banca. */
+    val usableFromBench: Boolean = false,
+    /**
      * Habilidad que se dispara al COGER a este Pokémon como carta de Premio durante tu turno
      * (Chansey — Regalo Fortuito sv3pt5-113): si tu Banca no está llena, antes de ponerlo en tu
      * mano, puedes ponerlo en tu Banca; si lo haces, lanza 1 moneda y con cara coges 1 Premio más.

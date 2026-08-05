@@ -17,7 +17,7 @@ sealed interface GameIntentDto {
     @Serializable data class AttachTool(val tool: String, val target: String) : GameIntentDto
     @Serializable data class Retreat(val benchTarget: String) : GameIntentDto
     @Serializable data class PromoteActive(val benchTarget: String) : GameIntentDto
-    @Serializable data class Attack(val attackName: String) : GameIntentDto
+    @Serializable data class Attack(val attackName: String, val attacker: String? = null) : GameIntentDto
     @Serializable data class PlayTrainer(val card: String) : GameIntentDto
     @Serializable data class UseAbility(val pokemon: String, val abilityName: String) : GameIntentDto
     @Serializable data class ResolveDecision(val chosen: List<String>) : GameIntentDto
@@ -33,7 +33,7 @@ fun GameIntent.toDto(): GameIntentDto = when (this) {
     is GameIntent.AttachTool -> GameIntentDto.AttachTool(tool.raw, target.raw)
     is GameIntent.Retreat -> GameIntentDto.Retreat(benchTarget.raw)
     is GameIntent.PromoteActive -> GameIntentDto.PromoteActive(benchTarget.raw)
-    is GameIntent.Attack -> GameIntentDto.Attack(attackName)
+    is GameIntent.Attack -> GameIntentDto.Attack(attackName, attacker?.raw)
     is GameIntent.PlayTrainer -> GameIntentDto.PlayTrainer(card.raw)
     is GameIntent.UseAbility -> GameIntentDto.UseAbility(pokemon.raw, abilityName)
     is GameIntent.ResolveDecision -> GameIntentDto.ResolveDecision(chosen.map { it.raw })
@@ -49,7 +49,7 @@ fun GameIntentDto.toIntent(): GameIntent = when (this) {
     is GameIntentDto.AttachTool -> GameIntent.AttachTool(CardId(tool), CardId(target))
     is GameIntentDto.Retreat -> GameIntent.Retreat(CardId(benchTarget))
     is GameIntentDto.PromoteActive -> GameIntent.PromoteActive(CardId(benchTarget))
-    is GameIntentDto.Attack -> GameIntent.Attack(attackName)
+    is GameIntentDto.Attack -> GameIntent.Attack(attackName, attacker?.let { CardId(it) })
     is GameIntentDto.PlayTrainer -> GameIntent.PlayTrainer(CardId(card))
     is GameIntentDto.UseAbility -> GameIntent.UseAbility(CardId(pokemon), abilityName)
     is GameIntentDto.ResolveDecision -> GameIntent.ResolveDecision(chosen.map { CardId(it) })
