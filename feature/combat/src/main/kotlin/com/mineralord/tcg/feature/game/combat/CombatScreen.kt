@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -47,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
@@ -1223,6 +1225,9 @@ private fun FieldCard(
             EmptySlot(Modifier.fillMaxSize(), highlighted = highlighted)
             return@Box
         }
+        // Herramienta Pokémon anexada: se dibuja ANTES que el Pokémon (queda DETRÁS) y asoma por el
+        // borde inferior, como en Pokémon TCG Live. Máx. 1 por Pokémon (regla del motor).
+        if (!faceDown) pip.attachedTools.forEach { ToolPeek(it) }
         CombatCard(
             imageUrl = pip.card.artwork.small(true),
             faceDown = faceDown,
@@ -1247,6 +1252,33 @@ private fun FieldCard(
             }
         }
     }
+}
+
+/**
+ * Herramienta Pokémon anexada, dibujada como en Pokémon TCG Live: una mini-carta metida DETRÁS del
+ * Pokémon que asoma por su borde inferior. Se renderiza antes que el Pokémon (queda por detrás) y con
+ * una sombra suave para dar profundidad de "carta apilada".
+ */
+@Composable
+private fun BoxScope.ToolPeek(tool: Card) {
+    CombatCard(
+        imageUrl = tool.artwork.small(true),
+        contentDescription = tool.name.es,
+        card = null, // solo el arte: es un adorno de tablero, sin holo ni selección
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth(0.66f)
+            .aspectRatio(CombatTheme.CardAspect)
+            .graphicsLayer {
+                // Asoma ~34% por debajo del Pokémon; el resto queda oculto tras su carta.
+                translationY = size.height * 0.34f
+                scaleX = 0.98f
+                scaleY = 0.98f
+                shadowElevation = 10f
+                shape = RoundedCornerShape(6.dp)
+                clip = false
+            },
+    )
 }
 
 /** Carta simple (estadio) que llena su caja. */
