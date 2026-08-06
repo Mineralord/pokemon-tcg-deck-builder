@@ -316,14 +316,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
      */
     private suspend fun advanceAi() {
         var guard = 0
-        while (!(core.state?.isOver ?: true) && guard++ < 120) {
+        while (!(core.state?.isOver ?: true) && guard++ < 200) {
             val s = core.state ?: break
             // La IA promueve su nuevo Activo tras un KO en CUALQUIER momento (incluido
             // durante el turno del jugador: recoil/veneno o un KO por Objeto rival).
             if (Side.OPPONENT in s.pendingPromotion) {
-                val r = engine.apply(s, agent.decide(s, Side.OPPONENT))
-                if (r.accepted) { core.commit(r); core.playEventFx(r.events) }
-                continue
+                val decided = engine.apply(s, agent.decide(s, Side.OPPONENT))
+                // Salvaguarda: si la IA no eligió una promoción válida, promueve el primero de su
+                // Banca. Nunca se debe quedar el rival sin promover (bloquearía la partida entera).
+                val r = if (decided.accepted) decided
+                    else s.opponent.bench.firstOrNull()
+                        ?.let { engine.apply(s, GameIntent.PromoteActive(it.card.id)) }
+                if (r != null && r.accepted) { core.commit(r); core.playEventFx(r.events); continue }
+                break // sin Banca para promover (no debería ocurrir): cede en vez de congelar
             }
             // Si el JUGADOR debe promover, la IA cede el control: la UI espera su elección.
             if (Side.PLAYER in s.pendingPromotion) break
@@ -332,14 +337,22 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
             core.emit()
             delay(450)
             val cur = core.state ?: break
-            val ai = agent.decide(cur, Side.OPPONENT)
-            val r = engine.apply(cur, ai)
-            if (!r.accepted) {
-                core.commit(engine.apply(cur, GameIntent.EndTurn))
-                continue
+            val r = engine.apply(cur, agent.decide(cur, Side.OPPONENT))
+            if (r.accepted) { core.commit(r); core.playEventFx(r.events); continue }
+
+            // La jugada de la IA fue RECHAZADA. Recuperación en capas para NO congelar la partida
+            // (nunca se commitea un resultado rechazado, que antes hacía girar el guard en vano):
+            //  1) si el rival tiene una decisión pendiente, decláinala (elegir nada) para desatascar;
+            //  2) si no, o si falla, termina su turno;
+            //  3) si nada de eso se acepta, cede el control (mejor ceder que quedar bloqueado).
+            val recovery = if (cur.interaction?.side == Side.OPPONENT)
+                engine.apply(cur, GameIntent.ResolveDecision(emptyList())) else null
+            val fixed = when {
+                recovery?.accepted == true -> recovery
+                else -> engine.apply(cur, GameIntent.EndTurn).takeIf { it.accepted }
             }
-            core.commit(r)
-            core.playEventFx(r.events)
+            if (fixed != null) { core.commit(fixed); core.playEventFx(fixed.events); continue }
+            break
         }
         core.aiThinking = false
         core.emit()

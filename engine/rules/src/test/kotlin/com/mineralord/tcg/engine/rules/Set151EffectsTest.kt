@@ -2843,6 +2843,57 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `REPRO - Trueno de Raichu con doble KO no deja la partida bloqueada`() {
+        val thunder = attack("Thunder", 180, EffectsDb.atkKey("sv3pt5-26", "Thunder"))
+        val dummy = attack("x", 0, EffectId("none"))
+        // Raichu (120 PS) ya dañado 70: el recoil de 50 lo Noquea a la vez que noquea al rival.
+        val raichu = PokemonInPlay(mon("raichu", 120, EnergyType.LIGHTNING, thunder)).copy(damage = 70)
+        val myBench = PokemonInPlay(mon("pika", 60, EnergyType.LIGHTNING, dummy))
+        val foeActive = PokemonInPlay(mon("foeAct", 60, EnergyType.WATER, dummy))
+        val foeBench = PokemonInPlay(mon("foeBench", 60, EnergyType.WATER, dummy))
+
+        val player = PlayerState(
+            side = Side.PLAYER, active = raichu, bench = listOf(myBench),
+            deck = (1..5).map { energy("d$it", EnergyType.LIGHTNING) },
+            prizes = (1..6).map { energy("pz$it", EnergyType.LIGHTNING) },
+        )
+        val opponent = PlayerState(
+            side = Side.OPPONENT, active = foeActive, bench = listOf(foeBench),
+            deck = (1..5).map { energy("od$it", EnergyType.WATER) },
+            prizes = (1..6).map { energy("opz$it", EnergyType.WATER) },
+        )
+        val st = GameState(player, opponent, turn = 3, activeSide = Side.PLAYER, phase = Phase.MAIN)
+        val engine = GameEngine(FixedRng(true))
+
+        val res = engine.apply(st, GameIntent.Attack("Thunder"))
+        var s = res.state
+        assertFalse(s.isOver, "no debería terminar: ambos tienen Banca")
+        assertNull(s.player.active, "Raichu se autonoqueó por el recoil")
+        assertNull(s.opponent.active, "el Activo rival fue Noqueado")
+        assertTrue(Side.OPPONENT in s.pendingPromotion, "el rival debe promover")
+        assertTrue(Side.PLAYER in s.pendingPromotion, "el jugador debe promover (doble KO)")
+
+        // Mimetiza el bucle advanceAi + la promoción del jugador por la UI, con guardia anti-cuelgue.
+        val agent = SmartAgent(engine, Difficulty.ULTRABALL)
+        var guard = 0
+        while (Side.OPPONENT in s.pendingPromotion && guard++ < 10) {
+            val r = engine.apply(s, agent.decide(s, Side.OPPONENT))
+            assertTrue(r.accepted, "la IA debe poder promover su Activo tras el KO")
+            s = r.state
+        }
+        assertTrue(Side.OPPONENT !in s.pendingPromotion, "el rival ya promovió")
+        // El jugador promueve desde su Banca (como haría al tocar la carta).
+        val pr = engine.apply(s, GameIntent.PromoteActive(CardId("pika")))
+        assertTrue(pr.accepted, "el jugador debe poder promover su Activo tras el doble KO")
+        s = pr.state
+        assertNull(null)
+        assertTrue(s.pendingPromotion.isEmpty(), "no deben quedar promociones pendientes")
+        assertNotNull(s.player.active, "el jugador ya tiene Activo")
+        assertNotNull(s.opponent.active, "el rival ya tiene Activo")
+        assertFalse(s.isOver)
+    }
+
+    @Test
     fun `FASE 63 - una Habilidad pasiva no puede activarse manualmente`() {
         val dummy = attack("x", 0, EffectId("none"))
         // Golem con Concha Sólida (Solid Shell): pasiva pura (-30 daño). No debe poder "usarse".
