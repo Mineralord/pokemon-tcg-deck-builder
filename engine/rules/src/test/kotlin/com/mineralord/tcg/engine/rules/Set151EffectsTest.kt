@@ -2841,4 +2841,19 @@ class Set151EffectsTest {
             .apply(duel(PokemonInPlay(poisoner), plain), GameIntent.UseAbility(CardId("poisoner"), "Toxina"))
         assertTrue(hit.state.opponent.active!!.statuses.contains(Status.POISONED))
     }
+
+    @Test
+    fun `FASE 63 - una Habilidad pasiva no puede activarse manualmente`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        // Golem con Concha Sólida (Solid Shell): pasiva pura (-30 daño). No debe poder "usarse".
+        val golem = PokemonInPlay(mon("golem", 150, EnergyType.FIGHTING, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Concha Sólida", "Solid Shell"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-9", "Solid Shell")))))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+
+        val res = GameEngine(SeededRng(1))
+            .apply(duel(golem, foe), GameIntent.UseAbility(CardId("golem"), "Concha Sólida"))
+        assertFalse(res.accepted, "una Habilidad pasiva no debe aceptarse como activación manual")
+    }
 }

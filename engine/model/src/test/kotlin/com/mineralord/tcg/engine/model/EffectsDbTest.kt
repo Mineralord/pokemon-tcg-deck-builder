@@ -122,4 +122,81 @@ class EffectsDbTest {
         // del set → 198/198). Lo aplica GameEngine.useAbility filtrando los ops dirigidos al Activo rival.
         assertTrue(registry[EffectsDb.abiKey("sv3pt5-154", "Amber Protection")]!!.immuneToOpponentAbilityEffects)
     }
+
+    /**
+     * Naturaleza de una Habilidad tal y como la clasifica el motor:
+     *  - AUTO: se dispara sola (al evolucionar / al ser dañada o KO / al cogerla de Premios).
+     *  - MANUAL: tiene ops que se ejecutan bajo demanda (GameEngine.useAbility / botón "USAR HABILIDAD").
+     *  - PASIVA: sin ops (solo `passives`/flags); nunca se "usa".
+     * Es EXACTAMENTE el criterio de GameEngine.legalIntents y del guard de useAbility.
+     */
+    private enum class AbilityNature { AUTO, MANUAL, PASSIVE }
+
+    private fun natureOf(e: Effect): AbilityNature = when {
+        e.triggerOnEvolve || e.triggerOnActiveDamaged || e.triggerOnActiveKO || e.luckyBonusOnPrized -> AbilityNature.AUTO
+        e.ops.isNotEmpty() -> AbilityNature.MANUAL
+        else -> AbilityNature.PASSIVE
+    }
+
+    @Test
+    fun `cada Habilidad del set 151 tiene la naturaleza correcta (manual vs pasiva vs auto)`() {
+        // Tabla exhaustiva: TODAS las impresiones de Habilidad del set 151 y su naturaleza esperada.
+        // Si una Habilidad nueva se registra o cambia de naturaleza, este test debe actualizarse a la vez.
+        val manual = listOf(
+            "sv3pt5-3" to "Tranquil Flower", "sv3pt5-182" to "Tranquil Flower", "sv3pt5-198" to "Tranquil Flower",
+            "sv3pt5-85" to "Zooming Draw",
+            "sv3pt5-121" to "Mysterious Comet",
+            "sv3pt5-151" to "Restart", "sv3pt5-193" to "Restart", "sv3pt5-205" to "Restart",
+            "sv3pt5-53" to "Rocket Call",
+            "sv3pt5-41" to "Revealing Echo",
+            "sv3pt5-143" to "Voraciousness",
+            "sv3pt5-132" to "Transformative Start",
+        )
+        val auto = listOf(
+            "sv3pt5-107" to "Counterattack",
+            "sv3pt5-110" to "Let's Have a Blast",
+            "sv3pt5-93" to "Spirit Return",
+            "sv3pt5-130" to "Untamed One",
+            "sv3pt5-97" to "Here for Hypnosis",
+            "sv3pt5-44" to "Semi-Blooming Energy",
+            "sv3pt5-45" to "Fully Blooming Energy",
+            "sv3pt5-113" to "Lucky Bonus",
+        )
+        val passive = listOf(
+            "sv3pt5-9" to "Solid Shell", "sv3pt5-184" to "Solid Shell", "sv3pt5-200" to "Solid Shell",
+            "sv3pt5-144" to "Ice Float",
+            "sv3pt5-145" to "Voltaic Float", "sv3pt5-192" to "Voltaic Float", "sv3pt5-202" to "Voltaic Float",
+            "sv3pt5-146" to "Flare Float",
+            "sv3pt5-149" to "Jet Cruise",
+            "sv3pt5-139" to "Primordial Tentacles",
+            "sv3pt5-40" to "Expanding Body", "sv3pt5-187" to "Expanding Body",
+            "sv3pt5-152" to "Domed Armor",
+            "sv3pt5-153" to "Helical Swell",
+            "sv3pt5-27" to "Sand Screen",
+            "sv3pt5-154" to "Amber Protection",
+            "sv3pt5-122" to "Mimic Barrier", "sv3pt5-179" to "Mimic Barrier",
+            "sv3pt5-34" to "Enthusiastic King", "sv3pt5-174" to "Enthusiastic King",
+            "sv3pt5-68" to "Guts",
+            "sv3pt5-21" to "Evolutionary Advantage",
+            "sv3pt5-14" to "Cocoon Cover",
+            "sv3pt5-141" to "Ancient Way",
+            "sv3pt5-104" to "Cheering Bone",
+            "sv3pt5-26" to "Electrical Grounding",
+        )
+
+        val expected = manual.associateWith { AbilityNature.MANUAL } +
+            auto.associateWith { AbilityNature.AUTO } +
+            passive.associateWith { AbilityNature.PASSIVE }
+
+        // 1) Cada Habilidad registrada tiene la naturaleza esperada.
+        for ((card, name) in expected.keys) {
+            val eff = registry[EffectsDb.abiKey(card, name)]
+            assertNotNull(eff, "Falta registrar la Habilidad $name ($card)")
+            assertEquals(expected[card to name], natureOf(eff),
+                "Naturaleza incorrecta para $name ($card)")
+        }
+
+        // 2) La tabla cubre las 46 impresiones de Habilidad del set (ninguna sin clasificar).
+        assertEquals(46, expected.size, "La tabla de naturalezas debe cubrir las 46 Habilidades del set 151")
+    }
 }

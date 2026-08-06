@@ -663,6 +663,13 @@ class GameEngine(
         if (effect.luckyBonusOnPrized) {
             return EngineResult.reject(state, "Esta habilidad se activa sola al cogerla de tus Premios")
         }
+        // Habilidad PASIVA (sin ops que ejecutar: solo `passives`/flags como Solid Shell, Flotación,
+        // Mimic Barrier, Amber Protection…): no se "usa" manualmente. legalIntents ya no la ofrece,
+        // pero blindamos la puerta para que un intent directo (IA/netplay/tests) no emita un rótulo
+        // dorado "manual" espurio ni consuma el turno sin efecto.
+        if (effect.ops.isEmpty()) {
+            return EngineResult.reject(state, "Esta habilidad es pasiva: no puede activarse manualmente")
+        }
         if (ability.kind.suppressibleByAbilityLock && isAbilityLocked(state, state.activeSide, mon)) {
             return EngineResult.reject(state, "Las Habilidades de ${mon.card.name.es} están bloqueadas")
         }

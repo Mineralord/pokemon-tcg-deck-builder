@@ -470,7 +470,18 @@ fun CombatScreen(
         ) {
             lastInspect?.let { card ->
                 val activePip = state.player.active
-                val showActions = myTurn && activePip != null && card.id == activePip.card.id
+                // El Pokémon inspeccionado, si es MÍO (Activo o Banca): así también ofrecemos las
+                // Habilidades manuales usables desde la Banca (Dodrio, Starmie, Mew ex, Persian, Snorlax…),
+                // que no son `activeOnly`. El motor (legalIntents) es la única autoridad de qué es legal.
+                val myPip = state.player.allInPlay.firstOrNull { it.card.id == card.id }
+                val isMyActive = activePip != null && card.id == activePip.card.id
+                // Mostramos acciones en tu turno para: tu Activo (ataques+retirada+Habilidades) o
+                // cualquier Pokémon tuyo de la Banca CON Habilidades (solo la sección de Habilidades).
+                // Pokémon con acciones a mostrar (null = sin barra inferior). Evita el check redundante
+                // `myPip != null` en el `bottomBar` (que el compilador marcaría como siempre cierto).
+                val actionPip = myPip?.takeIf {
+                    myTurn && (isMyActive || it.card.abilities.isNotEmpty())
+                }
                 CardDetailDialog(
                     imageUrl = card.artwork.large(true),
                     contentDescription = card.name.es,
@@ -479,27 +490,40 @@ fun CombatScreen(
                     cardNumber = card.id.printed.raw.substringAfterLast('-').toIntOrNull(),
                     // Sin esto el visor asumía set 151 → las cartas de otros sets no resolvían foil.
                     setCode = card.id.printed.raw.let { if (it.startsWith("energy")) "energy" else it.substringBeforeLast('-') },
-                    bottomBar = if (showActions && activePip != null) {
+                    bottomBar = if (actionPip != null) {
                         {
                             // Intents legales AHORA → distinguen habilidades manuales disponibles.
                             val legal = vm.legalIntents()
-                            ActiveActions(
-                                pip = activePip,
-                                canRetreat = state.player.bench.isNotEmpty() &&
-                                    activePip.attachedEnergyCount >= activePip.card.retreatCost.size,
-                                onAttack = { name -> inspect = null; vm.onIntent(GameIntent.Attack(name)) },
-                                onRetreat = { inspect = null; bi.retreatMode = true },
-                                onUseAbility = { ability ->
-                                    // El rótulo/aura los dispara el EVENTO del motor (AbilityUsed),
-                                    // no la UI: así también animan al rival y las pasivas automáticas.
-                                    inspect = null
-                                    vm.onIntent(GameIntent.UseAbility(activePip.card.id, ability.name.es))
-                                },
-                                canUseAbility = { ability ->
-                                    GameIntent.UseAbility(activePip.card.id, ability.name.es) in legal
-                                },
-                                abilityUsed = { activePip.card.id in state.abilitiesUsedThisTurn },
-                            )
+                            val onUseAbility: (Ability) -> Unit = { ability ->
+                                // El rótulo/aura los dispara el EVENTO del motor (AbilityUsed),
+                                // no la UI: así también animan al rival y las pasivas automáticas.
+                                inspect = null
+                                vm.onIntent(GameIntent.UseAbility(actionPip.card.id, ability.name.es))
+                            }
+                            val canUseAbility: (Ability) -> Boolean = { ability ->
+                                GameIntent.UseAbility(actionPip.card.id, ability.name.es) in legal
+                            }
+                            val abilityUsed: (Ability) -> Boolean = { actionPip.card.id in state.abilitiesUsedThisTurn }
+                            if (isMyActive) {
+                                ActiveActions(
+                                    pip = actionPip,
+                                    canRetreat = state.player.bench.isNotEmpty() &&
+                                        actionPip.attachedEnergyCount >= actionPip.card.retreatCost.size,
+                                    onAttack = { name -> inspect = null; vm.onIntent(GameIntent.Attack(name)) },
+                                    onRetreat = { inspect = null; bi.retreatMode = true },
+                                    onUseAbility = onUseAbility,
+                                    canUseAbility = canUseAbility,
+                                    abilityUsed = abilityUsed,
+                                )
+                            } else {
+                                // Pokémon de la Banca: solo la sección de Habilidades (sin ataque/retirada).
+                                BenchAbilityActions(
+                                    pip = actionPip,
+                                    onUseAbility = onUseAbility,
+                                    canUseAbility = canUseAbility,
+                                    abilityUsed = abilityUsed,
+                                )
+                            }
                         }
                     } else {
                         null
@@ -1467,6 +1491,40 @@ private fun ActiveActions(
             enabled = canRetreat,
             onRetreat = onRetreat,
         )
+    }
+}
+
+/**
+ * Acciones para un Pokémon MÍO de la BANCA: solo la sección de Habilidades (las manuales usables
+ * desde la Banca —Dodrio, Starmie, Mew ex, Persian, Snorlax…— y las pasivas como información). No hay
+ * ataque ni retirada porque no es el Activo. Reusa exactamente los mismos paneles que [ActiveActions].
+ */
+@Composable
+private fun BenchAbilityActions(
+    pip: PokemonInPlay,
+    onUseAbility: (Ability) -> Unit,
+    canUseAbility: (Ability) -> Boolean,
+    abilityUsed: (Ability) -> Boolean,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Color(0xF20B0F18))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val type = pip.card.types.firstOrNull()
+        val finish = resolveFinish(pip.card.rarity)
+        pip.card.abilities.forEach { ability ->
+            val usable = canUseAbility(ability)
+            val used = abilityUsed(ability)
+            if (usable || used) {
+                ManualAbilityPanel(ability, type, finish, enabled = usable, used = used, onUse = { onUseAbility(ability) })
+            } else {
+                PassiveAbilityPanel(ability, type, finish)
+            }
+        }
     }
 }
 
