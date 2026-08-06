@@ -65,7 +65,7 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.delay
 
-private enum class Phase { PRESENT, OPENING, REVEAL, SUMMARY }
+private enum class Phase { OPENING, REVEAL, SUMMARY }
 
 /**
  * Apertura de sobre estilo TCG Live: presentación del sobre → apertura → revelado
@@ -88,7 +88,9 @@ fun PackOpeningOverlay(
     val haptics = LocalHapticFeedback.current
     val vibrator = remember { vibratorOf(context) }
 
-    var phase by remember { mutableStateOf(if (reducedMotion) Phase.SUMMARY else Phase.PRESENT) }
+    // Arranca directo en OPENING: la presentación del sobre y el gesto de "deslizar para abrir"
+    // viven ahora en PackStage (flujo TCG Pocket). Con movimiento reducido va directo al resumen.
+    var phase by remember { mutableStateOf(if (reducedMotion) Phase.SUMMARY else Phase.OPENING) }
     var index by remember { mutableIntStateOf(0) }
 
     Box(
@@ -98,7 +100,6 @@ fun PackOpeningOverlay(
         contentAlignment = Alignment.Center,
     ) {
         when (phase) {
-            Phase.PRESENT -> PresentContent(setLabel, remainingToday, onOpen = { phase = Phase.OPENING }, onSkip = { phase = Phase.SUMMARY })
             Phase.OPENING -> {
                 LaunchedEffect(Unit) { audio.play(Sfx.WHOOSH); delay(380); index = 0; phase = Phase.REVEAL }
                 OpeningContent()
@@ -114,34 +115,6 @@ fun PackOpeningOverlay(
             )
             Phase.SUMMARY -> SummaryContent(cards, onDismiss)
         }
-    }
-}
-
-@Composable
-private fun PresentContent(setLabel: String, remaining: Int, onOpen: () -> Unit, onSkip: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().clickable(
-            interactionSource = remember { MutableInteractionSource() }, indication = null,
-        ) { onOpen() },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text("Sobre de mejora de", color = Color(0xCCFFFFFF), fontSize = 14.sp)
-        Text(setLabel, color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp, textAlign = TextAlign.Center)
-        Spacer(20.dp)
-        BoosterPack(modifier = Modifier.width(220.dp).aspectRatio(0.62f))
-        Spacer(20.dp)
-        Box(
-            Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 28.dp, vertical = 10.dp),
-        ) { Text("Sobres restantes: $remaining", color = TcgColors.Ink, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-        Spacer(8.dp)
-        Text("Toca el sobre para abrir", color = Color(0x99FFFFFF), fontSize = 12.sp)
-        Spacer(16.dp)
-        Button(
-            onClick = onSkip,
-            colors = ButtonDefaults.buttonColors(containerColor = TcgColors.Red, contentColor = Color.White),
-            shape = RoundedCornerShape(10.dp),
-        ) { Text("RECIBIR TODO", fontWeight = FontWeight.Black) }
     }
 }
 
