@@ -61,6 +61,8 @@ fun CollectionScreen(
     var detailRarity by remember { mutableStateOf<com.mineralord.tcg.engine.model.Rarity?>(null) }
     var detailNumber by remember { mutableStateOf<Int?>(null) }
     var detailSet by remember { mutableStateOf<String?>(null) }
+    var detailCount by remember { mutableStateOf(0) }
+    var detailCap by remember { mutableStateOf(4) }
     var rarityFilter by remember { mutableStateOf<Rarity?>(null) } // PROVISIONAL
 
     Column(modifier = modifier.fillMaxSize().background(BinderBg)) {
@@ -88,7 +90,7 @@ fun CollectionScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    items(shownSlots) { slot -> BinderSlot(slot, onClick = { detailUrl = slot.imageLarge; detailRarity = slot.rarity; detailNumber = slot.number; detailSet = slot.setCode }) }
+                    items(shownSlots) { slot -> BinderSlot(slot, onClick = { detailUrl = slot.imageLarge; detailRarity = slot.rarity; detailNumber = slot.number; detailSet = slot.setCode; detailCount = slot.count; detailCap = slot.cap }) }
                 }
             }
         }
@@ -113,7 +115,7 @@ fun CollectionScreen(
     }
 
     detailUrl?.let { url ->
-        CardDetailDialog(imageUrl = url, contentDescription = null, onDismiss = { detailUrl = null }, rarity = detailRarity, cardNumber = detailNumber, setCode = detailSet)
+        CardDetailDialog(imageUrl = url, contentDescription = null, onDismiss = { detailUrl = null }, rarity = detailRarity, cardNumber = detailNumber, setCode = detailSet, copiesOwned = detailCount, copiesCap = detailCap)
     }
 }
 
