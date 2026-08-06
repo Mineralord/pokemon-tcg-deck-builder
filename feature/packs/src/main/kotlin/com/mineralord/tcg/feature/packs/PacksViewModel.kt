@@ -28,8 +28,10 @@ data class RevealedCard(
     val imageUrl: String?,
     /** Si la carta no estaba en la colección antes de este sobre. */
     val isNew: Boolean = false,
-    /** Copias poseídas tras añadir esta carta (para "COPIAS EN LA COLECCIÓN n/4"). */
+    /** Copias poseídas tras añadir esta carta (para "COPIAS EN LA COLECCIÓN n/tope"). */
     val copiesOwned: Int = 0,
+    /** Tope de copias de esta carta (4 normal · 30 por variante de Energía Básica). */
+    val cap: Int = 4,
 )
 
 /** Estado de la pantalla de sobres (MVI). */
@@ -58,6 +60,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
 
     private lateinit var repo: CardRepository
     private lateinit var pool: PackPool
+    private var energyIds: List<com.mineralord.tcg.engine.model.CardId> = emptyList()
     private var daily: DailyPackState = DailyPackState()
     private var owned: Map<String, Int> = emptyMap()
 
@@ -68,11 +71,17 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.Default) {
                 val r = CardRepository.load()
-                val pool151 = r.all.filter { it.id.raw.startsWith(SET_151_PREFIX) }
-                r to PackPool.from(pool151)
+                // Bolsa de rarezas: SOLO las cartas numeradas del 151 (sin energías, que van por su
+                // propio slot). Energías Básicas: todas las variantes del catálogo (una por tipo).
+                val pool151 = r.all.filter {
+                    it.id.raw.startsWith(SET_151_PREFIX) && !ProfileRepository.isEnergyId(it.id.raw)
+                }
+                val energies = r.all.filter { ProfileRepository.isEnergyId(it.id.raw) }.map { it.id }
+                Triple(r, PackPool.from(pool151), energies)
             }
             repo = loaded.first
             pool = loaded.second
+            energyIds = loaded.third
 
             // Siembra la colección inicial con las cartas de los 3 mazos.
             val seed = StarterDecks.ALL.flatMap { it.expandedCardIds() }.map { it.raw }
@@ -105,19 +114,25 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             }
             is OpenAttempt.Allowed -> {
                 daily = attempt.newState
-                val opened = opener.open(RarityWeights.STANDARD_PACK, pool, Random(System.nanoTime()))
-                // Recuento acumulado para "n/4" e "isNew", contando duplicados del mismo sobre.
+                // Sobre FIEL de 151 (10 cartas: 9 numeradas + 1 Energía Básica). Energías por su slot.
+                val opened = opener.open(
+                    RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
+                )
+                // Recuento acumulado para "n/tope" e "isNew", contando duplicados del mismo sobre y
+                // respetando el tope por carta (4 · 30 energías): al llegar al tope, "n" se queda ahí.
                 val running = HashMap<String, Int>()
                 val revealed = opened.map { oc ->
                     val card = repo[oc.id]
-                    val before = (owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)
+                    val cap = ProfileRepository.capFor(oc.id.raw)
+                    val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
                     running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
                     RevealedCard(
                         name = card?.name?.es ?: oc.id.raw,
                         rarity = oc.rarity,
                         imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
                         isNew = before == 0,
-                        copiesOwned = before + 1,
+                        copiesOwned = (before + 1).coerceAtMost(cap),
+                        cap = cap,
                     )
                 }
                 _state.value = _state.value.copy(
@@ -144,5 +159,6 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val SET_151_PREFIX = "sv3pt5-"
+        const val SET_151_CODE = "sv3pt5"
     }
 }

@@ -68,25 +68,40 @@ class ProfileRepository(context: Context) {
         store.edit { prefs ->
             if (prefs[SEEDED] == true) return@edit
             val counts = HashMap<String, Int>()
-            initialCardIds.forEach { id -> counts[id] = (counts[id] ?: 0) + 1 }
+            initialCardIds.forEach { id -> counts[id] = (counts[id] ?: 0).coerceIncrement(id) }
             prefs[OWNED] = json.encodeToString(mapSerializer, counts)
             prefs[SEEDED] = true
             prefs.touch()
         }
     }
 
-    /** Añade cartas a la colección (acumula copias). */
-    suspend fun addCards(cardIds: List<String>) {
+    /**
+     * Añade cartas a la colección (acumula copias) RESPETANDO el tope por carta: 4 copias para una
+     * carta normal y [ENERGY_CAP] para cada variante de Energía Básica. Las copias que rebasan el tope
+     * NO se guardan (en el futuro se convertirán en moneda). Devuelve, por id, cuántas se DESCARTARON
+     * por exceso (0 si ninguna) para que la capa superior pueda contabilizar la moneda futura.
+     */
+    suspend fun addCards(cardIds: List<String>): Map<String, Int> {
+        val overflow = HashMap<String, Int>()
         store.edit { prefs ->
             val current = runCatching {
                 json.decodeFromString(mapSerializer, prefs[OWNED] ?: "{}")
             }.getOrDefault(emptyMap())
             val merged = HashMap(current)
-            cardIds.forEach { id -> merged[id] = (merged[id] ?: 0) + 1 }
+            cardIds.forEach { id ->
+                val cap = capFor(id)
+                val now = merged[id] ?: 0
+                if (now >= cap) overflow[id] = (overflow[id] ?: 0) + 1
+                else merged[id] = now + 1
+            }
             prefs[OWNED] = json.encodeToString(mapSerializer, merged)
             prefs.touch()
         }
+        return overflow
     }
+
+    /** Incremento de una copia respetando el tope de la carta [id] (usado en el sembrado). */
+    private fun Int.coerceIncrement(id: String): Int = (this + 1).coerceAtMost(capFor(id))
 
     /** Persiste el estado del límite diario tras abrir un sobre. */
     suspend fun setDaily(state: DailyPackState) {
@@ -236,7 +251,18 @@ class ProfileRepository(context: Context) {
         updatedAt = updatedAt,
     )
 
-    private companion object {
+    companion object {
+        /** Tope de copias por carta normal en la colección (el resto se descarta / futura moneda). */
+        const val CARD_CAP = 4
+        /** Tope de copias por CADA variante de Energía Básica (por tipo). */
+        const val ENERGY_CAP = 30
+
+        /** ¿El id corresponde a una Energía Básica? (ids "energy-basic-<tipo>-energy"). */
+        fun isEnergyId(id: String): Boolean = id.startsWith("energy")
+
+        /** Tope de copias aplicable a la carta [id] (para la UI: "n/4" o "n/30"). */
+        fun capFor(id: String): Int = if (isEnergyId(id)) ENERGY_CAP else CARD_CAP
+
         val OWNED = stringPreferencesKey("owned_json")
         val DAILY_DAY = longPreferencesKey("daily_day")
         val DAILY_OPENED = intPreferencesKey("daily_opened")

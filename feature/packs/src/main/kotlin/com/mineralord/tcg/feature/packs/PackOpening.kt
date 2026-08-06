@@ -8,9 +8,8 @@ import android.os.VibratorManager
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import com.mineralord.tcg.core.designsystem.motion.AnimationSprings
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -190,7 +189,7 @@ private fun RevealContent(
             audio.play(Sfx.SPARKLE)
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         }
-        entrance.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow))
+        entrance.animateTo(1f, AnimationSprings.bouncy())
     }
 
     Box(
@@ -254,11 +253,11 @@ private fun RevealContent(
             Text("COPIAS EN LA COLECCIÓN", color = Color(0xAAFFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(4.dp)
             val pop = remember(index) { Animatable(0.5f) }
-            LaunchedEffect(index) { pop.snapTo(0.5f); pop.animateTo(1f, spring(dampingRatio = 0.45f)) }
+            LaunchedEffect(index) { pop.snapTo(0.5f); pop.animateTo(1f, AnimationSprings.bouncy()) }
             Box(
                 Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }
                     .clip(RoundedCornerShape(50)).background(Color(0x33FFFFFF)).padding(horizontal = 18.dp, vertical = 4.dp),
-            ) { Text("${card.copiesOwned}/4", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+            ) { Text("${card.copiesOwned}/${card.cap}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
         }
 
         // RECIBIR TODO.

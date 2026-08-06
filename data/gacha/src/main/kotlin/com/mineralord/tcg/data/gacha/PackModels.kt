@@ -14,6 +14,13 @@ sealed interface PackSlot {
 
     /** Slot ponderado: se sortea la rareza según [table]. */
     data class Weighted(val table: List<WeightedEntry>) : PackSlot
+
+    /**
+     * Slot de ENERGÍA BÁSICA: toma una carta uniformemente del conjunto de energías básicas que
+     * el [PackOpener] recibe aparte (una por tipo). Los sobres reales de 151 incluyen 1 Energía
+     * Básica (holo "Cosmos") por sobre; aquí sale una Básica de cualquier tipo con igual probabilidad.
+     */
+    data object BasicEnergy : PackSlot
 }
 
 /** Entrada de la tabla ponderada: una rareza con su peso relativo. */
@@ -60,4 +67,51 @@ object RarityWeights {
             add(PackSlot.Weighted(HIT_SLOT))
         },
     )
+
+    // ======================= SOBRE FIEL DE 151 (sv3pt5) =======================
+    // Investigación de la estructura y probabilidades REALES del sobre de mejora inglés de
+    // «Escarlata y Púrpura — 151»: 10 cartas por sobre (9 numeradas + 1 Energía Básica; más un código
+    // digital que aquí no aplica). Estructura oficial del sobre moderno S&V: 4 Comunes, 3 Infrecuentes,
+    // 1 Reverse Holo, 1 slot «Rara o mejor» (garantiza Rara Holo+) y 1 Energía Básica. (En 151 la
+    // rareza «Rare» YA es holográfica: no hay RARE_HOLO aparte, así que el slot hit tope-base es RARE.)
+    //
+    // Probabilidades por sobre del slot «Rara o mejor», tomadas de un muestreo público de 700 sobres
+    // (DigitalTQ): Rara(holo) 80,43 % · Doble Rara(ex) 13,29 % · Rara Ilustración 7,71 % ·
+    // Ultra Rara(Full Art) 6,00 % · Rara Ilustración Especial 3,57 % · Hiper Rara 2,86 %. Los pesos
+    // enteros de abajo son ESAS tasas ×100, de modo que la distribución del sorteo las reproduce.
+
+    /** Slot «Rara o mejor» del 151: pesos = tasas por sobre (×100) del muestreo de 700 sobres. */
+    val HIT_SLOT_151: List<WeightedEntry> = listOf(
+        WeightedEntry(Rarity.RARE, 8043),                       // Rara holográfica (#… holo del set)
+        WeightedEntry(Rarity.DOUBLE_RARE, 1329),                // Pokémon ex
+        WeightedEntry(Rarity.ILLUSTRATION_RARE, 771),           // Rara Ilustración (arte alternativo)
+        WeightedEntry(Rarity.ULTRA_RARE, 600),                  // Full Art (Entrenador/ex Full Art)
+        WeightedEntry(Rarity.SPECIAL_ILLUSTRATION_RARE, 357),   // Rara Ilustración Especial
+        WeightedEntry(Rarity.HYPER_RARE, 286),                  // Hiper Rara (dorada)
+    )
+
+    /** Slot Reverse Holo del 151: reverse de una Común/Infrecuente/Rara (mayoría bajas). */
+    val REVERSE_SLOT_151: List<WeightedEntry> = listOf(
+        WeightedEntry(Rarity.COMMON, 50),
+        WeightedEntry(Rarity.UNCOMMON, 40),
+        WeightedEntry(Rarity.RARE, 10),
+    )
+
+    /** Sobre fiel de 151: 4 Comunes · 3 Infrecuentes · 1 Reverse Holo · 1 Rara+ · 1 Energía Básica. */
+    val SET_151_PACK = PackTemplate(
+        id = "sv3pt5-11",
+        slots = buildList {
+            repeat(4) { add(PackSlot.Fixed(Rarity.COMMON)) }
+            repeat(3) { add(PackSlot.Fixed(Rarity.UNCOMMON)) }
+            add(PackSlot.Weighted(REVERSE_SLOT_151))
+            add(PackSlot.Weighted(HIT_SLOT_151))
+            add(PackSlot.BasicEnergy)
+        },
+    )
+
+    /** Plantilla de sobre por código de set (por ahora 151 fiel; el resto usa el estándar). */
+    fun templateFor(setCode: String): PackTemplate = when (setCode) {
+        "sv3pt5" -> SET_151_PACK
+        else -> STANDARD_PACK
+    }
 }

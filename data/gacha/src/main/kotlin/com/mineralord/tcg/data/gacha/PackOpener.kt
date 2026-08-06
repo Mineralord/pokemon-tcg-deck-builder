@@ -22,15 +22,29 @@ class PackOpener(
     private val dedupeFrom: Rarity = Rarity.ULTRA_RARE,
 ) {
 
-    fun open(template: PackTemplate, pool: PackPool, random: Random): List<OpenedCard> {
+    /**
+     * Abre un sobre. [energyIds] son las Energías Básicas disponibles (una por tipo) para resolver
+     * los [PackSlot.BasicEnergy]; si el sobre no lleva ese slot, puede quedar vacío.
+     */
+    fun open(
+        template: PackTemplate,
+        pool: PackPool,
+        random: Random,
+        energyIds: List<CardId> = emptyList(),
+    ): List<OpenedCard> {
         val result = ArrayList<OpenedCard>(template.size)
 
         for (slot in template.slots) {
-            val rarity = when (slot) {
-                is PackSlot.Fixed -> slot.rarity
-                is PackSlot.Weighted -> roll(slot.table, random)
+            when (slot) {
+                is PackSlot.BasicEnergy -> {
+                    // Una Energía Básica uniforme entre los tipos disponibles (rareza Común).
+                    if (energyIds.isNotEmpty()) {
+                        result += OpenedCard(energyIds[random.nextInt(energyIds.size)], Rarity.COMMON)
+                    }
+                }
+                is PackSlot.Fixed -> result += pickCard(slot.rarity, pool, random, avoid = result)
+                is PackSlot.Weighted -> result += pickCard(roll(slot.table, random), pool, random, avoid = result)
             }
-            result += pickCard(rarity, pool, random, avoid = result)
         }
 
         ensureGuarantee(result, pool, random)
@@ -79,7 +93,8 @@ class PackOpener(
             ?: return   // el pool no tiene nada ≥ floor; no se puede garantizar
         val cards = pool.cardsOf(floor)
         if (cards.isNotEmpty()) {
-            result[result.lastIndex] = OpenedCard(cards[random.nextInt(cards.size)], floor)
+            // Sustituye el PRIMER slot (una común) — nunca el de Energía Básica, que suele ir al final.
+            result[0] = OpenedCard(cards[random.nextInt(cards.size)], floor)
         }
     }
 }
