@@ -54,6 +54,9 @@ sealed interface FxCue {
 
     /** Lanzamiento de moneda. */
     data class Coin(override val side: Side?, val heads: Boolean) : FxCue
+
+    /** [side] ha jugado un Estadio [card]: viaja de la mano al slot de Estadio y se asienta con peso. */
+    data class StadiumPlaced(override val side: Side, val card: CardId) : FxCue
 }
 
 

@@ -43,6 +43,7 @@ fun GameEvent.toFxCue(): FxCue? = when (this) {
     is GameEvent.KnockedOut -> FxCue.Knockout(side)
     is GameEvent.PrizeTaken -> FxCue.Prize(side, count)
     is GameEvent.CoinFlipped -> FxCue.Coin(side, heads)
+    is GameEvent.StadiumPlayed -> FxCue.StadiumPlaced(side, card)
     else -> null
 }
 
@@ -63,6 +64,7 @@ suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) -> Unit) {
             is FxCue.Knockout -> delay(420)
             is FxCue.Prize -> delay(200)
             is FxCue.Coin -> delay(700)
+            is FxCue.StadiumPlaced -> delay(420)   // deja asentar la carta antes del siguiente golpe
             else -> {}
         }
     }

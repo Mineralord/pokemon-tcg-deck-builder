@@ -643,7 +643,7 @@ class GameEngine(
             stadiumOwner = state.activeSide,
             trainerNamesPlayedThisTurn = working.trainerNamesPlayedThisTurn + card.name.es + card.name.en,
         )
-        return EngineResult(working, listOf(GameEvent.TrainerPlayed(state.activeSide, card.id)))
+        return EngineResult(working, listOf(GameEvent.StadiumPlayed(state.activeSide, card.id)))
     }
 
     private fun useAbility(state: GameState, pokemonId: CardId, abilityName: String): EngineResult {

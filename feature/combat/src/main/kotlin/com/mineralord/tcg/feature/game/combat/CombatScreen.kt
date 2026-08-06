@@ -109,7 +109,9 @@ import com.mineralord.tcg.core.animationcompose.AnimationRenderState
 import com.mineralord.tcg.core.animationcompose.AnimationStage
 import com.mineralord.tcg.core.animationcompose.CoordinateRegistry
 import com.mineralord.tcg.core.animationcompose.SlotId
+import com.mineralord.tcg.core.animationcompose.handSlotId
 import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirector
+import com.mineralord.tcg.core.animationcompose.stadiumSlotId
 import com.mineralord.tcg.core.animationcompose.trackBounds
 import com.mineralord.tcg.feature.game.board.BoardGeometry
 import com.mineralord.tcg.feature.game.board.HandCat
@@ -177,6 +179,21 @@ fun CombatScreen(
     val glowCoords = remember { CoordinateRegistry() }
     val glowRender = remember { AnimationRenderState() }
     val glowDirector = rememberCanonicalAnimationDirector(glowCoords, glowRender)
+    // Vuelo de colocación de ESTADIO: la carta viaja de la mano al slot de Estadio y se asienta con
+    // peso (familia canónica StadiumPlace, mismo motor que el Studio). Anfitrión propio para la capa
+    // de vuelo del Estadio; las ranuras (mano origen + slot de Estadio) se rastrean abajo en su Stage.
+    val stadiumCoords = remember { CoordinateRegistry() }
+    val stadiumRender = remember { AnimationRenderState() }
+    val stadiumDirector = rememberCanonicalAnimationDirector(stadiumCoords, stadiumRender)
+
+    // Al jugar un Estadio (cualquiera de los dos lados): dispara la colocación AAA.
+    LaunchedEffect(Unit) {
+        vm.fx.collect { cue ->
+            if (cue is FxCue.StadiumPlaced) {
+                stadiumDirector.submit(AnimationRequest.StadiumPlaced(cue.side.name, cue.card.raw))
+            }
+        }
+    }
 
     // Rótulo de ATAQUE: anuncio cinematográfico (dirección por lado). El impacto (FxCue.Damage) llega
     // después por el espaciado de `playFx`, cumpliendo el orden anuncio → acción.
@@ -365,6 +382,20 @@ fun CombatScreen(
                     setup = setup,
                     onInspect = { inspect = it },
                     onZonePanel = { zonePanel = it },
+                )
+
+                // ---------- Capa VUELO de ESTADIO (canónica, sobre las cartas) ----------
+                // Rastrea el origen (mano de cada lado) y el destino (slot de Estadio) en su propio
+                // registro; el nodo StadiumPlace viaja en arco y aterriza con peso + destello.
+                AnimationStage(
+                    modifier = Modifier.matchParentSize(),
+                    registry = stadiumCoords,
+                    renderState = stadiumRender,
+                    board = {
+                        Box(Modifier.place(BoardGeometry.Stadium, boardW, boardH).trackBounds(stadiumSlotId(), stadiumCoords))
+                        Box(Modifier.place(BoardGeometry.MeHandOrigin, boardW, boardH).trackBounds(handSlotId(Side.PLAYER.name), stadiumCoords))
+                        Box(Modifier.place(BoardGeometry.OppHandOrigin, boardW, boardH).trackBounds(handSlotId(Side.OPPONENT.name), stadiumCoords))
+                    },
                 )
 
                 // ---------- HUD persistente (rieles/estado/fin de turno/banner) ----------

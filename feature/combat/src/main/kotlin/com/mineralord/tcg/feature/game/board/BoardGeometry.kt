@@ -111,6 +111,11 @@ object BoardGeometry {
 
     val Stadium      = NBox(0.010f, 0.420f, 0.130f, 0.060f)
 
+    /** Origen aproximado del vuelo "desde la mano" al colocar un Estadio: jugador (borde inferior)
+     *  y rival (borde superior). No es una zona real, solo el punto de partida de la animación. */
+    val MeHandOrigin  = NBox(0.400f, 0.900f, 0.200f, 0.070f)
+    val OppHandOrigin = NBox(0.400f, 0.030f, 0.200f, 0.070f)
+
     val MeActive     = NBox(0.390f, 0.415f, 0.220f, 0.140f)
     val MeBench      = NBox(0.060f, 0.563f, 0.880f, 0.108f)
     val MePrizes     = NBox(0.000f, 0.591f, BoardCardWFrac, 0.208f)
