@@ -30,6 +30,7 @@ val CanonicalAnimationContributors = listOf(
     EvolveAnimations,
     BannerAnimations,
     AbilityGlowAnimations,
+    StadiumPlaceAnimations,
 )
 
 /**
@@ -45,6 +46,7 @@ fun canonicalStepExecutors(
     register(AnimationStep.Evolve::class, EvolveExecutor(coordinates, renderState))
     register(AnimationStep.Banner::class, BannerExecutor(renderState))
     register(AnimationStep.AbilityGlow::class, AbilityGlowExecutor(coordinates, renderState))
+    register(AnimationStep.StadiumPlace::class, StadiumPlaceExecutor(coordinates, renderState))
 }
 
 /**

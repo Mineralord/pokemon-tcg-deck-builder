@@ -41,6 +41,7 @@ import com.mineralord.tcg.core.animationcompose.activeSlotId
 import com.mineralord.tcg.core.animationcompose.deckSlotId
 import com.mineralord.tcg.core.animationcompose.handSlotId
 import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirector
+import com.mineralord.tcg.core.animationcompose.stadiumSlotId
 import com.mineralord.tcg.core.animationcompose.trackBounds
 import com.mineralord.tcg.core.designsystem.tokens.ButtonStyle
 import com.mineralord.tcg.core.designsystem.tokens.ButtonVariant
@@ -339,6 +340,7 @@ private fun PreviewStage(
                     SlotMarker(scheme, "Mazo", deckSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.TopStart))
                     SlotMarker(scheme, "Mano", handSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.BottomEnd))
                     SlotMarker(scheme, "Activo", activeSlotId(PREVIEW_PLAYER), Modifier.align(Alignment.Center))
+                    SlotMarker(scheme, "Estadio", stadiumSlotId(), Modifier.align(Alignment.CenterStart))
                 }
             },
         )

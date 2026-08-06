@@ -120,6 +120,20 @@ sealed interface AnimationStep {
         val visual: GlowVisual,
     ) : AnimationStep
 
+    /**
+     * Colocación de un Estadio: la carta viaja de la ranura de la mano a la del slot de Estadio
+     * describiendo un ARCO y se ASIENTA con peso (overshoot + destello de aterrizaje). Se separa de
+     * [DrawCard]/[Move] a propósito: su identidad visual es "objeto pesado que aterriza" (escala
+     * 0.9→1.0, overshoot ~12%, flash radial al tocar), no un robo ni una traslación lineal. El "feel"
+     * (altura de arco, overshoot, flash) vive en `StadiumPlaceExecutor`/`StadiumPlaceNodeRenderer`.
+     * Ranuras por `String` para no acoplar el módulo puro. Enrutada a su ejecutor (Open-Closed).
+     */
+    data class StadiumPlace(
+        val fromSlotId: String,
+        val toSlotId: String,
+        val duration: Duration,
+    ) : AnimationStep
+
     /** Escala un objetivo hasta un factor. */
     data class Scale(val targetId: String, val factor: Float) : AnimationStep
 

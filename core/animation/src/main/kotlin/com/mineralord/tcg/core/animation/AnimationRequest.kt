@@ -51,6 +51,19 @@ sealed interface AnimationRequest {
     ) : AnimationRequest
 
     /**
+     * Se ha jugado un Estadio: la carta viaja de la mano al slot de Estadio (lateral, compartido) y
+     * se ASIENTA boca arriba con peso (overshoot + destello de aterrizaje). [playerId] identifica al
+     * jugador que lo coloca (origen = su mano); [stadiumId] la carta. La receta resuelve la
+     * [AnimationDefinition] con el paso [AnimationStep.StadiumPlace].
+     */
+    data class StadiumPlaced(
+        val playerId: String,
+        val stadiumId: String,
+    ) : AnimationRequest {
+        override val priority: AnimationPriority get() = AnimationPriority.High
+    }
+
+    /**
      * Un Pokémon ha evolucionado. [variantId] selecciona QUÉ variante visual de evolución
      * reproducir (p. ej. "EVO_003"); el contribuidor de recetas resuelve la
      * [AnimationDefinition] concreta a partir de ella. En el juego bastará con una variante

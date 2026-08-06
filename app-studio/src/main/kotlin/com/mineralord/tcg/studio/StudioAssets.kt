@@ -62,7 +62,26 @@ private fun animationAssets(): List<AnimationAsset> = buildList {
     addAll(evolutionAssets())
     addAll(bannerAssets())
     addAll(abilityGlowAssets())
+    addAll(stadiumAssets())
 }
+
+/** Colocación de Estadio (familia StadiumPlace), NUEVA (Experimental) a la espera de aprobación. */
+private fun stadiumAssets(): List<AnimationAsset> = listOf(
+    AnimationAsset(
+        id = "fx.stadium.place.v1",
+        name = "Colocar Estadio",
+        category = "Estadio · Colocación",
+        status = AssetStatus.Experimental,
+        request = AnimationRequest.StadiumPlaced(PREVIEW_PLAYER, "preview"),
+        author = "Claude Code",
+        createdAt = "2026-08-05",
+        inspiration = "Marvel Snap (locations) + Hearthstone (thud/peso) + Legends of Runeterra (arco) + Pokémon TCG Live",
+        description = "La carta viaja de la mano al slot de Estadio en arco y se asienta con PESO: " +
+            "escala 0.9→1.0, overshoot ~12% y un destello radial de aterrizaje. NUEVA, pendiente de aprobación.",
+        durationMillis = 380,
+        tags = listOf("estadio", "stadium", "location", "colocación", "peso"),
+    ),
+)
 
 /** Rótulos de anuncio (familia Banner), NUEVA (Experimental) a la espera de aprobación. */
 private fun bannerAssets(): List<AnimationAsset> = listOf(
