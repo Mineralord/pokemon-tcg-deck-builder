@@ -23,6 +23,8 @@ data class SlotUi(
     val rarity: Rarity,
     val owned: Boolean,
     val count: Int,
+    /** Tope de copias de esta carta (4 normal · 30 por variante de Energía Básica). */
+    val cap: Int,
     val typeLabel: String?,
     /** Código de set de la app (p. ej. "sv1", "svp") para resolver el foil real. */
     val setCode: String,
@@ -127,6 +129,7 @@ class CollectionViewModel(app: Application) : AndroidViewModel(app) {
             rarity = rarity,
             owned = copies > 0,
             count = copies,
+            cap = ProfileRepository.capFor(id.raw),
             typeLabel = (this as? PokemonCard)?.types?.firstOrNull()?.name,
             // OJO: `set.code` guarda el NOMBRE del set (no un código); el código que entiende
             // malie sale del prefijo del id impreso ("svp-106" → "svp").
