@@ -732,6 +732,14 @@ data class Effect(
      * daño. No aplica si el ataque ignora los efectos del Defensor (Staryu — Meteoros). */
     val immuneToAttackEffects: Boolean = false,
     /**
+     * Habilidad pasiva: "Evita todos los efectos de las Habilidades de los Pokémon de tu rival
+     * infligidos a este Pokémon" (Ámbar Viejo Antiguo — Protección de Ámbar sv3pt5-154). Si el
+     * portador (no bloqueado) es el Activo del rival cuando el jugador en turno USA una Habilidad,
+     * [GameEngine.useAbility] descarta los ops de esa Habilidad dirigidos al Activo rival (condiciones
+     * especiales, descarte de Energía, contadores de daño por efecto, restricciones…). El daño de un
+     * ATAQUE no pasa por aquí (esto solo afecta a EFECTOS de Habilidades). */
+    val immuneToOpponentAbilityEffects: Boolean = false,
+    /**
      * Ataque que COPIA un ataque del Activo rival (Mew ex — Hackeo Genómico sv3pt5-151): en vez de
      * hacer su propio daño/efecto, abre una [PendingDecision.ChooseAttack] con los ataques del Activo
      * rival; al resolver, [GameEngine] re-ejecuta el ataque elegido como si lo usara este Pokémon. */

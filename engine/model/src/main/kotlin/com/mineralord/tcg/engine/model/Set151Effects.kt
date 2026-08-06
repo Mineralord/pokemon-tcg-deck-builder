@@ -605,6 +605,14 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(EffectId("sv3pt5-153"), Effect())
     put(EffectId("sv3pt5-154"), Effect())
 
+    // Ámbar Viejo Antiguo — Protección de Ámbar (Amber Protection): Habilidad pasiva del Fósil.
+    // "Evita todos los efectos de las Habilidades de los Pokémon de tu rival infligidos a este
+    // Pokémon." Mientras el Ámbar (Básico sintético) esté en juego como Activo, el rival no puede
+    // aplicarle efectos con sus Habilidades. Lo comprueba GameEngine.useAbility (respeta el bloqueo
+    // de Habilidades); va por abiKey aparte del stub del Objeto, igual que Domed Armor/Helical Swell.
+    put(abiKey("sv3pt5-154", "Amber Protection"),
+        Effect(immuneToOpponentAbilityEffects = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 57: Invitación de Erika (Partidario) -----
     // Tu rival enseña su mano; pones 1 Pokémon Básico de ella en su Banca y lo cambias al Activo
     // (su Activo anterior baja a la Banca). Pausa con la decisión sobre la mano rival.

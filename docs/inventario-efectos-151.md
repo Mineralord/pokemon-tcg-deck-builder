@@ -5,13 +5,13 @@
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
 - Registradas en `EffectsDb`: **253**  ·  Sin registrar: **5**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **197**  ·  totalmente ausentes: **1**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **198**  ·  totalmente ausentes: **0**.
 
 ## Efectos únicos SIN implementar
 
-| Carta | Tipo | Nombre | Texto (español) |
-|---|---|---|---|
-| Ámbar Viejo Antiguo (`sv3pt5-154`) | Pokémon | Amber Protection |  |
+_Ninguno: los 198 efectos únicos del set están implementados (100%)._
+
+El último pendiente, **Protección de Ámbar** (`sv3pt5-154`, Habilidad del Fósil Ámbar Viejo Antiguo: "Evita todos los efectos de las Habilidades de los Pokémon de tu rival infligidos a este Pokémon"), se implementó vía el flag pasivo `Effect.immuneToOpponentAbilityEffects`, filtrado en `GameEngine.useAbility` (mismo patrón que Manto de Capullo de Kakuna en el camino de ataque).
 
 ## Efectos con al menos un printing implementado
 
@@ -19,6 +19,7 @@
 - Agarrador Mecánico — Trainer: Trainer
 - Alakazam ex — Ataque: Levantamente
 - Alakazam ex — Ataque: Mano Dimensional
+- Ámbar Viejo Antiguo — Habilidad: Protección de Ámbar
 - Arbok ex — Ataque: Amarrar
 - Arbok ex — Ataque: Colmillos Amenazantes
 - Arcanine — Ataque: Torrente Tórrido

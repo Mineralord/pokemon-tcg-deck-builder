@@ -2812,4 +2812,33 @@ class Set151EffectsTest {
         val second = engine.apply(first.state, GameIntent.UseAbility(CardId("zubat"), "Revealing Echo"))
         assertFalse(second.accepted, "no debe poder usarse dos veces en el mismo turno")
     }
+
+    @Test
+    fun `FASE 63 - Proteccion de Ambar evita el efecto de una Habilidad rival sobre el Activo protegido`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        // Pokémon en turno con una Habilidad manual que Envenena al Activo rival (reusa una clave real
+        // registrada con ApplyStatus(OPP_ACTIVE, POISONED)).
+        val poisoner = mon("poisoner", 100, EnergyType.PSYCHIC, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Toxina", "Toxin"), LocalizedText("", ""),
+                EffectsDb.atkKey("sv3pt5-29", "Poison Horn"))),
+        )
+        // Activo rival = Ámbar Viejo Antiguo con la Habilidad Protección de Ámbar.
+        val amber = PokemonInPlay(mon("amber", 60, EnergyType.COLORLESS, dummy).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Protección de Ámbar", "Amber Protection"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv3pt5-154", "Amber Protection")))))
+
+        val shielded = GameEngine(SeededRng(1))
+            .apply(duel(PokemonInPlay(poisoner), amber), GameIntent.UseAbility(CardId("poisoner"), "Toxina"))
+        assertTrue(shielded.accepted)
+        assertFalse(shielded.state.opponent.active!!.statuses.contains(Status.POISONED),
+            "la Protección de Ámbar debe evitar el Envenenamiento por Habilidad rival")
+
+        // Control: un Activo sin la Habilidad sí queda Envenenado por la misma Habilidad.
+        val plain = PokemonInPlay(mon("plain", 60, EnergyType.COLORLESS, dummy))
+        val hit = GameEngine(SeededRng(1))
+            .apply(duel(PokemonInPlay(poisoner), plain), GameIntent.UseAbility(CardId("poisoner"), "Toxina"))
+        assertTrue(hit.state.opponent.active!!.statuses.contains(Status.POISONED))
+    }
 }

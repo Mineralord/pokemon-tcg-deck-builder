@@ -684,8 +684,18 @@ class GameEngine(
         val events = mutableListOf<GameEvent>(
             GameEvent.AbilityUsed(state.activeSide, pokemonId, abilityName, manual = true),
         )
+        // Protección de Ámbar (Ámbar Viejo Antiguo): si el Activo del RIVAL porta una Habilidad
+        // (no bloqueada) que evita los efectos de las Habilidades rivales, se descartan los ops de
+        // ESTA Habilidad dirigidos al Activo rival (el daño de un ATAQUE va por otra vía). Mismo
+        // patrón que Manto de Capullo (Kakuna) en el camino de ataque.
+        val foeSide = state.activeSide.other()
+        val foeActive = working.sideState(foeSide).active
+        val foeActiveShielded = foeActive != null &&
+            abilityEffects(working, foeSide, foeActive).any { it.immuneToOpponentAbilityEffects }
+        val runEffect = if (foeActiveShielded)
+            effect.copy(ops = effect.ops.filterNot { opTargetsOpponentActive(it) }) else effect
         val res = interpreter.execute(
-            effect, EffectSource(state.activeSide, pokemonId), working,
+            runEffect, EffectSource(state.activeSide, pokemonId), working,
             shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) },
         )
         // Igual que en los Entrenadores: una habilidad que solo apunta a Pokémon dañados
@@ -954,6 +964,17 @@ class GameEngine(
         is EffectOp.BumpDefenderRetreatCostNextTurn -> true
         is EffectOp.BumpDefenderAttackCostNextTurn -> true
         else -> false
+    }
+
+    /**
+     * ¿Este op de una HABILIDAD aplica un EFECTO al Activo del rival? Se usa para la Protección de
+     * Ámbar (sv3pt5-154): a diferencia del ataque, aquí el daño por efecto de una Habilidad (contadores)
+     * SÍ es un efecto y también se filtra. Cubre condiciones especiales, descarte de Energía, daño
+     * directo y las restricciones ya listadas en [opTargetsDefender].
+     */
+    private fun opTargetsOpponentActive(op: EffectOp): Boolean = when (op) {
+        is EffectOp.Damage -> op.target == Target.OPP_ACTIVE
+        else -> opTargetsDefender(op)
     }
 
     private fun nameMatches(pip: PokemonInPlay, needle: String): Boolean =
