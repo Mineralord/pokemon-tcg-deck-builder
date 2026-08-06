@@ -180,6 +180,10 @@ data class GameState(
     val interaction: PendingInteraction? = null,
     /** Un Apoyo por turno: se pone a true al jugar uno; se resetea en fin de turno. */
     val supporterPlayedThisTurn: Boolean = false,
+    /**
+     * "Una vez durante el turno de cada jugador": acción del Estadio en juego ya usada este turno
+     * (Camino de Bicis — descartar 1 Energía Básica para robar 1). Se resetea al pasar el turno. */
+    val stadiumUsedThisTurn: Boolean = false,
     /** Una energía por turno: se pone a true al unir una; se resetea en fin de turno. */
     val energyAttachedThisTurn: Boolean = false,
     /**

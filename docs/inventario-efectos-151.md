@@ -4,15 +4,14 @@
 
 - Printings del set en catálogo: **207** (incluye artes alternativos).
 - Entradas con lógica de efecto (nivel printing): **258**.
-- Registradas en `EffectsDb`: **252**  ·  Sin registrar: **6**.
-- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **196**  ·  totalmente ausentes: **2**.
+- Registradas en `EffectsDb`: **253**  ·  Sin registrar: **5**.
+- Efectos ÚNICOS (deduplicando artes alternativos): **198**  ·  con ≥1 printing implementado: **197**  ·  totalmente ausentes: **1**.
 
 ## Efectos únicos SIN implementar
 
 | Carta | Tipo | Nombre | Texto (español) |
 |---|---|---|---|
 | Ámbar Viejo Antiguo (`sv3pt5-154`) | Pokémon | Amber Protection |  |
-| Camino de Bicis (`sv3pt5-157`) | Trainer | Trainer | Una vez durante el turno de cada jugador, ese jugador puede descartar 1 carta de Energía Básica de su mano para poder robar una carta. |
 
 ## Efectos con al menos un printing implementado
 
@@ -35,6 +34,7 @@
 - Butterfree — Ataque: Remolino
 - Butterfree — Ataque: Adiós, Vuelo
 - Cambio — Trainer: Trainer
+- Camino de Bicis — Trainer: Trainer
 - Carisma de Giovanni — Trainer: Trainer
 - Caterpie — Ataque: Mascahojas
 - Chansey — Habilidad: Regalo Fortuito

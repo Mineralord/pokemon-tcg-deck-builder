@@ -115,7 +115,10 @@ class EffectsDbTest {
         // Butterfree — Adiós, Vuelo (sv3pt5-12, "Bye-Bye Flight") YA está modelada: baraja un
         // Pokémon de la Banca rival y este Pokémon en sus mazos (EffectOp.ByeByeFlightBounce).
         assertTrue(registry[EffectsDb.atkKey("sv3pt5-12", "Bye-Bye Flight")]!!.ops.any { it is EffectOp.ByeByeFlightBounce })
-        // Camino de Bicis (Estadio sv3pt5-157: descartar 1 Energía Básica → robar) sigue pendiente.
-        assertFalse(registry.has(EffectId("sv3pt5-157")))
+        // Camino de Bicis (Estadio sv3pt5-157) YA está modelado: acción descartar-Energía→robar.
+        assertTrue(registry[EffectId("sv3pt5-157")]!!.stadiumDiscardEnergyDraw)
+        // Ámbar Viejo Antiguo — Amber Protection (sv3pt5-154#abi) sigue pendiente de modelar
+        // (inmunidad a efectos de Habilidades rivales; el fósil se juega, la Habilidad queda inerte).
+        assertFalse(registry.has(EffectsDb.abiKey("sv3pt5-154", "Amber Protection")))
     }
 }

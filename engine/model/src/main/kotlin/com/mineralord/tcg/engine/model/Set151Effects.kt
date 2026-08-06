@@ -563,6 +563,11 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         triggerOnEvolve = true,
         ops = listOf(EffectOp.RecoverOppFromDiscard(CardFilter(trainerKind = TrainerCategory.SUPPORTER), 1))))
 
+    // ------------------- SET 151 (sv3pt5) — Fase 62: Camino de Bicis (Estadio) -----
+    // Una vez durante el turno de cada jugador, ese jugador puede descartar 1 Energía Básica de su
+    // mano para robar 1 carta. La acción la ejecuta GameEngine.useStadium (GameIntent.UseStadium).
+    put(EffectId("sv3pt5-157"), Effect(stadiumDiscardEnergyDraw = true))
+
     // ------------------- SET 151 (sv3pt5) — Fase 61: Sandshrew «Pantalla de Arena» -----
     // Habilidad pasiva: mientras Sandshrew esté en juego, las cartas de Entrenador del descarte del
     // RIVAL no pueden volver a su mazo por efectos de sus Objetos/Partidarios. Lo aplica el RuleHook

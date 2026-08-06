@@ -23,6 +23,7 @@ sealed interface GameIntentDto {
     @Serializable data class ResolveDecision(val chosen: List<String>) : GameIntentDto
     @Serializable data class ResolveLuckyBonus(val chansey: String, val toBench: Boolean) : GameIntentDto
     @Serializable data class DiscardFossil(val target: String) : GameIntentDto
+    @Serializable data class UseStadium(val energy: String) : GameIntentDto
     @Serializable data object EndTurn : GameIntentDto
 }
 
@@ -39,6 +40,7 @@ fun GameIntent.toDto(): GameIntentDto = when (this) {
     is GameIntent.ResolveDecision -> GameIntentDto.ResolveDecision(chosen.map { it.raw })
     is GameIntent.ResolveLuckyBonus -> GameIntentDto.ResolveLuckyBonus(chansey.raw, toBench)
     is GameIntent.DiscardFossil -> GameIntentDto.DiscardFossil(target.raw)
+    is GameIntent.UseStadium -> GameIntentDto.UseStadium(energy.raw)
     GameIntent.EndTurn -> GameIntentDto.EndTurn
 }
 
@@ -55,6 +57,7 @@ fun GameIntentDto.toIntent(): GameIntent = when (this) {
     is GameIntentDto.ResolveDecision -> GameIntent.ResolveDecision(chosen.map { CardId(it) })
     is GameIntentDto.ResolveLuckyBonus -> GameIntent.ResolveLuckyBonus(CardId(chansey), toBench)
     is GameIntentDto.DiscardFossil -> GameIntent.DiscardFossil(CardId(target))
+    is GameIntentDto.UseStadium -> GameIntent.UseStadium(CardId(energy))
     GameIntentDto.EndTurn -> GameIntent.EndTurn
 }
 

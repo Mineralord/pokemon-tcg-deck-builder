@@ -695,6 +695,36 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 62 - Camino de Bicis descarta 1 Energia Basica para robar 1, una vez por turno`() {
+        val dummy = attack("x", 0, EffectId("none"))
+        val cycling = TrainerCard(
+            CardId("cycling"), LocalizedText("Camino de Bicis", "Cycling Road"), set(),
+            Rarity.UNCOMMON, "G", art(), TrainerKind.Stadium(), LocalizedText("", ""), EffectId("sv3pt5-157"))
+        val base = duel(
+            PokemonInPlay(mon("me", 100, EnergyType.COLORLESS, dummy)),
+            PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy)),
+        )
+        val st = base.copy(
+            stadium = cycling, stadiumOwner = Side.PLAYER,
+            player = base.player.copy(
+                hand = listOf(energy("e1", EnergyType.LIGHTNING)),
+                deck = listOf(energy("top", EnergyType.FIRE)) + base.player.deck,
+            ),
+        )
+
+        // Usar el Estadio: descarta la Energía Básica y roba 1.
+        val used = GameEngine(SeededRng(1)).apply(st, GameIntent.UseStadium(CardId("e1")))
+        assertTrue(used.accepted)
+        assertTrue(used.state.player.discard.any { it.id == CardId("e1") })     // descartada
+        assertTrue(used.state.player.hand.any { it.id == CardId("top") })       // robó la de arriba
+        assertTrue(used.state.stadiumUsedThisTurn)
+
+        // Segunda vez el mismo turno: rechazado (una vez por turno).
+        val again = GameEngine(SeededRng(1)).apply(used.state, GameIntent.UseStadium(CardId("top")))
+        assertFalse(again.accepted)
+    }
+
+    @Test
     fun `FASE 59 - Alakazam ex Mano Dimensional ataca desde la Banca`() {
         val dummy = attack("x", 0, EffectId("none"))
         val dim = attack("Dimensional Hand", 120, EffectsDb.atkKey("sv3pt5-65", "Dimensional Hand"))

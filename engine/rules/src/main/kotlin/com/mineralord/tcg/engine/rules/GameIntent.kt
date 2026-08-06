@@ -71,6 +71,12 @@ sealed interface GameIntent {
      */
     data class DiscardFossil(val target: CardId) : GameIntent
 
+    /**
+     * Usa la acción del Estadio en juego (Camino de Bicis): descarta la Energía Básica [energy] de tu
+     * mano para robar 1 carta. Una vez por turno. Solo legal si el Estadio activo concede la acción.
+     */
+    data class UseStadium(val energy: CardId) : GameIntent
+
     /** Termina el turno voluntariamente. */
     data object EndTurn : GameIntent
 }

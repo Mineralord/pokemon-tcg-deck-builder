@@ -136,6 +136,7 @@ class GameEngine(
             is GameIntent.ResolveDecision -> resolveDecision(state, intent.chosen)
             is GameIntent.ResolveLuckyBonus -> resolveLuckyBonus(state, intent.chansey, intent.toBench)
             is GameIntent.DiscardFossil -> discardFossil(state, intent.target)
+            is GameIntent.UseStadium -> useStadium(state, intent.energy)
             GameIntent.EndTurn -> endTurn(state)
         }
     }
@@ -752,6 +753,33 @@ class GameEngine(
         return EngineResult(next, listOf(GameEvent.CardsDiscarded(state.activeSide, discarded.size)))
     }
 
+    /**
+     * Camino de Bicis (Estadio): "una vez durante tu turno, descarta 1 Energía Básica de tu mano para
+     * robar 1 carta". El Estadio es compartido, así que lo usa el jugador en turno sea o no su dueño.
+     */
+    private fun useStadium(state: GameState, energyId: CardId): EngineResult {
+        val stadium = state.stadium
+            ?: return EngineResult.reject(state, "No hay ningún Estadio en juego")
+        if (effects[stadium.effect]?.stadiumDiscardEnergyDraw != true) {
+            return EngineResult.reject(state, "El Estadio en juego no tiene una acción usable")
+        }
+        if (state.stadiumUsedThisTurn) {
+            return EngineResult.reject(state, "Ya usaste el Estadio este turno")
+        }
+        val me = state.activePlayer
+        val energy = me.hand.firstOrNull { it.id == energyId } as? BasicEnergy
+            ?: return EngineResult.reject(state, "Debes descartar una Energía Básica de tu mano")
+        var working = withPlayer(state, me.copy(hand = me.hand - (energy as Card), discard = me.discard + energy))
+            .copy(stadiumUsedThisTurn = true)
+        val events = mutableListOf<GameEvent>(GameEvent.CardsDiscarded(state.activeSide, 1))
+        val ps = working.activePlayer
+        if (ps.deck.isNotEmpty()) {
+            working = withPlayer(working, ps.copy(deck = ps.deck.drop(1), hand = ps.hand + ps.deck.first()))
+            events += GameEvent.CardsDrawn(state.activeSide, 1)
+        }
+        return EngineResult(working, events)
+    }
+
     private fun resolveDecision(state: GameState, chosen: List<CardId>): EngineResult {
         val interaction = state.interaction
             ?: return EngineResult.reject(state, "No hay ninguna decisión pendiente")
@@ -1316,6 +1344,7 @@ class GameEngine(
             // Límites por turno se reinician al pasar el turno.
             supporterPlayedThisTurn = false,
             energyAttachedThisTurn = false,
+            stadiumUsedThisTurn = false,
             trainerNamesPlayedThisTurn = emptySet(),
             abilitiesUsedThisTurn = emptySet(),
             // El lado que ACABA su turno reinicia su ventana de "KO en turno rival":
@@ -1486,6 +1515,11 @@ class GameEngine(
         // Descartar del juego un Fósil Antiguo en juego (Objeto jugado como Pokémon).
         me.allInPlay.filter { it.isPlayedAsPokemon }
             .forEach { intents += GameIntent.DiscardFossil(it.card.id) }
+
+        // Camino de Bicis (Estadio): descartar 1 Energía Básica de la mano → robar 1 (1/turno).
+        if (!state.stadiumUsedThisTurn && effects[state.stadium?.effect]?.stadiumDiscardEnergyDraw == true) {
+            me.hand.filterIsInstance<BasicEnergy>().forEach { intents += GameIntent.UseStadium(it.id) }
+        }
 
         // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
         // o si el Activo está restringido este turno por Jet Wing y similares).

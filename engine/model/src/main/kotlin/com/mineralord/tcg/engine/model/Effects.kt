@@ -743,6 +743,11 @@ data class Effect(
      * por su tipo y cierra el turno. Lo comprueba [GameEngine.attack] al permitir un atacante de Banca. */
     val usableFromBench: Boolean = false,
     /**
+     * Estadio con acción "una vez durante el turno de cada jugador, descarta 1 Energía Básica de tu
+     * mano para robar 1 carta" (Camino de Bicis sv3pt5-157). Marca la carta de Estadio; la acción la
+     * ejecuta [GameEngine.useStadium] (vía [GameIntent.UseStadium]), no el intérprete. */
+    val stadiumDiscardEnergyDraw: Boolean = false,
+    /**
      * Habilidad que se dispara al COGER a este Pokémon como carta de Premio durante tu turno
      * (Chansey — Regalo Fortuito sv3pt5-113): si tu Banca no está llena, antes de ponerlo en tu
      * mano, puedes ponerlo en tu Banca; si lo haces, lanza 1 moneda y con cara coges 1 Premio más.
