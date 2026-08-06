@@ -1,10 +1,16 @@
 package com.mineralord.tcg.core.designsystem
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +30,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,6 +38,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -39,11 +47,12 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.tilt.HoloAssets
 import com.mineralord.tcg.core.designsystem.tilt.HoloBitmaps
+import com.mineralord.tcg.core.designsystem.tilt.Tilt
 import com.mineralord.tcg.core.designsystem.tilt.holoOverlay
-import com.mineralord.tcg.core.designsystem.tilt.rememberTilt
 import com.mineralord.tcg.core.designsystem.tilt.resolveFinish
 import com.mineralord.tcg.core.designsystem.tilt.tiltParallax
 import com.mineralord.tcg.engine.model.Rarity
+import kotlinx.coroutines.launch
 
 /**
  * Visor de carta a pantalla completa: arte HD grande con **pinch-to-zoom** y arrastre.
@@ -83,8 +92,13 @@ fun CardDetailDialog(
     ) {
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
-        // Parallax por giroscopio (solo con zoom neutro, para no chocar con el pan).
-        val tilt by rememberTilt(enabled = scale <= 1f)
+        // Inclinación por DEDO (como Pokémon TCG Live/Pocket): arrastrar el dedo por la carta la
+        // inclina hacia el puntero y el holo lo sigue; al soltar, vuelve elástica al reposo. Sin
+        // giroscopio. Normalizada a [-1, 1] en cada eje; alimenta tiltParallax y holoOverlay.
+        val scope = rememberCoroutineScope()
+        val tiltX = remember { Animatable(0f) }
+        val tiltY = remember { Animatable(0f) }
+        val tilt = Tilt(tiltX.value, tiltY.value)
 
         Box(
             modifier = Modifier
@@ -110,24 +124,56 @@ fun CardDetailDialog(
                 .aspectRatio(0.72f)
                 .tiltParallax(tilt)
                 .holoOverlay(tilt, finish, holo?.mask, holo?.etch, holo?.foilCode ?: -1f)
-            // El pinch-to-zoom solo en modo visor (sin acciones), para no tapar los botones.
-            val artModifier = if (bottomBar == null) {
-                base
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offset.x,
-                        translationY = offset.y,
-                    )
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            scale = (scale * zoom).coerceIn(1f, 4f)
-                            offset = if (scale > 1f) offset + pan else Offset.Zero
-                        }
+            // Interacción táctil unificada (sustituye al giroscopio):
+            //  - 1 dedo, sin zoom → INCLINA la carta hacia el dedo (parallax + holo).
+            //  - 1 dedo, con zoom → desplaza (pan).
+            //  - 2 dedos (solo en modo visor) → pinch-to-zoom.
+            // Un toque simple SIN arrastre no se consume, así el toque de fondo cierra el visor.
+            val allowZoom = bottomBar == null
+            val artModifier = base
+                .then(
+                    if (allowZoom) Modifier.graphicsLayer(
+                        scaleX = scale, scaleY = scale,
+                        translationX = offset.x, translationY = offset.y,
+                    ) else Modifier,
+                )
+                .pointerInput(allowZoom) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        do {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            when {
+                                allowZoom && pressed.size >= 2 -> {
+                                    scale = (scale * event.calculateZoom()).coerceIn(1f, 4f)
+                                    if (scale > 1f) offset += event.calculatePan()
+                                }
+                                pressed.size == 1 -> {
+                                    if (allowZoom && scale > 1f) {
+                                        offset += event.calculatePan()
+                                    } else {
+                                        // Inclina hacia el punto tocado, normalizado a [-1, 1].
+                                        val p = pressed.first().position
+                                        val w = size.width.toFloat().coerceAtLeast(1f)
+                                        val h = size.height.toFloat().coerceAtLeast(1f)
+                                        val tx = ((p.x / w) * 2f - 1f).coerceIn(-1f, 1f)
+                                        val ty = ((p.y / h) * 2f - 1f).coerceIn(-1f, 1f)
+                                        scope.launch { tiltX.snapTo(tx) }
+                                        scope.launch { tiltY.snapTo(ty) }
+                                    }
+                                }
+                            }
+                            // Consume SOLO si hubo arrastre (para no anular el toque de cierre).
+                            if (event.changes.any { it.positionChanged() }) {
+                                event.changes.forEach { it.consume() }
+                            }
+                        } while (event.changes.any { it.pressed })
+                        // Al soltar: la carta vuelve elástica a su posición de reposo.
+                        val restSpring = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                        scope.launch { tiltX.animateTo(0f, restSpring) }
+                        scope.launch { tiltY.animateTo(0f, restSpring) }
                     }
-            } else {
-                base
-            }
+                }
 
             @Composable
             fun ArtCard() {
