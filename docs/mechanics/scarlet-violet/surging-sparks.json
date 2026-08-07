@@ -1,0 +1,2554 @@
+{
+  "code": "sv8",
+  "officialCode": "SSP",
+  "serie": "Scarlet & Violet",
+  "expansion": "Surging Sparks",
+  "counts": {
+    "attacks": 318,
+    "attacksImpl": 4,
+    "abilities": 39,
+    "abilitiesImpl": 4
+  },
+  "attacks": [
+    {
+      "cardId": "sv8-1",
+      "en": "Precocious Evolution",
+      "es": "Evolución Prematura",
+      "text": "Si sales en primer lugar, puedes usar este ataque durante tu primer turno. Busca en tu baraja 1 carta que evolucione de este Pokémon y ponla sobre este Pokémon para hacerlo evolucionar. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-2",
+      "en": "Absorb",
+      "es": "Absorber",
+      "text": "Cura 10 puntos de daño a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-3",
+      "en": "Barrage O'Clock",
+      "es": "Las Bombardeo en Punto",
+      "text": "Lanza 1 moneda por cada Energía unida a ambos Pokémon Activos. Este ataque hace 60 puntos de daño por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-4",
+      "en": "Vengeful Crush",
+      "es": "Destrucción Vengativa",
+      "text": "Este ataque hace 30 puntos de daño más por cada carta de Premio que haya cogido tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-5",
+      "en": "Call for Family",
+      "es": "Llamar a la Familia",
+      "text": "Busca en tu baraja 1 Pokémon Básico y ponlo en tu Banca. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-6",
+      "en": "Wander About",
+      "es": "Deambular",
+      "text": "Cambia este Pokémon por uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-6",
+      "en": "Tackle",
+      "es": "Placaje",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-7",
+      "en": "Evo-Powder",
+      "es": "Evo-Polvo",
+      "text": "Para cada uno de tus Pokémon en Banca, busca en tu baraja 1 carta que evolucione de ese Pokémon y ponla sobre ese Pokémon para hacerlo evolucionar. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-7",
+      "en": "Cutting Wind",
+      "es": "Viento Helado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-8",
+      "en": "Attach",
+      "es": "Pegarse",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-9",
+      "en": "Spiral Rush",
+      "es": "Avalancha Espiral",
+      "text": "Lanza 1 moneda hasta que salga cruz. Este ataque hace 30 puntos de daño más por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-10",
+      "en": "Rescue Kedge",
+      "es": "Áncora de Rescate",
+      "text": "Pon hasta 2 Pokémon de tu pila de descartes en tu mano.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-10",
+      "en": "Annihilating Anchor",
+      "es": "Ancla Aniquiladora",
+      "text": "Antes de infligir daño, descarta todas las Herramientas Pokémon del Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-11",
+      "en": "Leaf Drain",
+      "es": "Hoja Drenante",
+      "text": "Cura 20 puntos de daño a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-11",
+      "en": "Jungle Whip",
+      "es": "Látigo Selvático",
+      "text": "Puedes poner todas las Energías unidas a este Pokémon en tu mano para que este ataque haga 80 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-12",
+      "en": "Headbutt Bounce",
+      "es": "Bote Cabezazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-13",
+      "en": "Collect",
+      "es": "Coleccionar",
+      "text": "Roba 1 carta.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-13",
+      "en": "Rollout",
+      "es": "Rodar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-14",
+      "en": "Triple Draw",
+      "es": "Triple Robo",
+      "text": "Roba 3 cartas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-14",
+      "en": "Counterturn",
+      "es": "Giro Inesperado",
+      "text": "Si hay 3 cartas o menos en tu baraja, este ataque hace 200 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-15",
+      "en": "Hazardous Greed",
+      "es": "Avaricia Peligrosa",
+      "text": "Si hay 3 cartas o menos en tu baraja, este ataque también hace 120 puntos de daño a 2 de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-15",
+      "en": "Entangling Whip",
+      "es": "Látigo Estrangulador",
+      "text": "Descarta las 3 primeras cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-16",
+      "en": "Take Down",
+      "es": "Derribo",
+      "text": "Este Pokémon también se hace 10 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-17",
+      "en": "Fire Soul",
+      "es": "Alma de Fuego",
+      "text": "Este ataque también hace 30 puntos de daño a uno de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-18",
+      "en": "Rear Kick",
+      "es": "Patada Trasera",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-18",
+      "en": "Spirited Tackle",
+      "es": "Placaje Vigoroso",
+      "text": "Si el Pokémon Activo de tu rival es un Pokémon de Fase 1, este ataque hace 90 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-19",
+      "en": "Flap",
+      "es": "Aleteo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-19",
+      "en": "Shining Blaze",
+      "es": "Llamarada Radiante",
+      "text": "Si tienes algún Pokémon Teracristal en tu Banca, este ataque hace 100 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-20",
+      "en": "Singe",
+      "es": "Quemadura",
+      "text": "El Pokémon Activo de tu rival pasa a estar Quemado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-20",
+      "en": "Sunny Assist",
+      "es": "Asistencia Soleada",
+      "text": "Mueve todas las Energías de este Pokémon a uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-21",
+      "en": "Flare",
+      "es": "Llama",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-22",
+      "en": "Combustion",
+      "es": "Combustión",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-23",
+      "en": "Double Smash",
+      "es": "Golpe Doble",
+      "text": "Lanza 2 monedas. Este ataque hace 70 puntos de daño por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-24",
+      "en": "Ram",
+      "es": "Apisonar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-24",
+      "en": "Steady Firebreathing",
+      "es": "Lanzallamas Continuo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-25",
+      "en": "Leech Life",
+      "es": "Chupavidas",
+      "text": "Cura a este Pokémon la misma cantidad de puntos de daño que hayas infligido al Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-25",
+      "en": "Turbulent Wings",
+      "es": "Alas Turbulentas",
+      "text": "Este Pokémon también se hace 50 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-26",
+      "en": "Energy Assist",
+      "es": "Asistencia de Energía",
+      "text": "Une hasta 2 cartas de Energía Básica de tu pila de descartes a uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-26",
+      "en": "Fireworks",
+      "es": "Fuegos Artificiales",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-27",
+      "en": "Live Coal",
+      "es": "Carbón Activado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-27",
+      "en": "Hook",
+      "es": "Garfio",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-28",
+      "en": "Billowing Heat Wave",
+      "es": "Onda Ígnea Sinuosa",
+      "text": "Este ataque también hace 30 puntos de daño a cada uno de tus Pokémon en Banca. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-28",
+      "en": "Heat Blast",
+      "es": "Explosión de Calor",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-29",
+      "en": "Heat Burn",
+      "es": "Quemazón",
+      "text": "El Pokémon Activo de tu rival pasa a estar Quemado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-30",
+      "en": "Heat Breath",
+      "es": "Aliento Ardiente",
+      "text": "Lanza 1 moneda. Si sale cara, este ataque hace 50 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-31",
+      "en": "Torcherto",
+      "es": "Serenata Incendiaria",
+      "text": "Este ataque hace 20 puntos de daño más por cada Pokémon en Banca (tanto tuyos como de tu rival).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-32",
+      "en": "Will-O-Wisp",
+      "es": "Fuego Fatuo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-33",
+      "en": "Light Punch",
+      "es": "Puño Ligero",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-33",
+      "en": "Flamethrower",
+      "es": "Lanzallamas",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-34",
+      "en": "Combustion",
+      "es": "Combustión",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-34",
+      "en": "Crimson Blaster",
+      "es": "Explosión Carmesí",
+      "text": "Descarta todas las Energías {R} de este Pokémon, y este ataque hace 180 puntos de daño a uno de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-35",
+      "en": "Cursed Edge",
+      "es": "Filo Maldito",
+      "text": "Descarta todas las Energías Especiales de todos los Pokémon de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-35",
+      "en": "Black Blaze Slash",
+      "es": "Tajo Ígneo Oscuro",
+      "text": "Durante tu próximo turno, este Pokémon no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-36",
+      "en": "Abyssal Flames",
+      "es": "Llamas Abismales",
+      "text": "Este ataque hace 20 puntos de daño más por cada carta de Energía en tu pila de descartes.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-36",
+      "en": "Raging Amethyst",
+      "es": "Amatista Iracunda",
+      "text": "Descarta todas las Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-37",
+      "en": "Spicy Rage",
+      "es": "Furia Picante",
+      "text": "Este ataque hace 70 puntos de daño más por cada contador de daño en este Pokémon.",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-38",
+      "en": "Lunge Out",
+      "es": "Arremeter",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-38",
+      "en": "Blazing Charge",
+      "es": "Carga Calcinadora",
+      "text": "Si a tu rival le quedan 4 cartas de Premio o menos, este ataque hace 70 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-39",
+      "en": "Upthrusting Horns",
+      "es": "Cornada Ascendente",
+      "text": "Puedes poner 2 Energías unidas al Pokémon de Fase 2 Activo de tu rival en su mano.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-39",
+      "en": "Jet Headbutt",
+      "es": "Turbocabezazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-40",
+      "en": "Wave Splash",
+      "es": "Chapoteo Ondulante",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-40",
+      "en": "Aqua Dive",
+      "es": "Embestida Aqua",
+      "text": "Este ataque hace 50 puntos de daño a uno de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-41",
+      "en": "Leap Out",
+      "es": "Saltar del Agua",
+      "text": "Cambia este Pokémon por uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-42",
+      "en": "Hypno Splash",
+      "es": "Salpicadura Hipnótica",
+      "text": "El Pokémon Activo de tu rival pasa a estar Dormido.",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-43",
+      "en": "Powder Snow",
+      "es": "Nieve Polvo",
+      "text": "El Pokémon Activo de tu rival pasa a estar Dormido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-44",
+      "en": "Lunge Out",
+      "es": "Arremeter",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-44",
+      "en": "Ice Ball",
+      "es": "Bola Hielo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-45",
+      "en": "Frigid Fangs",
+      "es": "Colmillos Glaciales",
+      "text": "Durante el próximo turno de tu rival, los Pokémon que tengan 2 Energías o menos unidas no pueden atacar. (Esto incluye los nuevos Pokémon que entren en juego).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-45",
+      "en": "Megaton Fall",
+      "es": "Caída Megatón",
+      "text": "Este Pokémon también se hace 50 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-46",
+      "en": "Sprinkle Water",
+      "es": "Esparcir Agua",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-47",
+      "en": "Call Sign",
+      "es": "Señal de Llamada",
+      "text": "Busca en tu baraja 1 Pokémon, enséñalo y ponlo en tu mano. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-47",
+      "en": "Ice Beam",
+      "es": "Rayo Hielo",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-48",
+      "en": "Ice Age",
+      "es": "Era de Hielo",
+      "text": "Si el Pokémon Activo de tu rival es un Pokémon {N}, pasa a estar Paralizado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-48",
+      "en": "Black Frost",
+      "es": "Escarcha Negra",
+      "text": "Este Pokémon también se hace 30 puntos de daño a sí mismo.",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-49",
+      "en": "Big Bite",
+      "es": "Gran Mordisco",
+      "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-50",
+      "en": "Aerial Ace",
+      "es": "Golpe Aéreo",
+      "text": "Lanza 1 moneda. Si sale cara, este ataque hace 20 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-51",
+      "en": "Aqua Edge",
+      "es": "Filo Agua",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-52",
+      "en": "Hydro Splash",
+      "es": "Hidroestallido",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-53",
+      "en": "Draining Fin",
+      "es": "Aleta Drenaje",
+      "text": "Cura 20 puntos de daño a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-54",
+      "en": "Dangerous Mouth",
+      "es": "Boca Peligrosa",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-55",
+      "en": "Gusting Collision",
+      "es": "Colisión Racheada",
+      "text": "Este ataque hace 50 puntos de daño menos por cada {C} en el Coste de Retirada del Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-56",
+      "en": "Icicle Loop",
+      "es": "Bucle Témpano",
+      "text": "Pon 1 Energía unida a este Pokémon en tu mano.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-57",
+      "en": "Topaz Bolt",
+      "es": "Rayo Topacio",
+      "text": "Descarta 3 Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-58",
+      "en": "Lightning Ball",
+      "es": "Bola Relámpago",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-59",
+      "en": "Electric Ball",
+      "es": "Bola Eléctrica",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-60",
+      "en": "Mighty Magnetism",
+      "es": "Magnetismo Poderoso",
+      "text": "El Pokémon Activo de tu rival pasa a estar Confundido. Durante el próximo turno de tu rival, ese Pokémon no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-60",
+      "en": "Zap Cannon",
+      "es": "Electrocañón",
+      "text": "Durante tu próximo turno, este Pokémon no puede usar Electrocañón.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-61",
+      "en": "Crushing Pulse",
+      "es": "Pulso Demoledor",
+      "text": "Tu rival enseña las cartas de su mano. Descarta todas las cartas de Objeto y de Herramienta Pokémon que encuentres entre ellas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-61",
+      "en": "Energy Short",
+      "es": "Cortocircuito de Energía",
+      "text": "Este ataque hace 20 puntos de daño por cada Energía unida al Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-62",
+      "en": "Add On",
+      "es": "Sumar",
+      "text": "Roba 1 carta.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-62",
+      "en": "Static Shock",
+      "es": "Impacto Estático",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-63",
+      "en": "Kick",
+      "es": "Patada",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-63",
+      "en": "Mach Bolt",
+      "es": "Rayo Mach",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-64",
+      "en": "Paralyzing Crackle",
+      "es": "Chasquido Paralizante",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado, y descartas 1 Energía de ese Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-65",
+      "en": "Summon Lightning",
+      "es": "Invocar Rayos",
+      "text": "Busca en tu baraja hasta 2 Pokémon {L}, enséñalos y ponlos en tu mano. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-65",
+      "en": "Prize Count",
+      "es": "Cuenta de Premios",
+      "text": "Si te quedan más cartas de Premio que a tu rival, este ataque hace 90 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-66",
+      "en": "Aerial Ace",
+      "es": "Golpe Aéreo",
+      "text": "Lanza 1 moneda. Si sale cara, este ataque hace 20 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-67",
+      "en": "Glide",
+      "es": "Planeo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-67",
+      "en": "Storm Bolt",
+      "es": "Rayo Tormentoso",
+      "text": "Mueve todas las Energías de este Pokémon a tus Pokémon en Banca de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-68",
+      "en": "Return Charge",
+      "es": "Carga de Retorno",
+      "text": "Cambia este Pokémon por uno de tus Pokémon en Banca. Si lo haces, une hasta 2 cartas de Energía {L} Básica de tu mano a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-68",
+      "en": "Thunder Lance",
+      "es": "Asta Trueno",
+      "text": "Este ataque hace 40 puntos de daño más por cada Energía {L} unida a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-69",
+      "en": "C.O.D.E.: Protect",
+      "es": "C.Ó.D.I.G.O.: Protección",
+      "text": "Durante el próximo turno de tu rival, se evita todo el daño infligido a cada uno de tus Pokémon del futuro por ataques de Pokémon ex. Si este Pokémon ya no es tu Pokémon Activo, este efecto termina.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-69",
+      "en": "Thunder Claws",
+      "es": "Garras Trueno",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-70",
+      "en": "Pound",
+      "es": "Destructor",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-71",
+      "en": "Draining Kiss",
+      "es": "Beso Drenaje",
+      "text": "Cura 30 puntos de daño a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-72",
+      "en": "Speed Wing",
+      "es": "Ala Veloz",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-73",
+      "en": "Rolling Tackle",
+      "es": "Placaje Giro",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-74",
+      "en": "Double-Edge",
+      "es": "Doble Filo",
+      "text": "Este Pokémon también se hace 50 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-75",
+      "en": "Delightful Kiss",
+      "es": "Beso Encantador",
+      "text": "Busca en tu baraja hasta 2 cartas de Energía {P} Básica y únelas a uno de tus Pokémon en Banca. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-76",
+      "en": "Eon Blade",
+      "es": "Tajo Eón",
+      "text": "Durante tu próximo turno, este Pokémon no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-77",
+      "en": "Skill Dive",
+      "es": "Técnica de Buceo",
+      "text": "Este ataque hace 50 puntos de daño a uno de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-77",
+      "en": "Jet Headbutt",
+      "es": "Turbocabezazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-78",
+      "en": "Painful Memories",
+      "es": "Recuerdos Dolorosos",
+      "text": "Pon 2 contadores de daño en cada uno de los Pokémon de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-79",
+      "en": "Full Heart",
+      "es": "Todo Corazón",
+      "text": "Une hasta 2 cartas de Energía {P} Básica de tu mano a tus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-79",
+      "en": "Guardian Burst",
+      "es": "Explosión del Guardián",
+      "text": "Si no tienes a Uxie y Azelf en tu Banca, este ataque no hace nada.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-80",
+      "en": "Neurokinesis",
+      "es": "Neuroquinesis",
+      "text": "Este ataque hace 10 puntos de daño más por cada contador de daño en cada uno de los Pokémon de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-81",
+      "en": "Double Draw",
+      "es": "Roba Doble",
+      "text": "Roba 2 cartas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-81",
+      "en": "Psy Bolt",
+      "es": "Rayo Psi",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-82",
+      "en": "Mumble",
+      "es": "Farfullar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-82",
+      "en": "Petty Grudge",
+      "es": "Rencor Ruin",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-83",
+      "en": "Law of the Underworld",
+      "es": "Ley del Inframundo",
+      "text": "Pon 6 contadores de daño en cada Pokémon que tenga una habilidad (tanto tuyos como de tu rival).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-83",
+      "en": "Spooky Shot",
+      "es": "Disparo Embrujado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-84",
+      "en": "See Through",
+      "es": "Transparencia",
+      "text": "Tu rival enseña las cartas de su mano.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-84",
+      "en": "Psyshot",
+      "es": "Disparo Psi",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-85",
+      "en": "Psyshot",
+      "es": "Disparo Psi",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-86",
+      "en": "Magical Charm",
+      "es": "Encanto Mágico",
+      "text": "Durante el próximo turno de tu rival, los ataques usados por el Pokémon Defensor hacen 100 puntos de daño menos (antes de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-86",
+      "en": "Angelite",
+      "es": "Angelita",
+      "text": "Elige 2 de los Pokémon en Banca de tu rival. Pon esos Pokémon y todas las cartas unidas a ellos en la baraja de tu rival y barájalas todas. Si uno de tus Pokémon usó Angelita durante tu último turno, este ataque no se puede usar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-87",
+      "en": "Electromagnetic Sonar",
+      "es": "Sonar Electromagnético",
+      "text": "Pon 1 carta de Entrenador de tu pila de descartes en tu mano.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-87",
+      "en": "Gnaw",
+      "es": "Roer",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-88",
+      "en": "Aurora Gain",
+      "es": "Ganar Aurora",
+      "text": "Cura 30 puntos de daño a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-88",
+      "en": "Giga Impact",
+      "es": "Gigaimpacto",
+      "text": "Durante tu próximo turno, este Pokémon no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-89",
+      "en": "Energy Assist",
+      "es": "Asistencia de Energía",
+      "text": "Une hasta 2 cartas de Energía Básica de tu pila de descartes a uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-89",
+      "en": "Dazzle Dance",
+      "es": "Danza Deslumbrante",
+      "text": "El Pokémon Activo de tu rival pasa a estar Confundido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-90",
+      "en": "Sand Spray",
+      "es": "Rociado de Arena",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-91",
+      "en": "Sand Tomb",
+      "es": "Bucle Arena",
+      "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-91",
+      "en": "Barite Jail",
+      "es": "Prisión Barita",
+      "text": "Pon contadores de daño en cada uno de los Pokémon en Banca de tu rival hasta que le queden 100 PS a cada uno de ellos.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-92",
+      "en": "Perplex",
+      "es": "Desconcierto",
+      "text": "El Pokémon Activo de tu rival pasa a estar Confundido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-92",
+      "en": "Mental Crush",
+      "es": "Aplastamiento Mental",
+      "text": "Si el Pokémon Activo de tu rival está Confundido, este ataque hace 90 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-93",
+      "en": "Super Psy Bolt",
+      "es": "Superrayo Psi",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-94",
+      "en": "Splashing Dodge",
+      "es": "Esquivo Chapoteo",
+      "text": "Lanza 1 moneda. Si sale cara, durante el próximo turno de tu rival, se evitan todo el daño y todos los efectos de los ataques infligidos a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-95",
+      "en": "Mystical Eyes",
+      "es": "Ojos Místicos",
+      "text": "Haz involucionar a 1 de los Pokémon evolucionados de tu rival poniendo la carta de Evolución de fase más alta que tenga sobre él en la mano de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-95",
+      "en": "Spiral Drain",
+      "es": "Drenaje Espiral",
+      "text": "Cura 30 puntos de daño a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-96",
+      "en": "Perplexing Transfer",
+      "es": "Traspaso Desconcertante",
+      "text": "Mueve todos los contadores de daño de uno de tus Pokémon del pasado en Banca al Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-96",
+      "en": "Moonblast",
+      "es": "Fuerza Lunar",
+      "text": "Durante el próximo turno de tu rival, los ataques usados por el Pokémon Defensor hacen 30 puntos de daño menos (antes de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-97",
+      "en": "Minor Errand-Running",
+      "es": "Recado Menor",
+      "text": "Busca en tu baraja hasta 2 cartas de Energía Básica, enséñalas y ponlas en tu mano. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-97",
+      "en": "Tackle",
+      "es": "Placaje",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-98",
+      "en": "Dual Chop",
+      "es": "Golpe Bis",
+      "text": "Lanza 2 monedas. Este ataque hace 10 puntos de daño por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-99",
+      "en": "Sweep the Leg",
+      "es": "Poner la Zancadilla",
+      "text": "Lanza 1 moneda. Si sale cara, descarta 1 Energía del Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-99",
+      "en": "Mega Punch",
+      "es": "Megapuño",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-100",
+      "en": "Tantrum",
+      "es": "Rabieta",
+      "text": "Este Pokémon pasa a estar Confundido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-100",
+      "en": "Destined Fight",
+      "es": "Lucha Predestinada",
+      "text": "Ambos Pokémon Activos quedan Fuera de Combate.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-101",
+      "en": "Smash Kick",
+      "es": "Patada Destrucción",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-101",
+      "en": "Blocking Stomp",
+      "es": "Pisotón Bloqueo",
+      "text": "Si el Pokémon Defensor es un Pokémon Básico, no puede atacar durante el próximo turno de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-102",
+      "en": "Headbutt",
+      "es": "Golpe Cabeza",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-103",
+      "en": "Knock Flat",
+      "es": "Noquear",
+      "text": "El daño de este ataque no se ve afectado por ningún efecto en el Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-103",
+      "en": "Guarded Rolling",
+      "es": "Defensa Rodante",
+      "text": "Descarta 2 Energías de este Pokémon. Durante el próximo turno de tu rival, los ataques hacen 100 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-104",
+      "en": "Call for Family",
+      "es": "Llamar a la Familia",
+      "text": "Busca en tu baraja hasta 2 Pokémon Básicos y ponlos en tu Banca. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-104",
+      "en": "Bite",
+      "es": "Mordisco",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-105",
+      "en": "Screech",
+      "es": "Chirrido",
+      "text": "Durante tu próximo turno, los ataques hacen 50 puntos de daño más al Pokémon Defensor (después de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-105",
+      "en": "Cutting Wind",
+      "es": "Viento Helado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-106",
+      "en": "Reversing Storm",
+      "es": "Tormenta Inversión",
+      "text": "Puedes cambiar este Pokémon por uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-106",
+      "en": "Sonic Peridot",
+      "es": "Peridoto Sónico",
+      "text": "Este ataque hace 100 puntos de daño a cada uno de los Pokémon ex y Pokémon V de tu rival. El daño de este ataque no se ve afectado por Debilidad o Resistencia.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-107",
+      "en": "Mud Shot",
+      "es": "Disparo Lodo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-108",
+      "en": "Burrow",
+      "es": "Escarbar",
+      "text": "Descarta la primera carta de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-108",
+      "en": "Mud-Slap",
+      "es": "Bofetón Lodo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-109",
+      "en": "Digging Claw",
+      "es": "Garra Excavadora",
+      "text": "Descarta la primera carta de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-109",
+      "en": "Drill Smash",
+      "es": "Golpe Taladro",
+      "text": "Si tienes algún Pokémon {M} en tu Banca, este ataque hace 80 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-110",
+      "en": "Fist of Focus",
+      "es": "Puño Fulminante",
+      "text": "Une 1 carta de Energía de tu pila de descartes a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-110",
+      "en": "Buster Swing",
+      "es": "Golpe Destructor",
+      "text": "El daño de este ataque no se ve afectado por Resistencia.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-111",
+      "en": "Coordinated Throwing",
+      "es": "Lanzamiento Coordinado",
+      "text": "Este ataque hace 20 puntos de daño por cada uno de tus Pokémon Básicos en juego.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-112",
+      "en": "Slight Intrusion",
+      "es": "Ligera Intromisión",
+      "text": "Este Pokémon también se hace 10 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-113",
+      "en": "Chop",
+      "es": "Cortar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-113",
+      "en": "Raging Tentacles",
+      "es": "Tentáculos Iracundos",
+      "text": "Si este Pokémon tiene algún contador de daño sobre él, este ataque se puede usar por {F}.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-114",
+      "en": "Rock Hurl",
+      "es": "Lanzamiento de Rocas",
+      "text": "El daño de este ataque no se ve afectado por Resistencia.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-115",
+      "en": "Corrosive Shards",
+      "es": "Esquirlas Corrosivas",
+      "text": "El Pokémon Activo de tu rival pasa a estar Envenenado. Durante el próximo turno de tu rival, no se pueden unir cartas de Energía de la mano de tu rival a ese Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-115",
+      "en": "Rock Throw",
+      "es": "Lanzarrocas",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-116",
+      "en": "Unrelenting Onslaught",
+      "es": "Arremetida Incesante",
+      "text": "Si uno de tus otros Pokémon del pasado usó un ataque durante tu último turno, este ataque hace 150 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-116",
+      "en": "Hammer In",
+      "es": "Martillear",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-117",
+      "en": "Stomp Off",
+      "es": "Pisotear",
+      "text": "Descarta la primera carta de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-117",
+      "en": "Bite",
+      "es": "Mordisco",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-118",
+      "en": "Stomp Off",
+      "es": "Pisotear",
+      "text": "Descarta las 2 primeras cartas de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-118",
+      "en": "Darkness Fang",
+      "es": "Colmillo de Oscuridad",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-119",
+      "en": "Crashing Headbutt",
+      "es": "Cabezazo Demoledor",
+      "text": "Descarta las 3 primeras cartas de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-119",
+      "en": "Obsidian",
+      "es": "Obsidiana",
+      "text": "Este ataque también hace 130 puntos de daño a 2 de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-120",
+      "en": "Spray Fluid",
+      "es": "Fluido Rociado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-121",
+      "en": "Mischievous Painting",
+      "es": "Pinturas Traviesas",
+      "text": "Une hasta 3 cartas de Energía de la pila de descartes de tu rival a sus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-121",
+      "en": "Energized Graffiti",
+      "es": "Grafiti Energético",
+      "text": "Este ataque hace 40 puntos de daño por cada Energía unida a cada uno de los Pokémon de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-122",
+      "en": "Surprise Attack",
+      "es": "Ataque Sorpresa",
+      "text": "Lanza 1 moneda. Si sale cruz, este ataque no hace nada.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-123",
+      "en": "Trio-Cheehoo",
+      "es": "Trío Olé",
+      "text": "Si no tienes exactamente 3 cartas en tu mano, este ataque no hace nada.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-124",
+      "en": "Steel Wing",
+      "es": "Ala de Acero",
+      "text": "Durante el próximo turno de tu rival, los ataques hacen 30 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-125",
+      "en": "Raging Hammer",
+      "es": "Martillo Furioso",
+      "text": "Este ataque hace 10 puntos de daño más por cada contador de daño en este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-126",
+      "en": "Shield Attack",
+      "es": "Ataque Escudo",
+      "text": "Lanza 1 moneda. Si sale cara, este ataque hace 20 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-127",
+      "en": "Spinning Attack",
+      "es": "Ataque Giratorio",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-127",
+      "en": "Double Impact",
+      "es": "Impacto Doble",
+      "text": "Lanza 2 monedas. Este ataque hace 100 puntos de daño por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-128",
+      "en": "Stick 'n' Draw",
+      "es": "Abrir y Robar",
+      "text": "Descarta 1 carta de tu mano. Si lo haces, roba 2 cartas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-128",
+      "en": "Hook",
+      "es": "Garfio",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-129",
+      "en": "Confront",
+      "es": "Confrontar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-129",
+      "en": "Duralubeam",
+      "es": "Rayoludon",
+      "text": "Descarta 2 Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-130",
+      "en": "Metal Defender",
+      "es": "Defensor Metálico",
+      "text": "Durante el próximo turno de tu rival, este Pokémon no tiene ninguna Debilidad.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-131",
+      "en": "Strike It Rich",
+      "es": "Enriquecerse",
+      "text": "Si este Pokémon ha evolucionado de Gimmighoul durante este turno, este ataque hace 90 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-131",
+      "en": "Surf Back",
+      "es": "Surfeo Regreso",
+      "text": "Puedes poner este Pokémon y todas las cartas unidas a él en tu baraja y barajarlas todas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-132",
+      "en": "Deleting Slash",
+      "es": "Tajo Formateo",
+      "text": "Si tu rival tiene 3 Pokémon en Banca o más, este ataque hace 80 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-132",
+      "en": "Slicing Blade",
+      "es": "Cuchilla Cortante",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-133",
+      "en": "Tropical Frenzy",
+      "es": "Frenesí Tropical",
+      "text": "Puedes unir cualquier cantidad de cartas de Energía Básica de tu mano a tus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-133",
+      "en": "Swinging Sphene",
+      "es": "Esfena Oscilante",
+      "text": "Lanza 1 moneda. Si sale cara, deja Fuera de Combate al Pokémon Básico Activo de tu rival. Si sale cruz, deja Fuera de Combate a uno de los Pokémon Básicos en Banca de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-134",
+      "en": "Humming Charge",
+      "es": "Carga Cantarina",
+      "text": "Busca en tu baraja hasta 2 cartas de Energía Básica y únelas a tus Pokémon de la manera que desees. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-134",
+      "en": "Cotton Wings",
+      "es": "Alas Algodonadas",
+      "text": "Lanza 1 moneda. Si sale cara, durante el próximo turno de tu rival, se evita todo el daño infligido a este Pokémon por ataques.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-135",
+      "en": "Time Manipulation",
+      "es": "Manipulación Temporal",
+      "text": "Busca en tu baraja 2 cartas, baraja las cartas de tu baraja y, luego, pon esas cartas en la parte superior de tu baraja en el orden que quieras.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-135",
+      "en": "Buster Tail",
+      "es": "Cola Destructora",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-136",
+      "en": "Space Crash",
+      "es": "Colisión Espacial",
+      "text": "Este ataque hace 40 puntos de daño por cada Energía Básica unida a este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-137",
+      "en": "Fully Singe",
+      "es": "Quemadura Total",
+      "text": "Descarta 1 Energía del Pokémon ex Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-137",
+      "en": "Steaming Stomp",
+      "es": "Pisotón Humeante",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-138",
+      "en": "Nutrients",
+      "es": "Nutrientes",
+      "text": "Cura 30 puntos de daño a uno de tus Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-138",
+      "en": "Trip Over",
+      "es": "Tropezón",
+      "text": "Lanza 1 moneda. Si sale cara, este ataque hace 30 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-139",
+      "en": "Acidic Spit",
+      "es": "Salivazo Ácido",
+      "text": "Este ataque hace 20 puntos de daño por cada contador de daño en el Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-139",
+      "en": "Speed Dive",
+      "es": "Picado Rápido",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-140",
+      "en": "Melting Sweetness",
+      "es": "Dulzor Fundido",
+      "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-140",
+      "en": "Wild Tackle",
+      "es": "Placaje Salvaje",
+      "text": "Este Pokémon también se hace 20 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-141",
+      "en": "Dyna-Blast",
+      "es": "Dinaexplosión",
+      "text": "Si el Pokémon Activo de tu rival es un Pokémon ex, este ataque hace 80 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-141",
+      "en": "World Ender",
+      "es": "Fin del Mundo",
+      "text": "Descarta 1 Estadio en juego. Si no puedes, este ataque no hace nada.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-142",
+      "en": "Surprise Pump",
+      "es": "Bomba Sorpresa",
+      "text": "El daño de este ataque no se ve afectado por ningún efecto en el Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-142",
+      "en": "Cinnabar Lure",
+      "es": "Cebo Cinabrio",
+      "text": "Mira las 10 primeras cartas de tu baraja. Puedes poner cualquier cantidad de Pokémon que encuentres entre ellas en tu Banca. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-143",
+      "en": "Reckless Charge",
+      "es": "Carga Descuidada",
+      "text": "Este Pokémon también se hace 10 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-144",
+      "en": "Spike Draw",
+      "es": "Robo Pico",
+      "text": "Roba 1 carta.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-144",
+      "en": "Mega Punch",
+      "es": "Megapuño",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-145",
+      "en": "Take It Easy",
+      "es": "Tranqui",
+      "text": "Cura 60 puntos de daño a este Pokémon. Durante tu próximo turno, este Pokémon no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-146",
+      "en": "Slashing Claw",
+      "es": "Garra Cuchillazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-147",
+      "en": "Great Swing",
+      "es": "Golpe Excelente",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-148",
+      "en": "Disarming Voice",
+      "es": "Voz Cautivadora",
+      "text": "El Pokémon Activo de tu rival pasa a estar Confundido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-149",
+      "en": "Fury Cutter",
+      "es": "Corte Furia",
+      "text": "Lanza 3 monedas. Si sale cara en una de ellas, este ataque hace 20 puntos de daño más. Si sale cara en 2, este ataque hace 50 puntos de daño más. Si sale cara en las 3, este ataque hace 80 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-150",
+      "en": "Lick Whip",
+      "es": "Latigazo Lingual",
+      "text": "Este ataque hace 30 puntos de daño a uno de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-151",
+      "en": "Ready to Ram",
+      "es": "Espera y Embiste",
+      "text": "Durante el próximo turno de tu rival, si este Pokémon resulta dañado por un ataque (incluso si este Pokémon queda Fuera de Combate), pon 6 contadores de daño en el Pokémon Atacante.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-151",
+      "en": "Smashing Headbutt",
+      "es": "Cabezazo Destructor",
+      "text": "Descarta 2 Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-152",
+      "en": "Flap",
+      "es": "Aleteo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-153",
+      "en": "Drag Off",
+      "es": "Jalón",
+      "text": "Cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo. Este ataque hace 40 puntos de daño al nuevo Pokémon Activo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-153",
+      "en": "Blasting Wind",
+      "es": "Vientos Explosivos",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-154",
+      "en": "Tiny Bolt",
+      "es": "Relampaguito",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-154",
+      "en": "Reckless Charge",
+      "es": "Carga Descuidada",
+      "text": "Este Pokémon también se hace 10 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-155",
+      "en": "Parabolic Charge",
+      "es": "Carga Parábola",
+      "text": "Busca en tu baraja hasta 4 cartas de Energía, enséñalas y ponlas en tu mano. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-155",
+      "en": "Electroslug",
+      "es": "Electropuñetazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-156",
+      "en": "Now You're in My Power",
+      "es": "Ya te Tengo",
+      "text": "Hasta el final de tu próximo turno, la Debilidad del Pokémon Defensor pasa a ser {C}. (La cantidad de Debilidad no cambia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-156",
+      "en": "Smack",
+      "es": "Palmetazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-157",
+      "en": "Play Rough",
+      "es": "Carantoña",
+      "text": "Lanza 1 moneda. Si sale cara, este ataque hace 10 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-158",
+      "en": "Familial March",
+      "es": "Marcha Familiar",
+      "text": "Busca en tu baraja, en cualquier combinación, hasta 2 Maushold y Maushold ex y ponlos en tu Banca. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-158",
+      "en": "Incessant Incisors",
+      "es": "Incisivos Incesantes",
+      "text": "Lanza 4 monedas. Este ataque hace 30 puntos de daño por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-159",
+      "en": "Break Through",
+      "es": "Abrir Paso",
+      "text": "Este ataque también hace 30 puntos de daño a uno de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-159",
+      "en": "Zircon Road",
+      "es": "Camino de Zircones",
+      "text": "Puedes robar 5 cartas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-160",
+      "en": "Precise Beak",
+      "es": "Pico Preciso",
+      "text": "Si este Pokémon y el Pokémon Activo de tu rival tienen la misma cantidad de Energías unidas, este ataque hace 100 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-160",
+      "en": "Brave Bird",
+      "es": "Pájaro Osado",
+      "text": "Este Pokémon también se hace 30 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-161",
+      "en": "Prism Charge",
+      "es": "Carga Prisma",
+      "text": "Busca en tu baraja hasta 3 cartas de Energía Básica de diferentes tipos y únelas a tus Pokémon Teracristal de la manera que desees. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-161",
+      "en": "Hard Tackle",
+      "es": "Bloqueo Contundente",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-188",
+      "en": "Fluorite",
+      "es": "Fluorita",
+      "text": "Descarta todas las Energías de este Pokémon y cura todos los puntos de daño a cada uno de tus Pokémon Teracristal.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-192",
+      "en": "Precocious Evolution",
+      "es": "Evolución Prematura",
+      "text": "Si sales en primer lugar, puedes usar este ataque durante tu primer turno. Busca en tu baraja 1 carta que evolucione de este Pokémon y ponla sobre este Pokémon para hacerlo evolucionar. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-193",
+      "en": "Evo-Powder",
+      "es": "Evo-Polvo",
+      "text": "Para cada uno de tus Pokémon en Banca, busca en tu baraja 1 carta que evolucione de ese Pokémon y ponla sobre ese Pokémon para hacerlo evolucionar. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-193",
+      "en": "Cutting Wind",
+      "es": "Viento Helado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-194",
+      "en": "Spiral Rush",
+      "es": "Avalancha Espiral",
+      "text": "Lanza 1 moneda hasta que salga cruz. Este ataque hace 30 puntos de daño más por cada cara.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-195",
+      "en": "Singe",
+      "es": "Quemadura",
+      "text": "El Pokémon Activo de tu rival pasa a estar Quemado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-195",
+      "en": "Sunny Assist",
+      "es": "Asistencia Soleada",
+      "text": "Mueve todas las Energías de este Pokémon a uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-196",
+      "en": "Ram",
+      "es": "Apisonar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-196",
+      "en": "Steady Firebreathing",
+      "es": "Lanzallamas Continuo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-197",
+      "en": "Cursed Edge",
+      "es": "Filo Maldito",
+      "text": "Descarta todas las Energías Especiales de todos los Pokémon de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-197",
+      "en": "Black Blaze Slash",
+      "es": "Tajo Ígneo Oscuro",
+      "text": "Durante tu próximo turno, este Pokémon no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-198",
+      "en": "Leap Out",
+      "es": "Saltar del Agua",
+      "text": "Cambia este Pokémon por uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-199",
+      "en": "Powder Snow",
+      "es": "Nieve Polvo",
+      "text": "El Pokémon Activo de tu rival pasa a estar Dormido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-200",
+      "en": "Big Bite",
+      "es": "Gran Mordisco",
+      "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-201",
+      "en": "Dangerous Mouth",
+      "es": "Boca Peligrosa",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-202",
+      "en": "Paralyzing Crackle",
+      "es": "Chasquido Paralizante",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado, y descartas 1 Energía de ese Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-203",
+      "en": "Skill Dive",
+      "es": "Técnica de Buceo",
+      "text": "Este ataque hace 50 puntos de daño a uno de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-203",
+      "en": "Jet Headbutt",
+      "es": "Turbocabezazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-204",
+      "en": "Full Heart",
+      "es": "Todo Corazón",
+      "text": "Une hasta 2 cartas de Energía {P} Básica de tu mano a tus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-204",
+      "en": "Guardian Burst",
+      "es": "Explosión del Guardián",
+      "text": "Si no tienes a Uxie y Azelf en tu Banca, este ataque no hace nada.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-205",
+      "en": "Headbutt",
+      "es": "Golpe Cabeza",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-206",
+      "en": "Screech",
+      "es": "Chirrido",
+      "text": "Durante tu próximo turno, los ataques hacen 50 puntos de daño más al Pokémon Defensor (después de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-206",
+      "en": "Cutting Wind",
+      "es": "Viento Helado",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-207",
+      "en": "Slight Intrusion",
+      "es": "Ligera Intromisión",
+      "text": "Este Pokémon también se hace 10 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-208",
+      "en": "Trio-Cheehoo",
+      "es": "Trío Olé",
+      "text": "Si no tienes exactamente 3 cartas en tu mano, este ataque no hace nada.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-209",
+      "en": "Steel Wing",
+      "es": "Ala de Acero",
+      "text": "Durante el próximo turno de tu rival, los ataques hacen 30 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-210",
+      "en": "Acidic Spit",
+      "es": "Salivazo Ácido",
+      "text": "Este ataque hace 20 puntos de daño por cada contador de daño en el Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-210",
+      "en": "Speed Dive",
+      "es": "Picado Rápido",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-211",
+      "en": "Melting Sweetness",
+      "es": "Dulzor Fundido",
+      "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-211",
+      "en": "Wild Tackle",
+      "es": "Placaje Salvaje",
+      "text": "Este Pokémon también se hace 20 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-212",
+      "en": "Take It Easy",
+      "es": "Tranqui",
+      "text": "Cura 60 puntos de daño a este Pokémon. Durante tu próximo turno, este Pokémon no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-213",
+      "en": "Lick Whip",
+      "es": "Latigazo Lingual",
+      "text": "Este ataque hace 30 puntos de daño a uno de los Pokémon de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-214",
+      "en": "Drag Off",
+      "es": "Jalón",
+      "text": "Cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo. Este ataque hace 40 puntos de daño al nuevo Pokémon Activo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-214",
+      "en": "Blasting Wind",
+      "es": "Vientos Explosivos",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-215",
+      "en": "Vengeful Crush",
+      "es": "Destrucción Vengativa",
+      "text": "Este ataque hace 30 puntos de daño más por cada carta de Premio que haya cogido tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-216",
+      "en": "Spicy Rage",
+      "es": "Furia Picante",
+      "text": "Este ataque hace 70 puntos de daño más por cada contador de daño en este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-217",
+      "en": "Hypno Splash",
+      "es": "Salpicadura Hipnótica",
+      "text": "El Pokémon Activo de tu rival pasa a estar Dormido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-218",
+      "en": "Ice Age",
+      "es": "Era de Hielo",
+      "text": "Si el Pokémon Activo de tu rival es un Pokémon {N}, pasa a estar Paralizado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-218",
+      "en": "Black Frost",
+      "es": "Escarcha Negra",
+      "text": "Este Pokémon también se hace 30 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-219",
+      "en": "Topaz Bolt",
+      "es": "Rayo Topacio",
+      "text": "Descarta 3 Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-220",
+      "en": "Eon Blade",
+      "es": "Tajo Eón",
+      "text": "Durante tu próximo turno, este Pokémon no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-221",
+      "en": "Sand Tomb",
+      "es": "Bucle Arena",
+      "text": "Durante el próximo turno de tu rival, el Pokémon Defensor no puede retirarse.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-221",
+      "en": "Barite Jail",
+      "es": "Prisión Barita",
+      "text": "Pon contadores de daño en cada uno de los Pokémon en Banca de tu rival hasta que le queden 100 PS a cada uno de ellos.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-222",
+      "en": "Reversing Storm",
+      "es": "Tormenta Inversión",
+      "text": "Puedes cambiar este Pokémon por uno de tus Pokémon en Banca.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-222",
+      "en": "Sonic Peridot",
+      "es": "Peridoto Sónico",
+      "text": "Este ataque hace 100 puntos de daño a cada uno de los Pokémon ex y Pokémon V de tu rival. El daño de este ataque no se ve afectado por Debilidad o Resistencia.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-223",
+      "en": "Crashing Headbutt",
+      "es": "Cabezazo Demoledor",
+      "text": "Descarta las 3 primeras cartas de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-223",
+      "en": "Obsidian",
+      "es": "Obsidiana",
+      "text": "Este ataque también hace 130 puntos de daño a 2 de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-224",
+      "en": "Metal Defender",
+      "es": "Defensor Metálico",
+      "text": "Durante el próximo turno de tu rival, este Pokémon no tiene ninguna Debilidad.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-225",
+      "en": "Tropical Frenzy",
+      "es": "Frenesí Tropical",
+      "text": "Puedes unir cualquier cantidad de cartas de Energía Básica de tu mano a tus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-225",
+      "en": "Swinging Sphene",
+      "es": "Esfena Oscilante",
+      "text": "Lanza 1 moneda. Si sale cara, deja Fuera de Combate al Pokémon Básico Activo de tu rival. Si sale cruz, deja Fuera de Combate a uno de los Pokémon Básicos en Banca de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-226",
+      "en": "Surprise Pump",
+      "es": "Bomba Sorpresa",
+      "text": "El daño de este ataque no se ve afectado por ningún efecto en el Pokémon Activo de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-226",
+      "en": "Cinnabar Lure",
+      "es": "Cebo Cinabrio",
+      "text": "Mira las 10 primeras cartas de tu baraja. Puedes poner cualquier cantidad de Pokémon que encuentres entre ellas en tu Banca. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-227",
+      "en": "Great Swing",
+      "es": "Golpe Excelente",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-228",
+      "en": "Break Through",
+      "es": "Abrir Paso",
+      "text": "Este ataque también hace 30 puntos de daño a uno de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-228",
+      "en": "Zircon Road",
+      "es": "Camino de Zircones",
+      "text": "Puedes robar 5 cartas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-236",
+      "en": "Vengeful Crush",
+      "es": "Destrucción Vengativa",
+      "text": "Este ataque hace 30 puntos de daño más por cada carta de Premio que haya cogido tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-237",
+      "en": "Hypno Splash",
+      "es": "Salpicadura Hipnótica",
+      "text": "El Pokémon Activo de tu rival pasa a estar Dormido.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-238",
+      "en": "Topaz Bolt",
+      "es": "Rayo Topacio",
+      "text": "Descarta 3 Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-239",
+      "en": "Eon Blade",
+      "es": "Tajo Eón",
+      "text": "Durante tu próximo turno, este Pokémon no puede atacar.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-240",
+      "en": "Crashing Headbutt",
+      "es": "Cabezazo Demoledor",
+      "text": "Descarta las 3 primeras cartas de la baraja de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-240",
+      "en": "Obsidian",
+      "es": "Obsidiana",
+      "text": "Este ataque también hace 130 puntos de daño a 2 de los Pokémon en Banca de tu rival. (No apliques Debilidad y Resistencia a los Pokémon en Banca).",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-241",
+      "en": "Metal Defender",
+      "es": "Defensor Metálico",
+      "text": "Durante el próximo turno de tu rival, este Pokémon no tiene ninguna Debilidad.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-242",
+      "en": "Tropical Frenzy",
+      "es": "Frenesí Tropical",
+      "text": "Puedes unir cualquier cantidad de cartas de Energía Básica de tu mano a tus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-242",
+      "en": "Swinging Sphene",
+      "es": "Esfena Oscilante",
+      "text": "Lanza 1 moneda. Si sale cara, deja Fuera de Combate al Pokémon Básico Activo de tu rival. Si sale cruz, deja Fuera de Combate a uno de los Pokémon Básicos en Banca de tu rival.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-247",
+      "en": "Topaz Bolt",
+      "es": "Rayo Topacio",
+      "text": "Descarta 3 Energías de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-248",
+      "en": "Tropical Frenzy",
+      "es": "Frenesí Tropical",
+      "text": "Puedes unir cualquier cantidad de cartas de Energía Básica de tu mano a tus Pokémon de la manera que desees.",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-248",
+      "en": "Swinging Sphene",
+      "es": "Esfena Oscilante",
+      "text": "Lanza 1 moneda. Si sale cara, deja Fuera de Combate al Pokémon Básico Activo de tu rival. Si sale cruz, deja Fuera de Combate a uno de los Pokémon Básicos en Banca de tu rival.",
+      "impl": false
+    }
+  ],
+  "abilities": [
+    {
+      "cardId": "sv8-4",
+      "en": "Sudden Shearing",
+      "es": "Descarte Súbito",
+      "text": "Cuando juegas este Pokémon de tu mano a tu Banca durante tu turno, puedes descartar la primera carta de la baraja de tu rival.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-9",
+      "en": "Calming Light",
+      "es": "Luz Calmante",
+      "text": "Una vez durante tu turno, si este Pokémon está en el Puesto Activo, puedes dejar al Pokémon Activo de tu rival Dormido.",
+      "kind": "ABILITY",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-21",
+      "en": "Victory Cheer",
+      "es": "Ovación de Victoria",
+      "text": "Los ataques usados por tus Pokémon {R} Evolución hacen 10 puntos de daño más al Pokémon Activo de tu rival (antes de aplicar Debilidad y Resistencia).",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-31",
+      "en": "Unaware",
+      "es": "Ignorante",
+      "text": "Se evitan todos los efectos de los ataques usados por los Pokémon de tu rival e infligidos a este Pokémon. (El daño no es un efecto).",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-37",
+      "en": "Double Type",
+      "es": "Doble Tipo",
+      "text": "Mientras este Pokémon esté en juego, es de tipo {G} y {R}.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-42",
+      "en": "Sparkling Scales",
+      "es": "Escamas Centelleantes",
+      "text": "Se evitan todo el daño y todos los efectos de los ataques de los Pokémon Teracristal de tu rival infligidos a este Pokémon.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-49",
+      "en": "Counterattack",
+      "es": "Contragolpe",
+      "text": "Si este Pokémon está en el Puesto Activo y resulta dañado por un ataque de los Pokémon de tu rival (incluso si este Pokémon queda Fuera de Combate), pon 3 contadores de daño en el Pokémon Atacante.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-52",
+      "en": "Up-Tempo",
+      "es": "Presto",
+      "text": "Debes poner 1 carta de tu mano en la parte inferior de tu baraja para poder usar esta habilidad. Una vez durante tu turno, puedes robar cartas hasta que tengas 5 cartas en tu mano.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-54",
+      "en": "Solid Body",
+      "es": "Cuerpo Sólido",
+      "text": "Los ataques hacen 30 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia).",
+      "kind": "ABILITY",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-56",
+      "en": "Snow Sink",
+      "es": "Hundimiento Nieve",
+      "text": "Cuando juegas este Pokémon de tu mano a tu Banca durante tu turno, puedes descartar un Estadio en juego.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-57",
+      "en": "Resolute Heart",
+      "es": "Corazón Resuelto",
+      "text": "Si este Pokémon tiene todos sus PS y fuese a quedar Fuera de Combate por el daño de un ataque, no queda Fuera de Combate y sus PS restantes pasan a ser 10.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-59",
+      "en": "Overvolt Discharge",
+      "es": "Descarga Sobretensión",
+      "text": "Una vez durante tu turno, puedes unir hasta 3 cartas de Energía Básica de tu pila de descartes a tus Pokémon {L} de la manera que desees. Si usas esta habilidad, este Pokémon queda Fuera de Combate.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-72",
+      "en": "Wonder Kiss",
+      "es": "Beso Asombroso",
+      "text": "Cuando el Pokémon Activo de tu rival queda Fuera de Combate, lanza 1 moneda. Si sale cara, coge 1 carta de Premio más. El efecto de Beso Asombroso no se acumula.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-74",
+      "en": "Glistening Bubbles",
+      "es": "Burbujas Brillantes",
+      "text": "Si tienes algún Pokémon Teracristal en juego, este Pokémon puede usar el ataque Doble Filo por {P}.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-76",
+      "en": "Skyliner",
+      "es": "Estela",
+      "text": "Tus Pokémon Básicos en juego no tienen ningún Coste de Retirada.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-85",
+      "en": "Beckoning Tail",
+      "es": "Cola Señuelo",
+      "text": "Debes descartar 1 carta de Plumero Señuelo de tu mano para poder usar esta habilidad. Una vez durante tu turno, puedes cambiar 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-93",
+      "en": "Obliging Heal",
+      "es": "Curación Servicial",
+      "text": "Cuando juegas este Pokémon de tu mano a tu Banca durante tu turno, puedes curar 30 puntos de daño a tu Pokémon Activo y hacer que se recupere de una Condición Especial.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-107",
+      "en": "Sticky Bind",
+      "es": "Sujeción Pegajosa",
+      "text": "Mientras este Pokémon esté en tu Banca, los Pokémon de Fase 2 en Banca (tanto tuyos como de tu rival) no tienen ninguna habilidad.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-130",
+      "en": "Assemble Alloy",
+      "es": "Montaje Aleación",
+      "text": "Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes unir hasta 2 cartas de Energía {M} Básica de tu pila de descartes a tus Pokémon {M} de la manera que desees.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-143",
+      "en": "Boosted Evolution",
+      "es": "Evolución Potenciada",
+      "text": "Mientras este Pokémon esté en el Puesto Activo, puede evolucionar durante tu primer turno o durante el turno en que lo pongas en juego.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-147",
+      "en": "Born to Slack",
+      "es": "Holgazán Nato",
+      "text": "Si tu rival no tiene ningún Pokémon ex o Pokémon V en juego, este Pokémon no puede atacar.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-150",
+      "en": "Expert Hider",
+      "es": "As del Camuflaje",
+      "text": "Si se inflige cualquier daño a este Pokémon por ataques, lanza 1 moneda. Si sale cara, se evita ese daño.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-194",
+      "en": "Calming Light",
+      "es": "Luz Calmante",
+      "text": "Una vez durante tu turno, si este Pokémon está en el Puesto Activo, puedes dejar al Pokémon Activo de tu rival Dormido.",
+      "kind": "ABILITY",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-200",
+      "en": "Counterattack",
+      "es": "Contragolpe",
+      "text": "Si este Pokémon está en el Puesto Activo y resulta dañado por un ataque de los Pokémon de tu rival (incluso si este Pokémon queda Fuera de Combate), pon 3 contadores de daño en el Pokémon Atacante.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-201",
+      "en": "Solid Body",
+      "es": "Cuerpo Sólido",
+      "text": "Los ataques hacen 30 puntos de daño menos a este Pokémon (después de aplicar Debilidad y Resistencia).",
+      "kind": "ABILITY",
+      "impl": true
+    },
+    {
+      "cardId": "sv8-213",
+      "en": "Expert Hider",
+      "es": "As del Camuflaje",
+      "text": "Si se inflige cualquier daño a este Pokémon por ataques, lanza 1 moneda. Si sale cara, se evita ese daño.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-215",
+      "en": "Sudden Shearing",
+      "es": "Descarte Súbito",
+      "text": "Cuando juegas este Pokémon de tu mano a tu Banca durante tu turno, puedes descartar la primera carta de la baraja de tu rival.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-216",
+      "en": "Double Type",
+      "es": "Doble Tipo",
+      "text": "Mientras este Pokémon esté en juego, es de tipo {G} y {R}.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-217",
+      "en": "Sparkling Scales",
+      "es": "Escamas Centelleantes",
+      "text": "Se evitan todo el daño y todos los efectos de los ataques de los Pokémon Teracristal de tu rival infligidos a este Pokémon.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-219",
+      "en": "Resolute Heart",
+      "es": "Corazón Resuelto",
+      "text": "Si este Pokémon tiene todos sus PS y fuese a quedar Fuera de Combate por el daño de un ataque, no queda Fuera de Combate y sus PS restantes pasan a ser 10.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-220",
+      "en": "Skyliner",
+      "es": "Estela",
+      "text": "Tus Pokémon Básicos en juego no tienen ningún Coste de Retirada.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-224",
+      "en": "Assemble Alloy",
+      "es": "Montaje Aleación",
+      "text": "Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes unir hasta 2 cartas de Energía {M} Básica de tu pila de descartes a tus Pokémon {M} de la manera que desees.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-227",
+      "en": "Born to Slack",
+      "es": "Holgazán Nato",
+      "text": "Si tu rival no tiene ningún Pokémon ex o Pokémon V en juego, este Pokémon no puede atacar.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-236",
+      "en": "Sudden Shearing",
+      "es": "Descarte Súbito",
+      "text": "Cuando juegas este Pokémon de tu mano a tu Banca durante tu turno, puedes descartar la primera carta de la baraja de tu rival.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-237",
+      "en": "Sparkling Scales",
+      "es": "Escamas Centelleantes",
+      "text": "Se evitan todo el daño y todos los efectos de los ataques de los Pokémon Teracristal de tu rival infligidos a este Pokémon.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-238",
+      "en": "Resolute Heart",
+      "es": "Corazón Resuelto",
+      "text": "Si este Pokémon tiene todos sus PS y fuese a quedar Fuera de Combate por el daño de un ataque, no queda Fuera de Combate y sus PS restantes pasan a ser 10.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-239",
+      "en": "Skyliner",
+      "es": "Estela",
+      "text": "Tus Pokémon Básicos en juego no tienen ningún Coste de Retirada.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-241",
+      "en": "Assemble Alloy",
+      "es": "Montaje Aleación",
+      "text": "Cuando juegas este Pokémon de tu mano para hacer evolucionar a uno de tus Pokémon durante tu turno, puedes unir hasta 2 cartas de Energía {M} Básica de tu pila de descartes a tus Pokémon {M} de la manera que desees.",
+      "kind": "ABILITY",
+      "impl": false
+    },
+    {
+      "cardId": "sv8-247",
+      "en": "Resolute Heart",
+      "es": "Corazón Resuelto",
+      "text": "Si este Pokémon tiene todos sus PS y fuese a quedar Fuera de Combate por el daño de un ataque, no queda Fuera de Combate y sus PS restantes pasan a ser 10.",
+      "kind": "ABILITY",
+      "impl": false
+    }
+  ]
+}

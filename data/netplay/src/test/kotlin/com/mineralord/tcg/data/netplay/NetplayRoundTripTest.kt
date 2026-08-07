@@ -2,6 +2,7 @@ package com.mineralord.tcg.data.netplay
 
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.StarterDecks
+import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.withId
 import com.mineralord.tcg.engine.rules.GameIntent
@@ -151,5 +152,61 @@ class NetplayRoundTripTest {
         val restored = decodeNetMessage(msg.encode())
         assertTrue(restored is NetMessage.Snapshot)
         assertEquals(7, (restored as NetMessage.Snapshot).seq)
+    }
+
+    @Test
+    fun `request snapshot message survives round trip`() {
+        val msg: NetMessage = NetMessage.RequestSnapshot
+        val restored = decodeNetMessage(msg.encode())
+        assertTrue(restored is NetMessage.RequestSnapshot)
+    }
+
+    @Test
+    fun `seq dedup forwards only newer sequences`() {
+        assertTrue(shouldForwardSeq(seq = 0, lastSeen = -1)) // primer mensaje
+        assertTrue(shouldForwardSeq(seq = 3, lastSeen = 2))
+        assertTrue(!shouldForwardSeq(seq = 2, lastSeen = 2)) // ya entregado
+        assertTrue(!shouldForwardSeq(seq = 1, lastSeen = 5)) // historial re-entregado
+    }
+
+    @Test
+    fun `replay round-trips and reconstructs the setup deterministically`() {
+        val seed = 123L
+        val hostDeck = StarterDecks.ALL[0].expandedCardIds().map { it.raw }
+        val guestDeck = StarterDecks.ALL[1].expandedCardIds().map { it.raw }
+
+        // Reproduce el reparto EXACTAMENTE como reconstructInitial (misma semilla, mismas
+        // bases de instancia y mismo orden host→guest) para escoger un Activo/Banca legal.
+        val rng = SeededRng(seed)
+        val hostCards = hostDeck.mapNotNull { repo[CardId(it)] }
+            .mapIndexed { i, c -> c.withId(c.id.withInstance(i)) }
+        val guestCards = guestDeck.mapNotNull { repo[CardId(it)] }
+            .mapIndexed { i, c -> c.withId(c.id.withInstance(100_000 + i)) }
+        val (hd, _) = GameSetup.dealCounting(hostCards, rng)
+        val (gd, _) = GameSetup.dealCounting(guestCards, rng)
+        val hChoice = GameSetup.autoChoose(hd)
+        val gChoice = GameSetup.autoChoose(gd)
+
+        val replay = GameReplay(
+            seed = seed,
+            hostDeck = hostDeck,
+            guestDeck = guestDeck,
+            firstSideIsHost = true,
+            hostActiveId = hChoice.activeId.raw,
+            hostBenchIds = hChoice.benchIds.map { it.raw },
+            guestActiveId = gChoice.activeId.raw,
+            guestBenchIds = gChoice.benchIds.map { it.raw },
+            intents = emptyList(),
+        )
+
+        // JSON round trip.
+        assertEquals(replay, GameReplay.decode(replay.encode()))
+
+        // Reconstrucción determinista: el Activo elegido y los premios coinciden.
+        val gs = replay.reconstructInitial(repo)
+        assertEquals(com.mineralord.tcg.engine.model.Phase.MAIN, gs.phase)
+        assertEquals(hChoice.activeId, gs.player.active?.card?.id)
+        assertEquals(gChoice.activeId, gs.opponent.active?.card?.id)
+        assertEquals(6, gs.player.prizesRemaining)
     }
 }

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Spacing / spatial tokens — ecosistema Pokémon TCG (Studio, Launcher, Card Viewer, herramientas). Fuente de verdad. StudioSpacingTokens.kt se regenera desde aquí. Cada token cita la ley VG/VL que implementa (TA-0). Valores en dp.",
+  "$meta": {
+    "phase": "9.3",
+    "family": "spacing",
+    "canon": ["Visual-Language", "Visual-Grammar", "Visual-Tokens-Architecture", "Color-Tokens", "Typography"],
+    "rules": {
+      "layerDirection": "context/relation(semantic) -> foundation",
+      "baselineGrid": "4dp",
+      "scale": "ramp 4dp-based; 2dp permitido solo como hairline interno",
+      "densityIsModifier": true,
+      "horizontalInsetsConstantAcrossDensity": true,
+      "noNamingByTrend": true
+    }
+  },
+  "foundation": {
+    "grid": {
+      "baseline": { "$value": 4, "$law": "VG-U4 (retícula) · ritmo" }
+    },
+    "space": {
+      "0":  { "$value": 0 },
+      "2":  { "$value": 2, "$note": "hairline interno; único sub-múltiplo de 4 permitido" },
+      "4":  { "$value": 4 },
+      "8":  { "$value": 8 },
+      "12": { "$value": 12 },
+      "16": { "$value": 16 },
+      "20": { "$value": 20 },
+      "24": { "$value": 24 },
+      "32": { "$value": 32 },
+      "40": { "$value": 40 },
+      "48": { "$value": 48 },
+      "64": { "$value": 64 }
+    }
+  },
+  "semantic": {
+    "relation": {
+      "hairline": { "$value": "{foundation.space.2}",  "$law": "VG-E (separación mínima)" },
+      "within":   { "$value": "{foundation.space.4}",  "$law": "VG-E1 (dentro de grupo = proximidad)" },
+      "related":  { "$value": "{foundation.space.8}",  "$law": "VG-E1 (items relacionados)" },
+      "group":    { "$value": "{foundation.space.16}", "$law": "VG-E2 (salto entre grupos)" },
+      "section":  { "$value": "{foundation.space.24}", "$law": "VG-E2 (entre secciones)" },
+      "zone":     { "$value": "{foundation.space.32}", "$law": "VG-E · Arq. Espacial (entre zonas)" }
+    },
+    "inset": {
+      "xs": { "$value": "{foundation.space.4}",  "$law": "VG-E3 (respiración interna mínima)" },
+      "sm": { "$value": "{foundation.space.8}",  "$law": "VG-E3" },
+      "md": { "$value": "{foundation.space.12}", "$law": "VG-E3" },
+      "lg": { "$value": "{foundation.space.16}", "$law": "VG-E3" }
+    },
+    "layout": {
+      "gutter":            { "$value": "{foundation.space.16}", "$law": "VG-U4 (separación de columnas)" },
+      "margin":            { "$value": "{foundation.space.16}", "$law": "VG-E3 (margen de región)" },
+      "readingMaxWidth":   { "$value": 640, "$law": "VL-fatiga (≈65–75 car. a 13sp)" }
+    },
+    "density": {
+      "comfortable": { "rowHeight": { "$value": 32 }, "$law": "VL-densidad organizada (holgada)" },
+      "default":     { "rowHeight": { "$value": 28 }, "$law": "VL (herramienta densa de escritorio)" },
+      "compact":     { "rowHeight": { "$value": 24 }, "$law": "VL (máxima densidad legible)" }
+    }
+  },
+  "context": {
+    "dock":      { "padding": "{semantic.inset.sm}",  "gap": "{semantic.relation.within}",  "$law": "Arq. Espacial (anillo)" },
+    "panel":     { "padding": "{semantic.inset.md}",  "headerPadding": "{semantic.inset.md}", "contentGap": "{semantic.relation.group}", "$law": "materiales VL (territorio)" },
+    "toolbar":   { "paddingH": "{semantic.inset.sm}", "paddingV": "{semantic.relation.within}", "gap": "{semantic.relation.related}", "$law": "IC · Toolbar" },
+    "sidebar":   { "padding": "{semantic.inset.sm}",  "itemGap": "{semantic.relation.hairline}", "itemHeight": "{semantic.density.default.rowHeight}", "$law": "VG-E · memoria muscular" },
+    "inspector": { "padding": "{semantic.inset.md}",  "rowGap": "{semantic.relation.within}", "labelValueGap": "{semantic.relation.related}", "groupGap": "{semantic.relation.group}", "$law": "VG-E · instrumento (materiales VL)" },
+    "dialog":    { "padding": "{semantic.inset.lg}",  "gap": "{semantic.relation.group}", "actionGap": "{semantic.relation.related}", "$law": "VG-D (interrupción) · respiración" },
+    "overlay":   { "padding": "{semantic.inset.sm}",  "itemGap": "{semantic.relation.hairline}", "$law": "VG-D · Command Palette" },
+    "timeline":  { "padding": "{semantic.inset.sm}",  "trackGap": "{semantic.relation.within}", "$law": "VG (eje temporal)" },
+    "preview":   { "padding": "{semantic.relation.section}", "$law": "VL-CONT (protagonismo: aire alrededor de la carta)" },
+    "tree":      { "indent": "{semantic.relation.group}", "rowGap": "{semantic.relation.hairline}", "iconGap": "{semantic.relation.related}", "$law": "VG-E · jerarquía por sangría" },
+    "property":  { "rowHeight": "{semantic.density.default.rowHeight}", "rowGap": "{semantic.relation.within}", "labelValueGap": "{semantic.relation.related}", "$law": "VG-U4 (alineación)" },
+    "table":     { "cellPaddingX": "{semantic.relation.related}", "cellPaddingY": "{semantic.relation.within}", "headerPaddingY": "{semantic.relation.related}", "rowGap": "{foundation.space.0}", "$law": "VG-U4 (alineación de columnas)" }
+  }
+}

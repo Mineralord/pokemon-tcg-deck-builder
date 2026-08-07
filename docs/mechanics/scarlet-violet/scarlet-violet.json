@@ -1,0 +1,192 @@
+{
+  "code": "sv1",
+  "officialCode": "SVI",
+  "serie": "Scarlet & Violet",
+  "expansion": "Scarlet & Violet",
+  "counts": {
+    "attacks": 24,
+    "attacksImpl": 7,
+    "abilities": 1,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv1-66",
+      "en": "Static Shock",
+      "es": "Impacto Estático",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-66",
+      "en": "Electro Ball",
+      "es": "Bola Voltio",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-67",
+      "en": "Thunder Shock",
+      "es": "Impactrueno",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-67",
+      "en": "Electro Ball",
+      "es": "Bola Voltio",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-128",
+      "en": "Spit Poison",
+      "es": "Escupir Veneno",
+      "text": "El Pokémon Activo de tu rival pasa a estar Envenenado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-128",
+      "en": "Venoshock",
+      "es": "Carga Tóxica",
+      "text": "Si el Pokémon Activo de tu rival está Envenenado, este ataque hace 120 puntos de daño más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-132",
+      "en": "Scratch",
+      "es": "Arañazo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-132",
+      "en": "Pierce",
+      "es": "Perforar",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-133",
+      "en": "Dark Cutter",
+      "es": "Cuchilla Oscura",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-133",
+      "en": "Double-Edged Slash",
+      "es": "Cuchillada Doble Filo",
+      "text": "Este Pokémon también se hace 30 puntos de daño a sí mismo.",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-134",
+      "en": "Hack At",
+      "es": "Machetear",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-164",
+      "en": "Touring",
+      "es": "Touring",
+      "text": "Draw 2 cards.",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-164",
+      "en": "Speed Attack",
+      "es": "Speed Attack",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-33",
+      "en": "Bite",
+      "es": "Bite",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-33",
+      "en": "Flare",
+      "es": "Flare",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-34",
+      "en": "Sharp Fang",
+      "es": "Sharp Fang",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-34",
+      "en": "Fire Blast",
+      "es": "Fire Blast",
+      "text": "Discard an Energy from this Pokémon.",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-35",
+      "en": "Stampede",
+      "es": "Stampede",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv1-35",
+      "en": "Concentrated Fire",
+      "es": "Concentrated Fire",
+      "text": "Flip a coin for each Fire Energy attached to this Pokémon. This attack does 80 damage for each heads.",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-38",
+      "en": "Passionate Singing",
+      "es": "Passionate Singing",
+      "text": "Attach up to 2 Basic Energy cards from your discard pile to your Pokémon in any way you like.",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-38",
+      "en": "Blazing Shout",
+      "es": "Blazing Shout",
+      "text": "This Pokémon also does 30 damage to itself.",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-69",
+      "en": "Linear Attack",
+      "es": "Linear Attack",
+      "text": "This attack does 20 damage to 1 of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-77",
+      "en": "Collect",
+      "es": "Collect",
+      "text": "Draw a card.",
+      "impl": true
+    },
+    {
+      "cardId": "sv1-77",
+      "en": "Glide",
+      "es": "Glide",
+      "text": "",
+      "impl": false
+    }
+  ],
+  "abilities": [
+    {
+      "cardId": "sv1-134",
+      "en": "Leadership",
+      "es": "Liderato",
+      "text": "Los ataques de tus Pokémon Básicos hacen 30 puntos de daño más al Pokémon Activo de tu rival (antes de aplicar Debilidad y Resistencia).",
+      "kind": "ABILITY",
+      "impl": false
+    }
+  ]
+}

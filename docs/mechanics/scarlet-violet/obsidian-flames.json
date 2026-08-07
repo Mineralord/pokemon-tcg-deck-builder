@@ -1,0 +1,71 @@
+{
+  "code": "sv3",
+  "officialCode": "OBF",
+  "serie": "Scarlet & Violet",
+  "expansion": "Obsidian Flames",
+  "counts": {
+    "attacks": 8,
+    "attacksImpl": 2,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv3-139",
+      "en": "Suffocating Gas",
+      "es": "Suffocating Gas",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv3-139",
+      "en": "Scratch",
+      "es": "Scratch",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv3-140",
+      "en": "Suffocating Gas",
+      "es": "Suffocating Gas",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv3-140",
+      "en": "Gentle Slap",
+      "es": "Gentle Slap",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv3-40",
+      "en": "Flare",
+      "es": "Flare",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv3-40",
+      "en": "Take Down",
+      "es": "Take Down",
+      "text": "This Pokémon also does 10 damage to itself.",
+      "impl": true
+    },
+    {
+      "cardId": "sv3-41",
+      "en": "Flame Cloak",
+      "es": "Flame Cloak",
+      "text": "Attach a Basic Fire Energy card from your discard pile to this Pokémon.",
+      "impl": true
+    },
+    {
+      "cardId": "sv3-41",
+      "en": "Heat Blast",
+      "es": "Heat Blast",
+      "text": "",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

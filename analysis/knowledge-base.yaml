@@ -1,0 +1,513 @@
+# =====================================================================================
+# BASE DE CONOCIMIENTO — Ingeniería inversa de PTCG Sim (UI/UX/arquitectura)
+# + comparación y plan de migración a TCG-Live-Clone
+#
+# Formato: conocimiento denso estructurado orientado a relaciones (NO documentación
+# narrativa). Pensado para que otro modelo lo convierta en docs. Cada afirmación
+# relevante lleva evidencia (archivo[:línea]) y `confidence` (high|med|low).
+# `read: full` = archivo leído íntegro; `read: grep` = muestreado; `read: inferred`
+# = rol deducido por nombre/imports/vecindad (marcar como hipótesis).
+# =====================================================================================
+
+meta:
+  source_repo: "ptcg-sim-main (PTCG Sim, ptcgsim.online)"
+  source_path: "C:/DOCUMENTOS/POKÉMON TCG/ZIP DE REPOS/PTCG Sim/ptcg-sim-main"
+  version: "1.5.1"                      # global-variables.js:5
+  authors: "Michael / Xiao Xiao"        # server.js:172 (mensaje de error)
+  analyzed_at: "2026-07-11"
+  analyst: "claude-opus (sesión TCG-Live-Clone)"
+  size: {files: 157, js_modules: ~132, js_kb: ~578, index_ejs_kb: 74, server_kb: 9, css_kb: 62}
+  target_repo: "TCG-Live-Clone (Kotlin/Compose, motor puro autoritativo)"
+  methodology: >
+    Lectura directa (no subagentes) de la 'espina' (bootstrap, estado, move-card,
+    netcode/event-sourcing, hidden-info, counters, flip-board, lobby, CSS, sizing)
+    + contratos de la app propia (GameIntent, NetMessage, GameController, GameUiState,
+    inventario de composables de GameScreen). Cobertura de las 10 dimensiones del plan.
+  golden_rule: >
+    El motor de TCG-Live-Clone permanece AUTORITATIVO. De PTCG Sim se mina el
+    VOCABULARIO de UX/interacción y el patrón de event-sourcing, NUNCA su modelo de
+    estado (DOM) ni su ausencia de reglas. Las 'acciones' de PTCG Sim se traducen a
+    intents/afordancias/FX, no a mutaciones de DOM.
+
+# -------------------------------------------------------------------------------------
+glossary:
+  - term: zone
+    def: "Una de 10 zonas por lado + stadium neutral. Cada zona = {array JS de cartas, element DOM, elementCover?, getCount()}."
+    ref: setup/zones/get-zone.js
+  - term: card (objeto)
+    def: "{name, type, type2?, image}. `image` es un <img> DOM que porta estado ad-hoc: attached, target('on'|'off'), relative(img padre), layer, energyLayer, faceDown, public, src2/alt2(cara oculta), user, damageCounter, specialCondition, abilityCounter, PokémonBreak."
+    ref: move-card.js, attach-card.js, reveal-and-hide.js
+  - term: action
+    def: "Función mutadora (actions/**) que manipula DOM+arrays y termina llamando processAction(user,emit,name,params). Es a la vez comando de UI y unidad de replicación/log."
+  - term: initiator
+    def: "El usuario de la mitad inferior de la pantalla ('self' si selfContainer tiene la clase 'self'). Cambia con flip-board."
+    ref: global-variables.js:31
+  - term: user ('self'|'opp')
+    def: "Dueño lógico de la zona/carta, independiente de qué mitad se ve. En 2p el rival es siempre 'opp'."
+  - term: container (self/opp)
+    def: "IFRAME (selfContainer/oppContainer). Su contentWindow.document aloja el DOM del tablero de ese lado. stadium vive en el documento principal."
+    ref: global-variables.js:12-15
+  - term: counter (contador)
+    def: "Overlay DOM contentEditable sobre una carta: damageCounter (nº de daño), specialCondition (letra P/B/A/PA/C con color), abilityCounter."
+  - term: action log
+    def: "systemState.{self,opp,export,replay}ActionData[] + contadores {self,opp,spectator}Counter. Fuente de verdad para replicar/undo/replay/spectator."
+
+# -------------------------------------------------------------------------------------
+architecture:
+  paradigm:
+    summary: "Vanilla JS + Vite, SIN framework, SIN virtual DOM. Manipulación imperativa directa del DOM. Las cartas SON nodos DOM, sombreadas por arrays por zona."
+    no_engine: "NO hay motor de reglas ni validación de legalidad. Es un SIMULADOR MANUAL (mesa física digital): el usuario mueve cartas libremente; el 'juego' no impone reglas."
+    authority: "P2P SIN autoridad. Cada cliente aplica el mismo stream de acciones y confía en converger (de ahí syncCheck/resync/refreshBoard)."
+    confidence: high
+  bootstrap:
+    entry: client/src/front-end.js
+    order: [initializeSocketEventListeners, initializeDOMEventListeners, initializeMutationObservers, loadImportData]
+    note: "front-end.js re-exporta global-variables (side-effect: crea socket, iframes refs, systemState, mouseClick, fondo)."
+    ref: front-end.js:1-12
+  layers:
+    - name: state
+      resp: "systemState (sesión/meta+logs), mouseClick (selección), arrays por zona (get-zone), DOM (posición/visibilidad real)."
+      files: [global-variables.js, get-zone.js]
+    - name: actions
+      resp: "Comandos mutadores; cada uno = manipulación DOM/array + battle-log + processAction."
+      files: ["actions/**"]
+    - name: interaction
+      resp: "Puntero (click/drag), teclado (keybinds), menú contextual por zona."
+      files: [image-logic/click-events.js, image-logic/drag.js, actions/keybinds/*, card-context-menu/**]
+    - name: netcode/event-sourcing
+      resp: "processAction (out) + acceptAction (in) + sync/resync/catchup/spectator/replay/undo."
+      files: [socket-event-listeners.js, "setup/general/*", server.js]
+    - name: reactive (secundaria)
+      resp: "MutationObservers para scroll/reflow/contadores (NO es el binding estado→vista principal)."
+      files: ["mutation-observers/*"]
+    - name: sizing/responsive
+      resp: "Split-view desktop redimensionable + reflow por coordenadas calculadas."
+      files: [sizing/resizer.js, sizing/refresh-board.js, sizing/adjust-alignment.js]
+    - name: ui-shell
+      resp: "index.ejs (DOM completo) + 2 iframes + sidebox + menús/modales."
+      files: [index.ejs, self-containers.html, opp-containers.html, "document-event-listeners/sidebox/**", "table/**"]
+    - name: deckbuilder
+      resp: "Construcción/importación de mazos (2 generaciones)."
+      files: ["setup/deck-builder/**", "setup/deck-constructor/**"]
+  data_representation:
+    dual_model: "Estado = arrays por zona (orden lógico) + nodos DOM (posición/visibilidad) + props ad-hoc en cada <img>. NO hay una estructura de estado única serializable; el 'estado' se reconstruye replicando el log de acciones."
+    serialization: "No se serializa el estado; se serializa el LOG (exportActionData) para replay/import. Import = replay del log en un tablero limpio."
+    smell: "Estado disperso DOM↔array↔props → fuente de desyncs (mitigado con refreshBoard tras cada movimiento)."
+    confidence: high
+
+# -------------------------------------------------------------------------------------
+state:
+  systemState:
+    ref: global-variables.js:17-48
+    fields:
+      coachingMode: "1p: ver ambas manos (entrenamiento)."
+      isTwoPlayer: "modo online 2 jugadores."
+      isReplay/replayActionData: "reproducción."
+      turn: "contador de turno (take-turn.js lo incrementa)."
+      selfCounter/oppCounter/spectatorCounter: "secuencias monotónicas para ordenar/deduplicar acciones."
+      selfActionData/oppActionData: "logs para undo local."
+      exportActionData: "log 'canónico' con perspectiva invertida para spectator/replay/export."
+      initiator (getter): "lado inferior."
+      roomId, p2SelfUsername, p2OppUsername, spectatorUsername, spectatorId
+      selfDeckData/p1OppDeckData/p2OppDeckData: "listas de mazo (quantity,name,type,url)."
+      cardBackSrc/p1OppCardBackSrc/p2OppCardBackSrc: "dorsos por lado."
+    ownership: "Singleton mutable global; cualquier módulo lo importa y muta. Sin encapsulación."
+  selection_model:
+    ref: global-variables.js:57-71
+    mouseClick: "{cardIndex, zoneId, cardUser, playContainer, selectingCard, isActiveZone, get card()}. Una sola carta 'seleccionada' → habilita keybinds y click-to-move."
+  zone_model:
+    ref: get-zone.js
+    zones: [deck, lostZone, discard, prizes, active, bench, hand, attachedCards, viewCards, board, stadium(neutral)]
+    special: "attachedCards/viewCards = zonas-popup temporales (ver cartas adjuntas / mirar N cartas). board = zona de juego temporal (cartas boca abajo, p.ej. supporter). deckCover/discardCover/lostZoneCover = 'tapas' (la carta superior representa la pila)."
+  ownership_matrix:
+    - {state: "posición/visibilidad de carta", owner: DOM, writers: "acciones (moveCard, reveal/hide, counters)", readers: "todo", sync: "vía replay de acciones"}
+    - {state: "orden lógico por zona", owner: "arrays get-zone", writers: moveCard, readers: acciones, sync: "refreshBoard normaliza tras cada move"}
+    - {state: "secuencia/logs", owner: systemState, writers: processAction, readers: "socket listeners, undo, spectator", sync: "counters + resync"}
+
+# -------------------------------------------------------------------------------------
+netcode:
+  transport: {lib: "Socket.IO (CDN)", url: "https://ptcgsim.online", recovery: "connectionStateRecovery:{}"}
+  server:
+    ref: server/server.js
+    role: "RELÉ puro (broadcast a la sala) + 3 extras. NO valida jugadas, NO conoce reglas."
+    extras:
+      persistence: "storeGameState → SQLite KeyValuePairs → clave 4 chars → URL compartible /import?key=. Límite 15GB."
+      rooms: "roomInfo Map<roomId,{players:Set,spectators:Set}>; máx 2 jugadores; roomReject si lleno; limpieza de salas vacías cada 5min."
+      reconnection: "joinGame/userReconnected/userDisconnected; disconnectHandler."
+    relayed_events: [leaveRoom, requestAction, pushAction, resyncActions, catchUpActions, syncCheck, appendMessage, spectatorActionData, initiateImport, endImport, lookAtCards, stopLookingAtCards, revealCards, hideCards, revealShortcut, hideShortcut, lookShortcut, stopLookingShortcut]
+  protocol_evolution:
+    finding: "REFACTOR clave: ~40 eventos granulares (draw, moveCardBundle, attack, addDamageCounter…) están COMENTADOS en server.js:245-293 y socket-event-listeners.js:260-461. Fueron sustituidos por un ENVELOPE genérico."
+    from: "un evento socket por tipo de acción."
+    to: "pushAction/requestAction {action, counter, roomId, parameters} + acceptAction(action→función)."
+    benefit: "Añadir una acción nueva NO requiere tocar el servidor ni registrar un evento; entra sola por el envelope + el mapa `functions`."
+    confidence: high
+  outbound_processAction:
+    ref: setup/general/process-action.js
+    logic: >
+      Al final de CADA acción mutadora. Guarda si !isUndoInProgress && emit && !spectator.
+      Loguea a self/opp ActionData + incrementa self/oppCounter. Emite:
+      self+2p → 'pushAction'{counter:selfCounter}; mover carta del rival en 2p → 'requestAction'{counter:oppCounter}
+      (pide al rival que ejecute la acción sobre SUS cartas). Además push a exportActionData con
+      parameters[0] invertido self↔opp (perspectiva del espectador).
+  inbound:
+    ref: socket-event-listeners.js
+    pushAction: "si counter==oppCounter+1 → oppCounter++, acceptAction('opp'). Si counter>oppCounter+1 → HUECO → emit resyncActions."
+    requestAction: "si counter==selfCounter → acceptAction('self') (ejecuto la jugada que el rival pidió sobre mis cartas)."
+    syncCheck: "cada 3s cada cliente emite su selfCounter; el receptor pide resync si detecta que va por detrás."
+    resyncActions/catchUpActions: "recuperación: catchUpActions(log) aplica sólo los que faltan (slice desde oppCounter) y es listo con checkpoints reset/setup/deckData para no re-aplicar toda la historia."
+    reconnect: "on 'connect' → userReconnected + resyncActions."
+    spectatorActionData: "cada 1s los jugadores emiten exportActionData completo; el espectador lo replica (y flipa perspectiva con socketId==spectatorId)."
+  acceptAction:
+    ref: setup/general/accept-action.js
+    mechanism: "map `functions` (nombre→función). emit = (user==='self' || isStateImport). Llama fn(user, ...parameters, emit). Bloqueado por replay."
+  event_sourcing:
+    undo:
+      ref: actions/general/undo.js
+      mechanism: "Re-deriva estado: filtra el log (quita la última entrada, colapsa pares undo, reemplaza deck-exchange por reset), y REPLAYEA desde el último checkpoint reset/setup. Sin operaciones inversas. Async con estado 'Loading...' + repaint. En 2p, undo es una acción pedida al peer."
+    log_cap:
+      ref: setup/general/add-action-data.js:1
+      note: "MAX_SIZE=30 (ventana deslizante). OJO: addToActionData reasigna variables locales → el cap NO surte efecto sobre el llamador (bug latente). Limita profundidad de undo/replay; checkpoints reset/setup anclan catch-up."
+    replay: "isReplay bloquea drag y ciertas acciones (replay-block.js). Reproduce exportActionData."
+  desync_mitigation:
+    refreshBoard:
+      ref: setup/sizing/refresh-board.js, move-card-bundle.js:40
+      note: "Tras CADA movimiento se re-appendan active/bench vía moveCard para normalizar el orden de arrays entre ambos clientes (evita que flip/resize desincronice arrays). Reasserta rotaciones. Síntoma de fragilidad del modelo DOM-como-estado."
+  comparison_authority_model:
+    ptcgsim: "P2P, sin autoridad, sin motor, sin enforcement de info oculta (honor system + manual). Ventaja: soporta CUALQUIER carta/interacción sin programarla. Desventaja: desyncs, trampas posibles, cero automatización, sin IA."
+    tcg_live_clone: "Host-autoritativo con motor determinista; snapshots censurados por perspectiva (GameState.toDtoFor). Ventaja: correcto, seguro, automatizable (IA PvE). Desventaja: cada efecto de carta debe codificarse."
+
+# -------------------------------------------------------------------------------------
+action_system:
+  invariants:
+    signature: "(user, initiator?, ...params, emit=true)"
+    two_player_delegation: "Patrón repetido: si user==='opp' && emit && isTwoPlayer → processAction(...) y return (delego al peer, no aplico local)."
+    ends_with: "processAction(user, emit, name, params) y (si visible) appendMessage al battle log."
+  core_primitive:
+    moveCard:
+      ref: actions/move-card-bundle/move-card.js
+      role: "Primitiva maestra (~150 líneas). Splice origen→push destino; cover; reposiciona adjuntas; hide/reveal (prizes siempre oculto; hand oculto a rival si checkbox; faceDown); attach vs evolve vs move normal; auto-move active↔bench; bump stadium; relocate adjuntas; update counters; re-sort."
+    moveCardBundle:
+      ref: actions/move-card-bundle/move-card-bundle.js
+      role: "Entrada 'de red' de moveCard: log + moveCard + refreshBoard() (anti-desync) + processAction. Es el intent de movimiento networked."
+    attachCard:
+      ref: actions/move-card-bundle/attach-card.js
+      role: "Adjunta energía/herramienta a un Pokémon: posición absoluta relativa (left/bottom por layer/energyLayer), z-index decreciente, ensancha contenedor, sincroniza rotación, reordena herramientas al fondo."
+  catalog:  # acción → grupo/archivo/rol/networked/undoable(via log)
+    move-card-bundle:
+      moveCardBundle: "mover/atacar/soltar carta (networked)."
+      attachCard/evolveCard: "adjuntar / evolucionar (sub-rutas de moveCard)."
+      relocateAttachedCards/updateAttachedCardsPosition: "las adjuntas siguen al padre."
+      autoMoveActiveBenchCard: "swaps activo↔banca automáticos."
+      initializeActiveBenchCard: "crea play-container con adjuntas."
+      updateCounters/updateCover/updateStadiumCard/decreaseCardLayer: "sincronía de overlays/pilas/estadio/capas."
+    zones (actions/zones):
+      shuffleAll/shuffleBottom/discardAll/lostZoneAll/handAll/leaveAll/sort: "operaciones de zona en masa (loop moveCard) + log. [general.js]"
+      deck-actions: "draw, moveToDeckTop, switchWithDeckTop, shuffleIntoDeck, viewDeck. [deck-actions.js, read:inferred/med]"
+      hand-actions: "discardAndDraw, shuffleAndDraw, shuffleBottomAndDraw. [read:inferred]"
+      prizes-actions: "shufflePrizesToDeckBottom. shuffle-zone: shuffleZone(indices)."
+    counters (actions/counters):
+      damage-counter: "add/update/removeDamageCounter — <div> contentEditable, el usuario TECLEA el daño; posición/tamaño proporcional a la carta; auto-remove si vacío/0. [damage-counter.js, full]"
+      special-condition: "add/update/remove — letra P(verde)/B(rojo)/A(azul)/PA(amarillo)/C(morado), contentEditable. [special-condition.js, full]"
+      ability-counter/use-ability/reset-counters: "marcadores de habilidad usada."
+    general (actions/general):
+      take-turn: "avanza turno: descarta board, reset ability counters, turn++, roba 1, revela facedown en juego. [take-turn.js, full]"
+      flip-board: "intercambia qué lado es el inferior: togglea decenas de clases en ambos iframes + swap alturas + flip stadium + re-registra resizers. [flip-board.js, full]"
+      reveal-and-hide: "info oculta (ver sección hidden_info). [full]"
+      flip-coin, rotate-card, change-type, VSTAR-GX, board-actions(discard/hand/shuffle/lostZoneBoard), reset, setup, count, close-popups, undo.
+    chat-buttons: "attack/pass (botones que sólo escriben en el log; no calculan daño)."
+  observation: "attack/pass son SOLO mensajes de log — coherente con 'sin motor': el daño lo aplica el usuario a mano con damageCounter."
+
+# -------------------------------------------------------------------------------------
+interactions:
+  three_input_paths:
+    - "Click-para-seleccionar → click-en-destino = mover (imageClick). [click-events.js:208]"
+    - "Drag & drop HTML5 nativo (dragstart/over/leave/drop). [image-logic/drag.js]"
+    - "Menú contextual por zona (click derecho). [click-events.js:63 openCardContextMenu]"
+  pointer:
+    click-events:
+      ref: setup/image-logic/click-events.js
+      identifyCard: "rellena mouseClick a partir del target y su zona (maneja active/bench envueltos en contenedor, y covers)."
+      imageClick: "si target resaltado → moveCardBundle; si no → resalta+selecciona."
+      doubleClick: "ZOOM. En active/bench expande el play-container in-place (70%/69%, oculta counters). Fuera, crea overlay #fullImage a pantalla completa (backdrop 0.5, cierra con click/Esc/'v')."
+    drag:
+      ref: setup/image-logic/drag.js
+      model: "dragStart baja opacidad + identifyCard; dragOver calcula highlight con una gran matriz booleana (movingValidCardToContainer / attachingValidCard); drop resuelve dZoneId+targetIndex → moveCardBundle o moveToDeckTop(si deckCover). Bloqueado para spectator y replay."
+      hit_testing: "por event.target.tagName/id/parentElement (DIV=contenedor, IMG=carta) y flags .attached/.layer."
+  context_menu:
+    ref: click-events.js:63, card-context-menu/**
+    mechanism: "openCardContextMenu construye el menú togglando visibilidad de botones vía `buttonConditions` map keyed por (userCondition selfView/oppView, zoneId). Se posiciona relativo a la carta compensando offset de iframe y perspectiva. Oculto para spectator; filtrado por replay."
+    per_zone_buttons:
+      active/bench: [abilityCounter, damageCounter, specialCondition(solo active), change(type), move]
+      prizes: [shufflePrizes, lookPrizes, revealHidePrizes, shufflePrizesToDeckBottom]
+      hand: [lookHand(oppView), randomHand(oppView), discardHand(selfView), shuffleHand, shuffleHandBottom]
+      deckCover: [shuffleDeck, draw(selfView), viewTop, viewBottom]
+      board: [discardBoard, handBoard, shuffleBoard, lostZoneBoard]
+    submenus: [active-bench-buttons, board-buttons, deck-buttons, hand-buttons, general-buttons, prizes-buttons]
+  keybinds:
+    ref: actions/keybinds/keybinds.js (16.7KB, read:grep)
+    model: "Capa de teclado completa que replica el menú contextual sobre la carta seleccionada (mouseClick). Gated por modifiers y sleep (keybindSleep evita spam durante recepción de acciones remotas)."
+    sample_keys: {Esc: cerrar, f+Alt: flip, r: rotar, v: ver/zoom, arrows: mover activo/banca, e: evolucionar, y+letra: condición especial (P/B/PA/C/A), z: undo, u: '?', m: '?', d/s/t/p/n: acciones-zona, Enter: chat, '/': foco-chat}
+    confidence: med   # mapa exacto no verificado 1:1
+  hidden_info:
+    ref: actions/general/reveal-and-hide.js
+    core: "toggleCard intercambia img.src↔img.src2 (frente↔dorso) + flags faceDown/public."
+    ops: [lookAtCards(zona privada al iniciador), stopLookingAtCards, revealCards/hideCards(zona al rival), revealShortcut/hideShortcut(carta única), lookShortcut/stopLookingShortcut, playRandomCardFaceDown]
+    perspective: "Cada op se re-emite al peer con self↔opp invertido + socketId (para corregir la vista del espectador)."
+    ux_detail: "Revelar carta de tu propia mano → popup 'Press OK to stop revealing card to opponent'."
+    enforcement: "NINGUNO por servidor: honor system. prizes siempre oculto; hand oculto a rival por checkbox hideHandCheckbox."
+
+# -------------------------------------------------------------------------------------
+rendering:
+  strategy: "Imperativo. moveCard hace appendChild/splice directo — SIN animación de movimiento. El 'binding estado→vista' lo hacen las acciones a mano, no un sistema reactivo."
+  mutation_observers:
+    ref: initialization/mutation-observers/*
+    role: "Capa reactiva SECUNDARIA (no el binding principal)."
+    board-observer: "childList → auto-scroll al fondo cuando entran cartas. [board-observer.js, full]"
+    hand-observer/prizes-observer/stadium-observer: "reflow/scroll/mirror de esas zonas. [read:inferred/med]"
+  sizing_responsive:
+    ref: setup/sizing/resizer.js, refresh-board.js, adjust-alignment.js
+    model: "DESKTOP split-view: divisor arrastrable (selfResizer/oppResizer) cambia alturas de los iframes como % de innerHeight; overlay captura el ratón durante el drag; window.resize refluye. Layout de cartas por coordenadas calculadas (getBoundingClientRect), no por flujo CSS."
+    opp_view_trick: "El rival se pinta girado 180° con transform scaleX(-1) scaleY(-1). [css:*:68,220]"
+    implication: "Orientado a pantalla ancha con ratón. NO es responsive móvil vertical."
+
+animations:
+  finding: "Game-feel casi NULO. El tablero no anima movimientos de carta (son appendChild instantáneos)."
+  css_evidence:
+    ref: css/index.css, css/*-containers.css (read:grep)
+    only_keyframe: "@keyframes spin (círculo de carga). [index.css:1820]"
+    micro_transitions: ["botones hover transform translateY(-2px)/scale, 140ms [index.css:983,990,1050]", "sidebar toggle transform 220ms [index.css:663]", "opacity 0.3s / all 0.3s en covers/tooltips"]
+  contrast: "TCG-Live-Clone SÍ anima (moneda, reparto de 7, revelado, FlipCard, TurnArc). Aquí es una debilidad clara de PTCG Sim."
+  confidence: high
+
+# -------------------------------------------------------------------------------------
+css:
+  files:
+    index.css: "40.6KB — shell principal (sidebox, lobby, menús, modales, botones, loading)."
+    self-containers.css: "10.9KB — estilos del tablero self (dentro del iframe)."
+    opp-containers.css: "10.9KB — casi idéntico a self, con la mitad espejada (scaleX/Y -1)."
+  conventions: "Clases de perspectiva self-*/opp-* togglateadas en runtime por flip-board. self-circle/opp-circle para counters. Sin preprocesador; CSS plano. Duplicación self/opp (par de archivos casi gemelos)."
+  confidence: med
+
+# -------------------------------------------------------------------------------------
+ui_shell:
+  ref: client/index.ejs (74KB, read:grep)
+  layout:
+    boards: "2 iframes: selfContainer(class self, self-containers.html) abajo, oppContainer(opp) arriba. [index.ejs:34-35]"
+    sidebox_p1: "#p1Box — chat/log 1p ('Welcome to PTCG-sim!'). [:72]"
+    sidebox_p2: "#p2Box — #lobby (unirse a sala) + #connectedRoom (2p). [:103,109,128]"
+    floating: ["#cardContextMenu (menú por carta) [:346]", "#optionsContextMenu (opciones chat) [:397]", "#keybindModal (ayuda de teclas) [:411]", "#nativeDeckBuilderCustomCardModal (deck builder) [:271]", "#decklistsContextMenu [:184]"]
+  screens:
+    - {name: home/lobby, purpose: "elegir modo, unirse a sala por código, spectator/coaching checkbox"}
+    - {name: table, purpose: "el juego: 2 iframes + botones (attack/pass/undo/setup/reset/FREEBUTTON) + resizer"}
+    - {name: sidebox, purpose: "chat + registro de jugadas + import/export + settings + tutorial + changelog + donations"}
+  iframes_rationale:
+    hypothesis: "Aislar el DOM/estilos/coordenadas de cada tablero y permitir espejar la mitad rival (scaleX/Y -1) sin colisiones de id (ambos usan id='board','hand',...). Simplifica flip-board (swap de contenedores)."
+    cons: "Complejidad enorme: cada acceso cruza contentWindow.document; posicionar menús exige compensar offsets de iframe; refreshBoard/flip-board son monstruos imperativos."
+    confidence: med
+  lobby:
+    ref: sidebox/p2/room-buttons.js
+    room_code: "socket.id+'0' (generar) o manual; copiar al portapapeles; join via emit('joinGame', roomId, username, isSpectator); nombre aleatorio de entrenador si vacío."
+    leave: "confirm() → reset ambos lados + restaura decklist self desde la tabla DOM + re-loguea loadDeckData."
+
+# -------------------------------------------------------------------------------------
+deck_building:
+  legacy:
+    dir: setup/deck-constructor
+    files: {import.js: "31KB parser de listas", find-type.js: "16.7KB inferencia de tipo", find-old-type-database.js: "26.5KB BD", sample.decklists.js: "131KB mazos ejemplo", exchange-data.js: "handshake de mazo entre peers", card.js/cover.js/build-deck.js}
+    updater: "find-old-type-database_updater.py (script de mantenimiento)."
+  modern:
+    dir: setup/deck-builder/core (*.mjs, CON tests)
+    files: [card-search, card-sort, card-compare, csv-adapter, deck-state, deck-validation]
+    tests: "setup/deck-builder/__tests__/*.test.mjs — único código con pruebas unitarias del repo."
+    wired_by: "sidebox/native-deck-builder*.js"
+  observation: "Dos generaciones coexisten (deuda técnica): un builder moderno testeado convive con el legacy pesado de inferencia de tipos/BD."
+  confidence: med
+
+# -------------------------------------------------------------------------------------
+features_ux:
+  - {feature: coaching, note: "1p: ver ambas manos.", enforcement: honor}
+  - {feature: spectator, note: "unirse como espectador (sala llena → sólo espectar); recibe exportActionData c/1s y replica con perspectiva flipada.", ref: setup/spectator/*}
+  - {feature: replay/export, note: "storeGameState→SQLite→clave→URL /import?key=; import = replay del log.", ref: server.js:168, socket-event-listeners.js:462}
+  - {feature: undo, note: "re-deriva por replay desde checkpoint; async con 'Loading...'.", ref: undo.js}
+  - {feature: chat+battle-log, note: "appendMessage; tipos player/announcement; exportable.", ref: setup/chatbox/*}
+  - {feature: keybinds, note: "capa de teclado completa + modal de ayuda."}
+  - {feature: settings, note: "dark mode, hideHand, sort zones, spectatorMode/coachingMode checkboxes.", ref: sidebox/settings.js}
+  - {feature: counters editables, note: "daño y condición como texto contentEditable sobre la carta."}
+  - {feature: card zoom, note: "doble-click → full-view in-place o overlay a pantalla completa."}
+
+# -------------------------------------------------------------------------------------
+design_decisions:
+  - decision: "DOM como estado (cartas = <img> con props)."
+    evidence: move-card.js, attach-card.js
+    rationale_hypothesis: "Máxima simplicidad para un simulador manual sin reglas; el navegador ya posiciona/renderiza."
+    pros: ["cero capa de render aparte", "cualquier carta funciona sin datos"]
+    cons: ["estado no serializable directo", "desyncs (refreshBoard)", "difícil de testear/razonar"]
+    confidence: high
+  - decision: "Sin motor de reglas (simulador manual)."
+    evidence: "attack/pass sólo loguean; damageCounter contentEditable"
+    rationale_hypothesis: "Cubrir TODO el juego (todas las cartas, interacciones raras) sin programar efectos; el jugador es el árbitro."
+    pros: ["cobertura universal instantánea", "sin mantenimiento por set nuevo"]
+    cons: ["sin automatización/IA", "cero validación/anti-trampa", "mucho trabajo manual por turno"]
+    confidence: high
+  - decision: "Event-sourcing con envelope genérico + counters."
+    evidence: process-action.js, accept-action.js, server.js:245(comentados)
+    rationale_hypothesis: "Evolucionó de eventos granulares a un envelope: añadir acciones sin tocar servidor; habilita undo/replay/spectator gratis."
+    pros: ["extensible", "undo/replay/spectator/import de un solo mecanismo"]
+    cons: ["orden estricto por counter (huecos → resync)", "cap de log 30 (bug)", "replay caro re-ejecuta DOM"]
+    confidence: high
+  - decision: "Dos iframes self/opp."
+    evidence: global-variables.js:12, index.ejs:34
+    rationale_hypothesis: "Aislar DOM/ids/estilos y espejar la mitad rival; simplificar flip-board."
+    pros: ["reutiliza el mismo markup de tablero para ambos lados", "flip = swap de contenedores"]
+    cons: ["complejidad de cruce contentWindow", "posicionamiento de menús/counters con offsets", "flip-board/refreshBoard enormes"]
+    confidence: med
+  - decision: "Split-view desktop redimensionable."
+    evidence: sizing/resizer.js
+    rationale_hypothesis: "Público de escritorio con ratón; ver ambas manos/tableros a la vez y ajustar proporción."
+    pros: ["control fino del espacio"]
+    cons: ["no móvil", "layout por coordenadas frágil"]
+    confidence: high
+
+# -------------------------------------------------------------------------------------
+critique:   # qué conservar / cambiar / modernizar (para el rediseño de TU app)
+  keep:
+    - "El VOCABULARIO de manipulación manual: menú contextual por zona, mover/adjuntar/evolucionar por arrastre, contadores de daño/condición sobre la carta, reveal/hide/look-at, zoom por doble-click."
+    - "El PATRÓN event-sourcing (log + counter + catch-up/resync/replay/spectator/export-key) como capa de reconexión/replay/espectador."
+    - "La riqueza de affordances 'de mesa' que un juego automatizado suele olvidar (mirar mazo, barajar, poner boca abajo, dejar cartas en juego, mover premios)."
+  change:
+    - "Estado en DOM → estado tipado único (TU app ya lo tiene: GameState). Nunca portar el modelo DOM."
+    - "Sin autoridad → mantener host-autoritativo. Las acciones manuales de PTCG Sim deben pasar por el motor como intents o como 'acciones libres' auditadas, no como mutaciones ciegas."
+    - "refreshBoard/flip-board imperativos → recomposición declarativa Compose (ya es así en tu app)."
+  modernize:
+    - "Animación de movimiento de carta (PTCG Sim casi no tiene) → tweens de posición, como ya haces con reparto/revelado."
+    - "Menú contextual desktop → hoja de acciones/bottom-sheet táctil (tu CardDetailOverlay/ActiveActionSheet)."
+    - "Counters contentEditable → controles táctiles (+/- daño, chips de condición)."
+  remove:
+    - "Honor system de info oculta → tu servidor ya censura (GameState.toDtoFor)."
+    - "Duplicación self/opp CSS e iframes → un solo árbol declarativo con perspectiva por parámetro."
+
+# =====================================================================================
+# COMPARACIÓN E INTEGRACIÓN CON TCG-LIVE-CLONE
+# =====================================================================================
+comparison_tcg_live_clone:
+  paradigm_delta:
+    ptcgsim: {ui: "DOM imperativo", state: "DOM+arrays+props", authority: "P2P sin autoridad", engine: "ninguno (manual)", net: "event-sourcing P2P", platform: "desktop/ratón"}
+    clone: {ui: "Compose declarativo", state: "GameState tipado (fuente única)", authority: "host-autoritativo", engine: "puro determinista :engine:*", net: "snapshots censurados + intents", platform: "móvil vertical"}
+  clone_contracts:
+    GameIntent:
+      ref: engine/rules/GameIntent.kt
+      intents: [PlayBasicToBench, Evolve, AttachEnergy, AttachTool, Retreat, PromoteActive, Attack, PlayTrainer, UseAbility, ResolveDecision, EndTurn]
+      rule: "motor valida; ilegal se rechaza sin mutar. Con decisión pendiente (interaction!=null) sólo acepta ResolveDecision."
+    NetMessage:
+      ref: data/netplay/NetMessage.kt
+      msgs: [Hello, Intent(guest→host), Snapshot(seq,censored), RequestSnapshot, CoinCall, CoinResult, ChooseOrder, SetupChoice, Ceremony, Deal, LogLine, Fx, Bye]
+    GameController:
+      ref: feature/game/GameController.kt
+      surface: "ui:StateFlow<GameUiState>, fx:SharedFlow<FxCue>, ceremonia(chooseCoin/First/Active/toggleBench/confirmSetup), onIntent/onResolve, playItemOn(atómico item+objetivo), cardName/card. Implementado por GameViewModel(PvE) y OnlineGameViewModel(PvP)."
+    GameUiState:
+      ref: feature/game/GameViewModel.kt:32
+      fields: [loading, state:GameState, coinFlip, dealing, setup, revealing, log, message, aiThinking]
+    composables:
+      ref: feature/game/GameScreen.kt
+      inventory: [TurnArc, CoinTossOverlay, DragGhost, BenchRow, OpponentHandFan, ActiveInBox, FlipCard, RevealActive/RevealBench, SetupPrompt, LogButton, RevealAttachTray, SearchRevealOverlay, DiscardPanelOverlay, DecisionPanel, CardDetailOverlay(+AttackRow+EnergyOrbs=ActiveActionSheet), ConfirmDialog, dropGlow, isValidDrop, handAction]
+  engine_coupling_matrix:  # pieza PTCG Sim → ¿depende del motor? → transferible como
+    - {ptcgsim: "menú contextual por zona", engine_dep: "sí (qué acciones son legales)", transfer_as: "afordancias derivadas de legalIntents/PendingDecision"}
+    - {ptcgsim: "drag mover/adjuntar/evolucionar", engine_dep: "sí", transfer_as: "intents (AttachEnergy/Evolve/PlayBasicToBench) — YA existe en tu HandFan/dragCard"}
+    - {ptcgsim: "damage/special-condition counters", engine_dep: "parcial (el motor ya trackea HP/estados)", transfer_as: "overlays de solo-lectura alimentados por GameState (no editables)"}
+    - {ptcgsim: "reveal/hide/look-at", engine_dep: "sí (info oculta la controla el host)", transfer_as: "PendingDecision + overlays; el host decide qué se revela"}
+    - {ptcgsim: "zoom doble-click", engine_dep: "no", transfer_as: "UX pura → ya tienes CardDetailOverlay/CardDetailDialog"}
+    - {ptcgsim: "event-sourcing (undo/replay/spectator/export-key)", engine_dep: "no (capa de transporte)", transfer_as: "capa sobre tus Snapshots host-autoritativos"}
+    - {ptcgsim: "chat + battle log", engine_dep: "no", transfer_as: "ya tienes log/LogLine; añadir chat"}
+    - {ptcgsim: "flip-board / iframes / split-view / CSS self-opp", engine_dep: "no", transfer_as: "NADA (anti-patrón para móvil declarativo)"}
+
+# component_mapping: PTCG Sim → composable/pantalla concreta de TU app + nota
+component_mapping:
+  - {from: "openCardContextMenu (menú por zona)", to: "CardDetailOverlay/ActiveActionSheet (GameScreen)", note: "En vez de menú desktop por click derecho, hoja de acciones táctil que muestra SÓLO acciones legales (del motor). Ya lo haces para el Activo (AttackRow/EnergyOrbs)."}
+  - {from: "drag & drop + highlight targets", to: "HandFan + dragCard/dragPos/targetBounds + dropGlow + isValidDrop", note: "Tu app ya replica esto y mejor (glow sólo en objetivos válidos, validado por el motor)."}
+  - {from: "attachCard (adjuntas siguen al padre)", to: "EnergyOrbs sobre PokemonInPlay + AttachEnergy/AttachTool intent", note: "Tú representas energías como orbes; no necesitas la coreografía DOM de left/bottom por layer."}
+  - {from: "damage-counter / special-condition (contentEditable)", to: "overlay de daño + chips de condición sobre ActiveInBox/BenchRow", note: "Solo-lectura desde GameState (HP/estados ya calculados por el motor). NO editable por el usuario."}
+  - {from: "doubleClick zoom / #fullImage", to: "CardDetailOverlay / CardDetailDialog (tilt+holo)", note: "Ya superior en tu app."}
+  - {from: "reveal/hide/look-at + revealShortcut", to: "PendingDecision + SearchRevealOverlay/RevealAttachTray", note: "El host decide qué revela; overlays de 'añadiste a tu mano' ya existen."}
+  - {from: "viewDeck/lookAtCards (mirar N/zona)", to: "DecisionPanel + DiscardPanelOverlay", note: "Ya tienes visor de descarte y panel de decisión con imágenes."}
+  - {from: "take-turn (avanzar turno, robo)", to: "EndTurn intent + animación de robo + TurnArc", note: "El motor roba y valida; TurnArc ya marca de quién es el turno."}
+  - {from: "flip-coin / coin FX", to: "CoinTossOverlay + FxCue.Coin", note: "Ya lo tienes con animación (que PTCG Sim no tiene)."}
+  - {from: "lobby por código de sala", to: "OnlineGameScreen (código) → futuro: amigos+invitaciones", note: "Tu rumbo ya es login Google + amigos; el código es equivalente al roomId."}
+  - {from: "undo/replay/spectator/export-key", to: "capa nueva sobre Snapshot(seq)+RequestSnapshot", note: "Ver integration_master_plan; es la gran oportunidad de adopción."}
+  - {from: "chat + battle log exportable", to: "LogLine + panel de log (LogButton) + chat nuevo", note: "Añadir chat online; log ya existe."}
+
+# =====================================================================================
+integration_master_plan:
+  principles:
+    - "El motor (:engine:*) es intocable y autoritativo. PTCG Sim sólo aporta UX y el patrón event-sourcing."
+    - "Toda acción del usuario = GameIntent validado por el motor. Nada de 'mutaciones libres' de estado."
+    - "No duplicar lógica PvE/PvP: todo entra por GameController/GameCore (regla ya vigente en tu napkin)."
+    - "Móvil vertical declarativo: descartar iframes/split-view/flip-board/CSS self-opp."
+    - "Animación de game-feel es un diferenciador: invertir donde PTCG Sim no invirtió."
+  phases:
+    - phase: 0
+      title: "Consolidar el vocabulario UX (sin red)"
+      work: "Auditar affordances 'de mesa' que faltan vs PTCG Sim: mirar mazo/premios, barajar zona, poner boca abajo, mover premios, contadores de condición como chips. Exponerlas como intents o PendingDecision del motor."
+      risk: "Añadir intents nuevos exige soporte del motor; priorizar los que ya son legales."
+    - phase: 1
+      title: "Hoja de acciones contextual por zona"
+      work: "Generalizar CardDetailOverlay a un 'action sheet' por zona (activo/banca/mano/descarte/premios) que liste SÓLO acciones legales (derivadas de legalIntents). Sustituye el menú contextual desktop."
+      reuse: [CardDetailOverlay, DecisionPanel, handAction, isValidDrop]
+    - phase: 2
+      title: "Overlays de estado de solo-lectura"
+      work: "Daño/condiciones/marcadores de habilidad como overlays alimentados por GameState (no editables). Evitar el contentEditable de PTCG Sim."
+      reuse: [ActiveInBox, BenchRow, EnergyOrbs]
+    - phase: 3
+      title: "Pulido de game-feel (animación)"
+      work: "Tweens de movimiento de carta entre zonas, ataque/KO, robo. PTCG Sim carece de esto; es donde más se gana."
+      reuse: [FxCue, FlipCard, TurnArc, CoinTossOverlay]
+    - phase: 4
+      title: "Event-sourcing sobre snapshots (reconexión/replay/espectador)"
+      work: >
+        Adoptar el patrón de PTCG Sim ADAPTADO a host-autoritativo: el host ya numera
+        Snapshot(seq). Añadir (a) log de snapshots/intents en el host, (b) catch-up por
+        seq (ya tienes RequestSnapshot + descarte de seq viejos), (c) modo espectador
+        (host emite snapshots censurados a espectadores), (d) export/replay: persistir
+        la secuencia de snapshots o intents y reproducirla. NO copiar el cap de 30 ni el
+        replay que re-ejecuta DOM; reproducir aplicando snapshots o re-simulando intents
+        en el motor determinista (ventaja tuya: es reproducible de verdad).
+      reuse: [NetMessage.Snapshot, NetMessage.RequestSnapshot, MatchTransport, FirestoreMatchTransport]
+      risk: "Definir la fuente de replay: snapshots (simple, pesado) vs intents+semilla RNG (ligero, exige RNG determinista reproducible)."
+    - phase: 5
+      title: "Chat + social online"
+      work: "Chat en sala + (rumbo ya elegido) amigos/invitaciones. Log ya existe (LogLine)."
+  anti_debt:
+    - "No portar código JS de PTCG Sim; portar CONCEPTOS."
+    - "Cada affordance nueva pasa por el motor (intent/decision), test JVM incluido."
+    - "Un solo árbol declarativo con perspectiva por parámetro (nada de self/opp duplicado)."
+  decoupling_strategy:
+    - "UX ↔ motor sólo vía GameController (ui/fx/onIntent/onResolve). PTCG Sim demuestra el catálogo de affordances; el motor decide legalidad."
+    - "Transporte (event-sourcing) ↔ juego vía NetMessage/MatchTransport; el replay se re-simula en el motor, no en la UI."
+
+# =====================================================================================
+open_questions:
+  - {q: "Mapa exacto de keybinds (tecla→acción).", status: "parcial (grep)", confidence: med}
+  - {q: "Comportamiento fino de hand/prizes/stadium observers.", status: "inferido", confidence: med}
+  - {q: "deck-builder moderno: alcance de validación/formatos.", status: "no leído a fondo", confidence: low}
+  - {q: "Replay TU app: ¿snapshots o intents+RNG determinista?", status: "decisión pendiente del usuario", confidence: n/a}
+hypotheses_to_confirm:
+  - {h: "iframes existen para aislar ids/estilos y simplificar flip.", confidence: med}
+  - {h: "El cap de log (30) es un bug y limita undo/replay largos.", confidence: high, ref: add-action-data.js}
+risks_opportunities:
+  risks:
+    - "Sobre-importar affordances manuales rompe la autoridad del motor (permitir jugadas ilegales)."
+    - "Event-sourcing por snapshots puede ser pesado; por intents exige RNG reproducible."
+  opportunities:
+    - "Reconexión/replay/espectador es adopción de alto valor y bajo acoplamiento (capa de transporte)."
+    - "Game-feel/animación: diferenciador inmediato frente a PTCG Sim."
+    - "Menú/hoja de acciones por zona: cubre el hueco de affordances 'de mesa' que a los juegos automatizados les falta."
+
+coverage_note: >
+  Leídos en full: front-end, global-variables, get-zone, move-card, move-card-bundle,
+  attach-card, zones/general, click-events, drag, card-context-menu(init),
+  socket-event-listeners, process-action, accept-action, catch-up-actions,
+  add-action-data, undo, refresh-board, reveal-and-hide, damage-counter,
+  special-condition, flip-board, take-turn, room-buttons, board-observer, server.js;
+  + contratos app (GameIntent, NetMessage, GameController) full, GameUiState/GameScreen(grep).
+  Muestreados (grep): index.ejs, keybinds, resizer, css. Inferidos por rol: deck-*,
+  hand/prizes/stadium observers, chatbox, settings, tutorial, changelog, sub-botones de
+  menú. Marcados con confidence donde aplica.

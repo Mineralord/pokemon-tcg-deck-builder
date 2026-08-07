@@ -1,0 +1,1358 @@
+{
+ "meta": {
+  "code": "sv1",
+  "officialCode": "SVI",
+  "serie": "Scarlet & Violet",
+  "expansion": "Scarlet & Violet"
+ },
+ "totalCartas": 20,
+ "cartas": [
+  {
+   "id": "sv1-66",
+   "nombre": "Mareep",
+   "cantidad": 4,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "60",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "cost": [
+      "Lightning"
+     ],
+     "name": "Static Shock",
+     "damage": "10",
+     "text": "",
+     "convertedEnergyCost": 1
+    },
+    {
+     "cost": [
+      "Lightning",
+      "Colorless",
+      "Colorless"
+     ],
+     "name": "Electro Ball",
+     "damage": "40",
+     "text": "",
+     "convertedEnergyCost": 3
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": "Its fleece grows continually. In the summer, the fleece is fully shed, but it grows back in a week.",
+   "numeroPokedex": [
+    179
+   ],
+   "numeroCarta": "66",
+   "rareza": "Common",
+   "ilustrador": "Narumi Sato",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/66.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/66_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Mareep",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Impacto Estático",
+      "text": null
+     },
+     {
+      "name": "Bola Voltio",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/066/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/066/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-67",
+   "nombre": "Flaaffy",
+   "cantidad": 3,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Mareep",
+   "ps": "90",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "cost": [
+      "Lightning"
+     ],
+     "name": "Thunder Shock",
+     "damage": "20",
+     "text": "Flip a coin. If heads, your opponent's Active Pokémon is now Paralyzed.",
+     "convertedEnergyCost": 1
+    },
+    {
+     "cost": [
+      "Lightning",
+      "Colorless",
+      "Colorless"
+     ],
+     "name": "Electro Ball",
+     "damage": "60",
+     "text": "",
+     "convertedEnergyCost": 3
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": "Because of its rubbery, electricity-resistant skin, it can store lots of electricity in its fur.",
+   "numeroPokedex": [
+    180
+   ],
+   "numeroCarta": "67",
+   "rareza": "Uncommon",
+   "ilustrador": "Kurata So",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/67.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/67_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Flaaffy",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Impactrueno",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado."
+     },
+     {
+      "name": "Bola Voltio",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/067/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/067/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-170",
+   "nombre": "Electric Generator",
+   "cantidad": 1,
+   "supertipo": "Trainer",
+   "fase": "Item",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "170",
+   "rareza": "Uncommon",
+   "ilustrador": "Toyste Beach",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Look at the top 5 cards of your deck and attach up to 2 Basic Lightning Energy cards you find there to your Benched Lightning Pokémon in any way you like. Shuffle the other cards back into your deck.",
+    "You may play any number of Item cards during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/170.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/170_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Generador Eléctrico",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Mira las 5 primeras cartas de tu baraja y une hasta 2 cartas de Energía {L} Básica que encuentres entre ellas a tus Pokémon {L} en Banca de la manera que desees. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/170/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/170/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-175",
+   "nombre": "Jacq",
+   "cantidad": 2,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "175",
+   "rareza": "Uncommon",
+   "ilustrador": "GIDORA",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Search your deck for up to 2 Evolution Pokémon, reveal them, and put them into your hand. Then, shuffle your deck.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/175.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/175_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Cinio",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Busca en tu baraja hasta 2 Pokémon Evolución, enséñalos y ponlos en tu mano. Después, baraja las cartas de tu baraja.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/175/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/175/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-180",
+   "nombre": "Nemona",
+   "cantidad": 8,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "180",
+   "rareza": "Common",
+   "ilustrador": "Sanosuke Sakuma",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Draw 3 cards.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/180.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/180_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Mencía",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Roba 3 cartas.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/180/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/180/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-181",
+   "nombre": "Nest Ball",
+   "cantidad": 2,
+   "supertipo": "Trainer",
+   "fase": "Item",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "181",
+   "rareza": "Uncommon",
+   "ilustrador": "Toyste Beach",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Search your deck for a Basic Pokémon and put it onto your Bench. Then, shuffle your deck.",
+    "You may play any number of Item cards during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/181.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/181_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Nido Ball",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Busca en tu baraja 1 Pokémon Básico y ponlo en tu Banca. Después, baraja las cartas de tu baraja.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/181/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/181/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-188",
+   "nombre": "Potion",
+   "cantidad": 4,
+   "supertipo": "Trainer",
+   "fase": "Item",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "188",
+   "rareza": "Common",
+   "ilustrador": "Ayaka Yoshida",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Heal 30 damage from 1 of your Pokémon.",
+    "You may play any number of Item cards during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/188.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/188_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Poción",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Cura 30 puntos de daño a uno de tus Pokémon.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/188/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/188/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-198",
+   "nombre": "Youngster",
+   "cantidad": 6,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "198",
+   "rareza": "Uncommon",
+   "ilustrador": "Hitoshi Ariga",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Shuffle your hand into your deck. Then, draw 5 cards.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/198.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/198_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Joven",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Pon las cartas de tu mano en tu baraja y barájalas todas. Después, roba 5 cartas.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/198/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/198/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-128",
+   "nombre": "Seviper",
+   "cantidad": 2,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "120",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "cost": [
+      "Darkness"
+     ],
+     "name": "Spit Poison",
+     "damage": "",
+     "text": "Your opponent's Active Pokémon is now Poisoned.",
+     "convertedEnergyCost": 1
+    },
+    {
+     "cost": [
+      "Darkness",
+      "Colorless",
+      "Colorless"
+     ],
+     "name": "Venoshock",
+     "damage": "60+",
+     "text": "If your opponent's Active Pokémon is Poisoned, this attack does 120 more damage.",
+     "convertedEnergyCost": 3
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": "It sharpens its swordlike tail on hard rocks. It hides in tall grass and strikes unwary prey with venomous fangs.",
+   "numeroPokedex": [
+    336
+   ],
+   "numeroCarta": "128",
+   "rareza": "Common",
+   "ilustrador": "sui",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/128.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/128_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Seviper",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Escupir Veneno",
+      "text": "El Pokémon Activo de tu rival pasa a estar Envenenado."
+     },
+     {
+      "name": "Carga Tóxica",
+      "text": "Si el Pokémon Activo de tu rival está Envenenado, este ataque hace 120 puntos de daño más."
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/128/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/128/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-132",
+   "nombre": "Pawniard",
+   "cantidad": 4,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "70",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "cost": [
+      "Colorless"
+     ],
+     "name": "Scratch",
+     "damage": "10",
+     "text": "",
+     "convertedEnergyCost": 1
+    },
+    {
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "name": "Pierce",
+     "damage": "20",
+     "text": "",
+     "convertedEnergyCost": 2
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": "Pawniard will fearlessly challenge even powerful foes. In a pinch, it will cling to opponents and pierce them with the blades all over its body.",
+   "numeroPokedex": [
+    624
+   ],
+   "numeroCarta": "132",
+   "rareza": "Common",
+   "ilustrador": "sowsow",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/132.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/132_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Pawniard",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Arañazo",
+      "text": null
+     },
+     {
+      "name": "Perforar",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/132/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/132/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-133",
+   "nombre": "Bisharp",
+   "cantidad": 3,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Pawniard",
+   "ps": "120",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "cost": [
+      "Darkness"
+     ],
+     "name": "Dark Cutter",
+     "damage": "40",
+     "text": "",
+     "convertedEnergyCost": 1
+    },
+    {
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "name": "Double-Edged Slash",
+     "damage": "120",
+     "text": "This Pokémon also does 30 damage to itself.",
+     "convertedEnergyCost": 2
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": "This Pokémon commands a group of several Pawniard. Groups that are defeated in territorial disputes are absorbed by the winning side.",
+   "numeroPokedex": [
+    625
+   ],
+   "numeroCarta": "133",
+   "rareza": "Common",
+   "ilustrador": "Hideki Ishikawa",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/133.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/133_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Bisharp",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Cuchilla Oscura",
+      "text": null
+     },
+     {
+      "name": "Cuchillada Doble Filo",
+      "text": "Este Pokémon también se hace 30 puntos de daño a sí mismo."
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/133/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/133/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-134",
+   "nombre": "Kingambit",
+   "cantidad": 2,
+   "supertipo": "Pokémon",
+   "fase": "Stage 2",
+   "evolucionaDe": "Bisharp",
+   "ps": "170",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [
+    {
+     "type": "Ability",
+     "name": "Leadership",
+     "text": "Your Basic Pokémon's attacks do 30 more damage to your opponent's Active Pokémon (before applying Weakness and Resistance)."
+    }
+   ],
+   "ataques": [
+    {
+     "cost": [
+      "Darkness",
+      "Colorless",
+      "Colorless"
+     ],
+     "name": "Hack At",
+     "damage": "160",
+     "text": "",
+     "convertedEnergyCost": 3
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 3,
+   "descripcionPokedex": "Only a Bisharp that stands above all others in its vast army can evolve into Kingambit.",
+   "numeroPokedex": [
+    983
+   ],
+   "numeroCarta": "134",
+   "rareza": "Rare",
+   "ilustrador": "Anesaki Dynamic",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/134.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/134_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Kingambit",
+    "habilidades": [
+     {
+      "name": "Liderato",
+      "text": "Los ataques de tus Pokémon Básicos hacen 30 puntos de daño más al Pokémon Activo de tu rival (antes de aplicar Debilidad y Resistencia)."
+     }
+    ],
+    "ataques": [
+     {
+      "name": "Machetear",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/134/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/134/high.webp",
+    "setNombre": "Escarlata y Púrpura"
+   }
+  },
+  {
+   "id": "sv1-164",
+   "nombre": "Cyclizar",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "110",
+   "tipos": [
+    "Colorless"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Touring",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "",
+     "text": "Draw 2 cards."
+    },
+    {
+     "name": "Speed Attack",
+     "cost": [
+      "Colorless",
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "100",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": 0,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    967
+   ],
+   "numeroCarta": "164",
+   "rareza": "Rare",
+   "ilustrador": "Ryota Murayama",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/164.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/164_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/164/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/164/high.webp"
+   }
+  },
+  {
+   "id": "sv1-194",
+   "nombre": "Switch",
+   "cantidad": 1,
+   "supertipo": "Trainer",
+   "fase": "Item",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": 0,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "194",
+   "rareza": "Common",
+   "ilustrador": "Studio Bora Inc.",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Switch your Active Pokémon with 1 of your Benched Pokémon.",
+    "You may play any number of Item cards during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv1/194.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/194_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/194/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/194/high.webp"
+   }
+  },
+  {
+   "id": "sv1-33",
+   "nombre": "Houndour",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "70",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Bite",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Flare",
+     "cost": [
+      "Fire",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "30",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    228
+   ],
+   "numeroCarta": "33",
+   "rareza": "Common",
+   "ilustrador": "nagimiso",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/33.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/33_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/033/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/033/high.webp"
+   }
+  },
+  {
+   "id": "sv1-34",
+   "nombre": "Houndoom",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Houndour",
+   "ps": "120",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Sharp Fang",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "30",
+     "text": ""
+    },
+    {
+     "name": "Fire Blast",
+     "cost": [
+      "Fire",
+      "Fire",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "150",
+     "text": "Discard an Energy from this Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    229
+   ],
+   "numeroCarta": "34",
+   "rareza": "Common",
+   "ilustrador": "hncl",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/34.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/34_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/034/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/034/high.webp"
+   }
+  },
+  {
+   "id": "sv1-35",
+   "nombre": "Torkoal",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "130",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Stampede",
+     "cost": [
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "30",
+     "text": ""
+    },
+    {
+     "name": "Concentrated Fire",
+     "cost": [
+      "Fire",
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "80×",
+     "text": "Flip a coin for each Fire Energy attached to this Pokémon. This attack does 80 damage for each heads."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 3,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    324
+   ],
+   "numeroCarta": "35",
+   "rareza": "Uncommon",
+   "ilustrador": "Kurata So",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/35.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/35_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/035/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/035/high.webp"
+   }
+  },
+  {
+   "id": "sv1-38",
+   "nombre": "Skeledirge",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 2",
+   "evolucionaDe": "Crocalor",
+   "ps": "180",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Passionate Singing",
+     "cost": [
+      "Fire"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "50",
+     "text": "Attach up to 2 Basic Energy cards from your discard pile to your Pokémon in any way you like."
+    },
+    {
+     "name": "Blazing Shout",
+     "cost": [
+      "Fire",
+      "Fire",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "190",
+     "text": "This Pokémon also does 30 damage to itself."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 3,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    911
+   ],
+   "numeroCarta": "38",
+   "rareza": "Rare",
+   "ilustrador": "nagimiso",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/38.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/38_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/038/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/038/high.webp"
+   }
+  },
+  {
+   "id": "sv1-69",
+   "nombre": "Rotom",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "60",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Linear Attack",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "",
+     "text": "This attack does 20 damage to 1 of your opponent's Pokémon. (Don't apply Weakness and Resistance for Benched Pokémon.)"
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    479
+   ],
+   "numeroCarta": "69",
+   "rareza": "Common",
+   "ilustrador": "Nisota Niso",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/69.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/69_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/069/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/069/high.webp"
+   }
+  },
+  {
+   "id": "sv1-77",
+   "nombre": "Wattrel",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "50",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Collect",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "",
+     "text": "Draw a card."
+    },
+    {
+     "name": "Glide",
+     "cost": [
+      "Lightning",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "20",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Lightning",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [
+    {
+     "type": "Fighting",
+     "value": "-30"
+    }
+   ],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    940
+   ],
+   "numeroCarta": "77",
+   "rareza": "Common",
+   "ilustrador": "Saya Tsuruta",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv1/77.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv1/77_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv1/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv01/077/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv01/077/high.webp"
+   }
+  }
+ ]
+}

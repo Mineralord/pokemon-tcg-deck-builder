@@ -21,14 +21,37 @@ class CardRepository private constructor(private val cards: List<Card>) {
     fun byIds(ids: Collection<CardId>): List<Card> = ids.mapNotNull { byId[it] }
 
     companion object {
+        /** Índice de expansiones separadas (un archivo por set). */
+        const val INDEX_RESOURCE = "/cards/index.json"
+        /** Volcado monolítico legado (solo como respaldo si no existe el índice). */
         const val RESOURCE = "/cartas-db.json"
         private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-        /** Carga desde el recurso del classpath (uso normal en app y tests). */
+        private fun resource(path: String): String? =
+            CardRepository::class.java.getResourceAsStream(path)
+                ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+
+        /**
+         * Carga el catálogo desde los recursos del classpath. Cada expansión vive
+         * en su propio archivo (`/cards/<setCode>.json`), listadas en
+         * `/cards/index.json` — así ninguna expansión mezcla datos con otra. Si el
+         * índice no existe (proyecto sin migrar), cae al volcado monolítico legado.
+         */
         fun load(): CardRepository {
-            val stream = CardRepository::class.java.getResourceAsStream(RESOURCE)
-                ?: error("No se encontró el recurso $RESOURCE en el classpath")
-            return fromJson(stream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+            val indexJson = resource(INDEX_RESOURCE)
+            if (indexJson != null) {
+                val index = json.decodeFromString(CardIndexDto.serializer(), indexJson)
+                val files = index.sets.map { it.file } + listOfNotNull(index.energies)
+                val cards = files.flatMap { rel ->
+                    val body = resource("/cards/$rel")
+                        ?: error("Falta el recurso /cards/$rel declarado en el índice")
+                    json.decodeFromString(CardDbDto.serializer(), body).cartas
+                }.map { CardMapper.map(it) }
+                return CardRepository(cards)
+            }
+            val legacy = resource(RESOURCE)
+                ?: error("No se encontró ni $INDEX_RESOURCE ni $RESOURCE en el classpath")
+            return fromJson(legacy)
         }
 
         /** Carga desde una cadena JSON (útil para inyectar datos en tests). */

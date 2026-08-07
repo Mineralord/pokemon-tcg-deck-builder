@@ -1,0 +1,67 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Typography tokens — ecosistema Pokémon TCG (Studio, Launcher, Card Viewer, herramientas). Fuente de verdad. StudioTypographyTokens.kt se regenera desde aquí. Cada rol cita la ley VG/VL que implementa (TA-0). Valores en sp.",
+  "$meta": {
+    "phase": "9.2",
+    "family": "typography",
+    "canon": ["Visual-Language", "Visual-Grammar", "Visual-Tokens-Architecture", "Color-Tokens"],
+    "rules": {
+      "layerDirection": "role(semantic) -> foundation",
+      "scale": "modular anchored base=13sp, ratio ~1.2, rounded to whole sp for crispness",
+      "weights": ["Regular 400", "Medium 500", "SemiBold 600"],
+      "noNamingByAppearanceOrTrend": true
+    }
+  },
+  "foundation": {
+    "family": {
+      "sans": { "$value": "Inter", "$fallback": "sans-serif", "$law": "VG-J legibilidad · VL-fatiga" },
+      "mono": { "$value": "JetBrains Mono", "$fallback": "monospace", "$law": "alineación de datos/código (tabular)" }
+    },
+    "weight": {
+      "regular":  { "$value": 400 },
+      "medium":   { "$value": 500 },
+      "semibold": { "$value": 600 }
+    },
+    "size": {
+      "100": { "$value": 11 },
+      "200": { "$value": 12 },
+      "300": { "$value": 13, "$note": "base" },
+      "400": { "$value": 15 },
+      "500": { "$value": 18 },
+      "600": { "$value": 22 },
+      "700": { "$value": 28 },
+      "800": { "$value": 36, "$note": "reservado, raro" }
+    },
+    "lineHeight": {
+      "tight":   { "$value": 14 },
+      "snug":    { "$value": 16 },
+      "compact": { "$value": 20 },
+      "data":    { "$value": 20 },
+      "title":   { "$value": 24 },
+      "heading": { "$value": 28 },
+      "display": { "$value": 34 }
+    },
+    "tracking": {
+      "tighter": { "$value": -0.4 },
+      "tight":   { "$value": -0.2 },
+      "normal":  { "$value": 0.0 },
+      "slight":  { "$value": 0.1 },
+      "wide":    { "$value": 0.2 },
+      "wider":   { "$value": 0.4 }
+    }
+  },
+  "role": {
+    "display":  { "family": "{foundation.family.sans}", "weight": "{foundation.weight.semibold}", "size": "{foundation.size.700}", "lineHeight": "{foundation.lineHeight.display}", "tracking": "{foundation.tracking.tighter}", "$law": "VG-K5 (grande, reservado) · empty/welcome states" },
+    "heading":  { "family": "{foundation.family.sans}", "weight": "{foundation.weight.semibold}", "size": "{foundation.size.600}", "lineHeight": "{foundation.lineHeight.heading}", "tracking": "{foundation.tracking.tight}", "$law": "VG-J (primer nivel de lectura)" },
+    "title":    { "family": "{foundation.family.sans}", "weight": "{foundation.weight.semibold}", "size": "{foundation.size.500}", "lineHeight": "{foundation.lineHeight.title}", "tracking": "{foundation.tracking.tight}", "$law": "VG-J · títulos de Panel/Dialog" },
+    "section":  { "family": "{foundation.family.sans}", "weight": "{foundation.weight.medium}", "size": "{foundation.size.400}", "lineHeight": "{foundation.lineHeight.compact}", "tracking": "{foundation.tracking.normal}", "$law": "VG-J · subsecciones" },
+    "body":     { "family": "{foundation.family.sans}", "weight": "{foundation.weight.regular}", "size": "{foundation.size.300}", "lineHeight": "{foundation.lineHeight.compact}", "tracking": "{foundation.tracking.normal}", "$law": "VL-fatiga (lectura prolongada) · lh 1.5" },
+    "caption":  { "family": "{foundation.family.sans}", "weight": "{foundation.weight.regular}", "size": "{foundation.size.200}", "lineHeight": "{foundation.lineHeight.snug}", "tracking": "{foundation.tracking.slight}", "$law": "VG-J terciario · ayuda" },
+    "label":    { "family": "{foundation.family.sans}", "weight": "{foundation.weight.medium}", "size": "{foundation.size.200}", "lineHeight": "{foundation.lineHeight.snug}", "tracking": "{foundation.tracking.wider}", "$law": "VG-J · nombres de propiedad (Inspector)" },
+    "mono":     { "family": "{foundation.family.mono}", "weight": "{foundation.weight.regular}", "size": "{foundation.size.300}", "lineHeight": "{foundation.lineHeight.compact}", "tracking": "{foundation.tracking.normal}", "$law": "código/DSL/JSON · legibilidad monoespaciada" },
+    "numeric":  { "family": "{foundation.family.mono}", "weight": "{foundation.weight.regular}", "size": "{foundation.size.300}", "lineHeight": "{foundation.lineHeight.data}", "tracking": "{foundation.tracking.normal}", "$law": "VG-U4 (alineación) · tabular en tablas/Inspector" },
+    "shortcut": { "family": "{foundation.family.mono}", "weight": "{foundation.weight.medium}", "size": "{foundation.size.200}", "lineHeight": "{foundation.lineHeight.snug}", "tracking": "{foundation.tracking.normal}", "$law": "IC-5 · Shortcut Hint (A7)" },
+    "badge":    { "family": "{foundation.family.sans}", "weight": "{foundation.weight.semibold}", "size": "{foundation.size.100}", "lineHeight": "{foundation.lineHeight.tight}", "tracking": "{foundation.tracking.wide}", "$law": "VG-J · contador/estado (A2)" },
+    "status":   { "family": "{foundation.family.sans}", "weight": "{foundation.weight.medium}", "size": "{foundation.size.200}", "lineHeight": "{foundation.lineHeight.snug}", "tracking": "{foundation.tracking.wide}", "$law": "IC-8 · Status Bar / notificaciones" }
+  }
+}

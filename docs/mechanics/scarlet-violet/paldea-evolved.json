@@ -1,0 +1,99 @@
+{
+  "code": "sv2",
+  "officialCode": "PAL",
+  "serie": "Scarlet & Violet",
+  "expansion": "Paldea Evolved",
+  "counts": {
+    "attacks": 12,
+    "attacksImpl": 2,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv2-137",
+      "en": "Sharp Fang",
+      "es": "Sharp Fang",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-137",
+      "en": "Cross-Cut",
+      "es": "Cross-Cut",
+      "text": "If your opponent's Active Pokémon is an Evolution Pokémon, this attack does 50 more damage.",
+      "impl": true
+    },
+    {
+      "cardId": "sv2-36",
+      "en": "Steady Firebreathing",
+      "es": "Steady Firebreathing",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-36",
+      "en": "Hyper Voice",
+      "es": "Hyper Voice",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-39",
+      "en": "Live Coal",
+      "es": "Live Coal",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-39",
+      "en": "Magnum Punch",
+      "es": "Magnum Punch",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-66",
+      "en": "Lightning Ball",
+      "es": "Lightning Ball",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-66",
+      "en": "Rollout",
+      "es": "Rollout",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-67",
+      "en": "Lightning Ball",
+      "es": "Lightning Ball",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-67",
+      "en": "Rolling Tackle",
+      "es": "Rolling Tackle",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-82",
+      "en": "Peck",
+      "es": "Peck",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv2-82",
+      "en": "Jet Wing",
+      "es": "Jet Wing",
+      "text": "During your next turn, this Pokémon can't attack.",
+      "impl": true
+    }
+  ],
+  "abilities": []
+}

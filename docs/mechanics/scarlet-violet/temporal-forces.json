@@ -1,0 +1,29 @@
+{
+  "code": "sv5",
+  "officialCode": "TEF",
+  "serie": "Scarlet & Violet",
+  "expansion": "Temporal Forces",
+  "counts": {
+    "attacks": 2,
+    "attacksImpl": 0,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv5-121",
+      "en": "Peak Acceleration",
+      "es": "Aceleración Máxima",
+      "text": "Busca en tu baraja hasta 2 cartas de Energía Básica y únelas a tus Pokémon del futuro de la manera que desees. Después, baraja las cartas de tu baraja.",
+      "impl": false
+    },
+    {
+      "cardId": "sv5-121",
+      "en": "Sparking Strike",
+      "es": "Golpe Chispeante",
+      "text": "",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

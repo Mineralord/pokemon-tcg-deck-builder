@@ -1,0 +1,60 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Motion tokens — ecosistema Pokémon TCG. Implementa las CINCO FRASES del movimiento del Visual Grammar (VG-MOV). El sistema LIMITA el movimiento, no lo multiplica. Fuente de verdad. StudioMotionTokens.kt se regenera desde aquí. Cada token cita su ley VG/VL/IC (TA-0).",
+  "$meta": {
+    "phase": "9.6",
+    "family": "motion",
+    "canon": ["Visual-Grammar", "Visual-Language", "Interaction-Canon", "Visual-Tokens-Architecture", "Depth", "Surface"],
+    "rules": {
+      "fivePhrasesAreTheRoles": "VG-MOV: continuity/change/transformation/confirmation/error",
+      "quietByDefault": "VG-U4/VL: alta frecuencia o iniciado por teclado = SIN animación",
+      "onlyTransformAndOpacity": "rendimiento (Emil): jamás animar layout (padding/size)",
+      "interruptibleTransitions": "transiciones interrumpibles, no keyframes (Emil)",
+      "neverScaleFromZero": "entra desde 0.97 + opacity, nunca desde scale(0)",
+      "asymmetricExit": "salida más rápida que entrada",
+      "lessOptionsBetterDecisions": true
+    }
+  },
+  "foundation": {
+    "duration": {
+      "instant": { "$value": 0,   "$law": "VG-U4: alta frecuencia/teclado = sin animación" },
+      "fast":    { "$value": 120, "$law": "confirmación/salida (Emil <160ms)" },
+      "base":    { "$value": 180, "$law": "entrada/continuidad estándar (<300ms)" },
+      "slow":    { "$value": 240, "$law": "transformación/morph deliberado" }
+    },
+    "easing": {
+      "standard": { "$value": [0.23, 1.0, 0.32, 1.0],   "$law": "ease-out fuerte: entra/sale responsivo (Emil)" },
+      "movement": { "$value": [0.77, 0.0, 0.175, 1.0],  "$law": "ease-in-out: movimiento/morph en pantalla" },
+      "linear":   { "$value": "linear",                 "$law": "movimiento constante (progreso)" }
+    },
+    "distance": {
+      "sm": { "$value": 4, "$law": "offset de entrada corto (Emil: nunca desde lejos)" },
+      "md": { "$value": 8, "$law": "offset de entrada de overlay/toast" }
+    },
+    "scale": {
+      "enterFrom": { "$value": 0.97, "$law": "nunca scale(0); entra desde 0.97 + opacity" },
+      "press":     { "$value": 0.97, "$law": "feedback de pulsación (Emil)" }
+    },
+    "opacity": {
+      "fadeFrom": { "$value": 0.0, "$law": "entrada por opacidad + transform" }
+    },
+    "stagger": {
+      "step": { "$value": 40, "$law": "cascada corta 30–80ms; decorativa, no bloqueante" },
+      "max":  { "$value": 50, "$law": "tope de paso de stagger" }
+    }
+  },
+  "role": {
+    "continuity":     { "duration": "{foundation.duration.base}", "easing": "{foundation.easing.movement}", "intensity": "subtle",   "priority": "normal",    "$purpose": "algo se mueve manteniendo su identidad (reordenar, reposicionar)", "$whenNot": "para entradas/salidas (eso es change)", "$ic": "IC-1/IC-8", "$vg": "VG-MOV continuidad" },
+    "change":         { "duration": "{foundation.duration.base}", "exitDuration": "{foundation.duration.fast}", "easing": "{foundation.easing.standard}", "intensity": "subtle", "priority": "normal", "$purpose": "algo entra o sale de escena", "$whenNot": "para movimiento del mismo objeto (continuity)", "$ic": "IC-8", "$vg": "VG-MOV cambio" },
+    "transformation": { "duration": "{foundation.duration.slow}", "easing": "{foundation.easing.movement}", "intensity": "moderate", "priority": "normal", "$purpose": "un objeto se convierte en otro estado de sí mismo (expandir a detalle)", "$whenNot": "para cambios triviales de estado (confirmation)", "$ic": "IC", "$vg": "VG-MOV transformación" },
+    "confirmation":   { "duration": "{foundation.duration.fast}", "easing": "{foundation.easing.standard}", "intensity": "subtle",   "priority": "immediate", "$purpose": "respuesta breve a una acción del usuario (pulsación)", "$whenNot": "para acciones de teclado/alta frecuencia (sin animación)", "$ic": "IC-4/IC-5", "$vg": "VG-MOV confirmación" },
+    "error":          { "duration": "{foundation.duration.base}", "easing": "{foundation.easing.standard}", "intensity": "moderate", "priority": "immediate", "$purpose": "algo no puede completarse / requiere atención", "$whenNot": "de forma ambiental o frecuente (rarísimo)", "$ic": "IC-8", "$vg": "VG-MOV error · VL Alerta" }
+  },
+  "policy": {
+    "transform":    { "$value": ["translate", "scale", "opacity"], "$law": "solo transform+opacity; nunca layout" },
+    "interruption": { "$value": "interruptible", "$law": "transiciones retargetables, no keyframes" },
+    "cancellation": { "$value": "reverseFromCurrent", "$law": "cancelar = revertir desde el estado actual" },
+    "chaining":     { "$value": "discouraged", "$law": "encadenar solo stagger corto; nunca secuencias largas" },
+    "accessibility":{ "$value": "reducedMotion", "$law": "prefers-reduced-motion: quitar transform, conservar fade breve" }
+  }
+}

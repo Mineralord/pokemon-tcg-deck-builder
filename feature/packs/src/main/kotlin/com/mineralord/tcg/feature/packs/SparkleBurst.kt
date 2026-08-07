@@ -1,8 +1,8 @@
 package com.mineralord.tcg.feature.packs
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
+import com.mineralord.tcg.core.designsystem.motion.AnimationCurves
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,7 +32,7 @@ fun SparkleBurst(
     val progress = remember { Animatable(0f) }
     LaunchedEffect(trigger) {
         progress.snapTo(0f)
-        progress.animateTo(1f, tween(durationMillis = 750, easing = LinearOutSlowInEasing))
+        progress.animateTo(1f, tween(durationMillis = 750, easing = AnimationCurves.Decelerate))
     }
     val sparks = remember(trigger) {
         val rnd = Random(trigger.hashCode())

@@ -24,6 +24,7 @@ import com.mineralord.tcg.engine.model.TypeModifier
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GameEngineTest {
@@ -54,7 +55,7 @@ class GameEngineTest {
         PokemonInPlay(card, attachedEnergy = (1..n).map { basicEnergy("e$it-${card.id.raw}", type) })
 
     @Test
-    fun `atacar aplica debilidad, noquea, toma premios y promociona la banca`() {
+    fun `atacar aplica debilidad, noquea, toma premios y exige promocionar la banca`() {
         val bolt = Attack(LocalizedText("Rayo", "Bolt"), listOf(EnergyType.LIGHTNING), 1, DamageModel.Fixed(60), null)
         val pikachu = mon("pika", 60, EnergyType.LIGHTNING, bolt)
         // Defensor débil al rayo (×2): 60 -> 120, con 70 HP queda noqueado.
@@ -90,13 +91,25 @@ class GameEngineTest {
         assertEquals(1, ev.filterIsInstance<GameEvent.PrizeTaken>().first().count)
         // El atacante bajó de 6 a 5 premios restantes.
         assertEquals(5, result.state.player.prizesRemaining)
-        // El rival promocionó a su banca (magikarp pasa a Activo).
-        assertEquals(CardId("magikarp"), result.state.opponent.active?.card?.id)
-        assertTrue(result.state.opponent.bench.isEmpty())
-        // Atacar terminó el turno: ahora juega el rival y robó.
+        // El rival NO auto-promociona: su Activo queda vacío y debe ELEGIR su reemplazo.
+        assertNull(result.state.opponent.active)
+        assertEquals(setOf(Side.OPPONENT), result.state.pendingPromotion)
+        assertTrue(result.state.awaitingPromotion)
+        // Atacar terminó el turno: ahora es el rival quien debe promocionar (y ya robó).
         assertEquals(Side.OPPONENT, result.state.activeSide)
         assertTrue(ev.any { it is GameEvent.TurnStarted && it.side == Side.OPPONENT })
         assertFalse(result.state.isOver)
+
+        // Con la promoción pendiente, cualquier otra jugada se rechaza…
+        val blocked = engine.apply(result.state, GameIntent.EndTurn)
+        assertFalse(blocked.accepted)
+        // …y solo PromoteActive sube el Pokémon elegido de la Banca al Puesto Activo.
+        val promoted = engine.apply(result.state, GameIntent.PromoteActive(CardId("magikarp")))
+        assertTrue(promoted.accepted, promoted.rejection)
+        assertEquals(CardId("magikarp"), promoted.state.opponent.active?.card?.id)
+        assertTrue(promoted.state.opponent.bench.isEmpty())
+        assertFalse(promoted.state.awaitingPromotion)
+        assertTrue(promoted.events.any { it is GameEvent.Promoted })
     }
 
     @Test

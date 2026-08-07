@@ -1,0 +1,43 @@
+{
+  "code": "sv4",
+  "officialCode": "PAR",
+  "serie": "Scarlet & Violet",
+  "expansion": "Paradox Rift",
+  "counts": {
+    "attacks": 4,
+    "attacksImpl": 2,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv4-118",
+      "en": "Cross-Cut",
+      "es": "Cross-Cut",
+      "text": "If your opponent's Active Pokémon is an Evolution Pokémon, this attack does 60 more damage.",
+      "impl": true
+    },
+    {
+      "cardId": "sv4-118",
+      "en": "Dark Edge",
+      "es": "Dark Edge",
+      "text": "Discard an Energy from this Pokémon.",
+      "impl": true
+    },
+    {
+      "cardId": "sv4-23",
+      "en": "Live Coal",
+      "es": "Live Coal",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv4-23",
+      "en": "Ram",
+      "es": "Ram",
+      "text": "",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

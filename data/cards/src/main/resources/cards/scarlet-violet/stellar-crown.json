@@ -1,0 +1,254 @@
+{
+ "meta": {
+  "code": "sv7",
+  "officialCode": "SCR",
+  "serie": "Scarlet & Violet",
+  "expansion": "Stellar Crown"
+ },
+ "totalCartas": 3,
+ "cartas": [
+  {
+   "id": "sv7-23",
+   "nombre": "Salandit",
+   "cantidad": 4,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "70",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Ember",
+     "cost": [
+      "Fire"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "30",
+     "text": "Discard an Energy from this Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    757
+   ],
+   "numeroCarta": "23",
+   "rareza": "Common",
+   "ilustrador": null,
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv7/23.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv7/23_hires.png",
+   "set": {
+    "nombre": "Stellar Crown",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv7/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv7/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Salandit",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Ascuas",
+      "text": "Descarta 1 Energía de este Pokémon."
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv07/023/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv07/023/high.webp",
+    "setNombre": "Corona Astral"
+   }
+  },
+  {
+   "id": "sv7-24",
+   "nombre": "Salazzle",
+   "cantidad": 3,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Salandit",
+   "ps": "120",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Sudden Scorching",
+     "cost": [
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "",
+     "text": "Your opponent discards a card from their hand. If this Pokémon evolved from Salandit during this turn, your opponent discards 2 more cards."
+    },
+    {
+     "name": "Flamethrower",
+     "cost": [
+      "Fire",
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "130",
+     "text": "Discard an Energy from this Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    758
+   ],
+   "numeroCarta": "24",
+   "rareza": "Uncommon",
+   "ilustrador": null,
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv7/24.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv7/24_hires.png",
+   "set": {
+    "nombre": "Stellar Crown",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv7/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv7/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Salazzle",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Calcinación Súbita",
+      "text": "Tu rival descarta 1 carta de su mano. Si este Pokémon ha evolucionado de Salandit durante este turno, tu rival descarta 2 cartas más."
+     },
+     {
+      "name": "Lanzallamas",
+      "text": "Descarta 1 Energía de este Pokémon."
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv07/024/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv07/024/high.webp",
+    "setNombre": "Corona Astral"
+   }
+  },
+  {
+   "id": "sv7-127",
+   "nombre": "Cyclizar",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "110",
+   "tipos": [
+    "Colorless"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Tail Snap",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Speed Attack",
+     "cost": [
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "50",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    967
+   ],
+   "numeroCarta": "127",
+   "rareza": "Common",
+   "ilustrador": null,
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv7/127.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv7/127_hires.png",
+   "set": {
+    "nombre": "Stellar Crown",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv7/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv7/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Cyclizar",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Pinza Cola",
+      "text": null
+     },
+     {
+      "name": "Ataque Fugaz",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv07/127/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv07/127/high.webp",
+    "setNombre": "Corona Astral"
+   }
+  }
+ ]
+}

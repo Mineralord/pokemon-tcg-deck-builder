@@ -1,0 +1,120 @@
+{
+  "code": "svp",
+  "officialCode": "SVP",
+  "serie": "Scarlet & Violet",
+  "expansion": "Scarlet & Violet Black Star Promos",
+  "counts": {
+    "attacks": 15,
+    "attacksImpl": 1,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "svp-106",
+      "en": "Thunderbolt",
+      "es": "Rayo",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-109",
+      "en": "Electric Ball",
+      "es": "Bola Eléctrica",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-110",
+      "en": "Wind of Darkness",
+      "es": "Viento de Oscuridad",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-110",
+      "en": "Night Impact",
+      "es": "Impacto Nocturno",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-105",
+      "en": "Armor Cannon",
+      "es": "Armor Cannon",
+      "text": "Discard a Fire Energy from this Pokémon.",
+      "impl": true
+    },
+    {
+      "cardId": "svp-107",
+      "en": "Headbutt",
+      "es": "Headbutt",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-107",
+      "en": "Lightning Ball",
+      "es": "Lightning Ball",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-108",
+      "en": "Headbutt",
+      "es": "Headbutt",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-108",
+      "en": "Electro Ball",
+      "es": "Electro Ball",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-111",
+      "en": "Pierce",
+      "es": "Pierce",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-112",
+      "en": "Cut",
+      "es": "Cut",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-113",
+      "en": "Elbow Strike",
+      "es": "Elbow Strike",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-113",
+      "en": "Slicing Blade",
+      "es": "Slicing Blade",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-148",
+      "en": "Electric Claws",
+      "es": "Electric Claws",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "svp-148",
+      "en": "Mach Bolt",
+      "es": "Mach Bolt",
+      "text": "",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,7 +45,9 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 private val ScreenBg = Color(0xFF1B2430)
 private val TileBg = Color(0xFF26303D)
 
-private enum class DeckTab(val label: String) { RECIENTES("RECIENTES"), FAVORITAS("FAVORITAS"), TODAS("TODAS") }
+private enum class DeckTab(val label: String) {
+    RECIENTES("RECIENTES"), FAVORITAS("FAVORITAS"), TODAS("TODAS"), PRECONSTRUIDAS("PRECONSTRUIDAS")
+}
 
 /** Gestor de barajas (it.2: ver, activa/favorita, crear y editar). */
 @Composable
@@ -97,31 +100,60 @@ fun DecksScreen(
                     t.label,
                     color = if (sel) TcgColors.Gold else Color(0xCCFFFFFF),
                     fontWeight = if (sel) FontWeight.Black else FontWeight.SemiBold,
-                    fontSize = 12.sp,
+                    fontSize = 10.sp,
+                    maxLines = 1,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f).clickable { tab = t }.padding(vertical = 12.dp),
+                    modifier = Modifier.weight(1f).clickable { tab = t }.padding(vertical = 12.dp, horizontal = 2.dp),
                 )
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { onlyValid = !onlyValid }.padding(horizontal = 6.dp),
-            ) {
-                Box(
-                    Modifier.size(16.dp).clip(RoundedCornerShape(3.dp))
-                        .background(if (onlyValid) TcgColors.Gold else Color(0x33FFFFFF))
-                        .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(3.dp)),
-                    contentAlignment = Alignment.Center,
-                ) { if (onlyValid) Text("✓", color = TcgColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black) }
-                Spacer(Modifier.size(4.dp))
-                Text("VÁLIDAS", color = Color(0xCCFFFFFF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            // El filtro "SOLO VÁLIDAS" no aplica a las barajas preconstruidas.
+            if (tab != DeckTab.PRECONSTRUIDAS) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onlyValid = !onlyValid }.padding(horizontal = 6.dp),
+                ) {
+                    Box(
+                        Modifier.size(16.dp).clip(RoundedCornerShape(3.dp))
+                            .background(if (onlyValid) TcgColors.Gold else Color(0x33FFFFFF))
+                            .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(3.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) { if (onlyValid) Text("✓", color = TcgColors.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black) }
+                    Spacer(Modifier.size(4.dp))
+                    Text("VÁLIDAS", color = Color(0xCCFFFFFF), fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
 
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (state.loading) {
                 CircularProgressIndicator(color = Color.White)
+            } else if (tab == DeckTab.PRECONSTRUIDAS) {
+                // Barajas temáticas/preconstruidas, agrupadas por carpeta. Solo lectura.
+                val prebuilt = state.decks
+                    .filter { it.isPrebuilt }
+                    .let { if (query.isBlank()) it else it.filter { d -> d.name.contains(query, ignoreCase = true) } }
+                val byFolder = prebuilt.groupBy { it.folder ?: "" }
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    byFolder.forEach { (folder, folderDecks) ->
+                        item(key = "folder-$folder", span = { GridItemSpan(maxLineSpan) }) {
+                            FolderHeader(folder, folderDecks.size)
+                        }
+                        items(folderDecks.size, key = { folderDecks[it].id }) { i ->
+                            DeckCell(folderDecks[i]) { selectedId = folderDecks[i].id }
+                        }
+                    }
+                }
             } else {
+                // Solo barajas del jugador (las preconstruidas viven en su propia pestaña).
                 val decks = state.decks
+                    .filter { !it.isPrebuilt }
                     .let { if (tab == DeckTab.FAVORITAS) it.filter { d -> d.isFavorite } else it }
                     .let { if (onlyValid) it.filter { d -> d.valid } else it }
                     .let { if (query.isBlank()) it else it.filter { d -> d.name.contains(query, ignoreCase = true) } }
@@ -181,6 +213,24 @@ private fun CreateDeckTile(onClick: () -> Unit) {
     }
 }
 
+/** Encabezado de carpeta (agrupa barajas preconstruidas). */
+@Composable
+private fun FolderHeader(name: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFF141B24))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("📁", fontSize = 16.sp)
+        Spacer(Modifier.size(8.dp))
+        Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp, modifier = Modifier.weight(1f))
+        Text("$count", color = TcgColors.Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    }
+}
+
 /** Celda de baraja: caja tintada + nombre + indicadores (activa / inválida). */
 @Composable
 private fun DeckCell(deck: DeckUi, onClick: () -> Unit) {
@@ -205,7 +255,7 @@ private fun DeckCell(deck: DeckUi, onClick: () -> Unit) {
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 ) { Text("ACTIVA", color = TcgColors.Ink, fontSize = 8.sp, fontWeight = FontWeight.Black) }
             }
-            if (!deck.valid) {
+            if (!deck.isPrebuilt && !deck.valid) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -215,6 +265,17 @@ private fun DeckCell(deck: DeckUi, onClick: () -> Unit) {
                         .background(Color(0xFFE53935)),
                     contentAlignment = Alignment.Center,
                 ) { Text("!", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Black) }
+            }
+            // Preconstruida sin todas las cartas: candado (no jugable todavía).
+            if (deck.isPrebuilt && !deck.playable) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xCC000000))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) { Text("🔒", fontSize = 11.sp) }
             }
         }
         Spacer(Modifier.height(6.dp))

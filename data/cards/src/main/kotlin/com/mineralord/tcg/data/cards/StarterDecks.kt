@@ -5,12 +5,13 @@ import com.mineralord.tcg.engine.model.CardId
 /** Una entrada de baraja: una carta y cuántas copias. */
 data class DeckEntry(val cardId: CardId, val count: Int)
 
-/** Baraja preconstruida (60 cartas). */
+/** Baraja preconstruida (60 cartas). [folder] la agrupa en el gestor de barajas. */
 data class StarterDeck(
     val id: String,
     val name: String,
     val headliner: CardId,
     val entries: List<DeckEntry>,
+    val folder: String = PrebuiltDecks.ACADEMIA_2024,
 ) {
     val totalCards: Int get() = entries.sumOf { it.count }
 
@@ -31,7 +32,7 @@ object StarterDecks {
 
     val PIKACHU = StarterDeck(
         id = "ba2024-pikachu-ex",
-        name = "Pikachu ex Academia de Combate 2024",
+        name = "Pikachu ex",
         headliner = CardId("svp-106"),
         entries = listOf(
             e("svp-106", 1), e("sv2-66", 4), e("sv2-67", 3), e("svp-107", 4),
@@ -45,7 +46,7 @@ object StarterDecks {
 
     val ARMAROUGE = StarterDeck(
         id = "ba2024-armarouge-ex",
-        name = "Armarouge ex Academia de Combate 2024",
+        name = "Armarouge ex",
         headliner = CardId("svp-105"),
         entries = listOf(
             e("sv1-33", 3), e("sv1-34", 2), e("sv1-35", 2), e("sv3-40", 2),
@@ -59,7 +60,7 @@ object StarterDecks {
 
     val DARKRAI = StarterDeck(
         id = "ba2024-darkrai-ex",
-        name = "Darkrai ex Academia de Combate 2024",
+        name = "Darkrai ex",
         headliner = CardId("svp-110"),
         entries = listOf(
             e("sv2-137", 2), e("svp-110", 1), e("svp-111", 4), e("svp-112", 3),

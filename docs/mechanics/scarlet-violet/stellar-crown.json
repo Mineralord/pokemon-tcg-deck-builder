@@ -1,0 +1,50 @@
+{
+  "code": "sv7",
+  "officialCode": "SCR",
+  "serie": "Scarlet & Violet",
+  "expansion": "Stellar Crown",
+  "counts": {
+    "attacks": 5,
+    "attacksImpl": 0,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv7-23",
+      "en": "Ember",
+      "es": "Ascuas",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv7-24",
+      "en": "Sudden Scorching",
+      "es": "Calcinación Súbita",
+      "text": "Tu rival descarta 1 carta de su mano. Si este Pokémon ha evolucionado de Salandit durante este turno, tu rival descarta 2 cartas más.",
+      "impl": false
+    },
+    {
+      "cardId": "sv7-24",
+      "en": "Flamethrower",
+      "es": "Lanzallamas",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    },
+    {
+      "cardId": "sv7-127",
+      "en": "Tail Snap",
+      "es": "Pinza Cola",
+      "text": "",
+      "impl": false
+    },
+    {
+      "cardId": "sv7-127",
+      "en": "Speed Attack",
+      "es": "Ataque Fugaz",
+      "text": "",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

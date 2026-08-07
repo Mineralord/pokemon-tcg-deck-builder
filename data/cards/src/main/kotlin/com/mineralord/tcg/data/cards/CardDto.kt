@@ -14,6 +14,28 @@ data class CardDbDto(
     val cartas: List<CardDto> = emptyList(),
 )
 
+/**
+ * Índice de expansiones separadas (`/cards/index.json`). Cada expansión vive en su
+ * propio archivo bajo `cards/<serie>/<expansion>.json`; las energías básicas van
+ * aparte (no son expansión). El `officialCode` es el código impreso por Pokémon
+ * Company (MEW=151, SSP=Surging Sparks…) — SOLO metadato; los `id` internos de las
+ * cartas no lo usan.
+ */
+@Serializable
+data class CardIndexDto(
+    val sets: List<CardSetRefDto> = emptyList(),
+    val energies: String? = null,
+)
+
+@Serializable
+data class CardSetRefDto(
+    val code: String = "",
+    val officialCode: String? = null,
+    val serie: String? = null,
+    val expansion: String? = null,
+    val file: String,
+)
+
 @Serializable
 data class CardDto(
     val id: String,
@@ -36,6 +58,8 @@ data class CardDto(
     val imagenGrande: String? = null,
     val set: SetDto? = null,
     val es: EsDto? = null,
+    /** Rasgo Antiguo (era XY). Ausente en la inmensa mayoría de cartas (SV no los usa). */
+    val rasgoAntiguo: AncientTraitDto? = null,
 )
 
 @Serializable
@@ -51,6 +75,19 @@ data class AttackDto(
 data class AbilityDto(
     val name: String = "",
     val text: String? = null,
+    /**
+     * Clase impresa del poder: "Ability" (moderno), "Poké-Power"/"Pokémon Power" o
+     * "Poké-Body" (pre-2011). null/ausente = se asume "Ability" (cartas modernas SV).
+     */
+    val type: String? = null,
+)
+
+@Serializable
+data class AncientTraitDto(
+    val name: String = "",
+    val text: String? = null,
+    val nombreEs: String? = null,
+    val textoEs: String? = null,
 )
 
 @Serializable
@@ -71,8 +108,15 @@ data class SetDto(
 data class EsDto(
     val nombre: String? = null,
     val ataques: List<EsAttackDto> = emptyList(),
+    val habilidades: List<EsAbilityDto> = emptyList(),
     val imagenChica: String? = null,
     val imagenGrande: String? = null,
+)
+
+@Serializable
+data class EsAbilityDto(
+    val name: String? = null,
+    val text: String? = null,
 )
 
 @Serializable

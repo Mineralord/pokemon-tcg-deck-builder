@@ -30,3 +30,7 @@ tools/.venv/
 # Firebase (credenciales; no versionar)
 app/google-services.json
 .firebase/
+
+# Volcados de referencia locales (capturas pesadas; no van al remoto)
+/tcglive-capture/
+/referencias_live - copia/

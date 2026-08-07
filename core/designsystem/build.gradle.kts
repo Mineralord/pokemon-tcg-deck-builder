@@ -28,6 +28,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     api(libs.compose.ui)
     api(libs.compose.ui.graphics)
+    api(libs.compose.animation)
     api(libs.compose.material3)
     api(libs.compose.ui.tooling.preview)
     debugApi(libs.compose.ui.tooling)

@@ -102,10 +102,25 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun build(deck: Deck, owned: Map<String, Int>, f: CardFilter, s: CardSort): EditorUiState {
         val inDeck: Map<String, Int> = deck.entries.associate { it.cardId.raw to it.count }
+        // Copias por NOMBRE en el mazo (sumando distintas versiones/expansiones),
+        // para aplicar el límite de 4 por nombre — no por cardId. Ver DeckValidation.
+        val deckByName: Map<String, Int> = deck.entries
+            .mapNotNull { e -> repo[e.cardId]?.let { it.name.en to e.count } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, counts) -> counts.sum() }
 
         fun toUi(card: Card, ownedCount: Int): EditorCardUi {
             val cur = inDeck[card.id.raw] ?: 0
-            val cap = if (card is BasicEnergy) Int.MAX_VALUE else minOf(DeckValidation.MAX_COPIES, ownedCount)
+            // Energía básica: sin límite. Resto: límite de 4 POR NOMBRE (contando
+            // las demás versiones ya presentes) y nunca más de las que posees.
+            val canAdd = if (card is BasicEnergy) {
+                deck.totalCards < DeckValidation.DECK_SIZE
+            } else {
+                val nameTotal = deckByName[card.name.en] ?: 0
+                deck.totalCards < DeckValidation.DECK_SIZE &&
+                    cur < ownedCount &&
+                    nameTotal < DeckValidation.MAX_COPIES
+            }
             return EditorCardUi(
                 id = card.id.raw,
                 name = card.name.es,
@@ -114,7 +129,7 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
                 supertype = card.supertype,
                 inDeck = cur,
                 owned = ownedCount,
-                canAdd = deck.totalCards < DeckValidation.DECK_SIZE && cur < cap,
+                canAdd = canAdd,
             )
         }
 

@@ -1,0 +1,102 @@
+{
+ "meta": {
+  "code": "sv6pt5",
+  "officialCode": "SFA",
+  "serie": "Scarlet & Violet",
+  "expansion": "Shrouded Fable"
+ },
+ "totalCartas": 1,
+ "cartas": [
+  {
+   "id": "sv6pt5-35",
+   "nombre": "Yveltal",
+   "cantidad": 2,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "120",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Corrosive Winds",
+     "cost": [
+      "Darkness"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "",
+     "text": "Put 2 damage counters on each of your opponent's Pokémon that has any damage counters on it."
+    },
+    {
+     "name": "Destructive Beam",
+     "cost": [
+      "Darkness",
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "100",
+     "text": "Flip a coin. If heads, discard an Energy from your opponent's Active Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Lightning",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [
+    {
+     "type": "Fighting",
+     "value": "-30"
+    }
+   ],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    717
+   ],
+   "numeroCarta": "35",
+   "rareza": "Uncommon",
+   "ilustrador": null,
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv6pt5/35.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv6pt5/35_hires.png",
+   "set": {
+    "nombre": "Shrouded Fable",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv6pt5/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv6pt5/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Yveltal",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Vientos Corrosivos",
+      "text": "Pon 2 contadores de daño en cada uno de los Pokémon de tu rival que tenga algún contador de daño sobre él."
+     },
+     {
+      "name": "Rayo Exterminador",
+      "text": "Lanza 1 moneda. Si sale cara, descarta 1 Energía del Pokémon Activo de tu rival."
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv06.5/035/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv06.5/035/high.webp",
+    "setNombre": "Fabula Sombría"
+   }
+  }
+ ]
+}

@@ -1,0 +1,771 @@
+{
+ "meta": {
+  "code": "svp",
+  "officialCode": "SVP",
+  "serie": "Scarlet & Violet",
+  "expansion": "Scarlet & Violet Black Star Promos"
+ },
+ "totalCartas": 11,
+ "cartas": [
+  {
+   "id": "svp-106",
+   "nombre": "Pikachu ex",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic, ex",
+   "evolucionaDe": null,
+   "ps": "200",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Thunderbolt",
+     "cost": [
+      "Lightning",
+      "Lightning",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "120",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    25
+   ],
+   "numeroCarta": "106",
+   "rareza": "Promo",
+   "ilustrador": "takuyoa",
+   "marcaRegulacion": "H",
+   "reglas": [
+    "Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/svp/106.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/106_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Pikachu ex",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Rayo",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/106/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/106/high.webp",
+    "setNombre": "SVP Black Star Promos"
+   }
+  },
+  {
+   "id": "svp-109",
+   "nombre": "Ampharos",
+   "cantidad": 2,
+   "supertipo": "Pokémon",
+   "fase": "Stage 2",
+   "evolucionaDe": "Flaaffy",
+   "ps": "160",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Electric Ball",
+     "cost": [
+      "Lightning",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "110",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    181
+   ],
+   "numeroCarta": "109",
+   "rareza": "Promo",
+   "ilustrador": "GIDORA",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/109.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/109_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Ampharos",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Bola Eléctrica",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/109/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/109/high.webp",
+    "setNombre": "SVP Black Star Promos"
+   }
+  },
+  {
+   "id": "svp-114",
+   "nombre": "Picnicker",
+   "cantidad": 4,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "114",
+   "rareza": "Promo",
+   "ilustrador": "Susumu Maeya",
+   "marcaRegulacion": "H",
+   "reglas": [
+    "Flip a coin. If heads, draw 4 cards. If tails, draw 2 cards.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/svp/114.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/114_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Dominguera",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Lanza 1 moneda. Si sale cara, roba 4 cartas. Si sale cruz, roba 2 cartas.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/114/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/114/high.webp",
+    "setNombre": "SVP Black Star Promos"
+   }
+  },
+  {
+   "id": "svp-110",
+   "nombre": "Darkrai ex",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic, ex",
+   "evolucionaDe": null,
+   "ps": "210",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Wind of Darkness",
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "40",
+     "text": ""
+    },
+    {
+     "name": "Night Impact",
+     "cost": [
+      "Darkness",
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "110",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    491
+   ],
+   "numeroCarta": "110",
+   "rareza": "Promo",
+   "ilustrador": "5ban Graphics",
+   "marcaRegulacion": "H",
+   "reglas": [
+    "Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/svp/110.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/110_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Darkrai ex",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Viento de Oscuridad",
+      "text": null
+     },
+     {
+      "name": "Impacto Nocturno",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/110/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/110/high.webp",
+    "setNombre": "SVP Black Star Promos"
+   }
+  },
+  {
+   "id": "svp-105",
+   "nombre": "Armarouge ex",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1, ex",
+   "evolucionaDe": "Charcadet",
+   "ps": "260",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Armor Cannon",
+     "cost": [
+      "Fire",
+      "Fire",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "200",
+     "text": "Discard a Fire Energy from this Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    936
+   ],
+   "numeroCarta": "105",
+   "rareza": "Promo",
+   "ilustrador": "PLANETA Tsuji",
+   "marcaRegulacion": "H",
+   "reglas": [
+    "Pokémon ex rule: When your Pokémon ex is Knocked Out, your opponent takes 2 Prize cards."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/svp/105.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/105_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/105/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/105/high.webp"
+   }
+  },
+  {
+   "id": "svp-107",
+   "nombre": "Mareep",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "60",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Headbutt",
+     "cost": [
+      "Lightning"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Lightning Ball",
+     "cost": [
+      "Lightning",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "20",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    179
+   ],
+   "numeroCarta": "107",
+   "rareza": "Promo",
+   "ilustrador": "Orca",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/107.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/107_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/107/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/107/high.webp"
+   }
+  },
+  {
+   "id": "svp-108",
+   "nombre": "Flaaffy",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Mareep",
+   "ps": "90",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Headbutt",
+     "cost": [
+      "Lightning"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "20",
+     "text": ""
+    },
+    {
+     "name": "Electro Ball",
+     "cost": [
+      "Lightning",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "50",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    180
+   ],
+   "numeroCarta": "108",
+   "rareza": "Promo",
+   "ilustrador": "Akira Komayama",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/108.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/108_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/108/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/108/high.webp"
+   }
+  },
+  {
+   "id": "svp-111",
+   "nombre": "Pawniard",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "70",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Pierce",
+     "cost": [
+      "Darkness"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    624
+   ],
+   "numeroCarta": "111",
+   "rareza": "Promo",
+   "ilustrador": "matazo",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/111.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/111_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/111/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/111/high.webp"
+   }
+  },
+  {
+   "id": "svp-112",
+   "nombre": "Bisharp",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Pawniard",
+   "ps": "100",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Cut",
+     "cost": [
+      "Darkness"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "30",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    625
+   ],
+   "numeroCarta": "112",
+   "rareza": "Promo",
+   "ilustrador": "AKIRA EGAWA",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/112.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/112_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/112/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/112/high.webp"
+   }
+  },
+  {
+   "id": "svp-113",
+   "nombre": "Kingambit",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 2",
+   "evolucionaDe": "Bisharp",
+   "ps": "170",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Elbow Strike",
+     "cost": [
+      "Darkness"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "40",
+     "text": ""
+    },
+    {
+     "name": "Slicing Blade",
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "100",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Grass",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    983
+   ],
+   "numeroCarta": "113",
+   "rareza": "Promo",
+   "ilustrador": "nagimiso",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/113.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/113_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/113/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/113/high.webp"
+   }
+  },
+  {
+   "id": "svp-148",
+   "nombre": "Miraidon",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "120",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Electric Claws",
+     "cost": [
+      "Lightning"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "30",
+     "text": ""
+    },
+    {
+     "name": "Mach Bolt",
+     "cost": [
+      "Lightning",
+      "Lightning"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "60",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    1008
+   ],
+   "numeroCarta": "148",
+   "rareza": "Promo",
+   "ilustrador": "hncl",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/svp/148.png",
+   "imagenGrande": "https://images.pokemontcg.io/svp/148_hires.png",
+   "set": {
+    "nombre": "Scarlet & Violet Black Star Promos",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/svp/symbol.png",
+    "logo": "https://images.pokemontcg.io/svp/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/svp/148/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/svp/148/high.webp"
+   }
+  }
+ ]
+}

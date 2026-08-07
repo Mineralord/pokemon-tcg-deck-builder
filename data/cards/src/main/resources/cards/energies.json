@@ -1,0 +1,176 @@
+{
+ "meta": {
+  "kind": "basic-energy"
+ },
+ "totalCartas": 8,
+ "cartas": [
+  {
+   "id": "energy-basic-grass-energy",
+   "nombre": "Basic Grass Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Grass"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Planta Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/152/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/152/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-fire-energy",
+   "nombre": "Basic Fire Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Fire"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Fuego Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/153/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/153/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-water-energy",
+   "nombre": "Basic Water Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Water"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Agua Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/154/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/154/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-lightning-energy",
+   "nombre": "Basic Lightning Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Lightning"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Rayo Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/155/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/155/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-psychic-energy",
+   "nombre": "Basic Psychic Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Psychic"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Psíquica Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/156/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/156/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-fighting-energy",
+   "nombre": "Basic Fighting Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Fighting"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Lucha Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/157/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/157/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-darkness-energy",
+   "nombre": "Basic Darkness Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Darkness"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Oscura Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/158/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/158/high.webp"
+   }
+  },
+  {
+   "id": "energy-basic-metal-energy",
+   "nombre": "Basic Metal Energy",
+   "cantidad": 0,
+   "supertipo": "Energy",
+   "fase": "Basic Energy",
+   "tipos": [
+    "Metal"
+   ],
+   "ataques": [],
+   "habilidades": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "reglas": [],
+   "es": {
+    "nombre": "Energía Metálica Básica",
+    "imagenChica": "https://assets.tcgdex.net/es/swsh/swsh12.5/159/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/swsh/swsh12.5/159/high.webp"
+   }
+  }
+ ]
+}

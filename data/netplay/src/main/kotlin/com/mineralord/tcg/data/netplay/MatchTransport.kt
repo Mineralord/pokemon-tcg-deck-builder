@@ -54,3 +54,12 @@ interface MatchTransportFactory {
 interface MatchFactoryProvider {
     val matchFactory: MatchTransportFactory
 }
+
+/**
+ * Idempotencia de entrega para transportes con historial re-entregable: al
+ * re-suscribirse tras un corte, un backend durable (p. ej. Firestore) reentrega toda
+ * la cola como documentos nuevos. Devuelve true solo si [seq] supera la última
+ * secuencia ya entregada ([lastSeen]), evitando reprocesar la ceremonia
+ * (Hello/Deal/Coin). Pura → testeable sin backend.
+ */
+fun shouldForwardSeq(seq: Int, lastSeen: Int): Boolean = seq > lastSeen

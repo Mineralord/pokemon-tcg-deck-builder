@@ -1,0 +1,96 @@
+{
+ "meta": {
+  "code": "sv10",
+  "officialCode": "DRI",
+  "serie": "Scarlet & Violet",
+  "expansion": "Destined Rivals"
+ },
+ "totalCartas": 1,
+ "cartas": [
+  {
+   "id": "sv10-77",
+   "nombre": "Rotom",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "60",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Astonish",
+     "cost": [
+      "Lightning"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "20",
+     "text": "Choose a random card from your opponent's hand. Your opponent reveals that card and shuffles it into their deck."
+    },
+    {
+     "name": "Gadget Show",
+     "cost": [
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "30×",
+     "text": "This attack does 30 damage for each Pokémon Tool attached to all of your Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": "Its electricity-like body can enter some kinds of machines and take control in order to make mischief.",
+   "numeroPokedex": [
+    479
+   ],
+   "numeroCarta": "77",
+   "rareza": "Common",
+   "ilustrador": "Yoshimi Miyoshi",
+   "marcaRegulacion": "I",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv10/77.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv10/77_hires.png",
+   "set": {
+    "nombre": "Destined Rivals",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv10/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv10/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Rotom",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Impresionar",
+      "text": "Elige 1 carta aleatoria de la mano de tu rival. Tu rival enseña esa carta, la pone en su baraja y las baraja todas."
+     },
+     {
+      "name": "Espectáculo de Utensilios",
+      "text": "Este ataque hace 30 puntos de daño por cada Herramienta Pokémon unida a cada uno de tus Pokémon."
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv10/077/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv10/077/high.webp",
+    "setNombre": "Rivales Predestinados"
+   }
+  }
+ ]
+}

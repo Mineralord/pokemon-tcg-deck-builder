@@ -1,0 +1,537 @@
+{
+ "meta": {
+  "code": "sv2",
+  "officialCode": "PAL",
+  "serie": "Scarlet & Violet",
+  "expansion": "Paldea Evolved"
+ },
+ "totalCartas": 8,
+ "cartas": [
+  {
+   "id": "sv2-183",
+   "nombre": "Great Ball",
+   "cantidad": 8,
+   "supertipo": "Trainer",
+   "fase": "Item",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "183",
+   "rareza": "Common",
+   "ilustrador": "Studio Bora Inc.",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Look at the top 7 cards of your deck. You may reveal a Pokémon you find there and put it into your hand. Shuffle the other cards back into your deck.",
+    "You may play any number of Item cards during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv2/183.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/183_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Super Ball",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Mira las 7 primeras cartas de tu baraja. Puedes enseñar 1 Pokémon que encuentres entre ellas y ponerlo en tu mano. Pon el resto de las cartas de nuevo en tu baraja y barájalas todas.",
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/183/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/183/high.webp",
+    "setNombre": "Evoluciones en Paldea"
+   }
+  },
+  {
+   "id": "sv2-137",
+   "nombre": "Seviper",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "110",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Sharp Fang",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "20",
+     "text": ""
+    },
+    {
+     "name": "Cross-Cut",
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "50+",
+     "text": "If your opponent's Active Pokémon is an Evolution Pokémon, this attack does 50 more damage."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    336
+   ],
+   "numeroCarta": "137",
+   "rareza": "Uncommon",
+   "ilustrador": "Nisota Niso",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv2/137.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/137_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/137/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/137/high.webp"
+   }
+  },
+  {
+   "id": "sv2-172",
+   "nombre": "Boss's Orders (Ghetsis)",
+   "cantidad": 1,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": 0,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "172",
+   "rareza": "Rare",
+   "ilustrador": "NC Empire",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "Switch in 1 of your opponent's Benched Pokémon to the Active Spot.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv2/172.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/172_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/172/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/172/high.webp"
+   }
+  },
+  {
+   "id": "sv2-36",
+   "nombre": "Crocalor",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Fuecoco",
+   "ps": "110",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Steady Firebreathing",
+     "cost": [
+      "Fire"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "30",
+     "text": ""
+    },
+    {
+     "name": "Hyper Voice",
+     "cost": [
+      "Fire",
+      "Fire"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "70",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 3,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    910
+   ],
+   "numeroCarta": "36",
+   "rareza": "Uncommon",
+   "ilustrador": "Hitoshi Ariga",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv2/36.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/36_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/036/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/036/high.webp"
+   }
+  },
+  {
+   "id": "sv2-39",
+   "nombre": "Charcadet",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "80",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Live Coal",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Magnum Punch",
+     "cost": [
+      "Colorless",
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "50",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    935
+   ],
+   "numeroCarta": "39",
+   "rareza": "Common",
+   "ilustrador": "KEIICHIRO ITO",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv2/39.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/39_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/039/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/039/high.webp"
+   }
+  },
+  {
+   "id": "sv2-66",
+   "nombre": "Voltorb",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "70",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Lightning Ball",
+     "cost": [
+      "Lightning"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Rollout",
+     "cost": [
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "20",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    100
+   ],
+   "numeroCarta": "66",
+   "rareza": "Common",
+   "ilustrador": "sui",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv2/66.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/66_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/066/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/066/high.webp"
+   }
+  },
+  {
+   "id": "sv2-67",
+   "nombre": "Electrode",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Voltorb",
+   "ps": "90",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Lightning Ball",
+     "cost": [
+      "Lightning"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "60",
+     "text": ""
+    },
+    {
+     "name": "Rolling Tackle",
+     "cost": [
+      "Colorless",
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "90",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    101
+   ],
+   "numeroCarta": "67",
+   "rareza": "Uncommon",
+   "ilustrador": "Scav",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv2/67.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/67_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/067/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/067/high.webp"
+   }
+  },
+  {
+   "id": "sv2-82",
+   "nombre": "Kilowattrel",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Wattrel",
+   "ps": "120",
+   "tipos": [
+    "Lightning"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Peck",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "20",
+     "text": ""
+    },
+    {
+     "name": "Jet Wing",
+     "cost": [
+      "Colorless",
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "150",
+     "text": "During your next turn, this Pokémon can't attack."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Lightning",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [
+    {
+     "type": "Fighting",
+     "value": "-30"
+    }
+   ],
+   "costoRetirada": [],
+   "retiradaConvertida": 0,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    941
+   ],
+   "numeroCarta": "82",
+   "rareza": "Uncommon",
+   "ilustrador": "Pani Kobayashi",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv2/82.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv2/82_hires.png",
+   "set": {
+    "nombre": "Paldea Evolved",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv2/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv2/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv02/082/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv02/082/high.webp"
+   }
+  }
+ ]
+}

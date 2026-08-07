@@ -1,0 +1,43 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Depth tokens — ecosistema Pokémon TCG. Define SOLO la percepción espacial (planos, nivel de elevación, z-index, jerarquía de flotantes). NO define radius/border/blur/surface styling (Fase 9.5 Surface). Fuente de verdad. StudioDepthTokens.kt se regenera desde aquí. Cada plano cita la ley VG que implementa (TA-0).",
+  "$meta": {
+    "phase": "9.4",
+    "family": "depth",
+    "canon": ["Visual-Grammar", "Visual-Language", "Visual-Tokens-Architecture", "Color-Tokens", "Spacing"],
+    "rules": {
+      "depthGovernsElevationAndZIndex": "DC-TA5",
+      "scale": "6 planos semánticos fijos; no hay z-index libres (DC-TA5, VG-D2)",
+      "elevationLevelIsOrdinal": "el nivel es ordinal; el shadow concreto lo materializa 9.5 Surface",
+      "planeMeansInterruptionOrAttention": "VG-PROF: subir de plano = interrumpir o reclamar atención"
+    }
+  },
+  "foundation": {
+    "zStep": { "$value": 100, "$note": "paso entre planos; deja holgura para apilamiento intra-plano en runtime" }
+  },
+  "semantic": {
+    "plane": {
+      "content":      { "level": 0, "z": 0,   "$law": "VG-D2 base · VL-CONT (aquí vive el contenido)" },
+      "raised":       { "level": 1, "z": 100, "$law": "VG-D2 elevado-persistente (adherido al contenido)" },
+      "floating":     { "level": 2, "z": 200, "$law": "VG-D (anclado a un disparador; transitorio)" },
+      "modal":        { "level": 3, "z": 300, "$law": "VG-D interrupción (con scrim)" },
+      "notification": { "level": 4, "z": 400, "$law": "VL-silencio (voz alta) · nunca oculta bajo modal" },
+      "alert":        { "level": 5, "z": 500, "$law": "VL-silencio modo Alerta (topmost reservado)" }
+    }
+  },
+  "context": {
+    "dock":        { "plane": "{semantic.plane.content}",  "flyout": "{semantic.plane.floating}", "$law": "chrome base; su flyout ancla flota" },
+    "sidebar":     { "plane": "{semantic.plane.content}",  "$law": "chrome estructural" },
+    "inspector":   { "plane": "{semantic.plane.content}",  "$law": "instrumento en el plano base" },
+    "timeline":    { "plane": "{semantic.plane.content}",  "$law": "chrome base; sin z global" },
+    "preview":     { "plane": "{semantic.plane.content}",  "controls": "{semantic.plane.raised}", "$law": "VL-CONT: telón base; controles apenas elevados" },
+    "selectedCard":{ "plane": "{semantic.plane.raised}",   "$law": "elevar lo seleccionado = reclamo de atención (VG-D3)" },
+    "dragGhost":   { "plane": "{semantic.plane.floating}", "$law": "el objeto arrastrado flota sobre todo el contenido" },
+    "tooltip":     { "plane": "{semantic.plane.floating}", "$law": "IC · anclado al disparador" },
+    "popover":     { "plane": "{semantic.plane.floating}", "$law": "IC · Command Palette / menús" },
+    "menu":        { "plane": "{semantic.plane.floating}", "$law": "IC · Context Menu" },
+    "dialog":      { "plane": "{semantic.plane.modal}",    "$law": "VG-D interrupción" },
+    "toast":       { "plane": "{semantic.plane.notification}", "$law": "IC-8 · feedback no bloqueante" },
+    "criticalAlert":{ "plane": "{semantic.plane.alert}",  "$law": "VL Alerta · pérdida de trabajo / bloqueo" }
+  }
+}

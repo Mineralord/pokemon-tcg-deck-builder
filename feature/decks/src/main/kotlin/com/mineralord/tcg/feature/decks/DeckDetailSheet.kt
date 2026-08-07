@@ -89,17 +89,32 @@ fun DeckDetailSheet(
                     Text("⋮", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp,
                         modifier = Modifier.clickable { menuOpen = true }.padding(horizontal = 6.dp))
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(text = { Text("Editar") }, onClick = { menuOpen = false; onEdit() })
+                        // Las preconstruidas no se pueden editar ni borrar; solo duplicar
+                        // (crea una copia personalizable).
+                        if (!deck.isPrebuilt) {
+                            DropdownMenuItem(text = { Text("Editar") }, onClick = { menuOpen = false; onEdit() })
+                        }
                         DropdownMenuItem(text = { Text("Duplicar") }, onClick = { menuOpen = false; onDuplicate() })
-                        DropdownMenuItem(text = { Text("Borrar") }, onClick = { menuOpen = false; onDelete() })
+                        if (!deck.isPrebuilt) {
+                            DropdownMenuItem(text = { Text("Borrar") }, onClick = { menuOpen = false; onDelete() })
+                        }
                     }
                 }
             }
 
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SheetButton(if (deck.isActive) "✓ BARAJA ACTIVA" else "USAR ESTA BARAJA", filled = deck.isActive, enabled = !deck.isActive, modifier = Modifier.weight(1f), onClick = onSetActive)
-                SheetButton("EDITAR BARAJA", filled = false, enabled = true, modifier = Modifier.weight(1f), onClick = onEdit)
+                val useLabel = when {
+                    deck.isActive -> "✓ BARAJA ACTIVA"
+                    deck.isPrebuilt && !deck.playable -> "🔒 CARTAS INCOMPLETAS"
+                    else -> "USAR ESTA BARAJA"
+                }
+                SheetButton(useLabel, filled = deck.isActive, enabled = !deck.isActive && deck.playable, modifier = Modifier.weight(1f), onClick = onSetActive)
+                if (deck.isPrebuilt) {
+                    SheetButton("DUPLICAR BARAJA", filled = false, enabled = true, modifier = Modifier.weight(1f), onClick = onDuplicate)
+                } else {
+                    SheetButton("EDITAR BARAJA", filled = false, enabled = true, modifier = Modifier.weight(1f), onClick = onEdit)
+                }
             }
 
             Spacer(Modifier.height(14.dp))

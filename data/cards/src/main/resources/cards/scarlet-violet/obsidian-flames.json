@@ -1,0 +1,298 @@
+{
+ "meta": {
+  "code": "sv3",
+  "officialCode": "OBF",
+  "serie": "Scarlet & Violet",
+  "expansion": "Obsidian Flames"
+ },
+ "totalCartas": 4,
+ "cartas": [
+  {
+   "id": "sv3-139",
+   "nombre": "Salandit",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "70",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Suffocating Gas",
+     "cost": [
+      "Darkness"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Scratch",
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "30",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    757
+   ],
+   "numeroCarta": "139",
+   "rareza": "Common",
+   "ilustrador": "Shiburingaru",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv3/139.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv3/139_hires.png",
+   "set": {
+    "nombre": "Obsidian Flames",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv3/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv3/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv03/139/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03/139/high.webp"
+   }
+  },
+  {
+   "id": "sv3-140",
+   "nombre": "Salazzle",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Salandit",
+   "ps": "120",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Suffocating Gas",
+     "cost": [
+      "Darkness"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "40",
+     "text": ""
+    },
+    {
+     "name": "Gentle Slap",
+     "cost": [
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "70",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Fighting",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless"
+   ],
+   "retiradaConvertida": 1,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    758
+   ],
+   "numeroCarta": "140",
+   "rareza": "Uncommon",
+   "ilustrador": "Shigenori Negishi",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv3/140.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv3/140_hires.png",
+   "set": {
+    "nombre": "Obsidian Flames",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv3/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv3/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv03/140/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03/140/high.webp"
+   }
+  },
+  {
+   "id": "sv3-40",
+   "nombre": "Larvesta",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "80",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Flare",
+     "cost": [
+      "Fire"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Take Down",
+     "cost": [
+      "Fire",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "40",
+     "text": "This Pokémon also does 10 damage to itself."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    636
+   ],
+   "numeroCarta": "40",
+   "rareza": "Common",
+   "ilustrador": "Yuka Morii",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv3/40.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv3/40_hires.png",
+   "set": {
+    "nombre": "Obsidian Flames",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv3/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv3/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv03/040/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03/040/high.webp"
+   }
+  },
+  {
+   "id": "sv3-41",
+   "nombre": "Volcarona",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Stage 1",
+   "evolucionaDe": "Larvesta",
+   "ps": "140",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Flame Cloak",
+     "cost": [
+      "Fire"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "30",
+     "text": "Attach a Basic Fire Energy card from your discard pile to this Pokémon."
+    },
+    {
+     "name": "Heat Blast",
+     "cost": [
+      "Fire",
+      "Fire",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "130",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    637
+   ],
+   "numeroCarta": "41",
+   "rareza": "Uncommon",
+   "ilustrador": "Yukiko Baba",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv3/41.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv3/41_hires.png",
+   "set": {
+    "nombre": "Obsidian Flames",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv3/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv3/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv03/041/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv03/041/high.webp"
+   }
+  }
+ ]
+}

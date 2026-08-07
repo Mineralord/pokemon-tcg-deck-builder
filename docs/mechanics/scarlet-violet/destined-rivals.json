@@ -1,0 +1,29 @@
+{
+  "code": "sv10",
+  "officialCode": "DRI",
+  "serie": "Scarlet & Violet",
+  "expansion": "Destined Rivals",
+  "counts": {
+    "attacks": 2,
+    "attacksImpl": 0,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv10-77",
+      "en": "Astonish",
+      "es": "Impresionar",
+      "text": "Elige 1 carta aleatoria de la mano de tu rival. Tu rival enseña esa carta, la pone en su baraja y las baraja todas.",
+      "impl": false
+    },
+    {
+      "cardId": "sv10-77",
+      "en": "Gadget Show",
+      "es": "Espectáculo de Utensilios",
+      "text": "Este ataque hace 30 puntos de daño por cada Herramienta Pokémon unida a cada uno de tus Pokémon.",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

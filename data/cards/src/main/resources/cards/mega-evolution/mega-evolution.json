@@ -1,0 +1,59 @@
+{
+ "meta": {
+  "code": "me1",
+  "officialCode": "ME1",
+  "serie": "Mega Evolution",
+  "expansion": "Mega Evolution"
+ },
+ "totalCartas": 1,
+ "cartas": [
+  {
+   "id": "me1-114",
+   "nombre": "Boss's Orders",
+   "cantidad": 1,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": null,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "114",
+   "rareza": "Uncommon",
+   "ilustrador": null,
+   "marcaRegulacion": "I",
+   "reglas": [
+    "Switch in 1 of your opponent's Benched Pokémon to the Active Spot.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/me1/114.png",
+   "imagenGrande": "https://images.pokemontcg.io/me1/114_hires.png",
+   "set": {
+    "nombre": "Mega Evolution",
+    "serie": "Mega Evolution",
+    "simbolo": "https://images.pokemontcg.io/me1/symbol.png",
+    "logo": "https://images.pokemontcg.io/me1/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Órdenes de Jefes",
+    "habilidades": [],
+    "ataques": [],
+    "efecto": "Cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo.",
+    "imagenChica": "https://assets.tcgdex.net/es/me/me01/114/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/me/me01/114/high.webp",
+    "setNombre": "Megaevolución"
+   }
+  }
+ ]
+}

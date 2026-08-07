@@ -1,0 +1,93 @@
+{
+ "meta": {
+  "code": "sv5",
+  "officialCode": "TEF",
+  "serie": "Scarlet & Violet",
+  "expansion": "Temporal Forces"
+ },
+ "totalCartas": 1,
+ "cartas": [
+  {
+   "id": "sv5-121",
+   "nombre": "Miraidon",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic, Future",
+   "evolucionaDe": null,
+   "ps": "110",
+   "tipos": [
+    "Dragon"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Peak Acceleration",
+     "cost": [
+      "Colorless"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "40",
+     "text": "Search your deck for up to 2 Basic Energy cards and attach them to your Future Pokémon in any way you like. Then, shuffle your deck."
+    },
+    {
+     "name": "Sparking Strike",
+     "cost": [
+      "Lightning",
+      "Lightning",
+      "Psychic"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "160",
+     "text": ""
+    }
+   ],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": "This seems to be the Iron Serpent mentioned in an old book. The Iron Serpent is said to have turned the land to ash with its lightning.",
+   "numeroPokedex": [
+    1008
+   ],
+   "numeroCarta": "121",
+   "rareza": "Rare",
+   "ilustrador": "GOSSAN",
+   "marcaRegulacion": "H",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv5/121.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv5/121_hires.png",
+   "set": {
+    "nombre": "Temporal Forces",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv5/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv5/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "nombre": "Miraidon",
+    "habilidades": [],
+    "ataques": [
+     {
+      "name": "Aceleración Máxima",
+      "text": "Busca en tu baraja hasta 2 cartas de Energía Básica y únelas a tus Pokémon del futuro de la manera que desees. Después, baraja las cartas de tu baraja."
+     },
+     {
+      "name": "Golpe Chispeante",
+      "text": null
+     }
+    ],
+    "efecto": null,
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv05/121/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv05/121/high.webp",
+    "setNombre": "Fuerzas Temporales"
+   }
+  }
+ ]
+}

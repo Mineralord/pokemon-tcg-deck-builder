@@ -1,0 +1,96 @@
+{
+ "sets": [
+  {
+   "code": "sv1",
+   "officialCode": "SVI",
+   "serie": "Scarlet & Violet",
+   "expansion": "Scarlet & Violet",
+   "file": "scarlet-violet/scarlet-violet.json"
+  },
+  {
+   "code": "sv2",
+   "officialCode": "PAL",
+   "serie": "Scarlet & Violet",
+   "expansion": "Paldea Evolved",
+   "file": "scarlet-violet/paldea-evolved.json"
+  },
+  {
+   "code": "sv3",
+   "officialCode": "OBF",
+   "serie": "Scarlet & Violet",
+   "expansion": "Obsidian Flames",
+   "file": "scarlet-violet/obsidian-flames.json"
+  },
+  {
+   "code": "sv3pt5",
+   "officialCode": "MEW",
+   "serie": "Scarlet & Violet",
+   "expansion": "151",
+   "file": "scarlet-violet/151.json"
+  },
+  {
+   "code": "sv4",
+   "officialCode": "PAR",
+   "serie": "Scarlet & Violet",
+   "expansion": "Paradox Rift",
+   "file": "scarlet-violet/paradox-rift.json"
+  },
+  {
+   "code": "sv5",
+   "officialCode": "TEF",
+   "serie": "Scarlet & Violet",
+   "expansion": "Temporal Forces",
+   "file": "scarlet-violet/temporal-forces.json"
+  },
+  {
+   "code": "sv6",
+   "officialCode": "TWM",
+   "serie": "Scarlet & Violet",
+   "expansion": "Twilight Masquerade",
+   "file": "scarlet-violet/twilight-masquerade.json"
+  },
+  {
+   "code": "sv6pt5",
+   "officialCode": "SFA",
+   "serie": "Scarlet & Violet",
+   "expansion": "Shrouded Fable",
+   "file": "scarlet-violet/shrouded-fable.json"
+  },
+  {
+   "code": "sv7",
+   "officialCode": "SCR",
+   "serie": "Scarlet & Violet",
+   "expansion": "Stellar Crown",
+   "file": "scarlet-violet/stellar-crown.json"
+  },
+  {
+   "code": "sv8",
+   "officialCode": "SSP",
+   "serie": "Scarlet & Violet",
+   "expansion": "Surging Sparks",
+   "file": "scarlet-violet/surging-sparks.json"
+  },
+  {
+   "code": "sv10",
+   "officialCode": "DRI",
+   "serie": "Scarlet & Violet",
+   "expansion": "Destined Rivals",
+   "file": "scarlet-violet/destined-rivals.json"
+  },
+  {
+   "code": "svp",
+   "officialCode": "SVP",
+   "serie": "Scarlet & Violet",
+   "expansion": "Scarlet & Violet Black Star Promos",
+   "file": "scarlet-violet/black-star-promos.json"
+  },
+  {
+   "code": "me1",
+   "officialCode": "ME1",
+   "serie": "Mega Evolution",
+   "expansion": "Mega Evolution",
+   "file": "mega-evolution/mega-evolution.json"
+  }
+ ],
+ "energies": "energies.json"
+}

@@ -24,6 +24,10 @@ interface Agent {
 class GreedyAgent : Agent {
     override fun decide(state: GameState, side: Side): GameIntent {
         val me = state.sideState(side)
+        // Tras un KO hay que promover un Pokémon de la Banca antes de nada.
+        if (side in state.pendingPromotion) {
+            me.bench.firstOrNull()?.let { return GameIntent.PromoteActive(it.card.id) }
+        }
         val active = me.active ?: return GameIntent.EndTurn
 
         // 1) ¿Hay un ataque pagable? Atacar (además, termina el turno).

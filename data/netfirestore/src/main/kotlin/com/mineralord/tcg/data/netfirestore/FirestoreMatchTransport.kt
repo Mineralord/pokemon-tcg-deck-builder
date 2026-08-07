@@ -17,8 +17,11 @@ import com.mineralord.tcg.data.netplay.NetMessage
 import com.mineralord.tcg.data.netplay.TransportState
 import com.mineralord.tcg.data.netplay.decodeNetMessage
 import com.mineralord.tcg.data.netplay.encode
+import com.mineralord.tcg.data.netplay.shouldForwardSeq
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +50,10 @@ class FirestoreMatchTransport internal constructor(
 
     private val seq = AtomicInteger(0)
 
+    /** Última `seq` ya ENTREGADA aguas arriba. Evita reprocesar el historial que
+     *  Firestore reentrega como ADDED al re-suscribirse tras un corte. */
+    private val lastSeen = AtomicInteger(-1)
+
     override val incoming: Flow<NetMessage> = callbackFlow {
         val registration = incomingCol
             .orderBy("seq", Query.Direction.ASCENDING)
@@ -59,12 +66,17 @@ class FirestoreMatchTransport internal constructor(
                 val snap = snapshot ?: return@addSnapshotListener
                 for (change in snap.documentChanges) {
                     if (change.type != DocumentChange.Type.ADDED) continue
+                    val docSeq = change.document.getLong("seq")?.toInt() ?: continue
+                    // Dedup idempotente: al re-suscribirse tras un corte, Firestore
+                    // reentrega toda la cola; solo pasamos lo que aún no entregamos.
+                    if (!shouldForwardSeq(docSeq, lastSeen.get())) continue
                     val payload = change.document.getString("payload") ?: continue
-                    runCatching { decodeNetMessage(payload) }.getOrNull()?.let { trySend(it) }
+                    val msg = runCatching { decodeNetMessage(payload) }.getOrNull() ?: continue
+                    if (trySend(msg).isSuccess) lastSeen.set(docSeq)
                 }
             }
         awaitClose { registration.remove() }
-    }
+    }.buffer(Channel.UNLIMITED)
 
     override suspend fun send(message: NetMessage) {
         outgoingCol.add(

@@ -1,0 +1,29 @@
+{
+  "code": "sv6pt5",
+  "officialCode": "SFA",
+  "serie": "Scarlet & Violet",
+  "expansion": "Shrouded Fable",
+  "counts": {
+    "attacks": 2,
+    "attacksImpl": 0,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv6pt5-35",
+      "en": "Corrosive Winds",
+      "es": "Vientos Corrosivos",
+      "text": "Pon 2 contadores de daño en cada uno de los Pokémon de tu rival que tenga algún contador de daño sobre él.",
+      "impl": false
+    },
+    {
+      "cardId": "sv6pt5-35",
+      "en": "Destructive Beam",
+      "es": "Rayo Exterminador",
+      "text": "Lanza 1 moneda. Si sale cara, descarta 1 Energía del Pokémon Activo de tu rival.",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

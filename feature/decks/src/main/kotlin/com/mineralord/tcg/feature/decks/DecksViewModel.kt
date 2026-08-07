@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.Deck
 import com.mineralord.tcg.data.cards.DeckValidation
+import com.mineralord.tcg.data.cards.PrebuiltDecks
 import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.data.cards.toDeck
 import com.mineralord.tcg.data.profile.PlayerProfile
@@ -36,6 +37,9 @@ data class DeckUi(
     val isFavorite: Boolean,
     val isActive: Boolean,
     val isCustom: Boolean,
+    val isPrebuilt: Boolean,
+    val folder: String?,
+    val playable: Boolean,
     val updatedAt: Long,
     val cards: List<DeckCardUi>,
 )
@@ -74,6 +78,7 @@ class DecksViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun Deck.toUi(profile: PlayerProfile): DeckUi {
         val validity = DeckValidation.validate(this, repo)
+        val prebuilt = PrebuiltDecks.isPrebuilt(id)
         val cards = entries.map { e ->
             val c = repo[e.cardId]
             DeckCardUi(
@@ -94,6 +99,9 @@ class DecksViewModel(app: Application) : AndroidViewModel(app) {
             isFavorite = id in profile.favoriteDeckIds,
             isActive = id == profile.activeDeckId,
             isCustom = isCustom,
+            isPrebuilt = prebuilt,
+            folder = PrebuiltDecks.folderOf(id),
+            playable = if (prebuilt) PrebuiltDecks.ownsAll(this, profile.owned, repo) else validity.valid,
             updatedAt = updatedAt,
             cards = cards,
         )

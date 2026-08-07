@@ -1,0 +1,14 @@
+{
+  "code": "me1",
+  "officialCode": "ME1",
+  "serie": "Mega Evolution",
+  "expansion": "Mega Evolution",
+  "counts": {
+    "attacks": 0,
+    "attacksImpl": 0,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [],
+  "abilities": []
+}

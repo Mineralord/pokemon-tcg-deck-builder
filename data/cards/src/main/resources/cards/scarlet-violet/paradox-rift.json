@@ -1,0 +1,205 @@
+{
+ "meta": {
+  "code": "sv4",
+  "officialCode": "PAR",
+  "serie": "Scarlet & Violet",
+  "expansion": "Paradox Rift"
+ },
+ "totalCartas": 3,
+ "cartas": [
+  {
+   "id": "sv4-118",
+   "nombre": "Yveltal",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "130",
+   "tipos": [
+    "Darkness"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Cross-Cut",
+     "cost": [
+      "Colorless",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "30+",
+     "text": "If your opponent's Active Pokémon is an Evolution Pokémon, this attack does 60 more damage."
+    },
+    {
+     "name": "Dark Edge",
+     "cost": [
+      "Darkness",
+      "Darkness",
+      "Colorless"
+     ],
+     "convertedEnergyCost": 3,
+     "damage": "120",
+     "text": "Discard an Energy from this Pokémon."
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Lightning",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [
+    {
+     "type": "Fighting",
+     "value": "-30"
+    }
+   ],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    717
+   ],
+   "numeroCarta": "118",
+   "rareza": "Rare",
+   "ilustrador": "kawayoo",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv4/118.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv4/118_hires.png",
+   "set": {
+    "nombre": "Paradox Rift",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv4/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv4/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv04/118/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv04/118/high.webp"
+   }
+  },
+  {
+   "id": "sv4-167",
+   "nombre": "Mela",
+   "cantidad": 1,
+   "supertipo": "Trainer",
+   "fase": "Supporter",
+   "evolucionaDe": null,
+   "ps": null,
+   "tipos": [],
+   "habilidades": [],
+   "ataques": [],
+   "debilidades": [],
+   "resistencias": [],
+   "costoRetirada": [],
+   "retiradaConvertida": 0,
+   "descripcionPokedex": null,
+   "numeroPokedex": [],
+   "numeroCarta": "167",
+   "rareza": "Uncommon",
+   "ilustrador": "kirisAki",
+   "marcaRegulacion": "G",
+   "reglas": [
+    "You can use this card only if any of your Pokémon were Knocked Out during your opponent's last turn.    Attach a Basic Fire Energy card from your discard pile to 1 of your Pokémon. If you do, draw cards until you have 6 cards in your hand.",
+    "You may play only 1 Supporter card during your turn."
+   ],
+   "imagenChica": "https://images.pokemontcg.io/sv4/167.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv4/167_hires.png",
+   "set": {
+    "nombre": "Paradox Rift",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv4/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv4/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv04/167/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv04/167/high.webp"
+   }
+  },
+  {
+   "id": "sv4-23",
+   "nombre": "Fuecoco",
+   "cantidad": 1,
+   "supertipo": "Pokémon",
+   "fase": "Basic",
+   "evolucionaDe": null,
+   "ps": "80",
+   "tipos": [
+    "Fire"
+   ],
+   "habilidades": [],
+   "ataques": [
+    {
+     "name": "Live Coal",
+     "cost": [
+      "Fire"
+     ],
+     "convertedEnergyCost": 1,
+     "damage": "10",
+     "text": ""
+    },
+    {
+     "name": "Ram",
+     "cost": [
+      "Fire",
+      "Fire"
+     ],
+     "convertedEnergyCost": 2,
+     "damage": "30",
+     "text": ""
+    }
+   ],
+   "debilidades": [
+    {
+     "type": "Water",
+     "value": "×2"
+    }
+   ],
+   "resistencias": [],
+   "costoRetirada": [
+    "Colorless",
+    "Colorless"
+   ],
+   "retiradaConvertida": 2,
+   "descripcionPokedex": null,
+   "numeroPokedex": [
+    909
+   ],
+   "numeroCarta": "23",
+   "rareza": "Common",
+   "ilustrador": "Gemi",
+   "marcaRegulacion": "G",
+   "reglas": [],
+   "imagenChica": "https://images.pokemontcg.io/sv4/23.png",
+   "imagenGrande": "https://images.pokemontcg.io/sv4/23_hires.png",
+   "set": {
+    "nombre": "Paradox Rift",
+    "serie": "Scarlet & Violet",
+    "simbolo": "https://images.pokemontcg.io/sv4/symbol.png",
+    "logo": "https://images.pokemontcg.io/sv4/logo.png"
+   },
+   "legalidad": {
+    "unlimited": "Legal",
+    "standard": "Legal",
+    "expanded": "Legal"
+   },
+   "es": {
+    "imagenChica": "https://assets.tcgdex.net/es/sv/sv04/023/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es/sv/sv04/023/high.webp"
+   }
+  }
+ ]
+}

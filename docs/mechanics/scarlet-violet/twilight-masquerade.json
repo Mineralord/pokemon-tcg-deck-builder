@@ -1,0 +1,36 @@
+{
+  "code": "sv6",
+  "officialCode": "TWM",
+  "serie": "Scarlet & Violet",
+  "expansion": "Twilight Masquerade",
+  "counts": {
+    "attacks": 3,
+    "attacksImpl": 0,
+    "abilities": 0,
+    "abilitiesImpl": 0
+  },
+  "attacks": [
+    {
+      "cardId": "sv6-75",
+      "en": "Thunder Shock",
+      "es": "Impactrueno",
+      "text": "Lanza 1 moneda. Si sale cara, el Pokémon Activo de tu rival pasa a estar Paralizado.",
+      "impl": false
+    },
+    {
+      "cardId": "sv6-76",
+      "en": "Wind Power Charge",
+      "es": "Recarga Eólica",
+      "text": "Durante tu próximo turno, los ataques usados por este Pokémon hacen 120 puntos de daño más al Pokémon Activo de tu rival (antes de aplicar Debilidad y Resistencia).",
+      "impl": false
+    },
+    {
+      "cardId": "sv6-76",
+      "en": "Strong Volt",
+      "es": "Descarga Fulminante",
+      "text": "Descarta 1 Energía de este Pokémon.",
+      "impl": false
+    }
+  ],
+  "abilities": []
+}

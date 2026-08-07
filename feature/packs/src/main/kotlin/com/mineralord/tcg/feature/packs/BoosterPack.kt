@@ -1,10 +1,8 @@
 package com.mineralord.tcg.feature.packs
 
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import com.mineralord.tcg.core.designsystem.motion.AnimationSpecs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,7 +40,7 @@ fun BoosterPack(modifier: Modifier = Modifier, floating: Boolean = true) {
     val t by infinite.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2200), RepeatMode.Reverse),
+        animationSpec = AnimationSpecs.loop(2200),
         label = "packBob",
     )
     val painter = rememberAsyncImagePainter(PACK_IMAGE_151)

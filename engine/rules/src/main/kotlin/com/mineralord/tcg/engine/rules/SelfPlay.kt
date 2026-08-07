@@ -35,7 +35,9 @@ class SelfPlay(
         var actionsThisTurn = 0
 
         while (!state.isOver && state.turn <= maxTurns) {
-            val side = state.activeSide
+            // Tras un KO, quien decide es el lado que debe PROMOVER su nuevo Activo
+            // (puede NO ser el del turno: p. ej. te noqueas por veneno al terminar tu turno).
+            val side = state.pendingPromotion.firstOrNull() ?: state.activeSide
             val intent = agents.getValue(side).decide(state, side)
             val result = engine.apply(state, intent)
             totalEvents += result.events.size

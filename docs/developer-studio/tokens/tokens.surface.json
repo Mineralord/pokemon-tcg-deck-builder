@@ -1,0 +1,57 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Surface tokens — ecosistema Pokémon TCG. Materializan la APARIENCIA FÍSICA de los planos definidos por Depth (9.4). NO redefinen la jerarquía. Fuente de verdad. StudioSurfaceTokens.kt se regenera desde aquí. Escala mínima: 'menos opciones, mejores decisiones'. Cada token cita su ley VG/VL (TA-0).",
+  "$meta": {
+    "phase": "9.5",
+    "family": "surface",
+    "canon": ["Visual-Grammar", "Visual-Language", "Visual-Tokens-Architecture", "Color-Tokens", "Spacing", "Depth"],
+    "rules": {
+      "doesNotRedefineHierarchy": "consume Depth (9.4); no altera planos",
+      "cornerShape": "rounded uniforme (sin esquinas asimétricas)",
+      "glass": "RECHAZADO (falla la Prueba de Gramática: decorativo, compite con el contenido)",
+      "chassisIsOpaque": "sin translucidez decorativa (reposo, protagonismo del contenido)"
+    }
+  },
+  "foundation": {
+    "radius": {
+      "none":      { "$value": 0,    "$law": "VG-CONTENEDOR · datos/tablas/hairlines" },
+      "control":   { "$value": 6,    "$law": "controles: botones, inputs, chips, resource card" },
+      "container": { "$value": 10,   "$law": "paneles, popovers, diálogos, toasts" },
+      "full":      { "$value": 1000, "$law": "pills, badges circulares" }
+    },
+    "border": {
+      "thin":  { "$value": 1, "$law": "VG borde=frontera · hairlines y bordes de contenedor" },
+      "focus": { "$value": 2, "$law": "IC-5 · A5 · visibilidad del foco" }
+    },
+    "elevation": {
+      "content":      { "$value": 0,  "$plane": "Content",      "$law": "VL luz difusa (casi plano)" },
+      "raised":       { "$value": 2,  "$plane": "Raised",       "$law": "VG-D3 (reclamo suave)" },
+      "floating":     { "$value": 8,  "$plane": "Floating",     "$law": "VG-D (transitorio anclado)" },
+      "modal":        { "$value": 16, "$plane": "Modal",        "$law": "VG-D interrupción" },
+      "notification": { "$value": 8,  "$plane": "Notification", "$law": "IC-8" },
+      "alert":        { "$value": 16, "$plane": "Alert",        "$law": "VL Alerta" }
+    },
+    "blur": {
+      "none":     { "$value": 0,  "$law": "chasis opaco por defecto" },
+      "backdrop": { "$value": 12, "$law": "RESERVADO/RESTRINGIDO: solo overlay a pantalla completa que deba ocultar contenido ocupado; NO por estética (VG-0)" }
+    },
+    "opacity": {
+      "full":  { "$value": 1.0,  "$law": "chasis opaco (reposo)" },
+      "scrim": { "$value": 0.55, "$law": "= color.overlay.scrim (9.1); atenúa contexto (VG-D)" }
+    }
+  },
+  "material": {
+    "$note": "Composición = color(rol 9.1) + radius + border + elevation. Referencia roles de color, no HEX. El color se resuelve por tema.",
+    "panel":      { "surface": "surface.panel",   "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.container}", "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "materiales VL (territorio)" },
+    "toolbar":    { "surface": "surface.panel",   "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.none}",      "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "chrome estructural, hairline separadora" },
+    "sidebar":    { "surface": "surface.panel",   "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.none}",      "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "chrome estructural" },
+    "inspector":  { "surface": "surface.panel",   "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.none}",      "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "instrumento en base" },
+    "timeline":   { "surface": "surface.panel",   "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.none}",      "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "eje temporal, chrome base" },
+    "card":       { "surface": "surface.panel",   "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.control}",   "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "objeto autocontenido (VG-CONTENEDOR)" },
+    "cardRaised": { "surface": "surface.raised",  "border": null,             "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.control}",   "elevation": "{foundation.elevation.raised}",  "$plane": "Raised",  "$law": "seleccionado/arrastre = reclamo (VG-D3)" },
+    "preview":    { "surface": "preview.backdrop","border": null,             "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.none}",      "elevation": "{foundation.elevation.content}", "$plane": "Content", "$law": "VL-CONT: telón acromático, sin chrome que compita" },
+    "floating":   { "surface": "surface.overlay", "border": "border.default", "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.container}", "elevation": "{foundation.elevation.floating}","$plane": "Floating","$law": "tooltip/popover/menú/palette (VG-D)" },
+    "dialog":     { "surface": "surface.overlay", "border": "border.default", "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.container}", "elevation": "{foundation.elevation.modal}",   "$plane": "Modal",   "$law": "interrupción con scrim (VG-D)" },
+    "toast":      { "surface": "surface.raised",  "border": "border.subtle",  "borderWidth": "{foundation.border.thin}",  "radius": "{foundation.radius.container}", "elevation": "{foundation.elevation.notification}","$plane": "Notification","$law": "feedback no bloqueante (IC-8)" }
+  }
+}

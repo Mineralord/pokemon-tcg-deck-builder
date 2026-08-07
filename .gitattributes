@@ -1,0 +1,4 @@
+# Normalización de finales de línea del repositorio.
+# Todo el texto se almacena y se extrae con LF (independiente del core.autocrlf de cada máquina).
+# Los binarios se detectan automáticamente y quedan exentos de conversión.
+* text=auto eol=lf

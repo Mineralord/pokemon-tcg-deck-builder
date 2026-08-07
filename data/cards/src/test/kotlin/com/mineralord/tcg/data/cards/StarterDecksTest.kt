@@ -13,9 +13,9 @@ class StarterDecksTest {
         assertEquals(3, StarterDecks.ALL.size)
         assertEquals(
             listOf(
-                "Pikachu ex Academia de Combate 2024",
-                "Armarouge ex Academia de Combate 2024",
-                "Darkrai ex Academia de Combate 2024",
+                "Pikachu ex",
+                "Armarouge ex",
+                "Darkrai ex",
             ),
             StarterDecks.ALL.map { it.name },
         )

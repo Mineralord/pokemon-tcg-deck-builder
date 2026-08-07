@@ -1,0 +1,101 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Color tokens — Pokémon TCG Developer Studio (PDS). Fuente de verdad. El artefacto Kotlin StudioColorTokens.kt se regenera desde aquí. Cada token cita la ley VG/VL que implementa (TA-0).",
+  "$meta": {
+    "phase": "9.1",
+    "family": "color",
+    "defaultTheme": "studio-dark",
+    "canon": ["Visual-Language", "Visual-Grammar", "Visual-Tokens-Architecture"],
+    "rules": {
+      "layerDirection": "component -> semantic -> foundation",
+      "themeIsSemanticDimension": true,
+      "noNamingByAppearanceOrTrend": true
+    }
+  },
+  "foundation": {
+    "neutral": {
+      "0":   { "$value": "#0E1116" },
+      "5":   { "$value": "#14181F" },
+      "10":  { "$value": "#1A1F27" },
+      "15":  { "$value": "#212732" },
+      "20":  { "$value": "#2A313D" },
+      "30":  { "$value": "#3D4653" },
+      "40":  { "$value": "#4C5563" },
+      "50":  { "$value": "#5E6773" },
+      "60":  { "$value": "#78828F" },
+      "70":  { "$value": "#9AA4B0" },
+      "80":  { "$value": "#C2CAD3" },
+      "90":  { "$value": "#E2E7EC" },
+      "100": { "$value": "#F5F7FA" }
+    },
+    "accent": {
+      "50":    { "$value": "#3E88AD" },
+      "60":    { "$value": "#4FA3CC" },
+      "70":    { "$value": "#6FBBDE" },
+      "muted": { "$value": "#21404E" }
+    },
+    "success": { "60": { "$value": "#4F9D6E" } },
+    "warning": { "60": { "$value": "#C79445" } },
+    "danger":  {
+      "50": { "$value": "#A94B4B" },
+      "60": { "$value": "#CF5D5D" },
+      "70": { "$value": "#E07B7B" }
+    }
+  },
+  "themes": {
+    "studio-dark": {
+      "color": {
+        "surface": {
+          "canvas":  { "$value": "{foundation.neutral.5}",  "$law": "CC-2 · VG-CONTENEDOR" },
+          "panel":   { "$value": "{foundation.neutral.10}", "$law": "CC-4 · VG-CONTENEDOR" },
+          "raised":  { "$value": "{foundation.neutral.15}", "$law": "VG-D (plano elevado)" },
+          "overlay": { "$value": "{foundation.neutral.20}", "$law": "VG-D (interrupción)" },
+          "sunken":  { "$value": "{foundation.neutral.0}",  "$law": "VG-D (recesión)" }
+        },
+        "content": {
+          "primary":   { "$value": "{foundation.neutral.80}", "$contrastOnPanel": "9.9:1", "$law": "VG-J · VL-fatiga" },
+          "secondary": { "$value": "{foundation.neutral.70}", "$contrastOnPanel": "6.5:1", "$law": "VG-J" },
+          "muted":     { "$value": "{foundation.neutral.60}", "$contrastOnPanel": "4.2:1", "$law": "CC-9 (no esencial)" },
+          "disabled":  { "$value": "{foundation.neutral.50}", "$law": "IC (estado apagado)" },
+          "emphasis":  { "$value": "{foundation.neutral.90}", "$contrastOnPanel": "13:1", "$law": "VG-K (rol alto)" },
+          "on-accent": { "$value": "{foundation.neutral.0}",  "$contrastOnAccent": "6.7:1", "$law": "P1 a11y" }
+        },
+        "border": {
+          "subtle":  { "$value": "{foundation.neutral.20}", "$law": "VG-U2 · VG-E" },
+          "default": { "$value": "{foundation.neutral.30}", "$law": "VG-CONTENEDOR" },
+          "strong":  { "$value": "{foundation.neutral.40}", "$law": "VG-K (límite enfatizado)" }
+        },
+        "accent": {
+          "rest":   { "$value": "{foundation.accent.60}",    "$contrastOnPanel": "5.8:1", "$law": "CC-6 · VG-K" },
+          "hover":  { "$value": "{foundation.accent.70}",    "$law": "IC-4" },
+          "active": { "$value": "{foundation.accent.50}",    "$law": "IC (pressed)" },
+          "muted":  { "$value": "{foundation.accent.muted}", "$law": "VL-silencio (destacar sin gritar)" }
+        },
+        "feedback": {
+          "success":         { "$value": "{foundation.success.60}", "$law": "CC-7 · VL-silencio (Alerta)" },
+          "success.surface": { "$value": "#1B2E24", "$law": "CC-7" },
+          "warning":         { "$value": "{foundation.warning.60}", "$law": "CC-7" },
+          "warning.surface": { "$value": "#2E2717", "$law": "CC-7" },
+          "danger":          { "$value": "{foundation.danger.60}", "$law": "CC-7" },
+          "danger.hover":    { "$value": "{foundation.danger.70}", "$law": "IC-4" },
+          "danger.active":   { "$value": "{foundation.danger.50}", "$law": "IC (pressed)" },
+          "danger.surface":  { "$value": "#2E1B1B", "$law": "CC-7" }
+        },
+        "selection": {
+          "background": { "$value": "#22404E", "$law": "IC-1 (distinta de hover)" },
+          "edge":       { "$value": "{foundation.accent.60}", "$law": "IC-1 · A6" }
+        },
+        "focus": {
+          "ring": { "$value": "{foundation.accent.70}", "$contrastOnPanel": "7.2:1", "$law": "IC-5 · A5 · P1" }
+        },
+        "overlay": {
+          "scrim": { "$value": "#080B10", "$alpha": 0.55, "$law": "VG-D (contexto pausado)" }
+        },
+        "preview": {
+          "backdrop":     { "$value": "#15171A", "$law": "CC-5 · VL-CONT (acromático)" },
+          "backdrop-alt": { "$value": "#1E2024", "$law": "CC-5 (juzgar transparencias)" }
+        }
+      }
+    }
+  }
+}
