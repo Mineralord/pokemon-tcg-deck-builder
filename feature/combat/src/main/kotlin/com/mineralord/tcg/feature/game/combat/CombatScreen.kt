@@ -78,6 +78,7 @@ import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.TrainerCard
 import com.mineralord.tcg.engine.model.Ability
+import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.Damage
 import com.mineralord.tcg.engine.model.EffectOp
@@ -488,6 +489,12 @@ fun CombatScreen(
                 // (badge PS+tipo sobre la carta + panel de estadísticas debajo) para cualquier Pokémon.
                 val inspectedPip = (state.player.allInPlay + state.opponent.allInPlay)
                     .firstOrNull { it.card.id == card.id }
+                // Estadio "Camino de Bicis": si tocas el Estadio en juego en TU turno y aún no lo usaste,
+                // puedes descartar 1 Energía Básica de tu mano para robar (motor: GameIntent.UseStadium).
+                val isStadium = state.stadium?.id == card.id
+                val stadiumEnergies = if (isStadium && myTurn) state.player.hand.filterIsInstance<BasicEnergy>() else emptyList()
+                val stadiumUsable = isStadium && stadiumEnergies.isNotEmpty() &&
+                    vm.legalIntents().any { it is GameIntent.UseStadium }
                 CardDetailDialog(
                     imageUrl = card.artwork.large(true),
                     contentDescription = card.name.es,
@@ -543,6 +550,14 @@ fun CombatScreen(
                                 Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                                     .background(Color(0xF20B0F18)),
                             ) { PokemonDetailSheet(inspectedPip) }
+                        }
+                    } else if (stadiumUsable) {
+                        // Estadio con acción usable (Camino de Bicis): elegir Energía Básica a descartar.
+                        {
+                            StadiumActionSheet(
+                                energies = stadiumEnergies,
+                                onDiscard = { id -> inspect = null; vm.onIntent(GameIntent.UseStadium(id)) },
+                            )
                         }
                     } else {
                         null

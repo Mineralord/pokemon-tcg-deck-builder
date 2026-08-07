@@ -2,6 +2,7 @@ package com.mineralord.tcg.feature.game.combat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -153,3 +154,52 @@ private fun energyByType(pip: PokemonInPlay): List<Pair<EnergyType, Int>> =
     pip.attachedEnergy.filterIsInstance<BasicEnergy>()
         .groupingBy { it.type }.eachCount()
         .toList().sortedByDescending { it.second }
+
+/**
+ * Acción del Estadio "Camino de Bicis" (Cycling Road), como en TCG Live: al tocar el Estadio en tu
+ * turno, puedes DESCARTAR 1 Energía Básica de tu mano para ROBAR 1 carta (una vez por turno). Muestra
+ * las Energías Básicas de la mano como chips; tocar una la descarta y roba. [energies] ya viene
+ * filtrada a Básicas de la mano.
+ */
+@Composable
+fun StadiumActionSheet(
+    energies: List<BasicEnergy>,
+    onDiscard: (com.mineralord.tcg.engine.model.CardId) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(Color(0xF20B0F18))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            "Descarta 1 Energía Básica para robar 1 carta",
+            color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp,
+        )
+        Text(
+            "Una vez durante tu turno.",
+            color = Color(0xB3FFFFFF), fontSize = 12.sp,
+        )
+        Spacer(Modifier.height(2.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Un chip por CADA tipo de Energía Básica presente (toca = descarta uno de ese tipo).
+            energies.groupBy { it.type }.forEach { (type, list) ->
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0x22FFFFFF))
+                        .border(1.dp, Color(0x55FFFFFF), RoundedCornerShape(50))
+                        .clickable { onDiscard(list.first().id) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    EnergySphere(type = type, size = 22.dp)
+                    Text("×${list.size}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+        }
+    }
+}
