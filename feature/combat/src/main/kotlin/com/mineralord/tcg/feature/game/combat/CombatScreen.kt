@@ -77,8 +77,17 @@ import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.TrainerCard
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import com.mineralord.tcg.engine.model.Ability
 import com.mineralord.tcg.engine.model.BasicEnergy
+import com.mineralord.tcg.engine.rules.AbilityGlow
 import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.Damage
 import com.mineralord.tcg.engine.model.EffectOp
@@ -842,13 +851,13 @@ private fun MatchLayer(
     opp.bench.forEachIndexed { i, pip ->
         BoardGeometry.OppBenchSlots.getOrNull(i)?.let { slot ->
             Box(Modifier.place(slot, boardW, boardH)) {
-                FieldCard(pip, faceDown = faceDownOpp, onTap = { onInspect(pip.card) })
+                FieldCard(pip, faceDown = faceDownOpp, glow = vm.abilityGlow(pip.card.id), onTap = { onInspect(pip.card) })
             }
         }
     }
     // Activo rival.
     Box(Modifier.place(BoardGeometry.OppActive, boardW, boardH)) {
-        FieldCard(opp.active, faceDown = faceDownOpp, onTap = { opp.active?.let { onInspect(it.card) } })
+        FieldCard(opp.active, faceDown = faceDownOpp, glow = opp.active?.card?.id?.let { vm.abilityGlow(it) }, onTap = { opp.active?.let { onInspect(it.card) } })
     }
     // Premios / mazo / descarte rival.
     Box(Modifier.place(BoardGeometry.OppPrizes, boardW, boardH)) {
@@ -892,6 +901,7 @@ private fun MatchLayer(
         FieldCard(
             me.active,
             selected = false,
+            glow = me.active?.card?.id?.let { vm.abilityGlow(it) },
             highlighted = activeSetupHot ||
                 (hoverTargetId != null && hoverTargetId == me.active?.card?.id) ||
                 (bi.retreatMode && bi.benchDragCard != null && bi.activeSlotBounds?.contains(bi.benchDragPos) == true),
@@ -913,6 +923,7 @@ private fun MatchLayer(
             ) {
                 FieldCard(
                     pip,
+                    glow = vm.abilityGlow(pip.card.id),
                     highlighted = mustPromote || (hoverTargetId == pip.card.id),
                     onTap = {
                         when {
@@ -1237,6 +1248,7 @@ private fun FieldCard(
     faceDown: Boolean = false,
     selected: Boolean = false,
     highlighted: Boolean = false,
+    glow: AbilityGlow? = null,
     onTap: (() -> Unit)? = null,
     draggable: Boolean = false,
     onDragStart: (Offset) -> Unit = {},
@@ -1267,6 +1279,10 @@ private fun FieldCard(
             EmptySlot(Modifier.fillMaxSize(), highlighted = highlighted)
             return@Box
         }
+        // Aura de Habilidad PERSISTENTE (estado, como TCG Live): ROJA = Habilidad pasiva activa
+        // (siempre visible mientras esté en juego); DORADA = Habilidad manual disponible para activar.
+        // Se dibuja DETRÁS de la carta (halo alrededor). Ver GameEngine.abilityGlow.
+        if (!faceDown && glow != null) AbilityGlowAura(glow, Modifier.matchParentSize())
         CombatCard(
             imageUrl = pip.card.artwork.small(true),
             faceDown = faceDown,
@@ -1319,6 +1335,43 @@ private fun BoxScope.ToolPeek(tool: Card) {
                 shadowElevation = 12f
                 shape = RoundedCornerShape(6.dp)
                 clip = false
+            },
+    )
+}
+
+/**
+ * Aura de Habilidad PERSISTENTE bajo la carta (como TCG Live): un halo pulsante que rodea al Pokémon
+ * mientras la Habilidad esté activa/disponible. ROJO = pasiva (siempre); DORADO = manual disponible.
+ * Se escala > tamaño de la carta para que el halo asome por los bordes (la carta tapa el centro).
+ */
+@Composable
+private fun BoxScope.AbilityGlowAura(glow: AbilityGlow, modifier: Modifier = Modifier) {
+    val color = when (glow) {
+        AbilityGlow.PASSIVE -> Color(0xFFE53935) // rojo: habilidad pasiva activa
+        AbilityGlow.MANUAL -> Color(0xFFFFC107)  // dorado: habilidad manual disponible
+    }
+    val infinite = rememberInfiniteTransition(label = "abilityGlow")
+    val pulse by infinite.animateFloat(
+        initialValue = 0.5f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Reverse),
+        label = "abilityGlowPulse",
+    )
+    Box(
+        modifier
+            .graphicsLayer { scaleX = 1.30f; scaleY = 1.24f }
+            .drawBehind {
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            color.copy(alpha = 0.55f * pulse),
+                            color.copy(alpha = 0.16f * pulse),
+                            Color.Transparent,
+                        ),
+                        center = center,
+                        radius = size.maxDimension * (0.52f + 0.05f * pulse),
+                    ),
+                    cornerRadius = CornerRadius(size.minDimension * 0.14f),
+                )
             },
     )
 }

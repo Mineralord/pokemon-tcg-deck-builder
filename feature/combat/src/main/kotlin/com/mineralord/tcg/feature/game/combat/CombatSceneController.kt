@@ -2,6 +2,7 @@ package com.mineralord.tcg.feature.game.combat
 
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.rules.AbilityGlow
 import com.mineralord.tcg.engine.rules.GameIntent
 import com.mineralord.tcg.feature.game.GameUiState
 import com.mineralord.tcg.feature.game.anim.FxCue
@@ -55,4 +56,11 @@ interface CombatSceneController {
      * manuales están disponibles. En controladores sin motor local devuelve lista vacía.
      */
     fun legalIntents(): List<GameIntent> = emptyList()
+
+    /**
+     * Aura de Habilidad del Pokémon [id] para el tablero (como TCG Live): DORADA si tiene una Habilidad
+     * MANUAL disponible para activar ahora, ROJA si tiene una Habilidad PASIVA activa (siempre), o null.
+     * Derivada del ESTADO; los controladores sin motor local devuelven null (sin aura).
+     */
+    fun abilityGlow(id: CardId): AbilityGlow? = null
 }

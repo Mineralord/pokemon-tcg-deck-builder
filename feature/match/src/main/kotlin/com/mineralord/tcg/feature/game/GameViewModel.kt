@@ -275,6 +275,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
     override fun legalIntents(): List<GameIntent> =
         core.state?.let { engine.legalIntents(it) } ?: emptyList()
 
+    /** Aura de Habilidad (dorada manual / roja pasiva) del Pokémon, derivada del estado actual. */
+    override fun abilityGlow(id: CardId): com.mineralord.tcg.engine.rules.AbilityGlow? =
+        core.state?.let { engine.abilityGlow(it, id) }
+
     /** Aplica un intent del jugador y, si procede, deja jugar a la IA. */
     override fun onIntent(intent: GameIntent) {
         val current = core.state ?: return

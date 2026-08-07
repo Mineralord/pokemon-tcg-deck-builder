@@ -65,6 +65,9 @@ data class EngineResult(
  * por premios/sin-Activo/deck-out, y daño de Veneno/Quemadura entre turnos. Los
  * efectos autorados por carta llegan con `:engine:effects`.
  */
+/** Aura de Habilidad para la UI: DORADA (Habilidad manual disponible) o ROJA (Habilidad pasiva activa). */
+enum class AbilityGlow { MANUAL, PASSIVE }
+
 class GameEngine(
     private val rng: Rng,
     private val effects: EffectRegistry = EffectsDb.registry,
@@ -1477,6 +1480,33 @@ class GameEngine(
         }
 
     // ------------------------------------------------------- jugadas legales
+
+    /**
+     * Aura de Habilidad para la UI (como TCG Live), derivada del ESTADO (no de eventos, que solo dan
+     * un destello momentáneo): DORADA si el Pokémon tiene una Habilidad MANUAL disponible AHORA (para
+     * el jugador en turno), ROJA si tiene una Habilidad PASIVA activa (siempre visible), o null.
+     */
+    fun abilityGlow(state: GameState, pokemonId: CardId): AbilityGlow? {
+        val located = state.player.allInPlay.firstOrNull { it.card.id == pokemonId }?.let { Side.PLAYER to it }
+            ?: state.opponent.allInPlay.firstOrNull { it.card.id == pokemonId }?.let { Side.OPPONENT to it }
+            ?: return null
+        val (side, pip) = located
+        // Manual disponible AHORA (solo el lado en turno; legalIntents ya gatea oncePerTurn/activeOnly…).
+        if (side == state.activeSide &&
+            legalIntents(state).any { it is GameIntent.UseAbility && it.pokemon == pokemonId }
+        ) {
+            return AbilityGlow.MANUAL
+        }
+        // Pasiva activa: Habilidad no bloqueada cuyo efecto es PASIVO (sin ops ejecutables ni
+        // disparadores). Cubre passives/flags (ops vacías) y excluye manuales (con ops) y auto-disparadas.
+        val locked = isAbilityLocked(state, side, pip)
+        val hasPassive = pip.card.effectiveAbilities(locked).any { ab ->
+            val e = ab.effect?.let { effects[it] }
+            e != null && e.ops.isEmpty() && !e.triggerOnEvolve && !e.triggerOnActiveDamaged &&
+                !e.triggerOnActiveKO && !e.luckyBonusOnPrized
+        }
+        return if (hasPassive) AbilityGlow.PASSIVE else null
+    }
 
     /**
      * Enumera los intents legales para el lado en turno en [state]. Sirve a la UI
