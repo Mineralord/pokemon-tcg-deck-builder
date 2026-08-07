@@ -833,8 +833,18 @@ private fun MatchLayer(
     }
 
     // ---------- ESTADIO ----------
+    // Como en TCG Live: la carta de Estadio en una PLACA plateada redondeada (marco del slot), en el
+    // centro-izquierda. La placa despega la carta del mat y la marca como el Estadio en juego.
     state.stadium?.let { stad ->
-        Box(Modifier.place(BoardGeometry.Stadium, boardW, boardH)) {
+        Box(
+            Modifier.place(BoardGeometry.Stadium, boardW, boardH)
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    Brush.verticalGradient(listOf(Color(0xF2E9ECF3), Color(0xF2C4CAD6))),
+                )
+                .border(1.5.dp, Color(0xCCFFFFFF), RoundedCornerShape(8.dp))
+                .padding(3.dp),
+        ) {
             FieldCardImage(stad.artwork.small(true), stad.name.es) { onInspect(stad) }
         }
     }
@@ -1225,9 +1235,6 @@ private fun FieldCard(
             EmptySlot(Modifier.fillMaxSize(), highlighted = highlighted)
             return@Box
         }
-        // Herramienta Pokémon anexada: se dibuja ANTES que el Pokémon (queda DETRÁS) y asoma por el
-        // borde inferior, como en Pokémon TCG Live. Máx. 1 por Pokémon (regla del motor).
-        if (!faceDown) pip.attachedTools.forEach { ToolPeek(it) }
         CombatCard(
             imageUrl = pip.card.artwork.small(true),
             faceDown = faceDown,
@@ -1243,6 +1250,9 @@ private fun FieldCard(
                 .motionElevate(selected || highlighted),
         )
         if (!faceDown) {
+            // Herramienta Pokémon anexada: como en TCG Live, una mini-carta apoyada ENCIMA del Pokémon,
+            // en el lado izquierdo y a ~1/3 de altura, solapando el arte (con sombra). Máx. 1 (regla).
+            pip.attachedTools.forEach { ToolPeek(it) }
             HpPill(pip.remainingHp, pip.card.hp, Modifier.align(Alignment.TopEnd).padding(2.dp))
             if (pip.attachedEnergy.isNotEmpty()) {
                 EnergyBadge(pip.attachedEnergy.size, Modifier.align(Alignment.BottomEnd).padding(2.dp))
@@ -1255,9 +1265,10 @@ private fun FieldCard(
 }
 
 /**
- * Herramienta Pokémon anexada, dibujada como en Pokémon TCG Live: una mini-carta metida DETRÁS del
- * Pokémon que asoma por su borde inferior. Se renderiza antes que el Pokémon (queda por detrás) y con
- * una sombra suave para dar profundidad de "carta apilada".
+ * Herramienta Pokémon anexada, dibujada como en Pokémon TCG Live: una mini-carta apoyada ENCIMA del
+ * Pokémon, en el lado IZQUIERDO y a ~1/3 de altura, solapando el arte. Se renderiza después del
+ * Pokémon (queda por delante) con una sombra que la despega de la carta. Ref.: frames del video
+ * "VISTA DE ESTADIO Y HERRAMIENTA" (la Tool cubre el borde izquierdo-superior del Pokémon).
  */
 @Composable
 private fun BoxScope.ToolPeek(tool: Card) {
@@ -1266,15 +1277,14 @@ private fun BoxScope.ToolPeek(tool: Card) {
         contentDescription = tool.name.es,
         card = null, // solo el arte: es un adorno de tablero, sin holo ni selección
         modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth(0.66f)
+            .align(Alignment.CenterStart)
+            .fillMaxWidth(0.42f)
             .aspectRatio(CombatTheme.CardAspect)
             .graphicsLayer {
-                // Asoma ~34% por debajo del Pokémon; el resto queda oculto tras su carta.
-                translationY = size.height * 0.34f
-                scaleX = 0.98f
-                scaleY = 0.98f
-                shadowElevation = 10f
+                // Izquierda y algo por encima del centro; asoma ~10% por el borde izquierdo.
+                translationX = -size.width * 0.10f
+                translationY = -size.height * 0.30f
+                shadowElevation = 12f
                 shape = RoundedCornerShape(6.dp)
                 clip = false
             },

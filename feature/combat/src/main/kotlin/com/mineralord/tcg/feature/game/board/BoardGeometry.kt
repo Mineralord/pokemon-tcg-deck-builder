@@ -109,7 +109,10 @@ object BoardGeometry {
     val OppDeckTab   = NBox(0.837f, 0.199f, 0.078f, 0.036f)
     val OppActive    = NBox(0.390f, 0.268f, 0.220f, 0.140f)
 
-    val Stadium      = NBox(0.010f, 0.420f, 0.130f, 0.060f)
+    // Estadio como en TCG Live: carta VERTICAL (aspecto de carta ~0.72) con placa plateada, en el
+    // centro-IZQUIERDA, a la altura media entre ambos Activos. Ref.: video "VISTA DE ESTADIO Y
+    // HERRAMIENTA" (la carta ocupa x≈0.045–0.21, y≈0.36–0.465). Antes era casi cuadrada (deformaba).
+    val Stadium      = NBox(0.045f, 0.360f, 0.165f, 0.105f)
 
     /** Origen aproximado del vuelo "desde la mano" al colocar un Estadio: jugador (borde inferior)
      *  y rival (borde superior). No es una zona real, solo el punto de partida de la animación. */
