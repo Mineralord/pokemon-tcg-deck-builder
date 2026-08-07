@@ -484,6 +484,10 @@ fun CombatScreen(
                 val actionPip = myPip?.takeIf {
                     myTurn && (isMyActive || it.card.abilities.isNotEmpty())
                 }
+                // Pokémon inspeccionado en juego (propio o RIVAL): habilita el visor estilo TCG Live
+                // (badge PS+tipo sobre la carta + panel de estadísticas debajo) para cualquier Pokémon.
+                val inspectedPip = (state.player.allInPlay + state.opponent.allInPlay)
+                    .firstOrNull { it.card.id == card.id }
                 CardDetailDialog(
                     imageUrl = card.artwork.large(true),
                     contentDescription = card.name.es,
@@ -492,6 +496,10 @@ fun CombatScreen(
                     cardNumber = card.id.printed.raw.substringAfterLast('-').toIntOrNull(),
                     // Sin esto el visor asumía set 151 → las cartas de otros sets no resolvían foil.
                     setCode = card.id.printed.raw.let { if (it.startsWith("energy")) "energy" else it.substringBeforeLast('-') },
+                    // Badge PS+tipo de TCG Live, anclado a la esquina superior-derecha de la carta.
+                    overlay = inspectedPip?.let { p ->
+                        { HpTypeBadge(p.remainingHp, p.card.types.firstOrNull(), Modifier.align(Alignment.TopEnd).padding(8.dp)) }
+                    },
                     bottomBar = if (actionPip != null) {
                         {
                             // Intents legales AHORA → distinguen habilidades manuales disponibles.
@@ -526,6 +534,15 @@ fun CombatScreen(
                                     abilityUsed = abilityUsed,
                                 )
                             }
+                        }
+                    } else if (inspectedPip != null) {
+                        // Pokémon en juego sin acciones (rival o propio fuera de turno): solo el panel
+                        // de estadísticas estilo TCG Live.
+                        {
+                            Column(
+                                Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                                    .background(Color(0xF20B0F18)),
+                            ) { PokemonDetailSheet(inspectedPip) }
                         }
                     } else {
                         null
@@ -1498,6 +1515,9 @@ private fun ActiveActions(
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // Panel de estadísticas estilo TCG Live (Debilidad/Resistencia/Retirada/Energía/Herramientas)
+        // ENCIMA de las acciones, dentro del mismo scroll.
+        PokemonDetailSheet(pip)
         // TIPO del Pokémon y su ACABADO (holo) alimentan el nuevo sistema de paneles: el marco
         // plateado se dibuja, el interior toma el color del tipo y el holo del panel reutiliza
         // EXACTAMENTE el shader de la carta (mismo Finish). Ver ActionPanels.kt.
@@ -1556,6 +1576,7 @@ private fun BenchAbilityActions(
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        PokemonDetailSheet(pip)
         val type = pip.card.types.firstOrNull()
         val finish = resolveFinish(pip.card.rarity)
         pip.card.abilities.forEach { ability ->

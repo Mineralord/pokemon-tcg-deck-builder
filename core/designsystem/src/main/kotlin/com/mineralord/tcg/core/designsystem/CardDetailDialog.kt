@@ -12,6 +12,7 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -75,6 +76,9 @@ fun CardDetailDialog(
     // carta. Null = no mostrar (p. ej. desde el combate). [copiesCap] es el tope (4 · 30 energías).
     copiesOwned: Int? = null,
     copiesCap: Int? = null,
+    // Superposición opcional SOBRE la carta (p. ej. el badge PS+tipo de TCG Live). Se dibuja
+    // encima del arte, dentro del mismo Box (usa align()).
+    overlay: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     // Descarga bajo demanda + caché (no infla el APK): front+máscara(+etch) reales de CUALQUIER
@@ -177,21 +181,25 @@ fun CardDetailDialog(
 
             @Composable
             fun ArtCard() {
-                if (holo != null) {
-                    // Front de malie (alineado con su máscara de foil).
-                    Image(
-                        bitmap = holo.front,
-                        contentDescription = contentDescription,
-                        contentScale = ContentScale.Fit,
-                        modifier = artModifier,
-                    )
-                } else {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = contentDescription,
-                        contentScale = ContentScale.Fit,
-                        modifier = artModifier,
-                    )
+                Box(artModifier) {
+                    if (holo != null) {
+                        // Front de malie (alineado con su máscara de foil).
+                        Image(
+                            bitmap = holo.front,
+                            contentDescription = contentDescription,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = contentDescription,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    // Superposición del llamador (badge PS+tipo), anclada a la CARTA.
+                    overlay?.invoke(this)
                 }
             }
 
