@@ -55,6 +55,7 @@ dependencies {
     implementation(project(":feature:combat"))
     implementation(project(":feature:game"))
     implementation(project(":data:cards"))
+    implementation(project(":data:gacha"))
     implementation(project(":data:profile"))
     implementation(project(":data:cloud"))
     implementation(project(":data:netplay"))
@@ -68,6 +69,7 @@ dependencies {
     implementation(libs.play.services.auth)
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

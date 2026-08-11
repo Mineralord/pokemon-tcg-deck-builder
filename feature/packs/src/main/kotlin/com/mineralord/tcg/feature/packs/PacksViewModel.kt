@@ -5,9 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.StarterDecks
-import com.mineralord.tcg.data.gacha.DailyPackLimiter
-import com.mineralord.tcg.data.gacha.DailyPackState
-import com.mineralord.tcg.data.gacha.OpenAttempt
 import com.mineralord.tcg.data.gacha.PackOpener
 import com.mineralord.tcg.data.gacha.PackPool
 import com.mineralord.tcg.data.gacha.RarityWeights
@@ -17,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
@@ -54,14 +52,15 @@ data class PacksUiState(
  */
 class PacksViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val limiter = DailyPackLimiter(maxPerDay = 2)
+    private val regen = com.mineralord.tcg.data.gacha.PackRegen()
+    private val clock = com.mineralord.tcg.data.profile.TrustedClock(app)
     private val opener = PackOpener()
     private val profileRepo = ProfileRepository(app)
 
     private lateinit var repo: CardRepository
     private lateinit var pool: PackPool
     private var energyIds: List<com.mineralord.tcg.engine.model.CardId> = emptyList()
-    private var daily: DailyPackState = DailyPackState()
+    private var wallet: com.mineralord.tcg.data.gacha.PackWallet? = null
     private var owned: Map<String, Int> = emptyMap()
 
     private val _state = MutableStateFlow(PacksUiState())
@@ -86,64 +85,70 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             // Siembra la colección inicial con las cartas de los 3 mazos.
             val seed = StarterDecks.ALL.flatMap { it.expandedCardIds() }.map { it.raw }
             profileRepo.seedOnce(seed)
-
-            // Observa el perfil persistente.
-            launch {
-                profileRepo.profile.collect { profile ->
-                    daily = profile.daily
-                    owned = profile.owned
-                    _state.value = _state.value.copy(
-                        loading = false,
-                        remainingToday = limiter.remaining(profile.daily, today()),
-                        maxPerDay = limiter.maxPerDay,
-                        totalCards = pool.totalCards,
-                        ownedDistinct = profile.distinctOwned,
-                    )
-                }
+            // Siembra el monedero de sobres en el primer uso: lleno, anclado al tiempo CONFIABLE.
+            if (profileRepo.wallet.first() == null) {
+                profileRepo.saveWallet(com.mineralord.tcg.data.gacha.PackWallet(regen.maxPacks, clock.nowMs()))
             }
+
+            // Observa colección y monedero persistentes.
+            launch { profileRepo.profile.collect { owned = it.owned; refreshUi() } }
+            launch { profileRepo.wallet.collect { w -> wallet = w; refreshUi() } }
         }
+    }
+
+    /** Recalcula el saldo disponible (con la regeneración acreditada al tiempo confiable). */
+    private suspend fun refreshUi() {
+        val w = wallet ?: return
+        val available = regen.available(w, clock.nowMs())
+        _state.value = _state.value.copy(
+            loading = false,
+            remainingToday = available,
+            maxPerDay = regen.maxPacks,
+            totalCards = pool.totalCards,
+            ownedDistinct = owned.size,
+        )
     }
 
     fun openPack() {
         if (_state.value.loading) return
-        when (val attempt = limiter.tryOpen(daily, today())) {
-            is OpenAttempt.Denied -> {
-                _state.value = _state.value.copy(
-                    deniedMessage = "Ya abriste tus ${limiter.maxPerDay} sobres de hoy. Vuelve mañana.",
-                )
-            }
-            is OpenAttempt.Allowed -> {
-                daily = attempt.newState
-                // Sobre FIEL de 151 (10 cartas: 9 numeradas + 1 Energía Básica). Energías por su slot.
-                val opened = opener.open(
-                    RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
-                )
-                // Recuento acumulado para "n/tope" e "isNew", contando duplicados del mismo sobre y
-                // respetando el tope por carta (4 · 30 energías): al llegar al tope, "n" se queda ahí.
-                val running = HashMap<String, Int>()
-                val revealed = opened.map { oc ->
-                    val card = repo[oc.id]
-                    val cap = ProfileRepository.capFor(oc.id.raw)
-                    val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
-                    running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
-                    RevealedCard(
-                        name = card?.name?.es ?: oc.id.raw,
-                        rarity = oc.rarity,
-                        imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
-                        isNew = before == 0,
-                        copiesOwned = (before + 1).coerceAtMost(cap),
-                        cap = cap,
+        viewModelScope.launch {
+            val w = wallet ?: return@launch
+            when (val attempt = regen.tryOpen(w, clock.nowMs())) {
+                is com.mineralord.tcg.data.gacha.PackOpenResult.Denied -> {
+                    _state.value = _state.value.copy(
+                        deniedMessage = "No tienes sobres disponibles ahora. Regeneras 1 cada 12 h (máx. ${regen.maxPacks}).",
                     )
                 }
-                _state.value = _state.value.copy(
-                    remainingToday = attempt.remainingToday,
-                    revealed = revealed,
-                    deniedMessage = null,
-                    opening = true,
-                )
-                // Persiste el tope diario y añade las cartas a la colección.
-                viewModelScope.launch {
-                    profileRepo.setDaily(attempt.newState)
+                is com.mineralord.tcg.data.gacha.PackOpenResult.Allowed -> {
+                    // Persiste el monedero (dispara la reprogramación del aviso vía el flujo).
+                    profileRepo.saveWallet(attempt.wallet)
+                    wallet = attempt.wallet
+                    // Sobre FIEL de 151 (10 cartas: 9 numeradas + 1 Energía Básica). Energías por su slot.
+                    val opened = opener.open(
+                        RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
+                    )
+                    // Recuento acumulado para "n/tope" e "isNew", respetando el tope por carta (4 · 30).
+                    val running = HashMap<String, Int>()
+                    val revealed = opened.map { oc ->
+                        val card = repo[oc.id]
+                        val cap = ProfileRepository.capFor(oc.id.raw)
+                        val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
+                        running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
+                        RevealedCard(
+                            name = card?.name?.es ?: oc.id.raw,
+                            rarity = oc.rarity,
+                            imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
+                            isNew = before == 0,
+                            copiesOwned = (before + 1).coerceAtMost(cap),
+                            cap = cap,
+                        )
+                    }
+                    _state.value = _state.value.copy(
+                        remainingToday = attempt.remaining,
+                        revealed = revealed,
+                        deniedMessage = null,
+                        opening = true,
+                    )
                     profileRepo.addCards(opened.map { it.id.raw })
                 }
             }
@@ -154,8 +159,6 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     fun dismissOpening() {
         _state.value = _state.value.copy(opening = false)
     }
-
-    private fun today(): Long = System.currentTimeMillis() / 86_400_000L
 
     private companion object {
         const val SET_151_PREFIX = "sv3pt5-"

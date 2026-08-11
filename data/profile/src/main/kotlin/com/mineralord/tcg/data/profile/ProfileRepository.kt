@@ -10,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.mineralord.tcg.data.cards.Deck
 import com.mineralord.tcg.data.cards.DeckEntry
 import com.mineralord.tcg.data.gacha.DailyPackState
+import com.mineralord.tcg.data.gacha.PackWallet
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.EnergyType
 import kotlinx.coroutines.flow.Flow
@@ -102,6 +103,26 @@ class ProfileRepository(context: Context) {
 
     /** Incremento de una copia respetando el tope de la carta [id] (usado en el sembrado). */
     private fun Int.coerceIncrement(id: String): Int = (this + 1).coerceAtMost(capFor(id))
+
+    /**
+     * Monedero de sobres (regeneración acumulable). null si aún no se ha sembrado (primer uso): el
+     * llamador lo inicializa con el saldo tope y el tiempo CONFIABLE actual. Persistido aparte del
+     * snapshot de nube por ahora.
+     */
+    val wallet: Flow<PackWallet?> = store.data.map { prefs ->
+        val bal = prefs[PACK_BALANCE]
+        val last = prefs[PACK_LAST_CREDIT]
+        if (bal != null && last != null) PackWallet(bal, last) else null
+    }
+
+    /** Persiste el monedero de sobres. */
+    suspend fun saveWallet(w: PackWallet) {
+        store.edit { prefs ->
+            prefs[PACK_BALANCE] = w.balance
+            prefs[PACK_LAST_CREDIT] = w.lastCreditAt
+            prefs.touch()
+        }
+    }
 
     /** Persiste el estado del límite diario tras abrir un sobre. */
     suspend fun setDaily(state: DailyPackState) {
@@ -266,6 +287,8 @@ class ProfileRepository(context: Context) {
         val OWNED = stringPreferencesKey("owned_json")
         val DAILY_DAY = longPreferencesKey("daily_day")
         val DAILY_OPENED = intPreferencesKey("daily_opened")
+        val PACK_BALANCE = intPreferencesKey("pack_balance")
+        val PACK_LAST_CREDIT = longPreferencesKey("pack_last_credit")
         val SEEDED = booleanPreferencesKey("seeded")
         val DECKS = stringPreferencesKey("decks_json")
         val ACTIVE_DECK = stringPreferencesKey("active_deck_id")

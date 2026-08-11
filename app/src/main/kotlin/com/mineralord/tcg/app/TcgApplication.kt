@@ -8,10 +8,14 @@ import com.mineralord.tcg.data.cloud.SyncMetadataStore
 import com.mineralord.tcg.data.netfirestore.FirestoreMatchTransportFactory
 import com.mineralord.tcg.data.netplay.MatchFactoryProvider
 import com.mineralord.tcg.data.netplay.MatchTransportFactory
+import com.mineralord.tcg.data.gacha.PackRegen
 import com.mineralord.tcg.data.profile.ProfileRepository
+import com.mineralord.tcg.data.profile.TrustedClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 
 /**
  * Application que aloja el singleton de sincronización en la nube. Sin framework
@@ -44,5 +48,19 @@ class TcgApplication : Application(), MatchFactoryProvider {
             scope = appScope,
         )
         cloudSync.start()
+
+        // Notificaciones de sobres: canal + reprogramación del aviso del PRÓXIMO sobre según el
+        // monedero y el TIEMPO CONFIABLE (no el reloj del teléfono). Cada vez que cambia el monedero
+        // (abrir/regenerar), se recalcula el aviso del siguiente sobre.
+        PackNotifications.ensureChannel(this)
+        val packRepo = ProfileRepository(this)
+        val clock = TrustedClock(this)
+        val regen = PackRegen()
+        appScope.launch {
+            clock.sync() // ancla de tiempo real (best-effort; sin red no cambia nada)
+            packRepo.wallet.collect {
+                PackNotifications.refreshSchedule(this@TcgApplication, packRepo, clock, regen)
+            }
+        }
     }
 }

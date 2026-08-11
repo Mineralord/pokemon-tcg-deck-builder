@@ -43,6 +43,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Permiso de notificaciones (Android 13+) para avisar cuando un sobre esté listo.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
         // Inmersivo GLOBAL (todas las pantallas, actuales y futuras): oculta las barras
         // de estado y navegación como TCG Live. El tablero ocupa la pantalla completa.
         hideSystemBars()
