@@ -87,6 +87,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import com.mineralord.tcg.engine.model.Ability
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.rules.AbilityGlow
@@ -1310,10 +1312,6 @@ private fun FieldCard(
             EmptySlot(Modifier.fillMaxSize(), highlighted = highlighted)
             return@Box
         }
-        // Aura de Habilidad PERSISTENTE (estado, como TCG Live): ROJA = Habilidad pasiva activa
-        // (siempre visible mientras esté en juego); DORADA = Habilidad manual disponible para activar.
-        // Se dibuja DETRÁS de la carta (halo alrededor). Ver GameEngine.abilityGlow.
-        if (!faceDown && glow != null) AbilityGlowAura(glow, Modifier.matchParentSize())
         CombatCard(
             imageUrl = pip.card.artwork.small(true),
             faceDown = faceDown,
@@ -1329,6 +1327,10 @@ private fun FieldCard(
                 .motionElevate(selected || highlighted),
         )
         if (!faceDown) {
+            // Aura de Habilidad PERSISTENTE (estado, como TCG Live): anillo pulsante SOBRE el borde de
+            // la carta. ROJO = Habilidad pasiva activa (siempre); DORADO = Habilidad manual disponible
+            // para activar. Ver GameEngine.abilityGlow. Se dibuja encima del arte (no se recorta).
+            if (glow != null) AbilityGlowAura(glow, Modifier.matchParentSize())
             // Herramienta Pokémon anexada: como en TCG Live, una mini-carta apoyada ENCIMA del Pokémon,
             // en el lado izquierdo y a ~1/3 de altura, solapando el arte (con sombra). Máx. 1 (regla).
             pip.attachedTools.forEach { ToolPeek(it) }
@@ -1371,39 +1373,53 @@ private fun BoxScope.ToolPeek(tool: Card) {
 }
 
 /**
- * Aura de Habilidad PERSISTENTE bajo la carta (como TCG Live): un halo pulsante que rodea al Pokémon
- * mientras la Habilidad esté activa/disponible. ROJO = pasiva (siempre); DORADO = manual disponible.
- * Se escala > tamaño de la carta para que el halo asome por los bordes (la carta tapa el centro).
+ * Aura de Habilidad PERSISTENTE (como TCG Live): un ANILLO pulsante brillante sobre el borde de la
+ * carta que indica que la Habilidad está activa/disponible. ROJO = pasiva (siempre visible mientras
+ * esté en juego); DORADO = manual disponible para activar. Se dibuja dentro de los límites de la carta
+ * (nunca se recorta) con un halo interior suave + trazo brillante que respira.
  */
 @Composable
 private fun BoxScope.AbilityGlowAura(glow: AbilityGlow, modifier: Modifier = Modifier) {
     val color = when (glow) {
-        AbilityGlow.PASSIVE -> Color(0xFFE53935) // rojo: habilidad pasiva activa
-        AbilityGlow.MANUAL -> Color(0xFFFFC107)  // dorado: habilidad manual disponible
+        AbilityGlow.PASSIVE -> Color(0xFFFF3B30) // rojo brillante: habilidad pasiva activa
+        AbilityGlow.MANUAL -> Color(0xFFFFD400)  // dorado brillante: habilidad manual disponible
     }
     val infinite = rememberInfiniteTransition(label = "abilityGlow")
     val pulse by infinite.animateFloat(
-        initialValue = 0.5f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Reverse),
+        initialValue = 0.35f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
         label = "abilityGlowPulse",
     )
     Box(
-        modifier
-            .graphicsLayer { scaleX = 1.30f; scaleY = 1.24f }
-            .drawBehind {
-                drawRoundRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            color.copy(alpha = 0.55f * pulse),
-                            color.copy(alpha = 0.16f * pulse),
-                            Color.Transparent,
-                        ),
-                        center = center,
-                        radius = size.maxDimension * (0.52f + 0.05f * pulse),
-                    ),
-                    cornerRadius = CornerRadius(size.minDimension * 0.14f),
-                )
-            },
+        modifier.drawBehind {
+            val r = CornerRadius(size.minDimension * 0.13f, size.minDimension * 0.13f)
+            val w = size.minDimension
+            // 1) Halo interior suave que emana del borde hacia dentro (glow).
+            drawRoundRect(
+                brush = Brush.radialGradient(
+                    colors = listOf(Color.Transparent, color.copy(alpha = 0.42f * pulse)),
+                    center = center,
+                    radius = size.maxDimension * 0.62f,
+                ),
+                cornerRadius = r,
+            )
+            // 2) Trazo exterior ancho translúcido (bloom) + 3) trazo fino brillante (contorno nítido).
+            val inset = 1.5f.dp.toPx()
+            drawRoundRect(
+                color = color.copy(alpha = 0.30f * pulse),
+                topLeft = Offset(inset, inset),
+                size = Size(size.width - inset * 2, size.height - inset * 2),
+                cornerRadius = r,
+                style = Stroke(width = w * 0.10f * (0.6f + 0.4f * pulse)),
+            )
+            drawRoundRect(
+                color = color.copy(alpha = 0.55f + 0.45f * pulse),
+                topLeft = Offset(inset, inset),
+                size = Size(size.width - inset * 2, size.height - inset * 2),
+                cornerRadius = r,
+                style = Stroke(width = (2f.dp.toPx() + 1.5f.dp.toPx() * pulse)),
+            )
+        },
     )
 }
 
