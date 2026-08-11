@@ -42,6 +42,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import com.mineralord.tcg.feature.game.anim.FxCue
+import com.mineralord.tcg.feature.game.anim.rememberLunge
+import com.mineralord.tcg.feature.game.anim.rememberShake
 import com.mineralord.tcg.feature.game.board.typeColor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -251,6 +253,17 @@ fun CombatScreen(
     // Estado EFÍMERO de interacción del tablero (arrastres, bounds de zonas, foco de mano, anclas de
     // vuelo), agrupado para reducir el acoplamiento interno; se comparte entre el compositor y sus capas.
     val bi = remember { CombatBoardInteraction() }
+    // EMBATE + SACUDIDA sincronizados con el IMPACTO (FxCue.Damage): el defensor (cue.side) se sacude
+    // y el atacante (el otro lado) embiste hacia él. Llega tras el rótulo (playFx espacia Attack→Damage),
+    // cumpliendo la jerarquía rótulo → embate/impacto → (KO). Se aplican en MatchLayer sobre cada Activo.
+    LaunchedEffect(Unit) {
+        vm.fx.collect { cue ->
+            if (cue is FxCue.Damage) when (cue.side) {
+                Side.PLAYER -> { bi.shakeSeqPlayer++; bi.lungeSeqOpp++ }
+                Side.OPPONENT -> { bi.shakeSeqOpp++; bi.lungeSeqPlayer++ }
+            }
+        }
+    }
     // ---- VUELO REAL entre zonas (capa Motion) ----
     // Host de vuelos + última clasificación de cartas para detectar movimientos por diffing de estado.
     val flightHost = rememberFlightHost()
@@ -763,6 +776,13 @@ private class CombatBoardInteraction {
     var handFocus by mutableStateOf<HandCat?>(null)
     var handFocusNonce by mutableStateOf(0)
     val anchorBounds = mutableStateMapOf<CardZone, Rect>()
+    // Secuencias de animación de COMBATE (se incrementan por cue de FX; disparan las animaciones de
+    // embate/sacudida del Activo correspondiente, sincronizadas con el impacto de daño). Ver el
+    // colector de FxCue.Damage en CombatScreen y su aplicación en MatchLayer.
+    var lungeSeqPlayer by mutableStateOf(0)  // el Activo del jugador embiste (ataca)
+    var lungeSeqOpp by mutableStateOf(0)     // el Activo rival embiste (ataca)
+    var shakeSeqPlayer by mutableStateOf(0)  // el Activo del jugador se sacude (recibe)
+    var shakeSeqOpp by mutableStateOf(0)     // el Activo rival se sacude (recibe)
 }
 
 /**
@@ -800,6 +820,13 @@ private fun MatchLayer(
     val opp = state.opponent
     val me = state.player
     val faceDownOpp = inSetup || revealing
+
+    // Embate (Y, hacia el rival) y sacudida (X) de cada Activo, disparados por las secuencias de FX.
+    // El atacante embiste; el defensor se sacude. Identidad (0) cuando no hay combate en curso.
+    val lungeMe = rememberLunge(bi.lungeSeqPlayer, mine = true)
+    val lungeOpp = rememberLunge(bi.lungeSeqOpp, mine = false)
+    val shakeMe = rememberShake(bi.shakeSeqPlayer)
+    val shakeOpp = rememberShake(bi.shakeSeqOpp)
 
     // Objetivo (Pokémon propio) bajo el dedo según lo que se arrastra:
     //  - energía/evolución → dropTargetUnder (isPlayTarget)
@@ -855,8 +882,11 @@ private fun MatchLayer(
             }
         }
     }
-    // Activo rival.
-    Box(Modifier.place(BoardGeometry.OppActive, boardW, boardH)) {
+    // Activo rival (con embate al atacar / sacudida al recibir).
+    Box(
+        Modifier.place(BoardGeometry.OppActive, boardW, boardH)
+            .graphicsLayer { translationY = lungeOpp.dp.toPx(); translationX = shakeOpp.dp.toPx() },
+    ) {
         FieldCard(opp.active, faceDown = faceDownOpp, glow = opp.active?.card?.id?.let { vm.abilityGlow(it) }, onTap = { opp.active?.let { onInspect(it.card) } })
     }
     // Premios / mazo / descarte rival.
@@ -896,7 +926,8 @@ private fun MatchLayer(
             .onGloballyPositioned { c ->
                 val r = c.boundsInRoot(); bi.activeSlotBounds = r
                 me.active?.card?.id?.let { bi.targetBounds[it] = r }
-            },
+            }
+            .graphicsLayer { translationY = lungeMe.dp.toPx(); translationX = shakeMe.dp.toPx() },
     ) {
         FieldCard(
             me.active,
