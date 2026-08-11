@@ -122,7 +122,9 @@ fun CardDetailDialog(
             val sizeMod = if (bottomBar == null) {
                 Modifier.fillMaxWidth().padding(16.dp)
             } else {
-                Modifier.fillMaxWidth(0.72f).padding(top = 12.dp)
+                // Visor EN PARTIDA (con panel de stats/acciones debajo): carta más grande y pegada
+                // arriba. Antes 0.72; ampliada para que la carta se vea prominente como en TCG Live.
+                Modifier.fillMaxWidth(0.86f).padding(top = 10.dp)
             }
             val base = sizeMod
                 .aspectRatio(0.72f)

@@ -186,9 +186,9 @@ private fun RevealContent(
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 110.dp, start = 24.dp, end = 24.dp),
         )
 
-        // Carta central + chispas + glow.
+        // Carta central + chispas + glow. Ampliada (antes 0.62) para verse prominente como el visor.
         Box(
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.62f).aspectRatio(0.72f).graphicsLayer {
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.80f).aspectRatio(0.72f).graphicsLayer {
                 scaleX = entrance.value; scaleY = entrance.value
             },
             contentAlignment = Alignment.Center,
