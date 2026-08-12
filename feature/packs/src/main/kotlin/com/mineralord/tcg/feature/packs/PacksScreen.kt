@@ -214,9 +214,10 @@ private fun PackStage(
                         translationY = z * 46f          // baja para enfatizar la parte SUPERIOR
                     },
             ) {
-                BoosterPack(modifier = Modifier.fillMaxSize(), floating = false)
+                // Sobre TROCEADO: la tira superior se despega con el rasgado (arte real partido).
+                TearablePack(artUrl = expansion.packArtUrl, tear = tear.value, modifier = Modifier.fillMaxSize())
 
-                // Rasgado: tira superior que se levanta y línea dentada de luz que avanza con el dedo.
+                // Costura de luz dentada que avanza con el dedo (encima del arte).
                 TornTopOverlay(progress = tear.value, modifier = Modifier.fillMaxSize())
 
                 // Zona de gesto: la franja SUPERIOR del sobre. Arrastre horizontal = rasgar.
@@ -282,7 +283,7 @@ private fun PackStage(
 private fun TornTopOverlay(progress: Float, modifier: Modifier = Modifier) {
     if (progress <= 0f) return
     androidx.compose.foundation.Canvas(modifier = modifier) {
-        val tearY = size.height * 0.15f
+        val tearY = size.height * 0.16f
         val lift = progress * size.height * 0.09f          // cuánto se separa la tira
         val revealW = size.width * progress                 // avance del rasgado
         // Resplandor cálido que asoma por la abertura.

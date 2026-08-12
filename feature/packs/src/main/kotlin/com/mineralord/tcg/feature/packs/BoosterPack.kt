@@ -12,8 +12,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +31,52 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 /** URL del arte real del sobre del Set 151 (sobre de Mew). */
 const val PACK_IMAGE_151 =
     "https://images.wikidexcdn.net/mwuploads/wikidex/thumb/2/21/latest/20230616180309/Sobre_Mew_151.png/512px-Sobre_Mew_151.png"
+
+/**
+ * Sobre **troceable**: el arte se parte en dos por una costura horizontal superior. La tira de
+ * arriba (~16 %) se despega (sube + gira + se atenúa) según [tear] (0..1), dejando ver el cuerpo del
+ * sobre por debajo. Sirve para CUALQUIER expansión: solo cambia [artUrl]. Réplica del rasgado de
+ * Pokémon TCG Pocket. La costura de luz dentada se dibuja aparte ([TornTopOverlay]).
+ */
+@Composable
+fun TearablePack(
+    artUrl: String,
+    tear: Float,
+    modifier: Modifier = Modifier,
+    seamFraction: Float = 0.16f,
+) {
+    Box(modifier) {
+        // Cuerpo del sobre (parte de ABAJO de la costura): estático.
+        AsyncImage(
+            model = artUrl,
+            contentDescription = "Sobre",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    clipRect(top = size.height * seamFraction) { this@drawWithContent.drawContent() }
+                },
+        )
+        // Tira SUPERIOR de la costura: se despega con el rasgado (sube, gira y se atenúa).
+        AsyncImage(
+            model = artUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    transformOrigin = TransformOrigin(0.5f, 0f)
+                    translationY = -tear * size.height * 0.55f
+                    translationX = tear * size.width * 0.10f
+                    rotationZ = tear * -10f
+                    alpha = 1f - tear * 0.65f
+                }
+                .drawWithContent {
+                    clipRect(bottom = size.height * seamFraction) { this@drawWithContent.drawContent() }
+                },
+        )
+    }
+}
 
 /**
  * Arte del sobre con leve flotación/balanceo idle. Carga la imagen real del Set
