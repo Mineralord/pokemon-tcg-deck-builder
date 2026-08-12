@@ -9,8 +9,8 @@ import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.random.Random
 
-/** Efectos de la apertura de sobres. */
-enum class Sfx { WHOOSH, SPARKLE, RARE }
+/** Efectos de la apertura de sobres (síntesis procedural, sin ficheros). */
+enum class Sfx { WHOOSH, SPARKLE, RARE, GRAB, TEAR, OPEN, IMPACT, HIGH }
 
 /**
  * SFX **sintetizados en runtime** con [AudioTrack] (PCM16 mono, 44.1 kHz). No usa
@@ -29,6 +29,11 @@ class PackAudio {
                     Sfx.WHOOSH -> whoosh()
                     Sfx.SPARKLE -> sparkle()
                     Sfx.RARE -> fanfare()
+                    Sfx.GRAB -> grab()
+                    Sfx.TEAR -> tear()
+                    Sfx.OPEN -> open()
+                    Sfx.IMPACT -> impact()
+                    Sfx.HIGH -> highChime()
                 }
                 playPcm(data)
             }
@@ -102,6 +107,90 @@ class PackAudio {
                 val tt = (i - s).toFloat() / sr
                 val env = exp(-tt * 17f)
                 buf[i] += (sin(2.0 * PI * freqs[k] * tt).toFloat()) * env * 0.3f
+            }
+        }
+        return toPcm(buf)
+    }
+
+    /** Agarre: click grave muy corto con un toque de ruido (contacto físico con el plástico). */
+    private fun grab(): ShortArray {
+        val n = (sr * 0.09f).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(7)
+        for (i in 0 until n) {
+            val tt = i.toFloat() / sr
+            val env = exp(-tt * 42f)
+            val tone = sin(2.0 * PI * 190f * tt).toFloat()
+            val noise = (rnd.nextFloat() * 2f - 1f) * 0.25f
+            buf[i] = (tone + noise) * env * 0.5f
+        }
+        return toPcm(buf)
+    }
+
+    /** Rasgado: ruido con "crackle" (modulación de amplitud irregular) que barre — plástico rompiéndose. */
+    private fun tear(): ShortArray {
+        val n = (sr * 0.34f).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(23)
+        var lp = 0f
+        var crackle = 0f
+        for (i in 0 until n) {
+            val t = i.toFloat() / n
+            val env = (1f - t) * (if (t < 0.05f) t / 0.05f else 1f)
+            val cutoff = 0.75f
+            val noise = rnd.nextFloat() * 2f - 1f
+            lp += cutoff * (noise - lp)
+            // Crackle: pulsos aleatorios que dan la textura de fibras rompiéndose.
+            if (rnd.nextFloat() < 0.06f) crackle = rnd.nextFloat()
+            crackle *= 0.82f
+            buf[i] = (lp * (0.5f + crackle)) * env * 0.7f
+        }
+        return toPcm(buf)
+    }
+
+    /** Apertura: hinchazón aérea (ruido paso-bajo que sube + florecer senoidal). */
+    private fun open(): ShortArray {
+        val n = (sr * 0.5f).toInt()
+        val buf = FloatArray(n)
+        val rnd = Random(41)
+        var lp = 0f
+        for (i in 0 until n) {
+            val t = i.toFloat() / n
+            val env = if (t < 0.4f) t / 0.4f else 1f - (t - 0.4f) / 0.6f
+            val cutoff = 0.12f + 0.5f * t
+            val noise = rnd.nextFloat() * 2f - 1f
+            lp += cutoff * (noise - lp)
+            val bloom = sin(2.0 * PI * (330f + 220f * t) * (i.toFloat() / sr)).toFloat() * 0.15f
+            buf[i] = (lp * 0.5f + bloom) * env * 0.5f
+        }
+        return toPcm(buf)
+    }
+
+    /** Impacto de asentamiento: golpe grave corto (la carta aterriza). */
+    private fun impact(): ShortArray {
+        val n = (sr * 0.16f).toInt()
+        val buf = FloatArray(n)
+        for (i in 0 until n) {
+            val tt = i.toFloat() / sr
+            val env = exp(-tt * 26f)
+            val f = 92f * (1f + 2f * exp(-tt * 60f)) // pitch-drop
+            buf[i] = sin(2.0 * PI * f * tt).toFloat() * env * 0.55f
+        }
+        return toPcm(buf)
+    }
+
+    /** Carillón de alta rareza: parciales altos con decaimiento largo y trémolo (brillo etéreo). */
+    private fun highChime(): ShortArray {
+        val partials = floatArrayOf(1174.7f, 1567.98f, 2093f, 2637f, 3136f)
+        val n = (sr * 1.1f).toInt()
+        val buf = FloatArray(n)
+        for (k in partials.indices) {
+            val s = (k * 0.045f * sr).toInt()
+            for (i in s until n) {
+                val tt = (i - s).toFloat() / sr
+                val env = exp(-tt * 3.2f) * (1f - exp(-tt * 120f))
+                val trem = 1f + 0.12f * sin(2.0 * PI * 6.5f * tt).toFloat()
+                buf[i] += sin(2.0 * PI * partials[k] * tt).toFloat() * env * trem * 0.14f
             }
         }
         return toPcm(buf)

@@ -15,8 +15,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,8 +30,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +49,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mineralord.tcg.core.designsystem.motion.AnimationCurves
+import com.mineralord.tcg.engine.model.Rarity
 import kotlin.math.abs
 import kotlinx.coroutines.launch
 
@@ -161,6 +167,13 @@ private fun PackStage(
     var firing by remember { mutableStateOf(false) }
     val density = LocalDensity.current
 
+    // Feedback físico: audio (agarre/tensión/rasgado) + háptica. Hooks centralizados.
+    val context = LocalContext.current
+    val audio = remember { PackAudio() }
+    val feedback = remember { BoosterFeedback(audio, vibratorOf(context)) }
+    DisposableEffect(Unit) { onDispose { audio.release() } }
+    var lastTick by remember { mutableStateOf(0f) }
+
     // Acercamiento de entrada: el sobre crece y se acerca a su parte superior.
     val zoom = remember { Animatable(0f) }
     LaunchedEffect(Unit) { zoom.animateTo(1f, tween(560, easing = AnimationCurves.EmphasizedDecelerate)) }
@@ -209,8 +222,11 @@ private fun PackStage(
                     .aspectRatio(0.62f)
                     .graphicsLayer {
                         val z = zoom.value
+                        val t = tear.value
                         val s = 1f + z * 0.30f          // crece al entrar
-                        scaleX = s; scaleY = s
+                        scaleX = s
+                        scaleY = s * (1f + t * 0.05f)   // TENSIÓN: el plástico se estira al tirar
+                        rotationZ = t * 1.4f            // leve torsión del material
                         translationY = z * 46f          // baja para enfatizar la parte SUPERIOR
                     },
             ) {
@@ -229,16 +245,24 @@ private fun PackStage(
                         .pointerInput(canOpen) {
                             if (!canOpen) return@pointerInput
                             detectHorizontalDragGestures(
+                                onDragStart = {
+                                    lastTick = 0f
+                                    feedback.sfx(SfxCue.PACK_GRAB); feedback.haptic(HapticCue.CONTACT)
+                                },
                                 onHorizontalDrag = { change, delta ->
                                     change.consume()
                                     val next = (tear.value + abs(delta) / tearThresholdPx).coerceIn(0f, 1f)
                                     scope.launch { tear.snapTo(next) }
+                                    // Micro-ticks de TENSIÓN a medida que se tira (más fuerte cerca del umbral).
+                                    if (next - lastTick >= 0.11f) { lastTick = next; feedback.tensionTick(next) }
                                     if (next >= 1f && !firing) {
                                         firing = true
+                                        feedback.sfx(SfxCue.PACK_TEAR); feedback.haptic(HapticCue.TEAR)
                                         onOpen()
                                     }
                                 },
                                 onDragEnd = {
+                                    lastTick = 0f
                                     if (tear.value < 1f) scope.launch { tear.animateTo(0f, tween(260)) }
                                 },
                             )
@@ -276,47 +300,56 @@ private fun PackStage(
 }
 
 /**
- * Superposición del rasgado sobre el sobre: una línea dentada de luz que barre de izquierda a
- * derecha con [progress] (0..1) mientras la tira superior se separa dejando ver un resplandor.
+ * Superposición del rasgado: resplandor por la abertura + el MISMO borde IRREGULAR (perfil de papel
+ * roto) de la máscara del sobre, brillando, más pequeños fragmentos que saltan en la punta del rasgado.
  */
 @Composable
 private fun TornTopOverlay(progress: Float, modifier: Modifier = Modifier) {
     if (progress <= 0f) return
     androidx.compose.foundation.Canvas(modifier = modifier) {
-        val tearY = size.height * 0.16f
-        val lift = progress * size.height * 0.09f          // cuánto se separa la tira
-        val revealW = size.width * progress                 // avance del rasgado
-        // Resplandor cálido que asoma por la abertura.
+        val seamY = size.height * 0.16f
+        val ys = seamYs(seamY, size.height * SEAM_AMPLITUDE, SEAM_SEGMENTS, SEAM_SEED)
+        val lift = progress * size.height * 0.09f
+        val revealW = size.width * progress
+        // Resplandor cálido asomando por la abertura.
         drawRect(
             brush = Brush.verticalGradient(
                 listOf(Color(0xFFFFF3C4), Color(0x00FFF3C4)),
-                startY = tearY - lift, endY = tearY + lift * 2f,
+                startY = seamY - lift, endY = seamY + lift * 2f,
             ),
-            topLeft = Offset(0f, tearY - lift),
+            topLeft = Offset(0f, seamY - lift),
             size = Size(revealW, lift * 3f),
         )
-        // La tira superior levantada (oscurece levemente y se despega).
+        // Sombra bajo la tira despegada.
         drawRect(
             color = Color(0x33000000),
             topLeft = Offset(0f, 0f),
-            size = Size(revealW, (tearY - lift).coerceAtLeast(0f)),
+            size = Size(revealW, (seamY - lift).coerceAtLeast(0f)),
         )
-        // Borde DENTADO brillante en el frente del rasgado — MISMO zigzag que la máscara del sobre.
-        val amp = size.height * SEAM_AMPLITUDE
-        val step = size.width / SEAM_TEETH
-        val edgeX = revealW
+        // Borde IRREGULAR brillante, recorriendo el mismo perfil de la máscara hasta el frente.
+        val segments = ys.size - 1
+        val step = size.width / segments
         val path = Path()
-        path.moveTo(0f, tearY - amp)
+        path.moveTo(0f, ys[0])
         var i = 1
-        while (i * step <= edgeX && i <= SEAM_TEETH) {
-            val x = i * step
-            path.lineTo(x, if (i % 2 == 0) tearY - amp else tearY + amp)
-            i++
+        while (i * step <= revealW && i <= segments) {
+            path.lineTo(i * step, ys[i]); i++
         }
         drawPath(path, color = Color.White.copy(alpha = 0.95f), style = Stroke(width = 3f))
-        // Chispita en la punta del rasgado.
-        if (progress < 1f) {
-            drawCircle(Color.White, radius = 6f, center = Offset(edgeX.coerceIn(0f, size.width), tearY))
+        // Fragmentos de papel saltando en la punta del rasgado.
+        if (progress in 0.02f..0.99f) {
+            val fx = revealW.coerceIn(0f, size.width)
+            val frn = kotlin.random.Random((progress * 40f).toInt())
+            repeat(4) {
+                val dx = (frn.nextFloat() - 0.5f) * 26f
+                val dy = -frn.nextFloat() * 22f
+                drawRect(
+                    color = Color(0xFFF3ECE0).copy(alpha = 0.85f),
+                    topLeft = Offset(fx + dx, seamY + dy),
+                    size = Size(3f + frn.nextFloat() * 3f, 3f + frn.nextFloat() * 3f),
+                )
+            }
+            drawCircle(Color.White, radius = 6f, center = Offset(fx, seamY))
         }
     }
 }
@@ -334,11 +367,18 @@ private class SimPacks(
     /** Colección EFÍMERA (solo en memoria): permite que "NUEVA" aparezca la primera vez y no después. */
     val owned = HashMap<String, Int>()
 
-    fun generate(): List<RevealedCard> {
-        val opened = opener.open(
+    /**
+     * @param forceTier si no es null, sustituye (SOLO en el simulador) la rareza de la ÚLTIMA carta por
+     * una representativa de ese escalón, para poder previsualizar ese reveal. No toca el RNG del juego.
+     */
+    fun generate(forceTier: RarityTier? = null): List<RevealedCard> {
+        val opened0 = opener.open(
             com.mineralord.tcg.data.gacha.RarityWeights.templateFor(SET_151_CODE),
             pool, kotlin.random.Random(System.nanoTime()), energyIds,
         )
+        val opened = if (forceTier == null || opened0.isEmpty()) opened0 else {
+            opened0.toMutableList().also { it[it.lastIndex] = it.last().copy(rarity = representativeRarity(forceTier)) }
+        }
         val running = HashMap<String, Int>()
         val revealed = opened.map { oc ->
             val card = repo[oc.id]
@@ -382,11 +422,20 @@ private class SimPacks(
     }
 }
 
+/** Rareza representativa de un escalón (para el forzado de previsualización del Lab). */
+private fun representativeRarity(tier: RarityTier): Rarity = when (tier) {
+    RarityTier.CLEAN -> Rarity.COMMON
+    RarityTier.IMPACT -> Rarity.RARE_HOLO
+    RarityTier.SPECTACLE -> Rarity.DOUBLE_RARE
+    RarityTier.LEGENDARY -> Rarity.SPECIAL_ILLUSTRATION_RARE
+}
+
 /**
- * **Simulador de apertura de sobres a PANTALLA COMPLETA** (para el Studio). Recorre el MISMO flujo del
- * juego —elegir expansión → rasgar el sobre → revelado carta a carta— pero SIN monedero ni límites: se
- * puede abrir cuantas veces se quiera. No usa [PacksViewModel] (no persiste nada): mantiene una
- * colección EFÍMERA en memoria solo para decidir el badge "NUEVA". [onExit] vuelve al Studio.
+ * **Simulador de apertura de sobres a PANTALLA COMPLETA** = el Booster Opening Lab del Studio. Recorre
+ * el MISMO flujo del juego —elegir expansión → rasgar el sobre → revelado por BEATS— pero SIN monedero
+ * ni límites, y añade los CONTROLES DE LAB (velocidad, auto/Play, bucle, reiniciar, forzar rareza, beat
+ * actual). No usa [PacksViewModel] ni persiste nada: colección EFÍMERA en memoria para el badge "NUEVA".
+ * [onExit] vuelve al Studio.
  */
 @Composable
 fun PackOpeningSimulator(
@@ -401,6 +450,14 @@ fun PackOpeningSimulator(
     var expansion by remember { mutableStateOf<ExpansionUi?>(null) }
     var opening by remember { mutableStateOf(false) }
     var revealed by remember { mutableStateOf<List<RevealedCard>>(emptyList()) }
+    var session by remember { mutableStateOf(0) }   // reinicia el overlay al incrementarse
+
+    // Controles del Lab.
+    var speed by remember { mutableStateOf(1f) }
+    var auto by remember { mutableStateOf(false) }
+    var loop by remember { mutableStateOf(false) }
+    var forceTier by remember { mutableStateOf<RarityTier?>(null) }
+    var beat by remember { mutableStateOf<Beat?>(null) }
 
     Box(
         modifier = modifier
@@ -414,55 +471,129 @@ fun PackOpeningSimulator(
         }
 
         if (opening) {
-            PackOpeningOverlay(
-                cards = revealed,
-                setLabel = "${series.title} · ${expansion?.name ?: "151"}",
-                remainingToday = 999,
-                onDismiss = { opening = false; step = PackStep.PACK },
-            )
-            return@Box
-        }
-
-        AnimatedContent(
-            targetState = step,
-            transitionSpec = {
-                val forward = targetState.ordinal > initialState.ordinal
-                val dir = if (forward) 1 else -1
-                (slideInHorizontally(tween(320)) { w -> dir * w } + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(tween(320)) { w -> -dir * w } + fadeOut(tween(180)))
-            },
-            label = "simStep",
-        ) { st ->
-            when (st) {
-                PackStep.EXPANSION -> ExpansionSelectStage(
-                    series = series,
-                    ownedInSet = s.owned.size,
-                    totalInSet = s.totalInSet,
-                    onSelect = { expansion = it; step = PackStep.PACK },
-                )
-                PackStep.PACK -> PackStage(
-                    expansion = expansion ?: series.expansions.first(),
+            key(session) {
+                PackOpeningOverlay(
+                    cards = revealed,
+                    setLabel = "${series.title} · ${expansion?.name ?: "151"}",
                     remainingToday = 999,
-                    maxPerDay = 999,
-                    secondsToNext = null,
-                    deniedMessage = null,
-                    onBack = { step = PackStep.EXPANSION },
-                    onOpen = { revealed = s.generate(); opening = true },
-                    onExpire = {},
+                    speed = speed,
+                    autoAdvance = auto,
+                    onBeat = { beat = it },
+                    onDismiss = {
+                        if (loop) { revealed = s.generate(forceTier); session++ }
+                        else { opening = false; step = PackStep.PACK }
+                    },
                 )
+            }
+        } else {
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = {
+                    val forward = targetState.ordinal > initialState.ordinal
+                    val dir = if (forward) 1 else -1
+                    (slideInHorizontally(tween(320)) { w -> dir * w } + fadeIn(tween(220))) togetherWith
+                        (slideOutHorizontally(tween(320)) { w -> -dir * w } + fadeOut(tween(180)))
+                },
+                label = "simStep",
+            ) { st ->
+                when (st) {
+                    PackStep.EXPANSION -> ExpansionSelectStage(
+                        series = series,
+                        ownedInSet = s.owned.size,
+                        totalInSet = s.totalInSet,
+                        onSelect = { expansion = it; step = PackStep.PACK },
+                    )
+                    PackStep.PACK -> PackStage(
+                        expansion = expansion ?: series.expansions.first(),
+                        remainingToday = 999,
+                        maxPerDay = 999,
+                        secondsToNext = null,
+                        deniedMessage = null,
+                        onBack = { step = PackStep.EXPANSION },
+                        onOpen = { revealed = s.generate(forceTier); session++; opening = true },
+                        onExpire = {},
+                    )
+                }
             }
         }
 
-        // Salir del simulador (vuelve al Studio). Oculto durante el revelado (que ocupa todo).
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color(0x66000000))
-                .clickable(onClick = onExit)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-        ) { Text("✕ Salir", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+        // Salir del simulador (vuelve al Studio).
+        LabChip(
+            "✕ Salir",
+            modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+            onClick = onExit,
+        )
+
+        // Barra de controles del Lab (siempre visible, también durante el revelado).
+        LabControlBar(
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
+            speed = speed,
+            auto = auto,
+            loop = loop,
+            forceTier = forceTier,
+            beat = beat,
+            opening = opening,
+            onSpeed = { speed = when (speed) { 0.5f -> 1f; 1f -> 2f; else -> 0.5f } },
+            onAuto = { auto = !auto },
+            onLoop = { loop = !loop },
+            onForce = {
+                forceTier = when (forceTier) {
+                    null -> RarityTier.CLEAN
+                    RarityTier.CLEAN -> RarityTier.IMPACT
+                    RarityTier.IMPACT -> RarityTier.SPECTACLE
+                    RarityTier.SPECTACLE -> RarityTier.LEGENDARY
+                    RarityTier.LEGENDARY -> null
+                }
+            },
+            onRestart = { revealed = s.generate(forceTier); session++; opening = true },
+        )
+    }
+}
+
+/** Píldora táctil reutilizable del HUD del Lab. */
+@Composable
+private fun LabChip(label: String, modifier: Modifier = Modifier, active: Boolean = false, onClick: () -> Unit) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (active) Color(0xCC35C4E8) else Color(0x66000000))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+    ) { Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+}
+
+/** Barra de herramientas del Booster Opening Lab (velocidad · Play · bucle · forzar rareza · reiniciar). */
+@Composable
+private fun LabControlBar(
+    modifier: Modifier,
+    speed: Float,
+    auto: Boolean,
+    loop: Boolean,
+    forceTier: RarityTier?,
+    beat: Beat?,
+    opening: Boolean,
+    onSpeed: () -> Unit,
+    onAuto: () -> Unit,
+    onLoop: () -> Unit,
+    onForce: () -> Unit,
+    onRestart: () -> Unit,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        if (opening && beat != null) {
+            Text("BEAT · ${beat.name}", color = Color(0xAAFFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            LabChip("${if (speed == 0.5f) "0.5" else if (speed == 2f) "2" else "1"}×", onClick = onSpeed)
+            LabChip("Play", active = auto, onClick = onAuto)
+            LabChip("Bucle", active = loop, onClick = onLoop)
+            LabChip(
+                "Rareza: ${forceTier?.name ?: "RNG"}",
+                active = forceTier != null,
+                onClick = onForce,
+            )
+            LabChip(if (opening) "Reiniciar" else "Abrir", active = false, onClick = onRestart)
+        }
     }
 }
 
