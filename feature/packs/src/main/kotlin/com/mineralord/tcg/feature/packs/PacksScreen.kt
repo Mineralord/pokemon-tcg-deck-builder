@@ -112,9 +112,11 @@ fun PacksScreen(
                     expansion = expansion ?: PACK_CATALOG.first().expansions.first(),
                     remainingToday = state.remainingToday,
                     maxPerDay = state.maxPerDay,
+                    secondsToNext = state.secondsToNext,
                     deniedMessage = state.deniedMessage,
                     onBack = { step = PackStep.EXPANSION },
                     onOpen = viewModel::openPack,
+                    onExpire = viewModel::refresh,
                 )
             }
         }
@@ -130,11 +132,25 @@ private fun PackStage(
     expansion: ExpansionUi,
     remainingToday: Int,
     maxPerDay: Int,
+    secondsToNext: Long?,
     deniedMessage: String?,
     onBack: () -> Unit,
     onOpen: () -> Unit,
+    onExpire: () -> Unit,
 ) {
     val canOpen = remainingToday > 0
+    // Cuenta atrás VIVA al próximo sobre: se siembra con el snapshot (tiempo confiable) y baja 1/s
+    // localmente; al llegar a 0 pide recalcular (acredita el sobre y reprograma el siguiente).
+    var countdown by remember(secondsToNext) { mutableStateOf(secondsToNext) }
+    LaunchedEffect(secondsToNext) {
+        var s = secondsToNext ?: return@LaunchedEffect
+        while (s > 0) {
+            kotlinx.coroutines.delay(1000)
+            s -= 1
+            countdown = s
+        }
+        onExpire()
+    }
     val dragY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var firing by remember { mutableStateOf(false) }
@@ -162,11 +178,14 @@ private fun PackStage(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                if (canOpen) "Desliza el sobre hacia arriba" else "Sin sobres por hoy",
+                if (canOpen) "Desliza el sobre hacia arriba" else "Sin sobres disponibles",
                 color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp, textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(2.dp))
-            Text("Restantes hoy: $remainingToday/$maxPerDay", color = Color(0xB3FFFFFF), fontSize = 12.sp)
+            Text("Sobres: $remainingToday/$maxPerDay", color = Color(0xB3FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            countdown?.let {
+                Text("Próximo sobre en ${fmtCountdown(it)}", color = Color(0x99FFFFFF), fontSize = 11.sp)
+            }
             Spacer(Modifier.height(18.dp))
 
             // El sobre: se arrastra en Y (solo hacia arriba) y se abre al soltar pasado el umbral.
@@ -216,4 +235,13 @@ private fun PackStage(
             }
         }
     }
+}
+
+/** Formatea segundos como HH:MM:SS (o MM:SS si <1h) para la cuenta atrás del próximo sobre. */
+private fun fmtCountdown(totalSeconds: Long): String {
+    val s = totalSeconds.coerceAtLeast(0)
+    val h = s / 3600
+    val m = (s % 3600) / 60
+    val sec = s % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
 }

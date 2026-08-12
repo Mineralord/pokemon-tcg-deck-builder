@@ -30,6 +30,10 @@ data class RevealedCard(
     val copiesOwned: Int = 0,
     /** Tope de copias de esta carta (4 normal · 30 por variante de Energía Básica). */
     val cap: Int = 4,
+    // Datos para abrir el MISMO visor de la colección (holo + manipulación con el dedo) al tocarla.
+    val imageLarge: String? = null,
+    val cardNumber: Int? = null,
+    val setCode: String = "sv3pt5",
 )
 
 /** Estado de la pantalla de sobres (MVI). */
@@ -43,6 +47,8 @@ data class PacksUiState(
     val opening: Boolean = false,
     val ownedDistinct: Int = 0,
     val setLabel: String = "Escarlata y Púrpura · 151",
+    /** Segundos (tiempo CONFIABLE) hasta el próximo sobre; null si está en el tope. */
+    val secondsToNext: Long? = null,
 )
 
 /**
@@ -99,14 +105,22 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     /** Recalcula el saldo disponible (con la regeneración acreditada al tiempo confiable). */
     private suspend fun refreshUi() {
         val w = wallet ?: return
-        val available = regen.available(w, clock.nowMs())
+        val now = clock.nowMs()
+        val credited = regen.credited(w, now)
+        val nextAt = regen.nextPackAt(credited, now)
         _state.value = _state.value.copy(
             loading = false,
-            remainingToday = available,
+            remainingToday = credited.balance,
             maxPerDay = regen.maxPacks,
             totalCards = pool.totalCards,
             ownedDistinct = owned.size,
+            secondsToNext = nextAt?.let { ((it - now) / 1000).coerceAtLeast(0) },
         )
+    }
+
+    /** Recalcula el saldo/cuenta atrás (la UI lo llama al agotarse el temporizador local). */
+    fun refresh() {
+        viewModelScope.launch { refreshUi() }
     }
 
     fun openPack() {
@@ -134,13 +148,17 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                         val cap = ProfileRepository.capFor(oc.id.raw)
                         val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
                         running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
+                        val idRaw = oc.id.raw
                         RevealedCard(
-                            name = card?.name?.es ?: oc.id.raw,
+                            name = card?.name?.es ?: idRaw,
                             rarity = oc.rarity,
                             imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
                             isNew = before == 0,
                             copiesOwned = (before + 1).coerceAtMost(cap),
                             cap = cap,
+                            imageLarge = card?.artwork?.large(true),
+                            cardNumber = idRaw.substringAfterLast('-').toIntOrNull(),
+                            setCode = if (idRaw.startsWith("energy")) "energy" else idRaw.substringBeforeLast('-'),
                         )
                     }
                     _state.value = _state.value.copy(

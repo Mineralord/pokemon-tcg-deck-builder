@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.mineralord.tcg.core.designsystem.CardDetailDialog
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.delay
@@ -165,6 +166,9 @@ private fun RevealContent(
         entrance.animateTo(1f, AnimationSprings.bouncy())
     }
 
+    // Carta que se está viendo a detalle (mismo visor de la colección: holo + dedo). Null = revelado.
+    var inspect by remember { mutableStateOf<RevealedCard?>(null) }
+
     Box(
         modifier = Modifier.fillMaxSize().clickable(
             interactionSource = remember { MutableInteractionSource() }, indication = null,
@@ -187,10 +191,13 @@ private fun RevealContent(
         )
 
         // Carta central + chispas + glow. Ampliada (antes 0.62) para verse prominente como el visor.
+        // Tocar la carta abre el MISMO visor de la colección (holo + manipulación con el dedo).
         Box(
             modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.80f).aspectRatio(0.72f).graphicsLayer {
                 scaleX = entrance.value; scaleY = entrance.value
-            },
+            }.clickable(
+                interactionSource = remember { MutableInteractionSource() }, indication = null,
+            ) { inspect = card },
             contentAlignment = Alignment.Center,
         ) {
             // Glow detrás.
@@ -240,6 +247,20 @@ private fun RevealContent(
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         ) { Text("RECIBIR TODO", fontWeight = FontWeight.Black, fontSize = 12.sp) }
+    }
+
+    // Visor a detalle = EL MISMO de la colección (holo + inclinación/zoom con el dedo).
+    inspect?.let { c ->
+        CardDetailDialog(
+            imageUrl = c.imageLarge ?: c.imageUrl ?: "",
+            contentDescription = c.name,
+            onDismiss = { inspect = null },
+            rarity = c.rarity,
+            cardNumber = c.cardNumber,
+            setCode = c.setCode,
+            copiesOwned = c.copiesOwned,
+            copiesCap = c.cap,
+        )
     }
 }
 
