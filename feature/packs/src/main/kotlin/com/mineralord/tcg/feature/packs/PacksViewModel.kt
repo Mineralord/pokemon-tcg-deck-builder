@@ -49,6 +49,9 @@ data class PacksUiState(
     val setLabel: String = "Escarlata y Púrpura · 151",
     /** Segundos (tiempo CONFIABLE) hasta el próximo sobre; null si está en el tope. */
     val secondsToNext: Long? = null,
+    /** Progreso de colección del set (cartas distintas poseídas / total del set) — como TCG Pocket. */
+    val ownedInSet: Int = 0,
+    val totalInSet: Int = 0,
 )
 
 /**
@@ -68,6 +71,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private var energyIds: List<com.mineralord.tcg.engine.model.CardId> = emptyList()
     private var wallet: com.mineralord.tcg.data.gacha.PackWallet? = null
     private var owned: Map<String, Int> = emptyMap()
+    private var totalInSet: Int = 0
 
     private val _state = MutableStateFlow(PacksUiState())
     val state: StateFlow<PacksUiState> = _state.asStateFlow()
@@ -87,6 +91,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             repo = loaded.first
             pool = loaded.second
             energyIds = loaded.third
+            totalInSet = repo.all.count { it.id.raw.startsWith(SET_151_PREFIX) }
 
             // Siembra la colección inicial con las cartas de los 3 mazos.
             val seed = StarterDecks.ALL.flatMap { it.expandedCardIds() }.map { it.raw }
@@ -115,6 +120,8 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             totalCards = pool.totalCards,
             ownedDistinct = owned.size,
             secondsToNext = nextAt?.let { ((it - now) / 1000).coerceAtLeast(0) },
+            ownedInSet = owned.keys.count { it.startsWith(SET_151_PREFIX) },
+            totalInSet = totalInSet,
         )
     }
 

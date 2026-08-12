@@ -102,8 +102,8 @@ fun PacksScreen(
                     val sel = series ?: PACK_CATALOG.first()
                     ExpansionSelectStage(
                         series = sel,
-                        remainingToday = state.remainingToday,
-                        maxPerDay = state.maxPerDay,
+                        ownedInSet = state.ownedInSet,
+                        totalInSet = state.totalInSet,
                         onBack = { step = PackStep.SERIES },
                         onSelect = { expansion = it; step = PackStep.PACK },
                     )

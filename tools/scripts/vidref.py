@@ -27,6 +27,7 @@ SOURCES = {
     "1": ("COMBATE COMPLETO 1.mp4", "combate1"),
     "2": ("COMBATE COMPLETO 2.mp4", "combate2"),
     "3": ("VISTA DE ESTADIO Y HERRAMIENTA.mp4", "estadio_herramienta"),
+    "4": ("PTCGP ESCOGER SERIE Y EXPANSION + ABRIR SOBRE + REGISTRO DE CARTA NUEVA EN LA COLECCION.mp4", "ptcgp_flujo"),
 }
 
 
@@ -165,7 +166,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     pi = sub.add_parser("index", help="hojas de contactos de todo el video")
-    pi.add_argument("src", choices=["1", "2", "3"])
+    pi.add_argument("src", choices=["1", "2", "3", "4"])
     pi.add_argument("--fps", type=float, default=1.0)
     pi.add_argument("--cols", type=int, default=8)
     pi.add_argument("--rows", type=int, default=5)
@@ -173,7 +174,7 @@ def main():
     pi.set_defaults(func=cmd_index)
 
     pb = sub.add_parser("burst", help="frames full-res de un tramo")
-    pb.add_argument("src", choices=["1", "2", "3"])
+    pb.add_argument("src", choices=["1", "2", "3", "4"])
     pb.add_argument("--from", dest="frm", required=True)
     pb.add_argument("--to", required=True)
     pb.add_argument("--fps", type=float, default=12.0)
@@ -181,7 +182,7 @@ def main():
     pb.set_defaults(func=cmd_burst)
 
     pa = sub.add_parser("at", help="un frame suelto")
-    pa.add_argument("src", choices=["1", "2", "3"])
+    pa.add_argument("src", choices=["1", "2", "3", "4"])
     pa.add_argument("--time", required=True)
     pa.set_defaults(func=cmd_at)
 

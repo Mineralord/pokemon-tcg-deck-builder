@@ -2,6 +2,7 @@ package com.mineralord.tcg.feature.packs
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -119,73 +120,105 @@ private fun SeriesCard(series: SeriesUi, onClick: () -> Unit) {
     }
 }
 
-// ========================== ETAPA 2 · ELEGIR EXPANSIÓN ==========================
+// ========================== ETAPA 2 · ELEGIR EXPANSIÓN (estilo TCG Pocket) ==========================
+// Réplica de "Select Expansion": fondo claro, panel blanco por expansión con LOGO + progreso de
+// colección "X/total" (icono diamante) + chevron y las MINIATURAS del sobre asomando abajo; la SERIE
+// como PESTAÑA inferior; y botón de cerrar (✕). Ref.: video PTCGP (at_0018).
 
 @Composable
 fun ExpansionSelectStage(
     series: SeriesUi,
-    remainingToday: Int,
-    maxPerDay: Int,
+    ownedInSet: Int,
+    totalInSet: Int,
     onBack: () -> Unit,
     onSelect: (ExpansionUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFFE9F1FB), Color(0xFFCFE0F2))))
+            .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        BackRow(series.title, onBack)
-        Spacer(Modifier.height(6.dp))
-        StageHeader("ELIGE UNA EXPANSIÓN", "Sobres restantes hoy: $remainingToday/$maxPerDay")
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(18.dp))
+        Text("Elige una expansión", color = Color(0xFF1B2A3A), fontWeight = FontWeight.Black, fontSize = 20.sp)
+        Spacer(Modifier.height(16.dp))
         series.expansions.forEach { e ->
-            ExpansionCard(e, onClick = { onSelect(e) })
-            Spacer(Modifier.height(14.dp))
+            PocketExpansionCard(e, ownedInSet, totalInSet, onClick = { onSelect(e) })
+            Spacer(Modifier.height(18.dp))
         }
+        Spacer(Modifier.weight(1f))
+        // Pestaña de SERIE (única) — como "A/B Series" de TCG Pocket.
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(Color(0xFFFFFFFF))
+                .border(1.dp, Color(0x22000000), RoundedCornerShape(50))
+                .padding(horizontal = 22.dp, vertical = 8.dp),
+        ) { Text(series.subtitle, color = Color(0xFF1B2A3A), fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        Spacer(Modifier.height(12.dp))
+        // Cerrar (✕) — vuelve a la selección de serie.
+        Box(
+            Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFFFFFFF))
+                .border(1.dp, Color(0x22000000), CircleShape).clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) { Text("✕", color = Color(0xFF5A6B7A), fontWeight = FontWeight.Black, fontSize = 20.sp) }
+        Spacer(Modifier.height(18.dp))
     }
 }
 
+/** Panel de expansión estilo TCG Pocket: logo + progreso "X/total" + chevron, y el sobre asomando abajo. */
 @Composable
-private fun ExpansionCard(expansion: ExpansionUi, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(150.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(expansion.accent.copy(alpha = 0.85f), Color(0xFF0E1220)),
-                ),
-            )
-            .clickable(onClick = onClick),
-    ) {
-        // Arte del sobre a la derecha (grande, sangrando).
+private fun PocketExpansionCard(expansion: ExpansionUi, owned: Int, total: Int, onClick: () -> Unit) {
+    Box(Modifier.fillMaxWidth(0.94f)) {
+        // Panel blanco (queda por debajo del sobre que asoma).
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xFFFFFFFF))
+                .border(1.dp, Color(0x14000000), RoundedCornerShape(18.dp))
+                .clickable(onClick = onClick)
+                .padding(16.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (expansion.logoRes != null) {
+                    Image(
+                        painter = painterResource(expansion.logoRes),
+                        contentDescription = expansion.name,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.weight(1f).height(44.dp),
+                    )
+                } else {
+                    Text(expansion.name, color = Color(0xFF1B2A3A), fontWeight = FontWeight.Black, fontSize = 22.sp,
+                        modifier = Modifier.weight(1f))
+                }
+                Text("›", color = Color(0xFF8A98A6), fontWeight = FontWeight.Black, fontSize = 26.sp)
+            }
+            Spacer(Modifier.height(10.dp))
+            // Progreso de colección: "◆ owned/total" en una píldora clara.
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).background(Color(0xFFEFF3F8)).padding(horizontal = 12.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("◆", color = Color(0xFF5AA9E6), fontSize = 13.sp)
+                Spacer(Modifier.width(6.dp))
+                Text("$owned/$total", color = Color(0xFF33475B), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            }
+            Spacer(Modifier.height(64.dp)) // hueco para que el sobre asome dentro del panel
+        }
+        // Sobre asomando desde el borde inferior del panel (como en TCG Pocket).
         AsyncImage(
             model = expansion.packArtUrl,
             contentDescription = expansion.name,
             contentScale = ContentScale.Fit,
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp)
-                .fillMaxWidth(0.34f)
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(0.30f)
                 .aspectRatio(0.62f),
         )
-        Column(
-            Modifier.align(Alignment.CenterStart).padding(20.dp).fillMaxWidth(0.6f),
-        ) {
-            if (expansion.logoRes != null) {
-                Image(
-                    painter = painterResource(expansion.logoRes),
-                    contentDescription = expansion.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                Text(expansion.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp)
-            }
-            Spacer(Modifier.height(8.dp))
-            Text("Toca para abrir un sobre", color = Color(0xE6FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-        }
     }
 }
 
