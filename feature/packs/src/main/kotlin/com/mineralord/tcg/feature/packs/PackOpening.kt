@@ -17,6 +17,7 @@ import com.mineralord.tcg.core.designsystem.motion.AnimationSprings
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -54,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,6 +64,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,6 +74,8 @@ import com.mineralord.tcg.core.designsystem.CardDetailDialog
 import com.mineralord.tcg.core.designsystem.HoloCardImage
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Rarity
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -110,7 +115,7 @@ fun PackOpeningOverlay(
     ) {
         when (phase) {
             Phase.OPENING -> {
-                LaunchedEffect(Unit) { audio.play(Sfx.WHOOSH); delay(380); index = 0; phase = Phase.REVEAL }
+                LaunchedEffect(Unit) { audio.play(Sfx.WHOOSH); delay(440); index = 0; phase = Phase.REVEAL }
                 OpeningContent()
             }
             Phase.REVEAL -> RevealContent(
@@ -131,18 +136,72 @@ fun PackOpeningOverlay(
 private fun OpeningContent() {
     val scale = remember { Animatable(1f) }
     val alpha = remember { Animatable(1f) }
+    val flash = remember { Animatable(0f) }   // destello radial expandiéndose
+    val seam = remember { Animatable(0f) }     // costura de luz que desgarra el sobre
     LaunchedEffect(Unit) {
-        scale.animateTo(1.25f, tween(300))
+        launch { scale.animateTo(1.32f, tween(340)) }
+        launch { seam.animateTo(1f, tween(300)) }
+        launch { delay(110); flash.animateTo(1f, tween(150)); flash.animateTo(0f, tween(280)) }
+        launch { delay(150); alpha.animateTo(0f, tween(230)) }
     }
-    LaunchedEffect(Unit) {
-        delay(140); alpha.animateTo(0f, tween(240))
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        // Sobre + costura de luz brillante que se abre por el centro.
+        Box(
+            modifier = Modifier.width(220.dp).aspectRatio(0.62f).graphicsLayer {
+                scaleX = scale.value; scaleY = scale.value; this.alpha = alpha.value
+            },
+            contentAlignment = Alignment.Center,
+        ) {
+            BoosterPack(modifier = Modifier.fillMaxSize(), floating = false)
+            Box(
+                Modifier.fillMaxSize().drawBehind {
+                    val s = seam.value
+                    if (s > 0f) {
+                        val h = size.height * 0.02f * (1f + 7f * s)
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.White.copy(alpha = 0.95f), Color.Transparent),
+                            ),
+                            topLeft = Offset(0f, size.height / 2f - h / 2f),
+                            size = Size(size.width, h),
+                        )
+                    }
+                },
+            )
+        }
+        // Destello radial + rayos que estallan al rasgarse el envoltorio.
+        Box(
+            Modifier.fillMaxSize().drawBehind {
+                val f = flash.value
+                if (f <= 0f) return@drawBehind
+                val r = size.minDimension * (0.25f + 0.85f * f)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(
+                            Color.White.copy(alpha = 0.9f * f),
+                            Color(0xFFBFE3FF).copy(alpha = 0.5f * f),
+                            Color.Transparent,
+                        ),
+                        center = center, radius = r,
+                    ),
+                    radius = r, center = center,
+                )
+                // Rayos radiales.
+                val rays = 12
+                for (i in 0 until rays) {
+                    val a = (i.toFloat() / rays) * 6.2832f
+                    val inner = r * 0.2f
+                    val outer = r * (0.9f + 0.3f * f)
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.55f * f),
+                        start = Offset(center.x + cos(a) * inner, center.y + sin(a) * inner),
+                        end = Offset(center.x + cos(a) * outer, center.y + sin(a) * outer),
+                        strokeWidth = 4f,
+                    )
+                }
+            },
+        )
     }
-    BoosterPack(
-        modifier = Modifier.width(220.dp).aspectRatio(0.62f).graphicsLayer {
-            scaleX = scale.value; scaleY = scale.value; this.alpha = alpha.value
-        },
-        floating = false,
-    )
 }
 
 @Composable
@@ -265,10 +324,13 @@ private fun RevealContent(
 
         // Carta central. Giro 3D en raras, escala con rebote en comunes; luego "vuela" a la colección.
         val flightPx = with(density) { 320.dp.toPx() }
+        // Ángulo del giro leído en composición: decide qué cara se ve (frente vs. dorso oficial).
+        val rotY = (1f - flip.value) * 540f + (if (rare) sway * flip.value else 0f)
+        val showingBack = rare && (((rotY % 360f) + 360f) % 360f).let { it > 90f && it < 270f }
         Box(
             modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.80f).aspectRatio(0.72f).graphicsLayer {
                 cameraDistance = 16f * this.density
-                rotationY = (1f - flip.value) * 540f + (if (rare) sway * flip.value else 0f)
+                rotationY = rotY
                 val base = if (rare) 1f else entrance.value
                 val s = base * (1f - 0.72f * collect.value)
                 scaleX = s; scaleY = s
@@ -280,42 +342,54 @@ private fun RevealContent(
             ) { if (!collecting) inspect = card },
             contentAlignment = Alignment.Center,
         ) {
-            // Glow detrás.
-            Box(
-                Modifier.fillMaxSize().drawBehind {
-                    drawRoundRect(
-                        brush = Brush.radialGradient(listOf(accent.copy(alpha = if (rare) 0.85f else 0.5f), Color.Transparent)),
-                        cornerRadius = CornerRadius(40f, 40f),
-                    )
-                },
-            )
-            // Raras: holo REAL (mismo motor que la colección); comunes: arte plano.
-            if (rare) {
-                HoloCardImage(
-                    imageUrl = card.imageLarge ?: card.imageUrl,
-                    setCode = card.setCode,
-                    cardNumber = card.cardNumber,
-                    rarity = card.rarity,
-                    contentDescription = card.name,
-                    intensity = 1.15f,
-                    modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(10.dp)),
+            if (showingBack) {
+                // Cara trasera: dorso oficial Pokémon (contra-rotado 180° para no verse en espejo).
+                Image(
+                    painter = painterResource(R.drawable.card_back_default),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize().padding(8.dp)
+                        .graphicsLayer { rotationY = 180f }
+                        .clip(RoundedCornerShape(10.dp)),
                 )
             } else {
-                CardFace(card, Modifier.fillMaxSize().padding(8.dp))
-            }
-            // NUEVA badge.
-            if (card.isNew) {
+                // Glow detrás.
                 Box(
-                    Modifier.align(Alignment.TopCenter).padding(top = 2.dp).clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFF35C4E8)).padding(horizontal = 10.dp, vertical = 3.dp),
-                ) { Text("NUEVA", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp) }
+                    Modifier.fillMaxSize().drawBehind {
+                        drawRoundRect(
+                            brush = Brush.radialGradient(listOf(accent.copy(alpha = if (rare) 0.85f else 0.5f), Color.Transparent)),
+                            cornerRadius = CornerRadius(40f, 40f),
+                        )
+                    },
+                )
+                // Raras: holo REAL (mismo motor que la colección); comunes: arte plano.
+                if (rare) {
+                    HoloCardImage(
+                        imageUrl = card.imageLarge ?: card.imageUrl,
+                        setCode = card.setCode,
+                        cardNumber = card.cardNumber,
+                        rarity = card.rarity,
+                        contentDescription = card.name,
+                        intensity = 1.15f,
+                        modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(10.dp)),
+                    )
+                } else {
+                    CardFace(card, Modifier.fillMaxSize().padding(8.dp))
+                }
+                // NUEVA badge.
+                if (card.isNew) {
+                    Box(
+                        Modifier.align(Alignment.TopCenter).padding(top = 2.dp).clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF35C4E8)).padding(horizontal = 10.dp, vertical = 3.dp),
+                    ) { Text("NUEVA", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp) }
+                }
+                SparkleBurst(
+                    trigger = index,
+                    color = if (rare) accent else Color.White,
+                    intensity = if (rare) 26 else 14,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
-            SparkleBurst(
-                trigger = index,
-                color = if (rare) accent else Color.White,
-                intensity = if (rare) 26 else 14,
-                modifier = Modifier.fillMaxSize(),
-            )
         }
 
         // Cartel de la cinemática de colección.
@@ -423,24 +497,23 @@ private fun CardFace(card: RevealedCard, modifier: Modifier = Modifier) {
     }
 }
 
-/** Pila de dorsos "TCG" abanicada (cartas que quedan por revelar). */
+/** Pila abanicada de dorsos oficiales Pokémon (cartas que quedan por revelar). */
 @Composable
 private fun BackStack(remaining: Int, modifier: Modifier = Modifier) {
     if (remaining <= 0) return
     val n = remaining.coerceAtMost(5)
     Box(modifier = modifier) {
         repeat(n) { i ->
-            Box(
+            Image(
+                painter = painterResource(R.drawable.card_back_default),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxHeight()
                     .aspectRatio(0.72f)
                     .graphicsLayer { translationX = i * 6f }
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Brush.linearGradient(listOf(TcgColors.Red, TcgColors.RedDark))),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (i == n - 1) Text("TCG", color = TcgColors.Gold, fontWeight = FontWeight.Black, fontSize = 12.sp)
-            }
+                    .clip(RoundedCornerShape(8.dp)),
+            )
         }
     }
 }
