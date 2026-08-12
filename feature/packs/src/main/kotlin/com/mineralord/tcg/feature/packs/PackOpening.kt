@@ -70,8 +70,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.mineralord.tcg.core.designsystem.CardDetailDialog
-import com.mineralord.tcg.core.designsystem.HoloCardImage
+import com.mineralord.tcg.core.designsystem.InteractiveHoloCard
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Rarity
 import kotlin.math.cos
@@ -272,9 +271,6 @@ private fun RevealContent(
         if (card.isNew) collecting = true else onAdvance()
     }
 
-    // Carta que se está viendo a detalle (mismo visor de la colección: holo + dedo). Null = revelado.
-    var inspect by remember { mutableStateOf<RevealedCard?>(null) }
-
     Box(
         modifier = Modifier.fillMaxSize().clickable(
             interactionSource = remember { MutableInteractionSource() }, indication = null,
@@ -337,9 +333,7 @@ private fun RevealContent(
                 translationY = -flightPx * collect.value
                 translationX = with(density) { 90.dp.toPx() } * collect.value
                 alpha = 1f - (collect.value * collect.value)
-            }.clickable(
-                interactionSource = remember { MutableInteractionSource() }, indication = null,
-            ) { if (!collecting) inspect = card },
+            },
             contentAlignment = Alignment.Center,
         ) {
             if (showingBack) {
@@ -362,20 +356,16 @@ private fun RevealContent(
                         )
                     },
                 )
-                // Raras: holo REAL (mismo motor que la colección); comunes: arte plano.
-                if (rare) {
-                    HoloCardImage(
-                        imageUrl = card.imageLarge ?: card.imageUrl,
-                        setCode = card.setCode,
-                        cardNumber = card.cardNumber,
-                        rarity = card.rarity,
-                        contentDescription = card.name,
-                        intensity = 1.15f,
-                        modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(10.dp)),
-                    )
-                } else {
-                    CardFace(card, Modifier.fillMaxSize().padding(8.dp))
-                }
+                // TODAS las cartas: front HD + holo interactivo con el dedo (arrastrar = inclinar,
+                // tocar = avanzar). Mismo motor que el visor de la colección, embebido en el revelado.
+                InteractiveHoloCard(
+                    imageUrl = card.imageLarge ?: card.imageUrl,
+                    setCode = card.setCode,
+                    cardNumber = card.cardNumber,
+                    rarity = card.rarity,
+                    contentDescription = card.name,
+                    modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(10.dp)),
+                )
                 // NUEVA badge.
                 if (card.isNew) {
                     Box(
@@ -429,20 +419,6 @@ private fun RevealContent(
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
                 .graphicsLayer { alpha = 1f - collect.value },
         ) { Text("RECIBIR TODO", fontWeight = FontWeight.Black, fontSize = 12.sp) }
-    }
-
-    // Visor a detalle = EL MISMO de la colección (holo + inclinación/zoom con el dedo).
-    inspect?.let { c ->
-        CardDetailDialog(
-            imageUrl = c.imageLarge ?: c.imageUrl ?: "",
-            contentDescription = c.name,
-            onDismiss = { inspect = null },
-            rarity = c.rarity,
-            cardNumber = c.cardNumber,
-            setCode = c.setCode,
-            copiesOwned = c.copiesOwned,
-            copiesCap = c.cap,
-        )
     }
 }
 

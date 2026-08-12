@@ -73,54 +73,7 @@ val PACK_CATALOG: List<SeriesUi> = listOf(
     ),
 )
 
-// ============================ ETAPA 1 · ELEGIR SERIE ============================
-
-@Composable
-fun SeriesSelectStage(
-    series: List<SeriesUi>,
-    onSelect: (SeriesUi) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        StageHeader("ELIGE UNA SERIE", "Selecciona una serie de cartas")
-        Spacer(Modifier.height(20.dp))
-        series.forEach { s ->
-            SeriesCard(s, onClick = { onSelect(s) })
-            Spacer(Modifier.height(14.dp))
-        }
-    }
-}
-
-@Composable
-private fun SeriesCard(series: SeriesUi, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(112.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(series.accent.copy(alpha = 0.95f), series.accent.copy(alpha = 0.55f), Color(0xFF0E1220)),
-                ),
-            )
-            .clickable(onClick = onClick)
-            .padding(20.dp),
-    ) {
-        Column(Modifier.align(Alignment.CenterStart)) {
-            Text(series.subtitle.uppercase(), color = Color(0xCCFFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Text(series.title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp)
-            Spacer(Modifier.height(4.dp))
-            Text("${series.expansions.size} expansión(es)", color = Color(0xCCFFFFFF), fontSize = 12.sp)
-        }
-        Chevron(Modifier.align(Alignment.CenterEnd))
-    }
-}
-
-// ========================== ETAPA 2 · ELEGIR EXPANSIÓN (estilo TCG Pocket) ==========================
+// ========================== ELEGIR EXPANSIÓN (estilo TCG Pocket) ==========================
 // Réplica de "Select Expansion": fondo claro, panel blanco por expansión con LOGO + progreso de
 // colección "X/total" (icono diamante) + chevron y las MINIATURAS del sobre asomando abajo; la SERIE
 // como PESTAÑA inferior; y botón de cerrar (✕). Ref.: video PTCGP (at_0018).
@@ -130,7 +83,6 @@ fun ExpansionSelectStage(
     series: SeriesUi,
     ownedInSet: Int,
     totalInSet: Int,
-    onBack: () -> Unit,
     onSelect: (ExpansionUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -157,13 +109,6 @@ fun ExpansionSelectStage(
                 .border(1.dp, Color(0x22000000), RoundedCornerShape(50))
                 .padding(horizontal = 22.dp, vertical = 8.dp),
         ) { Text(series.subtitle, color = Color(0xFF1B2A3A), fontWeight = FontWeight.Bold, fontSize = 13.sp) }
-        Spacer(Modifier.height(12.dp))
-        // Cerrar (✕) — vuelve a la selección de serie.
-        Box(
-            Modifier.size(46.dp).clip(CircleShape).background(Color(0xFFFFFFFF))
-                .border(1.dp, Color(0x22000000), CircleShape).clickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) { Text("✕", color = Color(0xFF5A6B7A), fontWeight = FontWeight.Black, fontSize = 20.sp) }
         Spacer(Modifier.height(18.dp))
     }
 }
@@ -222,38 +167,3 @@ private fun PocketExpansionCard(expansion: ExpansionUi, owned: Int, total: Int, 
     }
 }
 
-// ================================ COMPARTIDOS ================================
-
-@Composable
-private fun StageHeader(title: String, subtitle: String) {
-    Text(title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(4.dp))
-    Text(subtitle, color = Color(0xB3FFFFFF), fontSize = 13.sp, textAlign = TextAlign.Center)
-}
-
-@Composable
-private fun BackRow(title: String, onBack: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color(0x22FFFFFF))
-                .clickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) { Text("‹", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp) }
-        Spacer(Modifier.width(10.dp))
-        Text(title, color = Color(0xCCFFFFFF), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun Chevron(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(Color(0x33FFFFFF)),
-        contentAlignment = Alignment.Center,
-    ) { Text("›", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp) }
-}
