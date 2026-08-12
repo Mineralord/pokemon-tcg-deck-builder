@@ -301,20 +301,19 @@ private fun TornTopOverlay(progress: Float, modifier: Modifier = Modifier) {
             topLeft = Offset(0f, 0f),
             size = Size(revealW, (tearY - lift).coerceAtLeast(0f)),
         )
-        // Borde dentado brillante en el frente del rasgado.
-        val teeth = 14
-        val step = size.width / teeth
+        // Borde DENTADO brillante en el frente del rasgado — MISMO zigzag que la máscara del sobre.
+        val amp = size.height * SEAM_AMPLITUDE
+        val step = size.width / SEAM_TEETH
         val edgeX = revealW
         val path = Path()
-        var x = 0f
-        var up = true
-        path.moveTo(0f, tearY)
-        while (x < edgeX) {
-            x += step
-            path.lineTo(x.coerceAtMost(edgeX), if (up) tearY - 8f else tearY + 8f)
-            up = !up
+        path.moveTo(0f, tearY - amp)
+        var i = 1
+        while (i * step <= edgeX && i <= SEAM_TEETH) {
+            val x = i * step
+            path.lineTo(x, if (i % 2 == 0) tearY - amp else tearY + amp)
+            i++
         }
-        drawPath(path, color = Color.White.copy(alpha = 0.9f), style = Stroke(width = 3f))
+        drawPath(path, color = Color.White.copy(alpha = 0.95f), style = Stroke(width = 3f))
         // Chispita en la punta del rasgado.
         if (progress < 1f) {
             drawCircle(Color.White, radius = 6f, center = Offset(edgeX.coerceIn(0f, size.width), tearY))

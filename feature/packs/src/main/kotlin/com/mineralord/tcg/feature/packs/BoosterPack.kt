@@ -15,8 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +47,7 @@ fun TearablePack(
     seamFraction: Float = 0.16f,
 ) {
     Box(modifier) {
-        // Cuerpo del sobre (parte de ABAJO de la costura): estático.
+        // Cuerpo del sobre (región POR DEBAJO de la costura dentada): estático.
         AsyncImage(
             model = artUrl,
             contentDescription = "Sobre",
@@ -54,10 +55,13 @@ fun TearablePack(
             modifier = Modifier
                 .fillMaxSize()
                 .drawWithContent {
-                    clipRect(top = size.height * seamFraction) { this@drawWithContent.drawContent() }
+                    val amp = size.height * SEAM_AMPLITUDE
+                    val path = seamPath(size.width, size.height, size.height * seamFraction, amp, SEAM_TEETH, below = true)
+                    clipPath(path) { this@drawWithContent.drawContent() }
                 },
         )
-        // Tira SUPERIOR de la costura: se despega con el rasgado (sube, gira y se atenúa).
+        // Tira SUPERIOR (región POR ENCIMA de la costura dentada): se despega al rasgar.
+        // La máscara en zigzag es COMPLEMENTARIA de la del cuerpo, así encajan como papel roto.
         AsyncImage(
             model = artUrl,
             contentDescription = null,
@@ -72,10 +76,39 @@ fun TearablePack(
                     alpha = 1f - tear * 0.65f
                 }
                 .drawWithContent {
-                    clipRect(bottom = size.height * seamFraction) { this@drawWithContent.drawContent() }
+                    val amp = size.height * SEAM_AMPLITUDE
+                    val path = seamPath(size.width, size.height, size.height * seamFraction, amp, SEAM_TEETH, below = false)
+                    clipPath(path) { this@drawWithContent.drawContent() }
                 },
         )
     }
+}
+
+/** Nº de dientes y amplitud (fracción de la altura) de la costura de rasgado — compartidos con la costura de luz. */
+internal const val SEAM_TEETH = 22
+internal const val SEAM_AMPLITUDE = 0.02f
+
+/**
+ * Región cerrada delimitada por la costura DENTADA en [seamY]: [below] = todo lo que queda por
+ * DEBAJO del zigzag (cuerpo del sobre); `false` = todo lo que queda por ENCIMA (tira despegable).
+ * Ambas regiones comparten los MISMOS vértices, por lo que encajan exactamente al ensamblarse.
+ */
+internal fun seamPath(width: Float, height: Float, seamY: Float, amp: Float, teeth: Int, below: Boolean): Path {
+    val step = width / teeth
+    val p = Path()
+    p.moveTo(0f, seamY - amp)
+    for (i in 1..teeth) {
+        val x = i * step
+        val y = if (i % 2 == 0) seamY - amp else seamY + amp
+        p.lineTo(x, y)
+    }
+    if (below) {
+        p.lineTo(width, height); p.lineTo(0f, height)
+    } else {
+        p.lineTo(width, 0f); p.lineTo(0f, 0f)
+    }
+    p.close()
+    return p
 }
 
 /**
