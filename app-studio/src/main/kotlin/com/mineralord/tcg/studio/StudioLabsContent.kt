@@ -366,6 +366,50 @@ private fun ConfigButton(label: String, scheme: StudioColorTokens.Scheme, onClic
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PACK SIMULATOR — dominio: la apertura de sobres. Un botón entra al simulador a PANTALLA
+// COMPLETA (puentea el Shell, como el Modo Partida): elegir expansión → rasgar → revelado.
+// Reutiliza feature:packs (PackOpeningSimulator) SIN monedero ni límites.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun PackSimulatorLabContent(
+    onEnterFullscreen: (@Composable () -> Unit) -> Unit,
+    onExitFullscreen: () -> Unit,
+) {
+    val scheme = StudioTheme.colors
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        BasicText(
+            "🎴 Simulador de Sobres",
+            style = StudioTypographyTokens.Role.Title.copy(color = scheme.contentEmphasis),
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        BasicText(
+            "Abre sobres del set 151 sin límites ni monedero. Recorre el mismo flujo del juego:\n" +
+                "elegir expansión → rasgar el sobre con el dedo → revelado carta a carta (holo, giro 3D\n" +
+                "de raras y cinemática de carta nueva), todo a pantalla completa.",
+            style = StudioTypographyTokens.Role.Label.copy(color = scheme.contentMuted),
+            modifier = Modifier.padding(bottom = 16.dp),
+        )
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(scheme.surfaceRaised)
+                .clickable {
+                    onEnterFullscreen {
+                        com.mineralord.tcg.feature.packs.PackOpeningSimulator(onExit = onExitFullscreen)
+                    }
+                }
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+        ) {
+            BasicText(
+                "⤢  Abrir simulador (pantalla completa)",
+                style = StudioTypographyTokens.Role.Label.copy(color = scheme.contentEmphasis),
+            )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Bottom Sheet flotante + Grab Handle (tres anclas: oculto / peek / abierto)
 // ─────────────────────────────────────────────────────────────────────────────
 

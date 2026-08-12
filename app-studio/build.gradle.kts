@@ -55,6 +55,10 @@ dependencies {
     // (GameViewModel: GameEngine + SmartAgent) reutilizando feature:match. NO arrastra red/Firebase
     // (eso vive en feature:game, del que el Studio SIGUE sin depender): Arquitectura Dual intacta.
     implementation(project(":feature:match"))
+    // SIMULADOR DE APERTURA DE SOBRES: el Studio hospeda el MISMO flujo de sobres del juego
+    // (feature:packs) a pantalla completa. feature:packs es network-free (gacha/cards/profile locales,
+    // sin Firebase/red): compatible con la Arquitectura Dual, igual que feature:combat/match.
+    implementation(project(":feature:packs"))
     // Motor de animaciones compartido (núcleo): el Studio HOSPEDA el mismo pipeline que el juego.
     // Es núcleo compartido (Compose puro, sin reglas de juego/red/Firebase): compatible con la
     // Arquitectura Dual y la Regla de Oro. `core:animation` llega transitivamente (api).

@@ -37,4 +37,10 @@ fun studioLabs(
     Lab(id = "animation-gallery", title = "Galería de Animaciones") {
         AnimationGalleryLabContent(session.registry)
     },
+    Lab(id = "pack-simulator", title = "Simulador de Sobres") {
+        PackSimulatorLabContent(
+            onEnterFullscreen = onEnterFullscreen,
+            onExitFullscreen = onExitFullscreen,
+        )
+    },
 )

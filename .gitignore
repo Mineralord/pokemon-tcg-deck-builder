@@ -34,3 +34,5 @@ app/google-services.json
 # Volcados de referencia locales (capturas pesadas; no van al remoto)
 /tcglive-capture/
 /referencias_live - copia/
+
+entregables/

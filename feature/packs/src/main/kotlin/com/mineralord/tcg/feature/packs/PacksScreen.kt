@@ -321,6 +321,151 @@ private fun TornTopOverlay(progress: Float, modifier: Modifier = Modifier) {
     }
 }
 
+// ============================ SIMULADOR DE APERTURA (Studio) ============================
+
+/** Datos precargados para el simulador: catálogo de rarezas del 151 + energías + colección efímera. */
+private class SimPacks(
+    val repo: com.mineralord.tcg.data.cards.CardRepository,
+    val pool: com.mineralord.tcg.data.gacha.PackPool,
+    val energyIds: List<com.mineralord.tcg.engine.model.CardId>,
+    val totalInSet: Int,
+) {
+    private val opener = com.mineralord.tcg.data.gacha.PackOpener()
+    /** Colección EFÍMERA (solo en memoria): permite que "NUEVA" aparezca la primera vez y no después. */
+    val owned = HashMap<String, Int>()
+
+    fun generate(): List<RevealedCard> {
+        val opened = opener.open(
+            com.mineralord.tcg.data.gacha.RarityWeights.templateFor(SET_151_CODE),
+            pool, kotlin.random.Random(System.nanoTime()), energyIds,
+        )
+        val running = HashMap<String, Int>()
+        val revealed = opened.map { oc ->
+            val card = repo[oc.id]
+            val cap = com.mineralord.tcg.data.profile.ProfileRepository.capFor(oc.id.raw)
+            val idRaw = oc.id.raw
+            val before = ((owned[idRaw] ?: 0) + (running[idRaw] ?: 0)).coerceAtMost(cap)
+            running[idRaw] = (running[idRaw] ?: 0) + 1
+            RevealedCard(
+                name = card?.name?.es ?: idRaw,
+                rarity = oc.rarity,
+                imageUrl = card?.artwork?.smallEs,
+                isNew = before == 0,
+                copiesOwned = (before + 1).coerceAtMost(cap),
+                cap = cap,
+                imageLarge = card?.artwork?.large(true),
+                cardNumber = idRaw.substringAfterLast('-').toIntOrNull(),
+                setCode = if (idRaw.startsWith("energy")) "energy" else idRaw.substringBeforeLast('-'),
+            )
+        }
+        // Acredita a la colección efímera (para el "NUEVA" de futuras aperturas en la misma sesión).
+        opened.forEach { owned[it.id.raw] = (owned[it.id.raw] ?: 0) + 1 }
+        return revealed
+    }
+
+    companion object {
+        private const val SET_151_PREFIX = "sv3pt5-"
+        private const val SET_151_CODE = "sv3pt5"
+
+        suspend fun load(): SimPacks {
+            val r = com.mineralord.tcg.data.cards.CardRepository.load()
+            val pool151 = r.all.filter {
+                it.id.raw.startsWith(SET_151_PREFIX) &&
+                    !com.mineralord.tcg.data.profile.ProfileRepository.isEnergyId(it.id.raw)
+            }
+            val energies = r.all
+                .filter { com.mineralord.tcg.data.profile.ProfileRepository.isEnergyId(it.id.raw) }
+                .map { it.id }
+            val total = r.all.count { it.id.raw.startsWith(SET_151_PREFIX) }
+            return SimPacks(r, com.mineralord.tcg.data.gacha.PackPool.from(pool151), energies, total)
+        }
+    }
+}
+
+/**
+ * **Simulador de apertura de sobres a PANTALLA COMPLETA** (para el Studio). Recorre el MISMO flujo del
+ * juego —elegir expansión → rasgar el sobre → revelado carta a carta— pero SIN monedero ni límites: se
+ * puede abrir cuantas veces se quiera. No usa [PacksViewModel] (no persiste nada): mantiene una
+ * colección EFÍMERA en memoria solo para decidir el badge "NUEVA". [onExit] vuelve al Studio.
+ */
+@Composable
+fun PackOpeningSimulator(
+    modifier: Modifier = Modifier,
+    onExit: () -> Unit = {},
+) {
+    val sim by androidx.compose.runtime.produceState<SimPacks?>(null) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { SimPacks.load() }
+    }
+    val series = remember { PACK_CATALOG.first() }
+    var step by remember { mutableStateOf(PackStep.EXPANSION) }
+    var expansion by remember { mutableStateOf<ExpansionUi?>(null) }
+    var opening by remember { mutableStateOf(false) }
+    var revealed by remember { mutableStateOf<List<RevealedCard>>(emptyList()) }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFF0A0E1A), Color(0xFF161B2E), Color(0xFF0A0E1A)))),
+    ) {
+        val s = sim
+        if (s == null) {
+            CircularProgressIndicator(color = Color.White, modifier = Modifier.align(Alignment.Center))
+            return@Box
+        }
+
+        if (opening) {
+            PackOpeningOverlay(
+                cards = revealed,
+                setLabel = "${series.title} · ${expansion?.name ?: "151"}",
+                remainingToday = 999,
+                onDismiss = { opening = false; step = PackStep.PACK },
+            )
+            return@Box
+        }
+
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                val forward = targetState.ordinal > initialState.ordinal
+                val dir = if (forward) 1 else -1
+                (slideInHorizontally(tween(320)) { w -> dir * w } + fadeIn(tween(220))) togetherWith
+                    (slideOutHorizontally(tween(320)) { w -> -dir * w } + fadeOut(tween(180)))
+            },
+            label = "simStep",
+        ) { st ->
+            when (st) {
+                PackStep.EXPANSION -> ExpansionSelectStage(
+                    series = series,
+                    ownedInSet = s.owned.size,
+                    totalInSet = s.totalInSet,
+                    onSelect = { expansion = it; step = PackStep.PACK },
+                )
+                PackStep.PACK -> PackStage(
+                    expansion = expansion ?: series.expansions.first(),
+                    remainingToday = 999,
+                    maxPerDay = 999,
+                    secondsToNext = null,
+                    deniedMessage = null,
+                    onBack = { step = PackStep.EXPANSION },
+                    onOpen = { revealed = s.generate(); opening = true },
+                    onExpire = {},
+                )
+            }
+        }
+
+        // Salir del simulador (vuelve al Studio). Oculto durante el revelado (que ocupa todo).
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color(0x66000000))
+                .clickable(onClick = onExit)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) { Text("✕ Salir", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+    }
+}
+
 /** Formatea segundos como HH:MM:SS (o MM:SS si <1h) para la cuenta atrás del próximo sobre. */
 private fun fmtCountdown(totalSeconds: Long): String {
     val s = totalSeconds.coerceAtLeast(0)
