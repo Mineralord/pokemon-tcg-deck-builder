@@ -8,6 +8,10 @@ import android.os.VibratorManager
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import com.mineralord.tcg.core.designsystem.motion.AnimationSprings
 import androidx.compose.animation.fadeIn
@@ -49,12 +53,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,9 +68,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.CardDetailDialog
+import com.mineralord.tcg.core.designsystem.HoloCardImage
 import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private enum class Phase { OPENING, REVEAL, SUMMARY }
 
@@ -148,22 +156,61 @@ private fun RevealContent(
     onSkip: () -> Unit,
 ) {
     val card = cards[index]
+    // Rareza doble-rara o superior: giro 3D + brillo holográfico + confeti (como el Venusaur ex).
     val rare = card.rarity.ordinal >= Rarity.DOUBLE_RARE.ordinal
     val accent = rarityColor(card.rarity)
+    val density = LocalDensity.current
 
-    // Entrada de la carta (escala con rebote) + sonidos/háptico por carta.
-    val entrance = remember { Animatable(0f) }
+    // Sub-fase de la carta: entrada (giro/escala) → asentada → (si es NUEVA) cinemática "a la colección".
+    var collecting by remember { mutableStateOf(false) }
+    val entrance = remember { Animatable(0.6f) }   // escala para cartas normales
+    val flip = remember { Animatable(0f) }          // 0=canto → 1=de frente (giro 3D de raras)
+    val bgLight = remember { Animatable(0f) }        // fondo iridiscente claro en raras
+    val collect = remember { Animatable(0f) }        // vuelo hacia la colección (cartas nuevas)
+
     LaunchedEffect(index) {
-        entrance.snapTo(0.6f)
+        collecting = false
+        collect.snapTo(0f)
+        bgLight.snapTo(0f)
         audio.play(Sfx.WHOOSH)
         if (rare) {
+            entrance.snapTo(1f)
+            flip.snapTo(0f)
             audio.play(Sfx.RARE)
-            vibrator?.let { it.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE)) }
+            vibrator?.vibrate(VibrationEffect.createOneShot(70, VibrationEffect.DEFAULT_AMPLITUDE))
+            launch { bgLight.animateTo(1f, tween(650)) }
+            // Varias vueltas que desaceleran hasta quedar de frente.
+            flip.animateTo(1f, tween(1250, easing = com.mineralord.tcg.core.designsystem.motion.AnimationCurves.EmphasizedDecelerate))
         } else {
+            flip.snapTo(1f)
+            entrance.snapTo(0.6f)
             audio.play(Sfx.SPARKLE)
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            entrance.animateTo(1f, AnimationSprings.bouncy())
         }
-        entrance.animateTo(1f, AnimationSprings.bouncy())
+    }
+
+    // Vaivén sutil continuo en raras: mantiene vivo el brillo holográfico tras asentarse.
+    val infinite = rememberInfiniteTransition(label = "raroSway")
+    val sway by infinite.animateFloat(
+        initialValue = -7f, targetValue = 7f,
+        animationSpec = infiniteRepeatable(tween(2600), RepeatMode.Reverse), label = "swayY",
+    )
+
+    // Cinemática "añadida a tu colección": la carta se encoge y vuela hacia el contador de la Cartadex.
+    LaunchedEffect(collecting) {
+        if (collecting) {
+            audio.play(Sfx.SPARKLE)
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            collect.animateTo(1f, tween(1050, easing = com.mineralord.tcg.core.designsystem.motion.AnimationCurves.EmphasizedAccelerate))
+            onAdvance()
+        }
+    }
+
+    // Toque = avanzar. Si la carta es NUEVA, primero reproduce la cinemática de colección.
+    fun advance() {
+        if (collecting) return
+        if (card.isNew) collecting = true else onAdvance()
     }
 
     // Carta que se está viendo a detalle (mismo visor de la colección: holo + dedo). Null = revelado.
@@ -172,32 +219,65 @@ private fun RevealContent(
     Box(
         modifier = Modifier.fillMaxSize().clickable(
             interactionSource = remember { MutableInteractionSource() }, indication = null,
-        ) { onAdvance() },
+        ) { advance() },
     ) {
+        // Fondo iridiscente claro que asoma en revelados raros (estilo TCG Pocket).
+        if (rare) {
+            Box(
+                Modifier.fillMaxSize().graphicsLayer { alpha = bgLight.value }.drawBehind {
+                    drawRect(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFFDCE7F5), Color(0xFFEDE3F5), Color(0xFFDCEFF0)),
+                        ),
+                    )
+                    drawRect(
+                        Brush.radialGradient(
+                            listOf(accent.copy(alpha = 0.22f), Color.Transparent),
+                            center = Offset(size.width / 2f, size.height * 0.42f),
+                            radius = size.minDimension * 0.75f,
+                        ),
+                    )
+                },
+            )
+        }
+
         // Pila de dorsos a la izquierda (cartas restantes).
         BackStack(
             remaining = cards.size - index - 1,
             modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp).width(70.dp).fillMaxHeight(0.5f),
         )
 
-        // Nombre de la carta.
+        // Nombre de la carta (se atenúa durante la cinemática de colección).
         Text(
             card.name,
-            color = Color.White,
+            color = if (rare) Color(0xFF2A2438) else Color.White,
             fontWeight = FontWeight.Black,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 110.dp, start = 24.dp, end = 24.dp),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 110.dp, start = 24.dp, end = 24.dp)
+                .graphicsLayer { alpha = 1f - collect.value },
         )
 
-        // Carta central + chispas + glow. Ampliada (antes 0.62) para verse prominente como el visor.
-        // Tocar la carta abre el MISMO visor de la colección (holo + manipulación con el dedo).
+        // Confeti para raras (por detrás de la carta, estalla al revelar).
+        if (rare) {
+            ConfettiBurst(trigger = index, intensity = 42, modifier = Modifier.fillMaxSize())
+        }
+
+        // Carta central. Giro 3D en raras, escala con rebote en comunes; luego "vuela" a la colección.
+        val flightPx = with(density) { 320.dp.toPx() }
         Box(
             modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.80f).aspectRatio(0.72f).graphicsLayer {
-                scaleX = entrance.value; scaleY = entrance.value
+                cameraDistance = 16f * this.density
+                rotationY = (1f - flip.value) * 540f + (if (rare) sway * flip.value else 0f)
+                val base = if (rare) 1f else entrance.value
+                val s = base * (1f - 0.72f * collect.value)
+                scaleX = s; scaleY = s
+                translationY = -flightPx * collect.value
+                translationX = with(density) { 90.dp.toPx() } * collect.value
+                alpha = 1f - (collect.value * collect.value)
             }.clickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null,
-            ) { inspect = card },
+            ) { if (!collecting) inspect = card },
             contentAlignment = Alignment.Center,
         ) {
             // Glow detrás.
@@ -209,7 +289,20 @@ private fun RevealContent(
                     )
                 },
             )
-            CardFace(card, Modifier.fillMaxSize().padding(8.dp))
+            // Raras: holo REAL (mismo motor que la colección); comunes: arte plano.
+            if (rare) {
+                HoloCardImage(
+                    imageUrl = card.imageLarge ?: card.imageUrl,
+                    setCode = card.setCode,
+                    cardNumber = card.cardNumber,
+                    rarity = card.rarity,
+                    contentDescription = card.name,
+                    intensity = 1.15f,
+                    modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(10.dp)),
+                )
+            } else {
+                CardFace(card, Modifier.fillMaxSize().padding(8.dp))
+            }
             // NUEVA badge.
             if (card.isNew) {
                 Box(
@@ -225,19 +318,33 @@ private fun RevealContent(
             )
         }
 
+        // Cartel de la cinemática de colección.
+        if (card.isNew) {
+            Text(
+                "¡Añadida a tu colección!",
+                color = if (rare) Color(0xFF2A2438) else Color.White,
+                fontWeight = FontWeight.Black,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.Center).padding(top = 260.dp)
+                    .graphicsLayer { alpha = collect.value },
+            )
+        }
+
         // Contador "COPIAS EN LA COLECCIÓN n/4".
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp)
+                .graphicsLayer { alpha = 1f - collect.value },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("COPIAS EN LA COLECCIÓN", color = Color(0xAAFFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("COPIAS EN LA COLECCIÓN", color = if (rare) Color(0xCC2A2438) else Color(0xAAFFFFFF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(4.dp)
             val pop = remember(index) { Animatable(0.5f) }
             LaunchedEffect(index) { pop.snapTo(0.5f); pop.animateTo(1f, AnimationSprings.bouncy()) }
             Box(
                 Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }
-                    .clip(RoundedCornerShape(50)).background(Color(0x33FFFFFF)).padding(horizontal = 18.dp, vertical = 4.dp),
-            ) { Text("${card.copiesOwned}/${card.cap}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+                    .clip(RoundedCornerShape(50)).background(if (rare) Color(0x332A2438) else Color(0x33FFFFFF)).padding(horizontal = 18.dp, vertical = 4.dp),
+            ) { Text("${card.copiesOwned}/${card.cap}", color = if (rare) Color(0xFF2A2438) else Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
         }
 
         // RECIBIR TODO.
@@ -245,7 +352,8 @@ private fun RevealContent(
             onClick = onSkip,
             colors = ButtonDefaults.buttonColors(containerColor = TcgColors.Red, contentColor = Color.White),
             shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
+                .graphicsLayer { alpha = 1f - collect.value },
         ) { Text("RECIBIR TODO", fontWeight = FontWeight.Black, fontSize = 12.sp) }
     }
 
