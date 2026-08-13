@@ -14,7 +14,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,23 +43,16 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -76,7 +68,6 @@ import com.mineralord.tcg.core.designsystem.motion.AnimationCurves
 import com.mineralord.tcg.core.designsystem.motion.AnimationSprings
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 
@@ -102,7 +93,6 @@ fun PackOpeningOverlay(
     onDismiss: () -> Unit,
     speed: Float = 1f,
     autoAdvance: Boolean = false,
-    packArtUrl: String? = null,   // arte del MISMO sobre → sobre abierto persistente (mismo actor)
     onBeat: (Beat) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -145,7 +135,6 @@ fun PackOpeningOverlay(
                     feedback = feedback,
                     speed = spd,
                     autoAdvance = autoAdvance,
-                    packArtUrl = packArtUrl,
                     onBeat = onBeat,
                     onAdvance = { if (index >= cards.size - 1) phase = Phase.SUMMARY else index++ },
                     onSkip = { phase = Phase.SUMMARY },
@@ -207,7 +196,6 @@ private fun CardScene(
     feedback: BoosterFeedback,
     speed: Float,
     autoAdvance: Boolean,
-    packArtUrl: String?,
     onBeat: (Beat) -> Unit,
     onAdvance: () -> Unit,
     onSkip: () -> Unit,
@@ -218,8 +206,7 @@ private fun CardScene(
     fun dur(ms: Int) = (ms / speed).toInt().coerceAtLeast(1)
 
     // Animatables de la escena.
-    val emerge = remember { Animatable(0f) }    // 0 dentro del sobre (oculta) → 1 asomando por el borde
-    val separate = remember { Animatable(0f) }  // 0 en la boca del sobre → 1 separada, en primer plano
+    val emerge = remember { Animatable(0f) }   // 0 dentro del sobre → 1 presentada
     val flip = remember { Animatable(0f) }      // 0 dorso → 1 frente
     val glow = remember { Animatable(0f) }
     val camera = remember { Animatable(0f) }    // punch de cámara al asentar
@@ -231,10 +218,8 @@ private fun CardScene(
     var revealed by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }   // identidad/recompensa: DESPUÉS del reveal
     var leaving by remember { mutableStateOf(false) }
-    var awaitingExtract by remember { mutableStateOf(false) }  // esperando que el jugador SAQUE la carta
     var sparkTrigger by remember { mutableIntStateOf(0) }
     val flash = remember { Animatable(0f) }              // destello dirigido del reveal (IMPACT+)
-    val scope = rememberCoroutineScope()
 
     // Vaivén sutil continuo tras asentar (mantiene vivo el holo en premium).
     val infinite = rememberInfiniteTransition(label = "cardSway")
@@ -244,25 +229,14 @@ private fun CardScene(
 
     // Timeline por BEATS.
     LaunchedEffect(Unit) {
-        // BEAT 08 — CARD EMERGENCE: el dorso, oculto dentro, sube y ASOMA por el borde del sobre.
+        // BEAT 08 — EMERGENCE: la carta boca abajo sube del interior.
         beat = Beat.EMERGENCE; onBeat(beat)
         feedback.sfx(SfxCue.CARD_EMERGE); feedback.haptic(HapticCue.EMERGE)
-        emerge.animateTo(1f, tween(dur(620), easing = AnimationCurves.EmphasizedDecelerate))
-        // BEAT 09/07 — CARD_BACK + ANTICIPATION: la carta asomada (boca abajo), respiro.
+        emerge.animateTo(1f, tween(dur(560), easing = AnimationCurves.EmphasizedDecelerate))
+        // BEAT 09/07 — CARD_BACK + ANTICIPATION: respiro (más largo cuanto mayor la rareza).
         beat = Beat.CARD_BACK; onBeat(beat)
         delay(dur(pres.anticipationMs).toLong())
-        // EXTRACCIÓN (acción física simple): el jugador SACA la carta con swipe (arriba). En modo Play
-        // se extrae sola. La carta sale SIEMPRE boca abajo; el reveal ocurre DESPUÉS.
-        feedback.sfx(SfxCue.CARD_EMERGE)
-        if (autoAdvance) {
-            separate.animateTo(1f, tween(dur(540), easing = AnimationCurves.EmphasizedDecelerate))
-        } else {
-            awaitingExtract = true
-            snapshotFlow { separate.value }.first { it >= 0.999f }
-            awaitingExtract = false
-        }
-        feedback.haptic(HapticCue.EMERGE)
-        // BEAT 10 — REVEAL (ya separada, en espacio libre): giro 3D dorso→frente.
+        // BEAT 10 — REVEAL: giro 3D dorso→frente. Empieza en el dorso (180°+giros) y cae a 0°.
         beat = Beat.REVEAL; onBeat(beat)
         feedback.sfx(SfxCue.CARD_FLIP)
         launch { glow.animateTo(pres.glow, tween(dur(pres.revealMs))) }
@@ -309,10 +283,7 @@ private fun CardScene(
     }
 
     val iridescent = pres.iridescentBg
-    // Posiciones de la trayectoria física (Y, relativas al centro): dentro → boca del sobre → primer plano.
-    val insidePx = with(density) { 340.dp.toPx() }      // oculta tras el labio del sobre
-    val mouthPx = with(density) { 150.dp.toPx() }        // asomando por la boca
-    val foregroundPx = with(density) { (-20).dp.toPx() } // separada, protagonista
+    val belowPx = with(density) { 380.dp.toPx() }
     val flightPx = with(density) { 330.dp.toPx() }
 
     Box(
@@ -371,11 +342,18 @@ private fun CardScene(
             ConfettiBurst(trigger = sparkTrigger, intensity = pres.confetti, modifier = Modifier.fillMaxSize())
         }
 
-        // SOBRE ABIERTO (objeto persistente) · INTERIOR: cavidad oscura con luz contenida, DETRÁS de la
-        // carta → la carta nace desde esta profundidad. Recede (baja/atenúa) pero NO desaparece.
-        OpenedPackBack(
-            recede = separate.value,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.66f).fillMaxHeight(0.46f),
+        // Sombra de CONTACTO (vende profundidad): elipse bajo la carta, no gira con ella.
+        Box(
+            Modifier.align(Alignment.Center).fillMaxWidth(0.62f).height(26.dp)
+                .graphicsLayer { translationY = with(density) { 250.dp.toPx() } * (0.55f + 0.45f * emerge.value) }
+                .drawBehind {
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            listOf(Color.Black.copy(alpha = 0.45f * emerge.value * (1f - collect.value)), Color.Transparent),
+                        ),
+                        cornerRadius = CornerRadius(60f, 60f),
+                    )
+                },
         )
 
         // ---- LA CARTA (protagonista) ----
@@ -386,16 +364,13 @@ private fun CardScene(
             modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.90f).aspectRatio(0.72f)
                 .graphicsLayer {
                     cameraDistance = 16f * this.density
+                    // EMERGENCE: sube desde el interior con leve inclinación hacia atrás.
                     val e = emerge.value
-                    val sp = separate.value
-                    // Trayectoria: dentro(insidePx) → boca(mouthPx) con [emerge]; boca → primer plano con [separate].
-                    val baseY = insidePx + (mouthPx - insidePx) * e + (foregroundPx - mouthPx) * sp
-                    translationY = baseY - flightPx * collect.value - exit.value * insidePx * 0.9f
+                    translationY = (1f - e) * belowPx - flightPx * collect.value - exit.value * belowPx * 0.9f
                     translationX = with(density) { 96.dp.toPx() } * collect.value
-                    rotationX = (1f - e) * 22f * (1f - sp)     // inclinada dentro; se endereza al separar
+                    rotationX = (1f - e) * 26f
                     rotationY = rotY
-                    // Escala: dentro 0.70 → boca 0.85 → primer plano 1.0.
-                    val base = (0.70f + 0.15f * e + 0.15f * sp) * (1f + camera.value * pres.cameraPunch)
+                    val base = (0.62f + 0.38f * e) * (1f + camera.value * pres.cameraPunch)
                     val s = base * (1f - 0.72f * collect.value) * (1f - 0.5f * exit.value)
                     scaleX = s; scaleY = s
                     alpha = (1f - collect.value * collect.value) * (1f - exit.value)
@@ -450,45 +425,6 @@ private fun CardScene(
                 )
             }
         }
-
-        // EXTRACCIÓN por SWIPE: mientras la carta asoma (boca abajo), el jugador la saca deslizando
-        // hacia arriba (delta acumulado). Al soltar, si superó el umbral termina de salir sola; si no,
-        // vuelve a entrar. En modo Play esta capa no aparece (se extrae sola).
-        if (awaitingExtract) {
-            val extractPx = with(density) { 240.dp.toPx() }
-            Box(
-                Modifier.fillMaxSize().pointerInput(Unit) {
-                    detectDragGestures(
-                        onDrag = { change, drag ->
-                            change.consume()
-                            val d = (-drag.y) / extractPx
-                            scope.launch { separate.snapTo((separate.value + d).coerceIn(0f, 1f)) }
-                        },
-                        onDragEnd = {
-                            scope.launch {
-                                if (separate.value >= 0.45f) separate.animateTo(1f, tween(dur(320), easing = AnimationCurves.EmphasizedDecelerate))
-                                else separate.animateTo(0f, tween(dur(260)))
-                            }
-                        },
-                    )
-                },
-            )
-            Text(
-                "Desliza ↑ para sacar la carta",
-                color = Color(0xB3FFFFFF), fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp)
-                    .graphicsLayer { alpha = 1f - separate.value },
-            )
-        }
-
-        // SOBRE ABIERTO · LABIO FRONTAL + TIRA: DELANTE de la carta (la ocluye mientras está dentro).
-        // Al separarse la carta, el sobre recede (baja/atenúa) pero permanece: no pierde la relación
-        // espacial (de aquí salió la carta).
-        OpenedPackFront(
-            recede = separate.value,
-            artUrl = packArtUrl,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.66f).fillMaxHeight(0.46f),
-        )
 
         // RECOMPENSA (aparece con la identidad, tras el reveal): NUEVA como momento, luego el dato de copias.
         if (showInfo) {
@@ -640,93 +576,6 @@ internal fun vibratorOf(context: Context): Vibrator? = runCatching {
         context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
 }.getOrNull()
-
-// ============================ SOBRE ABIERTO (objeto persistente) ============================
-// El sobre abierto NO es un fondo: es un objeto con interior, borde, espesor y sombra, del que la
-// carta emerge. Se compone en dos capas: INTERIOR (detrás de la carta) y LABIO FRONTAL + TIRA
-// (delante, ocluyendo la carta mientras está dentro). Ambos [recede] al separarse la carta, pero
-// permanecen en escena para no perder la relación espacial. Arte propio (sin assets de terceros).
-
-/** Interior: cavidad oscura con luz cálida contenida cerca del borde. Va DETRÁS de la carta. */
-@Composable
-private fun OpenedPackBack(recede: Float, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.Canvas(
-        modifier = modifier.graphicsLayer {
-            alpha = 1f - 0.45f * recede
-            translationY = size.height * 0.12f * recede
-        },
-    ) {
-        val seamY = size.height * 0.16f
-        val ys = seamYs(seamY, size.height * 0.03f, SEAM_SEGMENTS, SEAM_SEED)
-        clipPath(seamRegionPath(size.width, size.height, ys, below = true)) {
-            drawRect(Brush.verticalGradient(listOf(Color(0xFF04050A), Color(0xFF0A0C16))))
-            // Luz interior contenida (contra-luz que insinúa profundidad).
-            drawRect(
-                brush = Brush.verticalGradient(
-                    listOf(Color(0x88FFE3A0), Color.Transparent),
-                    startY = seamY - size.height * 0.05f, endY = seamY + size.height * 0.12f,
-                ),
-                topLeft = Offset(0f, seamY - size.height * 0.05f),
-                size = Size(size.width, size.height * 0.17f),
-            )
-        }
-    }
-}
-
-/**
- * Labio frontal (pared cercana) del MISMO sobre: usa el arte real ([artUrl]) recortado por un borde
- * rasgado irregular, con rim y espesor. Va DELANTE de la carta (la ocluye mientras está dentro).
- * Si no hay arte, cae a un foil estilizado. Recede al separarse la carta, pero permanece.
- */
-@Composable
-private fun OpenedPackFront(recede: Float, artUrl: String?, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.graphicsLayer {
-            alpha = 1f - 0.4f * recede
-            transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
-            val r = 1f - 0.12f * recede
-            scaleX = r; scaleY = r
-            translationY = size.height * 0.16f * recede
-        },
-    ) {
-        // Pared frontal = arte REAL del sobre, recortado por el borde rasgado (mismo actor).
-        if (artUrl != null) {
-            AsyncImage(
-                model = artUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().drawWithContent {
-                    val ys = seamYs(size.height * 0.30f, size.height * 0.028f, SEAM_SEGMENTS, SEAM_SEED + 7)
-                    clipPath(seamRegionPath(size.width, size.height, ys, below = true)) { this@drawWithContent.drawContent() }
-                },
-            )
-        }
-        // Rim del borde rasgado, espesor, foil de respaldo y tira despegada.
-        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-            val lipY = size.height * 0.30f
-            val ys = seamYs(lipY, size.height * 0.028f, SEAM_SEGMENTS, SEAM_SEED + 7)
-            if (artUrl == null) {
-                clipPath(seamRegionPath(size.width, size.height, ys, below = true)) {
-                    drawRect(Brush.verticalGradient(listOf(Color(0xFF2C3150), Color(0xFF13162A))))
-                }
-            }
-            val segs = ys.size - 1
-            val step = size.width / segs
-            val edge = androidx.compose.ui.graphics.Path()
-            edge.moveTo(0f, ys[0]); for (i in 1..segs) edge.lineTo(i * step, ys[i])
-            drawPath(edge, Color.White.copy(alpha = 0.72f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
-            val shadow = androidx.compose.ui.graphics.Path()
-            shadow.moveTo(0f, ys[0] + 5f); for (i in 1..segs) shadow.lineTo(i * step, ys[i] + 5f)
-            drawPath(shadow, Color(0x66000000), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
-            rotate(degrees = -13f, pivot = Offset(size.width * 0.22f, lipY)) {
-                val fx = size.width * 0.06f
-                val fy = lipY - size.height * 0.15f
-                drawRoundRect(Color(0x55000000), topLeft = Offset(fx + 4f, fy + 6f), size = Size(size.width * 0.5f, size.height * 0.12f), cornerRadius = CornerRadius(10f, 10f))
-                drawRoundRect(Brush.verticalGradient(listOf(Color(0xFF343A5C), Color(0xFF1B1F36))), topLeft = Offset(fx, fy), size = Size(size.width * 0.5f, size.height * 0.12f), cornerRadius = CornerRadius(10f, 10f))
-            }
-        }
-    }
-}
 
 internal fun rarityColor(r: Rarity): Color = when (r) {
     Rarity.COMMON -> Color(0xFF9AA4AE)

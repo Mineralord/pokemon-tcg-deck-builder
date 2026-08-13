@@ -513,7 +513,6 @@ fun PackOpeningSimulator(
                     remainingToday = 999,
                     speed = speed,
                     autoAdvance = auto,
-                    packArtUrl = (expansion ?: series.expansions.first()).packArtUrl,
                     onBeat = { beat = it },
                     onDismiss = {
                         if (loop) { revealed = s.generate(forceTier); session++ }
