@@ -216,8 +216,10 @@ private fun CardScene(
 
     var beat by remember { mutableStateOf(Beat.EMERGENCE) }
     var revealed by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }   // identidad/recompensa: DESPUÉS del reveal
     var leaving by remember { mutableStateOf(false) }
     var sparkTrigger by remember { mutableIntStateOf(0) }
+    val flash = remember { Animatable(0f) }              // destello dirigido del reveal (IMPACT+)
 
     // Vaivén sutil continuo tras asentar (mantiene vivo el holo en premium).
     val infinite = rememberInfiniteTransition(label = "cardSway")
@@ -241,19 +243,24 @@ private fun CardScene(
         if (pres.iridescentBg) launch { bgLight.animateTo(1f, tween(dur(pres.revealMs))) }
         flip.animateTo(1f, tween(dur(pres.revealMs), easing = AnimationCurves.EmphasizedDecelerate))
         revealed = true
-        // BEAT 11 — RARITY_RESPONSE: sonido/háptica/partículas escalados + impacto.
+        // BEAT 11 — RARITY_RESPONSE: sonido/háptica/partículas escalados + impacto + destello dirigido.
         beat = Beat.RARITY_RESPONSE; onBeat(beat)
         sparkTrigger++
         feedback.sfx(pres.sfxReveal)
         feedback.sfx(SfxCue.REWARD_CONFIRM)
         feedback.haptic(if (pres.strongHaptic) HapticCue.RARITY else HapticCue.REVEAL)
+        if (pres.tier >= RarityTier.IMPACT) launch {
+            flash.animateTo(if (pres.tier >= RarityTier.LEGENDARY) 0.9f else 0.55f, tween(dur(90)))
+            flash.animateTo(0f, tween(dur(380)))
+        }
         launch {
             camera.animateTo(1f, AnimationSprings.bouncy())
             camera.animateTo(0f, tween(dur(260)))
         }
         delay(dur(pres.settleMs).toLong())
-        // BEAT 12 — CONFIRM.
+        // BEAT 12 — CONFIRM: recién ahora aparece la IDENTIDAD/recompensa (primero emoción, luego dato).
         beat = Beat.CONFIRM; onBeat(beat)
+        showInfo = true
         if (autoAdvance) { delay((900 / speed).toLong()); triggerAdvanceAuto(card, feedback) { leaving = true } }
     }
 
@@ -307,21 +314,26 @@ private fun CardScene(
                 .graphicsLayer { alpha = (1f - exit.value) * (1f - collect.value) },
         )
 
-        // Progreso "n / total".
+        // Progreso "n / total" (discreto, esquina superior).
         Text(
             "$indexLabel / $total",
-            color = if (iridescent) Color(0x992A2438) else Color(0x88FFFFFF),
-            fontSize = 12.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp),
+            color = if (iridescent) Color(0x772A2438) else Color(0x66FFFFFF),
+            fontSize = 11.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 18.dp, top = 60.dp),
         )
-        // Nombre (visible al revelar).
-        if (revealed) {
+        // Nombre: aparece con la RECOMPENSA (no durante el reveal) → primero emoción, luego identidad.
+        if (showInfo) {
+            val nameIn = remember { Animatable(0f) }
+            LaunchedEffect(Unit) { nameIn.animateTo(1f, AnimationSprings.bouncy()) }
             Text(
                 card.name,
                 color = if (iridescent) Color(0xFF2A2438) else Color.White,
-                fontWeight = FontWeight.Black, fontSize = 18.sp, textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 100.dp, start = 24.dp, end = 24.dp)
-                    .graphicsLayer { alpha = (1f - collect.value) * (1f - exit.value) },
+                fontWeight = FontWeight.Black, fontSize = 20.sp, textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 92.dp, start = 24.dp, end = 24.dp)
+                    .graphicsLayer {
+                        alpha = nameIn.value * (1f - collect.value) * (1f - exit.value)
+                        translationY = (1f - nameIn.value) * -14f
+                    },
             )
         }
 
@@ -330,12 +342,26 @@ private fun CardScene(
             ConfettiBurst(trigger = sparkTrigger, intensity = pres.confetti, modifier = Modifier.fillMaxSize())
         }
 
-        // ---- LA CARTA ----
+        // Sombra de CONTACTO (vende profundidad): elipse bajo la carta, no gira con ella.
+        Box(
+            Modifier.align(Alignment.Center).fillMaxWidth(0.62f).height(26.dp)
+                .graphicsLayer { translationY = with(density) { 250.dp.toPx() } * (0.55f + 0.45f * emerge.value) }
+                .drawBehind {
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            listOf(Color.Black.copy(alpha = 0.45f * emerge.value * (1f - collect.value)), Color.Transparent),
+                        ),
+                        cornerRadius = CornerRadius(60f, 60f),
+                    )
+                },
+        )
+
+        // ---- LA CARTA (protagonista) ----
         // Ángulo del giro leído en composición para elegir cara (dorso vs frente).
         val rotY = (1f - flip.value) * (pres.revealTurns * 360f + 180f) + (if (revealed) sway * flip.value else 0f)
         val showBack = (((rotY % 360f) + 360f) % 360f).let { it in 90f..270f }
         Box(
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.80f).aspectRatio(0.72f)
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.90f).aspectRatio(0.72f)
                 .graphicsLayer {
                     cameraDistance = 16f * this.density
                     // EMERGENCE: sube desde el interior con leve inclinación hacia atrás.
@@ -366,7 +392,7 @@ private fun CardScene(
                     painter = painterResource(R.drawable.card_back_default),
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize().padding(8.dp).graphicsLayer { rotationY = 180f }
+                    modifier = Modifier.fillMaxSize().padding(6.dp).graphicsLayer { rotationY = 180f }
                         .clip(RoundedCornerShape(10.dp)),
                 )
             } else {
@@ -377,14 +403,8 @@ private fun CardScene(
                     cardNumber = card.cardNumber,
                     rarity = card.rarity,
                     contentDescription = card.name,
-                    modifier = Modifier.fillMaxSize().padding(8.dp).clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.fillMaxSize().padding(6.dp).clip(RoundedCornerShape(10.dp)),
                 )
-                if (card.isNew && revealed) {
-                    Box(
-                        Modifier.align(Alignment.TopCenter).padding(top = 2.dp).clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF35C4E8)).padding(horizontal = 10.dp, vertical = 3.dp),
-                    ) { Text("NUEVA", color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp) }
-                }
             }
             // Barrido de luz al cruzar el canto (premium): brillo cuando la carta está de perfil.
             if (pres.lightSweep && !revealed) {
@@ -406,39 +426,59 @@ private fun CardScene(
             }
         }
 
-        // Contador de copias (aparece tras revelar).
-        if (revealed) {
+        // RECOMPENSA (aparece con la identidad, tras el reveal): NUEVA como momento, luego el dato de copias.
+        if (showInfo) {
+            val rewardIn = remember { Animatable(0f) }
+            LaunchedEffect(Unit) { rewardIn.animateTo(1f, AnimationSprings.bouncy()) }
             Column(
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp)
-                    .graphicsLayer { alpha = (1f - collect.value) * (1f - exit.value) },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp)
+                    .graphicsLayer {
+                        alpha = rewardIn.value * (1f - collect.value) * (1f - exit.value)
+                        translationY = (1f - rewardIn.value) * 16f
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    if (card.isNew) "¡Añadida a tu colección!" else "COPIAS EN LA COLECCIÓN",
-                    color = if (iridescent) Color(0xCC2A2438) else Color(0xAAFFFFFF),
-                    fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                )
-                Spacer(4.dp)
-                val pop = remember { Animatable(0.5f) }
-                LaunchedEffect(revealed) { pop.animateTo(1f, AnimationSprings.bouncy()) }
-                Box(
-                    Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }
-                        .clip(RoundedCornerShape(50))
-                        .background(if (iridescent) Color(0x332A2438) else Color(0x33FFFFFF))
-                        .padding(horizontal = 18.dp, vertical = 4.dp),
-                ) {
-                    Text("${card.copiesOwned}/${card.cap}", color = if (iridescent) Color(0xFF2A2438) else Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                if (card.isNew) {
+                    // Momento de recompensa "¡NUEVA!" (no un badge administrativo).
+                    Box(
+                        Modifier.graphicsLayer { scaleX = rewardIn.value; scaleY = rewardIn.value }
+                            .clip(RoundedCornerShape(50))
+                            .background(Brush.horizontalGradient(listOf(Color(0xFF35C4E8), Color(0xFF5AD1F0))))
+                            .padding(horizontal = 20.dp, vertical = 6.dp),
+                    ) { Text("¡NUEVA!", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp) }
+                    Spacer(6.dp)
                 }
+                // Dato de colección (secundario, sin competir con la recompensa).
+                Text(
+                    "${card.copiesOwned}/${card.cap} en la colección",
+                    color = if (iridescent) Color(0x992A2438) else Color(0x99FFFFFF),
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                )
             }
         }
 
-        // RECIBIR TODO (salta la PRESENTACIÓN; el resultado no cambia).
-        Button(
-            onClick = onSkip,
-            colors = ButtonDefaults.buttonColors(containerColor = TcgColors.Red, contentColor = Color.White),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-        ) { Text("RECIBIR TODO", fontWeight = FontWeight.Black, fontSize = 12.sp) }
+        // RECIBIR TODO (salta solo la PRESENTACIÓN; el resultado no cambia). Discreto, no compite.
+        Box(
+            Modifier.align(Alignment.TopEnd).padding(top = 56.dp, end = 14.dp)
+                .clip(RoundedCornerShape(50)).background(Color(0x55000000))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onSkip)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+        ) { Text("Recibir todo »", color = Color(0xCCFFFFFF), fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+
+        // Destello DIRIGIDO del reveal (IMPACT+): breve, no permanente.
+        if (flash.value > 0.001f) {
+            Box(
+                Modifier.fillMaxSize().graphicsLayer { alpha = flash.value }.drawBehind {
+                    drawRect(
+                        Brush.radialGradient(
+                            listOf(Color.White, Color.White.copy(alpha = 0.2f), Color.Transparent),
+                            center = Offset(size.width / 2f, size.height * 0.45f),
+                            radius = size.minDimension * 0.9f,
+                        ),
+                    )
+                },
+            )
+        }
     }
 }
 

@@ -14,14 +14,13 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -178,9 +177,10 @@ private fun PackStage(
     val zoom = remember { Animatable(0f) }
     LaunchedEffect(Unit) { zoom.animateTo(1f, tween(560, easing = AnimationCurves.EmphasizedDecelerate)) }
 
-    // Progreso de rasgado (0..1) acumulado por arrastre HORIZONTAL sobre la tira superior.
+    // Progreso de rasgado (0..1) ACUMULADO por delta del dedo (no por posición absoluta): así el gesto
+    // es CONTINUO y no se pierde al llegar al borde de la pantalla. Umbral acorde a un solo barrido.
     val tear = remember { Animatable(0f) }
-    val tearThresholdPx = with(density) { 620.dp.toPx() }   // recorrido total del dedo para abrir
+    val tearThresholdPx = with(density) { 300.dp.toPx() }
 
     // Dedo-guía que va y viene en horizontal sobre la línea de rasgado.
     val hintAnim = rememberInfiniteTransition(label = "tearHint")
@@ -215,11 +215,39 @@ private fun PackStage(
             }
             Spacer(Modifier.height(18.dp))
 
-            // El sobre GRANDE con acercamiento a la parte superior. La tira de arriba se rasga con el dedo.
+            // El sobre GRANDE con acercamiento a la parte superior. Se rasga con UN gesto continuo.
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.80f)
+                    .fillMaxWidth(0.86f)
                     .aspectRatio(0.62f)
+                    // GESTO: agarre en TODO el sobre; el progreso acumula el DELTA del dedo (dirección
+                    // tolerante), así llegar al borde no interrumpe el rasgado. Un solo gesto continuo.
+                    .pointerInput(canOpen) {
+                        if (!canOpen) return@pointerInput
+                        detectDragGestures(
+                            onDragStart = {
+                                lastTick = 0f
+                                feedback.sfx(SfxCue.PACK_GRAB); feedback.haptic(HapticCue.CONTACT)
+                            },
+                            onDrag = { change, drag ->
+                                change.consume()
+                                // Magnitud del movimiento (X domina; Y aporta un poco) → intención de rasgar.
+                                val mag = abs(drag.x) + abs(drag.y) * 0.35f
+                                val next = (tear.value + mag / tearThresholdPx).coerceIn(0f, 1f)
+                                scope.launch { tear.snapTo(next) }
+                                if (next - lastTick >= 0.11f) { lastTick = next; feedback.tensionTick(next) }
+                                if (next >= 1f && !firing) {
+                                    firing = true
+                                    feedback.sfx(SfxCue.PACK_TEAR); feedback.haptic(HapticCue.TEAR)
+                                    onOpen()
+                                }
+                            },
+                            onDragEnd = {
+                                lastTick = 0f
+                                if (tear.value < 1f) scope.launch { tear.animateTo(0f, tween(260)) }
+                            },
+                        )
+                    }
                     .graphicsLayer {
                         val z = zoom.value
                         val t = tear.value
@@ -230,63 +258,29 @@ private fun PackStage(
                         translationY = z * 46f          // baja para enfatizar la parte SUPERIOR
                     },
             ) {
+                // Interior del sobre asomando por la abertura (profundidad exterior→interior).
+                PackInterior(tear = tear.value, modifier = Modifier.fillMaxSize())
                 // Sobre TROCEADO: la tira superior se despega con el rasgado (arte real partido).
                 TearablePack(artUrl = expansion.packArtUrl, tear = tear.value, modifier = Modifier.fillMaxSize())
-
-                // Costura de luz dentada que avanza con el dedo (encima del arte).
+                // Costura de luz irregular que avanza con el dedo (encima del arte).
                 TornTopOverlay(progress = tear.value, modifier = Modifier.fillMaxSize())
 
-                // Zona de gesto: la franja SUPERIOR del sobre. Arrastre horizontal = rasgar.
-                Box(
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .fillMaxHeight(0.30f)
-                        .pointerInput(canOpen) {
-                            if (!canOpen) return@pointerInput
-                            detectHorizontalDragGestures(
-                                onDragStart = {
-                                    lastTick = 0f
-                                    feedback.sfx(SfxCue.PACK_GRAB); feedback.haptic(HapticCue.CONTACT)
-                                },
-                                onHorizontalDrag = { change, delta ->
-                                    change.consume()
-                                    val next = (tear.value + abs(delta) / tearThresholdPx).coerceIn(0f, 1f)
-                                    scope.launch { tear.snapTo(next) }
-                                    // Micro-ticks de TENSIÓN a medida que se tira (más fuerte cerca del umbral).
-                                    if (next - lastTick >= 0.11f) { lastTick = next; feedback.tensionTick(next) }
-                                    if (next >= 1f && !firing) {
-                                        firing = true
-                                        feedback.sfx(SfxCue.PACK_TEAR); feedback.haptic(HapticCue.TEAR)
-                                        onOpen()
-                                    }
-                                },
-                                onDragEnd = {
-                                    lastTick = 0f
-                                    if (tear.value < 1f) scope.launch { tear.animateTo(0f, tween(260)) }
-                                },
-                            )
-                        },
-                ) {
-                    // Dedo-guía animado sobre la línea de rasgado (solo antes de empezar a rasgar).
-                    if (canOpen && tear.value < 0.02f) {
-                        Text(
-                            "👆",
-                            fontSize = 26.sp,
-                            modifier = Modifier
-                                .align(Alignment.CenterStart)
-                                .graphicsLayer {
-                                    translationX = size.width * (0.12f + 0.62f * hint)
-                                },
-                        )
-                    }
+                // Dedo-guía animado (solo antes de empezar a rasgar).
+                if (canOpen && tear.value < 0.02f) {
+                    Text(
+                        "👆",
+                        fontSize = 26.sp,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .graphicsLayer { translationX = size.width * (0.12f + 0.62f * hint); translationY = size.height * 0.12f },
+                    )
                 }
             }
 
             Spacer(Modifier.height(16.dp))
             if (canOpen) {
                 Text(
-                    "Desliza el dedo →",
+                    "Desliza para rasgar  →",
                     color = Color.White.copy(alpha = 0.55f + 0.35f * hint),
                     fontSize = 13.sp, fontWeight = FontWeight.Bold,
                 )
@@ -296,6 +290,35 @@ private fun PackStage(
                 Text(it, color = Color(0xFFFF8A80), fontSize = 12.sp, textAlign = TextAlign.Center)
             }
         }
+    }
+}
+
+/**
+ * Interior del sobre visible por la abertura: profundidad oscura (detrás de la tira levantada) con una
+ * luz cálida contenida que crece con el rasgado. Da la lectura EXTERIOR → BORDE → INTERIOR.
+ */
+@Composable
+private fun PackInterior(tear: Float, modifier: Modifier = Modifier) {
+    if (tear <= 0f) return
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val seamY = size.height * 0.16f
+        val a = tear.coerceIn(0f, 1f)
+        // Profundidad interior (zona superior, tras la tira que se despega).
+        drawRect(
+            color = Color(0xFF07090F).copy(alpha = a),
+            topLeft = Offset(0f, 0f),
+            size = Size(size.width, seamY),
+        )
+        // Luz interior cálida contenida.
+        val glowH = size.height * 0.12f
+        drawRect(
+            brush = Brush.verticalGradient(
+                listOf(Color(0x00FFE9A6), Color(0xFFFFE3A0).copy(alpha = 0.55f * a)),
+                startY = seamY - glowH, endY = seamY,
+            ),
+            topLeft = Offset(0f, seamY - glowH),
+            size = Size(size.width, glowH),
+        )
     }
 }
 
@@ -458,6 +481,7 @@ fun PackOpeningSimulator(
     var loop by remember { mutableStateOf(false) }
     var forceTier by remember { mutableStateOf<RarityTier?>(null) }
     var beat by remember { mutableStateOf<Beat?>(null) }
+    var hudVisible by remember { mutableStateOf(false) }   // durante el revelado, HUD oculto por defecto
 
     Box(
         modifier = modifier
@@ -510,43 +534,54 @@ fun PackOpeningSimulator(
                         secondsToNext = null,
                         deniedMessage = null,
                         onBack = { step = PackStep.EXPANSION },
-                        onOpen = { revealed = s.generate(forceTier); session++; opening = true },
+                        onOpen = { revealed = s.generate(forceTier); session++; hudVisible = false; opening = true },
                         onExpire = {},
                     )
                 }
             }
         }
 
-        // Salir del simulador (vuelve al Studio).
-        LabChip(
-            "✕ Salir",
-            modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-            onClick = onExit,
-        )
-
-        // Barra de controles del Lab (siempre visible, también durante el revelado).
-        LabControlBar(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
-            speed = speed,
-            auto = auto,
-            loop = loop,
-            forceTier = forceTier,
-            beat = beat,
-            opening = opening,
-            onSpeed = { speed = when (speed) { 0.5f -> 1f; 1f -> 2f; else -> 0.5f } },
-            onAuto = { auto = !auto },
-            onLoop = { loop = !loop },
-            onForce = {
-                forceTier = when (forceTier) {
-                    null -> RarityTier.CLEAN
-                    RarityTier.CLEAN -> RarityTier.IMPACT
-                    RarityTier.IMPACT -> RarityTier.SPECTACLE
-                    RarityTier.SPECTACLE -> RarityTier.LEGENDARY
-                    RarityTier.LEGENDARY -> null
-                }
-            },
-            onRestart = { revealed = s.generate(forceTier); session++; opening = true },
-        )
+        // ---- SEPARACIÓN MODO DISEÑO / MODO PRESENTACIÓN ----
+        // En diseño (elección/rasgado) el HUD está visible. Durante el REVELADO se oculta para no
+        // competir con la escena (Presentation Mode); un botón discreto lo trae de vuelta.
+        val showHud = !opening || hudVisible
+        if (showHud) {
+            LabChip(
+                "✕ Salir",
+                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                onClick = onExit,
+            )
+            LabControlBar(
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
+                speed = speed,
+                auto = auto,
+                loop = loop,
+                forceTier = forceTier,
+                beat = beat,
+                opening = opening,
+                onSpeed = { speed = when (speed) { 0.5f -> 1f; 1f -> 2f; else -> 0.5f } },
+                onAuto = { auto = !auto },
+                onLoop = { loop = !loop },
+                onForce = {
+                    forceTier = when (forceTier) {
+                        null -> RarityTier.CLEAN
+                        RarityTier.CLEAN -> RarityTier.IMPACT
+                        RarityTier.IMPACT -> RarityTier.SPECTACLE
+                        RarityTier.SPECTACLE -> RarityTier.LEGENDARY
+                        RarityTier.LEGENDARY -> null
+                    }
+                },
+                onRestart = { revealed = s.generate(forceTier); session++; hudVisible = false; opening = true },
+            )
+        }
+        // Botón discreto para mostrar/ocultar el HUD durante la presentación.
+        if (opening) {
+            LabChip(
+                if (hudVisible) "▾ Ocultar HUD" else "⚙",
+                modifier = Modifier.align(Alignment.BottomStart).padding(10.dp),
+                onClick = { hudVisible = !hudVisible },
+            )
+        }
     }
 }
 
