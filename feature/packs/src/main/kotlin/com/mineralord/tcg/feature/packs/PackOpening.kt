@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,11 +44,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -56,6 +60,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -71,6 +76,7 @@ import com.mineralord.tcg.core.designsystem.motion.AnimationCurves
 import com.mineralord.tcg.core.designsystem.motion.AnimationSprings
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 
@@ -96,6 +102,7 @@ fun PackOpeningOverlay(
     onDismiss: () -> Unit,
     speed: Float = 1f,
     autoAdvance: Boolean = false,
+    packArtUrl: String? = null,   // arte del MISMO sobre → sobre abierto persistente (mismo actor)
     onBeat: (Beat) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -138,6 +145,7 @@ fun PackOpeningOverlay(
                     feedback = feedback,
                     speed = spd,
                     autoAdvance = autoAdvance,
+                    packArtUrl = packArtUrl,
                     onBeat = onBeat,
                     onAdvance = { if (index >= cards.size - 1) phase = Phase.SUMMARY else index++ },
                     onSkip = { phase = Phase.SUMMARY },
@@ -199,6 +207,7 @@ private fun CardScene(
     feedback: BoosterFeedback,
     speed: Float,
     autoAdvance: Boolean,
+    packArtUrl: String?,
     onBeat: (Beat) -> Unit,
     onAdvance: () -> Unit,
     onSkip: () -> Unit,
@@ -222,8 +231,10 @@ private fun CardScene(
     var revealed by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }   // identidad/recompensa: DESPUÉS del reveal
     var leaving by remember { mutableStateOf(false) }
+    var awaitingExtract by remember { mutableStateOf(false) }  // esperando que el jugador SAQUE la carta
     var sparkTrigger by remember { mutableIntStateOf(0) }
     val flash = remember { Animatable(0f) }              // destello dirigido del reveal (IMPACT+)
+    val scope = rememberCoroutineScope()
 
     // Vaivén sutil continuo tras asentar (mantiene vivo el holo en premium).
     val infinite = rememberInfiniteTransition(label = "cardSway")
@@ -237,12 +248,20 @@ private fun CardScene(
         beat = Beat.EMERGENCE; onBeat(beat)
         feedback.sfx(SfxCue.CARD_EMERGE); feedback.haptic(HapticCue.EMERGE)
         emerge.animateTo(1f, tween(dur(620), easing = AnimationCurves.EmphasizedDecelerate))
-        // BEAT 09/07 — CARD_BACK + ANTICIPATION: la carta asomada, respiro antes de salir del todo.
+        // BEAT 09/07 — CARD_BACK + ANTICIPATION: la carta asomada (boca abajo), respiro.
         beat = Beat.CARD_BACK; onBeat(beat)
         delay(dur(pres.anticipationMs).toLong())
-        // SEPARATION: la carta SUPERA el borde y pasa a primer plano; el sobre recede (sigue presente).
+        // EXTRACCIÓN (acción física simple): el jugador SACA la carta con swipe (arriba). En modo Play
+        // se extrae sola. La carta sale SIEMPRE boca abajo; el reveal ocurre DESPUÉS.
         feedback.sfx(SfxCue.CARD_EMERGE)
-        separate.animateTo(1f, tween(dur(540), easing = AnimationCurves.EmphasizedDecelerate))
+        if (autoAdvance) {
+            separate.animateTo(1f, tween(dur(540), easing = AnimationCurves.EmphasizedDecelerate))
+        } else {
+            awaitingExtract = true
+            snapshotFlow { separate.value }.first { it >= 0.999f }
+            awaitingExtract = false
+        }
+        feedback.haptic(HapticCue.EMERGE)
         // BEAT 10 — REVEAL (ya separada, en espacio libre): giro 3D dorso→frente.
         beat = Beat.REVEAL; onBeat(beat)
         feedback.sfx(SfxCue.CARD_FLIP)
@@ -432,11 +451,42 @@ private fun CardScene(
             }
         }
 
+        // EXTRACCIÓN por SWIPE: mientras la carta asoma (boca abajo), el jugador la saca deslizando
+        // hacia arriba (delta acumulado). Al soltar, si superó el umbral termina de salir sola; si no,
+        // vuelve a entrar. En modo Play esta capa no aparece (se extrae sola).
+        if (awaitingExtract) {
+            val extractPx = with(density) { 240.dp.toPx() }
+            Box(
+                Modifier.fillMaxSize().pointerInput(Unit) {
+                    detectDragGestures(
+                        onDrag = { change, drag ->
+                            change.consume()
+                            val d = (-drag.y) / extractPx
+                            scope.launch { separate.snapTo((separate.value + d).coerceIn(0f, 1f)) }
+                        },
+                        onDragEnd = {
+                            scope.launch {
+                                if (separate.value >= 0.45f) separate.animateTo(1f, tween(dur(320), easing = AnimationCurves.EmphasizedDecelerate))
+                                else separate.animateTo(0f, tween(dur(260)))
+                            }
+                        },
+                    )
+                },
+            )
+            Text(
+                "Desliza ↑ para sacar la carta",
+                color = Color(0xB3FFFFFF), fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp)
+                    .graphicsLayer { alpha = 1f - separate.value },
+            )
+        }
+
         // SOBRE ABIERTO · LABIO FRONTAL + TIRA: DELANTE de la carta (la ocluye mientras está dentro).
         // Al separarse la carta, el sobre recede (baja/atenúa) pero permanece: no pierde la relación
         // espacial (de aquí salió la carta).
         OpenedPackFront(
             recede = separate.value,
+            artUrl = packArtUrl,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.66f).fillMaxHeight(0.46f),
         )
 
@@ -623,10 +673,14 @@ private fun OpenedPackBack(recede: Float, modifier: Modifier = Modifier) {
     }
 }
 
-/** Labio frontal (pared cercana) con borde rasgado irregular + tira despegada. Va DELANTE de la carta. */
+/**
+ * Labio frontal (pared cercana) del MISMO sobre: usa el arte real ([artUrl]) recortado por un borde
+ * rasgado irregular, con rim y espesor. Va DELANTE de la carta (la ocluye mientras está dentro).
+ * Si no hay arte, cae a un foil estilizado. Recede al separarse la carta, pero permanece.
+ */
 @Composable
-private fun OpenedPackFront(recede: Float, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.Canvas(
+private fun OpenedPackFront(recede: Float, artUrl: String?, modifier: Modifier = Modifier) {
+    Box(
         modifier = modifier.graphicsLayer {
             alpha = 1f - 0.4f * recede
             transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
@@ -635,37 +689,41 @@ private fun OpenedPackFront(recede: Float, modifier: Modifier = Modifier) {
             translationY = size.height * 0.16f * recede
         },
     ) {
-        val lipY = size.height * 0.30f
-        val ys = seamYs(lipY, size.height * 0.028f, SEAM_SEGMENTS, SEAM_SEED + 7)
-        clipPath(seamRegionPath(size.width, size.height, ys, below = true)) {
-            drawRect(Brush.verticalGradient(listOf(Color(0xFF2C3150), Color(0xFF13162A))))
-            drawRect(Brush.horizontalGradient(listOf(Color.Transparent, Color(0x22FFFFFF), Color.Transparent)))
+        // Pared frontal = arte REAL del sobre, recortado por el borde rasgado (mismo actor).
+        if (artUrl != null) {
+            AsyncImage(
+                model = artUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().drawWithContent {
+                    val ys = seamYs(size.height * 0.30f, size.height * 0.028f, SEAM_SEGMENTS, SEAM_SEED + 7)
+                    clipPath(seamRegionPath(size.width, size.height, ys, below = true)) { this@drawWithContent.drawContent() }
+                },
+            )
         }
-        // Rim brillante del borde rasgado + sombra fina bajo él (espesor de papel).
-        val edge = androidx.compose.ui.graphics.Path()
-        val segs = ys.size - 1
-        val step = size.width / segs
-        edge.moveTo(0f, ys[0]); for (i in 1..segs) edge.lineTo(i * step, ys[i])
-        drawPath(edge, Color.White.copy(alpha = 0.72f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
-        val shadow = androidx.compose.ui.graphics.Path()
-        shadow.moveTo(0f, ys[0] + 5f); for (i in 1..segs) shadow.lineTo(i * step, ys[i] + 5f)
-        drawPath(shadow, Color(0x66000000), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
-        // Tira despegada (parte superior separada) inclinada, con sombra.
-        rotate(degrees = -13f, pivot = Offset(size.width * 0.22f, lipY)) {
-            val fx = size.width * 0.06f
-            val fy = lipY - size.height * 0.15f
-            drawRoundRect(
-                color = Color(0x55000000),
-                topLeft = Offset(fx + 4f, fy + 6f),
-                size = Size(size.width * 0.5f, size.height * 0.12f),
-                cornerRadius = CornerRadius(10f, 10f),
-            )
-            drawRoundRect(
-                brush = Brush.verticalGradient(listOf(Color(0xFF343A5C), Color(0xFF1B1F36))),
-                topLeft = Offset(fx, fy),
-                size = Size(size.width * 0.5f, size.height * 0.12f),
-                cornerRadius = CornerRadius(10f, 10f),
-            )
+        // Rim del borde rasgado, espesor, foil de respaldo y tira despegada.
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val lipY = size.height * 0.30f
+            val ys = seamYs(lipY, size.height * 0.028f, SEAM_SEGMENTS, SEAM_SEED + 7)
+            if (artUrl == null) {
+                clipPath(seamRegionPath(size.width, size.height, ys, below = true)) {
+                    drawRect(Brush.verticalGradient(listOf(Color(0xFF2C3150), Color(0xFF13162A))))
+                }
+            }
+            val segs = ys.size - 1
+            val step = size.width / segs
+            val edge = androidx.compose.ui.graphics.Path()
+            edge.moveTo(0f, ys[0]); for (i in 1..segs) edge.lineTo(i * step, ys[i])
+            drawPath(edge, Color.White.copy(alpha = 0.72f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
+            val shadow = androidx.compose.ui.graphics.Path()
+            shadow.moveTo(0f, ys[0] + 5f); for (i in 1..segs) shadow.lineTo(i * step, ys[i] + 5f)
+            drawPath(shadow, Color(0x66000000), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
+            rotate(degrees = -13f, pivot = Offset(size.width * 0.22f, lipY)) {
+                val fx = size.width * 0.06f
+                val fy = lipY - size.height * 0.15f
+                drawRoundRect(Color(0x55000000), topLeft = Offset(fx + 4f, fy + 6f), size = Size(size.width * 0.5f, size.height * 0.12f), cornerRadius = CornerRadius(10f, 10f))
+                drawRoundRect(Brush.verticalGradient(listOf(Color(0xFF343A5C), Color(0xFF1B1F36))), topLeft = Offset(fx, fy), size = Size(size.width * 0.5f, size.height * 0.12f), cornerRadius = CornerRadius(10f, 10f))
+            }
         }
     }
 }

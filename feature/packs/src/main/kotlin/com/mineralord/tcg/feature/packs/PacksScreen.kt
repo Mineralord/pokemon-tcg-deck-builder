@@ -313,28 +313,30 @@ private fun PackInterior(tear: Float, modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val seamY = size.height * 0.16f
         val a = tear.coerceIn(0f, 1f)
-        // Profundidad interior (zona superior, tras la tira que se despega).
+        val frontX = size.width * a          // interior SOLO en la zona ya rasgada (x < front)
+        // Profundidad interior (tras la tira despegada), limitada al tramo abierto.
         drawRect(
-            color = Color(0xFF07090F).copy(alpha = a),
+            color = Color(0xFF07090F),
             topLeft = Offset(0f, 0f),
-            size = Size(size.width, seamY),
+            size = Size(frontX, seamY),
         )
-        // Luz interior cálida contenida.
+        // Luz interior cálida contenida, también limitada al tramo abierto.
         val glowH = size.height * 0.12f
         drawRect(
             brush = Brush.verticalGradient(
-                listOf(Color(0x00FFE9A6), Color(0xFFFFE3A0).copy(alpha = 0.55f * a)),
+                listOf(Color(0x00FFE9A6), Color(0xFFFFE3A0).copy(alpha = 0.5f)),
                 startY = seamY - glowH, endY = seamY,
             ),
             topLeft = Offset(0f, seamY - glowH),
-            size = Size(size.width, glowH),
+            size = Size(frontX, glowH),
         )
     }
 }
 
 /**
- * Superposición del rasgado: resplandor por la abertura + el MISMO borde IRREGULAR (perfil de papel
- * roto) de la máscara del sobre, brillando, más pequeños fragmentos que saltan en la punta del rasgado.
+ * Luz del rasgado: SOLO en el TEAR FRONT (el material recién roto). NO es una línea que sigue al dedo:
+ * es una ventana corta pegada al frente que ilumina lo recién abierto y se apaga por detrás; nunca
+ * ilumina material aún cerrado (x > front) ni se adelanta al rasgado.
  */
 @Composable
 private fun TornTopOverlay(progress: Float, modifier: Modifier = Modifier) {
@@ -342,47 +344,46 @@ private fun TornTopOverlay(progress: Float, modifier: Modifier = Modifier) {
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val seamY = size.height * 0.16f
         val ys = seamYs(seamY, size.height * SEAM_AMPLITUDE, SEAM_SEGMENTS, SEAM_SEED)
-        val lift = progress * size.height * 0.09f
-        val revealW = size.width * progress
-        // Resplandor cálido asomando por la abertura.
-        drawRect(
-            brush = Brush.verticalGradient(
-                listOf(Color(0xFFFFF3C4), Color(0x00FFF3C4)),
-                startY = seamY - lift, endY = seamY + lift * 2f,
-            ),
-            topLeft = Offset(0f, seamY - lift),
-            size = Size(revealW, lift * 3f),
-        )
-        // Sombra bajo la tira despegada.
-        drawRect(
-            color = Color(0x33000000),
-            topLeft = Offset(0f, 0f),
-            size = Size(revealW, (seamY - lift).coerceAtLeast(0f)),
-        )
-        // Borde IRREGULAR brillante, recorriendo el mismo perfil de la máscara hasta el frente.
+        val frontX = (size.width * progress).coerceIn(0f, size.width)
+        val winW = size.width * 0.16f                 // longitud limitada de la luz, detrás del frente
+        val x0 = (frontX - winW).coerceAtLeast(0f)
         val segments = ys.size - 1
         val step = size.width / segments
+
+        // Resplancor corto pegado al frente (más brillante cerca del frente, se apaga por detrás).
+        drawRect(
+            brush = Brush.horizontalGradient(
+                listOf(Color(0x00FFF3C4), Color(0xCCFFF3C4)),
+                startX = x0, endX = frontX,
+            ),
+            topLeft = Offset(x0, seamY - size.height * 0.05f),
+            size = Size((frontX - x0).coerceAtLeast(0f), size.height * 0.12f),
+        )
+        // Borde irregular brillante SOLO en la ventana del frente (recorriendo el perfil real).
         val path = Path()
-        path.moveTo(0f, ys[0])
-        var i = 1
-        while (i * step <= revealW && i <= segments) {
-            path.lineTo(i * step, ys[i]); i++
+        var started = false
+        var i = 0
+        while (i <= segments) {
+            val x = i * step
+            if (x in x0..frontX) {
+                if (!started) { path.moveTo(x, ys[i]); started = true } else path.lineTo(x, ys[i])
+            }
+            i++
         }
-        drawPath(path, color = Color.White.copy(alpha = 0.95f), style = Stroke(width = 3f))
-        // Fragmentos de papel saltando en la punta del rasgado.
+        if (started) drawPath(path, color = Color.White.copy(alpha = 0.9f), style = Stroke(width = 3f))
+        // Punta del rasgado: fragmentos que saltan (solo mientras se propaga).
         if (progress in 0.02f..0.99f) {
-            val fx = revealW.coerceIn(0f, size.width)
             val frn = kotlin.random.Random((progress * 40f).toInt())
             repeat(4) {
-                val dx = (frn.nextFloat() - 0.5f) * 26f
-                val dy = -frn.nextFloat() * 22f
+                val dx = (frn.nextFloat() - 0.5f) * 22f
+                val dy = -frn.nextFloat() * 20f
                 drawRect(
                     color = Color(0xFFF3ECE0).copy(alpha = 0.85f),
-                    topLeft = Offset(fx + dx, seamY + dy),
+                    topLeft = Offset(frontX + dx, seamY + dy),
                     size = Size(3f + frn.nextFloat() * 3f, 3f + frn.nextFloat() * 3f),
                 )
             }
-            drawCircle(Color.White, radius = 6f, center = Offset(fx, seamY))
+            drawCircle(Color.White, radius = 5f, center = Offset(frontX, seamY))
         }
     }
 }
@@ -512,6 +513,7 @@ fun PackOpeningSimulator(
                     remainingToday = 999,
                     speed = speed,
                     autoAdvance = auto,
+                    packArtUrl = (expansion ?: series.expansions.first()).packArtUrl,
                     onBeat = { beat = it },
                     onDismiss = {
                         if (loop) { revealed = s.generate(forceTier); session++ }

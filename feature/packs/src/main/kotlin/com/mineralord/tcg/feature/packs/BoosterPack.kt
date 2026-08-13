@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -35,10 +36,12 @@ const val PACK_IMAGE_151 =
     "https://images.wikidexcdn.net/mwuploads/wikidex/thumb/2/21/latest/20230616180309/Sobre_Mew_151.png/512px-Sobre_Mew_151.png"
 
 /**
- * Sobre **troceable**: el arte se parte en dos por una costura horizontal superior. La tira de
- * arriba (~16 %) se despega (sube + gira + se atenúa) según [tear] (0..1), dejando ver el cuerpo del
- * sobre por debajo. Sirve para CUALQUIER expansión: solo cambia [artUrl]. Réplica del rasgado de
- * Pokémon TCG Pocket. La costura de luz dentada se dibuja aparte ([TornTopOverlay]).
+ * Sobre **troceable** con rasgado **LOCAL**: la ruptura se propaga desde la izquierda según un
+ * TEAR FRONT en x = ancho·[tear]. La tira superior se divide en dos:
+ *  - la parte YA RASGADA (x < front) se despega (sube/gira/atenúa);
+ *  - la parte AÚN CERRADA (x ≥ front) permanece en su sitio, pegada al cuerpo.
+ * Así NO se abre todo el borde de golpe: la zona no rasgada sigue cerrada. Mismo arte ([artUrl])
+ * para cualquier expansión; la costura de luz del frente se dibuja aparte ([TornTopOverlay]).
  */
 @Composable
 fun TearablePack(
@@ -48,7 +51,7 @@ fun TearablePack(
     seamFraction: Float = 0.16f,
 ) {
     Box(modifier) {
-        // Cuerpo del sobre (región POR DEBAJO de la costura dentada): estático.
+        // Cuerpo del sobre (región POR DEBAJO de la costura): estático.
         AsyncImage(
             model = artUrl,
             contentDescription = "Sobre",
@@ -60,8 +63,21 @@ fun TearablePack(
                     clipPath(seamRegionPath(size.width, size.height, ys, below = true)) { this@drawWithContent.drawContent() }
                 },
         )
-        // Tira SUPERIOR (región POR ENCIMA de la costura dentada): se despega al rasgar.
-        // La máscara en zigzag es COMPLEMENTARIA de la del cuerpo, así encajan como papel roto.
+        // Tira AÚN CERRADA (por encima de la costura, a la DERECHA del frente): sigue pegada.
+        AsyncImage(
+            model = artUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    val ys = seamYs(size.height * seamFraction, size.height * SEAM_AMPLITUDE, SEAM_SEGMENTS, SEAM_SEED)
+                    clipRect(left = size.width * tear) {
+                        clipPath(seamRegionPath(size.width, size.height, ys, below = false)) { this@drawWithContent.drawContent() }
+                    }
+                },
+        )
+        // Tira YA RASGADA (por encima de la costura, a la IZQUIERDA del frente): se despega.
         AsyncImage(
             model = artUrl,
             contentDescription = null,
@@ -69,15 +85,16 @@ fun TearablePack(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    transformOrigin = TransformOrigin(0.5f, 0f)
-                    translationY = -tear * size.height * 0.55f
-                    translationX = tear * size.width * 0.10f
-                    rotationZ = tear * -10f
-                    alpha = 1f - tear * 0.65f
+                    transformOrigin = TransformOrigin(0f, 0f)   // pivota desde el inicio del rasgado
+                    translationY = -tear * size.height * 0.5f
+                    rotationZ = tear * -8f
+                    alpha = 1f - tear * 0.55f
                 }
                 .drawWithContent {
                     val ys = seamYs(size.height * seamFraction, size.height * SEAM_AMPLITUDE, SEAM_SEGMENTS, SEAM_SEED)
-                    clipPath(seamRegionPath(size.width, size.height, ys, below = false)) { this@drawWithContent.drawContent() }
+                    clipRect(right = (size.width * tear).coerceAtLeast(0.01f)) {
+                        clipPath(seamRegionPath(size.width, size.height, ys, below = false)) { this@drawWithContent.drawContent() }
+                    }
                 },
         )
     }
