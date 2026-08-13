@@ -27,6 +27,33 @@ hay investigación externa genuina, código a escribir/revisar o análisis multi
 **Invariantes que el Canon Auditor protege:** determinismo del Engine · Engine puro · proveedores tras interfaz
 (patrón `MatchTransport`) · versionado multi-eje (ningún blob sin `version`) · direccionalidad `feature→data→engine`.
 
+## 🎴 BOOSTER OPENING LAB / APERTURA DE SOBRES (12 Ago 2026) — feature:packs, rama feature/studio-match-mode
+**Es una SOLA feature en `feature:packs`; el "Booster Opening Lab" = el simulador que hospeda el Studio
+(`app-studio` → Lab "Simulador de Sobres" → `PackOpeningSimulator`, pantalla completa, sin monedero).
+NO crear otro Lab/simulador/timeline: evolucionar el existente.** RNG/colección/economía NO se tocan:
+la presentación RECIBE un resultado ya determinado (`RevealedCard[]`).
+**Archivos:** `PackOpening.kt` (overlay/revelado por beats), `BoosterPresentation.kt` (enum `Beat`,
+`SfxCue`/`HapticCue`+`BoosterFeedback`, `RarityPresentation`/`presentationFor` data-driven por rareza),
+`PacksScreen.kt` (selección expansión + `PackStage` rasgado + simulador con controles de Lab),
+`BoosterPack.kt` (`TearablePack` troceado + costura `seamYs`/`seamRegionPath`), `PackAudio.kt` (SFX sintetizados).
+**Estado ACTUAL (lo que el usuario aprobó):**
+- Revelado LIMPIO: sin sobre en escena. La carta sale **boca abajo** y luego gira (fix: ángulo inicial
+  del giro = `revealTurns*360` SIN `+180`, si no las comunes salían de frente). **Fondo CLARO iridiscente
+  SIEMPRE** (no oscuro); textos oscuros. `iridescent=true` fijo en `CardScene` para colores.
+- El **rasgado** vive en su pantalla (`PackStage`): gesto CONTINUO por delta (no posición absoluta,
+  umbral 300dp), propagación LOCAL (tear-front x=ancho·tear; la parte no rasgada sigue cerrada), luz solo
+  en el tear-front. Sobre grande con "pack approach".
+- **Dorso oficial** = Bulbapedia File:Cardback.jpg (745×1040) → `card_back_default.webp` 620×866, con
+  esquinas redondeadas transparentes al **~7.5% del ancho** (el marco azul es grueso; radios menores se
+  ven "puntiagudos"). En el revelado el dorso se pinta SIN `.clip()` dp (manda la esquina horneada).
+  NOTA: reinstalar/DESINSTALAR el APK para evitar caché del dorso viejo.
+- **REVERTIDO por preferencia del usuario:** el "sobre abierto persistente en el overlay" + extracción
+  por swipe (V3/V5). Código en historial: `ef18d7b` (V3), `d274db3` (V5), revert `154841f`.
+- Controles del Lab (en el simulador): velocidad 0.5/1/2×, Play(auto), bucle, forzar rareza (SOLO
+  presentación), beat actual, "Recibir todo". HUD se oculta durante el revelado (Presentation Mode).
+- Entregables: `entregables/TCG-Studio-SimuladorSobres-debug.apk` y `TCG-Juego-debug.apk` (git-ignored).
+- Pendiente menor: igualar el radio del dorso al de los frentes (hoy va algo más redondeado).
+
 ## 🎬 FRAMEWORK DE ANIMACIONES (21 Jul 2026) — pipeline propio, Kotlin puro + Compose
 **Workstream SEPARADO del motor de efectos 151.** Framework de animación propio, diseñado por fases
 (primero arquitectura, luego implementación) con investigación previa en GitHub. **Regla del proyecto
