@@ -108,11 +108,11 @@ fun PackOpeningOverlay(
     var phase by remember { mutableStateOf(if (reducedMotion) Phase.SUMMARY else Phase.PACK_OPEN) }
     var index by remember { mutableIntStateOf(0) }
 
-    // Fondo persistente: NO se reinicia entre cartas (transición continua). Vira a interior cálido.
+    // Fondo CLARO iridiscente permanente (persiste entre cartas → transición continua).
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0A0E16), Color(0xFF10131F), Color(0xFF05060B)))),
+            .background(Brush.verticalGradient(listOf(Color(0xFFDCE7F5), Color(0xFFEDE3F5), Color(0xFFDCEFF0)))),
         contentAlignment = Alignment.Center,
     ) {
         when (phase) {
@@ -282,7 +282,8 @@ private fun CardScene(
         leaving = true
     }
 
-    val iridescent = pres.iridescentBg
+    // Fondo claro SIEMPRE → textos oscuros. El realce iridiscente extra sigue reservado a premium.
+    val iridescent = true
     val belowPx = with(density) { 380.dp.toPx() }
     val flightPx = with(density) { 330.dp.toPx() }
 
@@ -358,7 +359,8 @@ private fun CardScene(
 
         // ---- LA CARTA (protagonista) ----
         // Ángulo del giro leído en composición para elegir cara (dorso vs frente).
-        val rotY = (1f - flip.value) * (pres.revealTurns * 360f + 180f) + (if (revealed) sway * flip.value else 0f)
+        // Ángulo del giro: empieza mostrando el DORSO (múltiplo impar de 180°) y cae a 0° (frente).
+        val rotY = (1f - flip.value) * (pres.revealTurns * 360f) + (if (revealed) sway * flip.value else 0f)
         val showBack = (((rotY % 360f) + 360f) % 360f).let { it in 90f..270f }
         Box(
             modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.90f).aspectRatio(0.72f)
@@ -493,8 +495,8 @@ private fun triggerAdvanceAuto(card: RevealedCard, feedback: BoosterFeedback, le
 @Composable
 private fun SummaryContent(cards: List<RevealedCard>, setLabel: String, onDismiss: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("¡SOBRE ABIERTO!", color = TcgColors.Parchment, fontWeight = FontWeight.Black, fontSize = 22.sp, modifier = Modifier.padding(top = 12.dp))
-        Text(setLabel, color = Color(0x99FFFFFF), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+        Text("¡SOBRE ABIERTO!", color = Color(0xFF2A2438), fontWeight = FontWeight.Black, fontSize = 22.sp, modifier = Modifier.padding(top = 12.dp))
+        Text(setLabel, color = Color(0x992A2438), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
