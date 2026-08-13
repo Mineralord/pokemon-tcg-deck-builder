@@ -173,9 +173,15 @@ private fun PackStage(
     DisposableEffect(Unit) { onDispose { audio.release() } }
     var lastTick by remember { mutableStateOf(0f) }
 
-    // Acercamiento de entrada: el sobre crece y se acerca a su parte superior.
-    val zoom = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { zoom.animateTo(1f, tween(560, easing = AnimationCurves.EmphasizedDecelerate)) }
+    // PACK APPROACH: el sobre "llega" al jugador (viene de más lejos/abajo, inclinado) y se posiciona
+    // con un overshoot muy pequeño → settle → listo. No es un zoom lineal: es una cámara acercándose.
+    val approach = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        approach.snapTo(0f)
+        feedback.sfx(SfxCue.PACK_HOVER)
+        approach.animateTo(1.05f, tween(560, easing = AnimationCurves.EmphasizedDecelerate)) // overshoot
+        approach.animateTo(1f, tween(200))                                                    // settle → READY
+    }
 
     // Progreso de rasgado (0..1) ACUMULADO por delta del dedo (no por posición absoluta): así el gesto
     // es CONTINUO y no se pierde al llegar al borde de la pantalla. Umbral acorde a un solo barrido.
@@ -249,13 +255,17 @@ private fun PackStage(
                         )
                     }
                     .graphicsLayer {
-                        val z = zoom.value
+                        val a = approach.value
+                        val ac = a.coerceAtMost(1f)
                         val t = tear.value
-                        val s = 1f + z * 0.30f          // crece al entrar
+                        cameraDistance = 20f * this.density
+                        // Llega desde más lejos/abajo, inclinado, y se endereza al posicionarse.
+                        val s = 0.74f + 0.30f * a
                         scaleX = s
                         scaleY = s * (1f + t * 0.05f)   // TENSIÓN: el plástico se estira al tirar
-                        rotationZ = t * 1.4f            // leve torsión del material
-                        translationY = z * 46f          // baja para enfatizar la parte SUPERIOR
+                        rotationX = (1f - ac) * 16f     // inclinado al aproximarse → plano al settle
+                        rotationZ = t * 1.4f            // leve torsión del material al tirar
+                        translationY = (1f - ac) * 120f + 44f * ac   // de abajo hacia su posición
                     },
             ) {
                 // Interior del sobre asomando por la abertura (profundidad exterior→interior).
