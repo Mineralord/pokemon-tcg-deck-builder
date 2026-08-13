@@ -389,13 +389,13 @@ private fun CardScene(
                 },
             )
             if (showBack) {
-                // Cara trasera: dorso oficial (contra-rotado 180° para verse derecho).
+                // Cara trasera: mismas ESQUINAS que las cartas de la expansión (el arte del dorso ya
+                // trae las esquinas redondeadas transparentes, como los frentes → no se recorta a dp).
                 Image(
                     painter = painterResource(R.drawable.card_back_default),
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize().padding(6.dp).graphicsLayer { rotationY = 180f }
-                        .clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.fillMaxSize().padding(6.dp).graphicsLayer { rotationY = 180f },
                 )
             } else {
                 // Frente HD interactivo (holo con el dedo). En reposo se puede inclinar; tocar = avanzar.
