@@ -43,4 +43,10 @@ fun studioLabs(
             onExitFullscreen = onExitFullscreen,
         )
     },
+    Lab(id = "collection", title = "Colección de cartas") {
+        CollectionLabContent(
+            onEnterFullscreen = onEnterFullscreen,
+            onExitFullscreen = onExitFullscreen,
+        )
+    },
 )

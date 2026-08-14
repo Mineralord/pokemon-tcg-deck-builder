@@ -1,4 +1,4 @@
-package com.mineralord.tcg.app
+package com.mineralord.tcg.studio
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -80,8 +80,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import coil.compose.AsyncImage
+import com.mineralord.tcg.core.designsystem.CardDetailDialog
 import com.mineralord.tcg.core.designsystem.HoloCardImage
-import com.mineralord.tcg.core.designsystem.InteractiveHoloCard
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.data.profile.ProfileRepository
@@ -323,12 +323,29 @@ private fun rememberDexSets(): List<DexSet>? {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pantalla canónica "Mis cartas" (colección del juego). Portada desde el Lab del Studio.
+// Entry point del Lab: "Mis cartas".
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Pantalla "Mis cartas" a pantalla completa (colección canónica del juego). */
 @Composable
-fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
+fun CollectionLabContent(
+    onEnterFullscreen: (@Composable () -> Unit) -> Unit,
+    onExitFullscreen: () -> Unit,
+) {
+    // La colección debe verse A PANTALLA COMPLETA (sin cromo del Shell), como el Modo Partida y el
+    // Simulador de Sobres. Entra automáticamente al abrir el Lab; también hay botón por si se sale.
+    val open = { onEnterFullscreen { CollectionScreen(onExit = onExitFullscreen) } }
+    LaunchedEffect(Unit) { open() }
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgTop, BgBottom))), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.shadow(4.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Panel)
+                .noRippleClick { open() }.padding(horizontal = 20.dp, vertical = 14.dp),
+        ) { Txt("⤢  Abrir colección (pantalla completa)", 14.sp, Ink, FontWeight.Black) }
+    }
+}
+
+/** Pantalla "Mis cartas" a pantalla completa. */
+@Composable
+private fun CollectionScreen(onExit: () -> Unit) {
     val sets = rememberDexSets()
     var grouped by remember { mutableStateOf(false) }           // interruptor rejilla ↔ agrupado
     var showAll by remember { mutableStateOf(true) }            // "Mostrar todo" (huecos vacíos en vista agrupada)
@@ -361,7 +378,7 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
     }
 
     Box(
-        modifier = modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgTop, BgBottom))),
+        modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgTop, BgBottom))),
     ) {
         if (sets == null) {
             Txt("Cargando colección…", 14.sp, Muted, FontWeight.SemiBold, Modifier.align(Alignment.Center))
@@ -1178,6 +1195,7 @@ private fun CardDetailSheet(
     onOpenRelated: (DexCard) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var immersive by remember(card) { mutableStateOf(false) }
     var showLangs by remember(card) { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFDCD8F0), Color(0xFFE9ECF4))))) {
@@ -1201,23 +1219,22 @@ private fun CardDetailSheet(
                 }
             }
 
-            // Visor HOLO interactivo A TAMAÑO MÁXIMO: la carta ocupa casi todo el ancho de la pantalla
-            // y se inclina/brilla siguiendo el DEDO (InteractiveHoloCard). Esta ES la pantalla de juego
-            // con el holo; no hay diálogo aparte. No obtenida → dorso "No la tienes".
-            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+            // Carta grande (obtenida = holo real; no obtenida = dorso "No la tienes").
+            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Box(
-                    Modifier.fillMaxWidth(0.96f).aspectRatio(0.72f),
+                    Modifier.fillMaxWidth(0.62f).aspectRatio(0.72f).noRippleClick { if (card.owned) immersive = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (card.owned) {
-                        InteractiveHoloCard(
-                            imageUrl = card.imageLarge, setCode = card.setCode, cardNumber = card.number,
-                            rarity = card.rarity, contentDescription = card.name,
-                            modifier = Modifier.fillMaxSize().shadow(16.dp, RoundedCornerShape(12.dp), clip = false).clip(RoundedCornerShape(12.dp)),
-                        )
+                        Box(Modifier.fillMaxSize().shadow(12.dp, RoundedCornerShape(10.dp), clip = false).clip(RoundedCornerShape(10.dp))) {
+                            HoloCardImage(
+                                imageUrl = card.imageLarge, setCode = card.setCode, cardNumber = card.number,
+                                rarity = card.rarity, contentDescription = card.name, intensity = 1f, modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     } else {
                         Box(
-                            Modifier.fillMaxSize().shadow(10.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
+                            Modifier.fillMaxSize().shadow(10.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
                                 .background(Brush.verticalGradient(listOf(Color(0xFF2A3550), Color(0xFF161E30)))),
                             contentAlignment = Alignment.Center,
                         ) { Txt("No la tienes", 13.sp, Color(0xCCFFFFFF), FontWeight.Black) }
@@ -1292,6 +1309,15 @@ private fun CardDetailSheet(
         // Popup de variantes de idioma.
         if (showLangs) LanguagePopup(ownedCount = card.count, onDismiss = { showLangs = false })
     }
+
+    // Tilt inmersivo a pantalla completa (reutiliza el visor holo con giroscopio del juego).
+    if (immersive) {
+        CardDetailDialog(
+            imageUrl = card.imageLarge, contentDescription = card.name, onDismiss = { immersive = false },
+            rarity = card.rarity, cardNumber = card.number, setCode = card.setCode,
+            copiesOwned = card.count, copiesCap = card.cap,
+        )
+    }
 }
 
 @Composable
@@ -1331,8 +1357,7 @@ private fun DetailTable(card: Card) {
             TableEnergyRow("Debilidad", p.weaknesses.map { it.type }, suffix = p.weaknesses.firstOrNull()?.value)
             TableEnergyRow("Coste de Retirada", p.retreatCost)
         }
-        TableRow("Serie", seriesEs(card.set.series))
-        TableRow("Expansión", card.set.name.es)
+        TableRow("Serie", card.set.series)
     }
 }
 
@@ -1573,17 +1598,6 @@ private fun stageOrder(stage: Stage?): Int = when (stage) {
 
 private fun stageLabel(stage: Stage): String = when (stage) {
     Stage.Basic -> "Básico"; Stage.Stage1 -> "Fase 1"; Stage.Stage2 -> "Fase 2"; Stage.BabyRestored -> "Restaurado"
-}
-
-/** Nombre de la serie en español (el dato `set.series` viene en inglés). */
-private fun seriesEs(series: String): String = when (series) {
-    "Scarlet & Violet" -> "Escarlata y Púrpura"
-    "Mega Evolution" -> "Megaevolución"
-    "Sword & Shield" -> "Espada y Escudo"
-    "Sun & Moon" -> "Sol y Luna"
-    "XY" -> "XY"
-    "Black & White" -> "Negro y Blanco"
-    else -> series
 }
 
 private fun energyEs(t: EnergyType?): String = when (t) {

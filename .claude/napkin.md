@@ -53,6 +53,65 @@ la presentación RECIBE un resultado ya determinado (`RevealedCard[]`).
   presentación), beat actual, "Recibir todo". HUD se oculta durante el revelado (Presentation Mode).
 - Entregables: `entregables/TCG-Studio-SimuladorSobres-debug.apk` y `TCG-Juego-debug.apk` (git-ignored).
 - Pendiente menor: igualar el radio del dorso al de los frentes (hoy va algo más redondeado).
+- **Fixes 12 Ago (revelado):** el DORSO ahora se recorta con `clip(RoundedCornerShape(10.dp))` + `ContentScale.Crop`
+  (igual que el frente) → adiós picos negros en esquinas (el arte "redondeado" horneado los dejaba). Eliminados
+  también: la elipse de **sombra de contacto negra** bajo la carta y el `BackStack` (pila de dorsos abanicada a la
+  izquierda) + su composable. Todo en `PackOpening.kt`. Compila verde.
+
+## 🗃️ COLECCIÓN "MIS CARTAS" — ✅ CANON EN EL JUEGO (14 Ago 2026) — rama feature/studio-match-mode
+**HECHA CANON:** el Lab se PORTÓ al juego reemplazando TOTALMENTE la colección vieja. `app/CollectionScreen.kt`
+es ahora una copia del Lab (package `com.mineralord.tcg.app`, entry público `CollectionScreen(onExit, modifier)`,
+a PANTALLA COMPLETA sin `SubScreen`). `app/CollectionViewModel.kt` (SlotUi/SetTab/CollectionUiState/binder viejo)
+**BORRADO**. `MainActivity` `Screen.COLLECTION` → `CollectionScreen(onExit={HOME})`. Drawables copiados a `app`:
+`set_*_logo.png` (5 logos HD ES) + `rarity_*.png` (8 símbolos oficiales). Iconos de energía se leen de `core:designsystem`.
+APK `TCG-Juego-debug.apk` (raíz, git-ignored) compila+ensambla verde. **DEUDA:** el Lab (`app-studio/CollectionLab.kt`)
+y `app/CollectionScreen.kt` son ahora CÓDIGO DUPLICADO; si se itera más, unificar en un módulo compartido (`feature:collection`).
+**Ítems 1–5 del backlog COMPLETADOS antes de canon** (Buscar ampliado · logos+sub-variantes · Ataques+energías · rarezas oficiales).
+**Detalle de carta (14 Ago):** el visor es ahora `InteractiveHoloCard` al 96% del ancho (holo que sigue al DEDO, sin diálogo
+aparte). Tabla en español: `seriesEs()` traduce la Serie (dato viene en inglés) + fila "Expansión" = `set.name.es`. Ataques
+usan el ES impreso del dataset (`atk.text.es`). **DEUDA DE DATOS:** solo el set 151 trae texto ES de ataques/habilidades
+(160/207); sv1–sv4/promos (barajas de inicio) NO están scrapeadas en ES → caen a inglés. Para español impreso en TODAS:
+scrapear `es.ataques[i].text`/`es.habilidades[i].text` de esas expansiones y añadirlo al dataset. (Archivo 151.json es UTF-8 válido, sin mojibake.)
+
+## 🗃️ COLECCIÓN "MIS CARTAS" — Lab del Studio (13 Ago 2026) — rama feature/studio-match-mode
+**Objetivo del usuario:** la colección del juego debe ser **idéntica a la de TCG Live** ("Mis cartas"). Se
+construye PRIMERO como Lab del Studio ("Colección de cartas") para iterar/validar; luego se hace **canon** en
+el juego (`app/CollectionScreen.kt` + `CollectionViewModel.kt`, que hoy son un binder estilo TCG Live oscuro).
+**Referencia AUTORITATIVA (vídeo):** `C:\DOCUMENTOS\POKÉMON TCG\TCG LIVE VS MI APP CLON\POKEMON TCG LIVE\COLECCION TCG POCKET.mp4`
+(1080×2400, ~5:12). OJO: el nombre dice "POCKET" pero MUESTRA la colección de **TCG Live**. Fotogramas ya extraídos
+en `.vidref/coleccion/f_*.jpg` (regenerar: `ffmpeg -i "<video>" -vf "fps=1/4,scale=540:-1" .vidref/coleccion/f_%03d.jpg`).
+**Archivos:** `app-studio/.../studio/CollectionLab.kt` (TODO el Lab, autocontenido) + registro en `StudioLabs.kt`
+(Lab id `collection`, ahora recibe `onEnterFullscreen/onExitFullscreen`). `build.gradle.kts` ya tiene `data:profile`+`coil.compose`.
+**Datos:** `rememberDexSets()` = `CardRepository.load()` agrupado por prefijo de set × `ProfileRepository(context).profile`
+(`seedOnce(starters)` idempotente). El Studio tiene su PROPIO DataStore → colección del Lab = starters + lo abierto en el Simulador.
+**Estética = NEUMÓRFICA CLARA de TCG Live** (fondo azul-gris, paneles blancos, línea arcoíris, cian `#35C4E8`/verde `#19D08B`).
+**⚠️ La referencia real es TCG Live, NO Pocket** (el vídeo `COLECCION TCG POCKET.mp4` engaña con el nombre; frames en `.vidref/coleccion/`).
+**13 Ago se exploró el TELÉFONO EN VIVO por ADB** (más fiable que el vídeo) — el usuario navega y dice "mira ahora".
+**📱 ADB (para re-explorar el TCG Live real):** `$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe`; device `3bf89e4f`; pantalla
+`1080×2400`. Captura fiable: `adb shell screencap -p /sdcard/s.png; adb pull …` (NO `screencap -p >` en PowerShell: corrompe a UTF-16).
+Interacción: `adb shell input tap X Y` / `input swipe x1 y1 x2 y2 ms`. Recortar iconos con `System.Drawing` en PS.
+
+**✅ HECHO 13 Ago (compila + APK `TCG-Studio-Coleccion-debug.apk` en raíz, git-ignored):**
+- **Pantalla completa:** el Lab entra por `onEnterFullscreen{ CollectionScreen(onExit) }` (patrón Match/Pack). Botón `⤢` en cabecera para salir.
+- **Expansiones NUEVAS arriba** → `ORDERED_SETS = sv4·sv3pt5(151)·sv3·sv2·sv1·svp·energy`. En agrupado la **flecha ↑/↓ de "Por expansión" invierte** nuevas↔viejas (`shownSets.reversed()` si `!asc`).
+- **Vista agrupada (verde): rejilla 5 columnas** (era 3); huecos numerados **gateados por toggle "Mostrar todo"** (arriba), que **se oculta al deslizar abajo y reaparece al deslizar arriba** (`NestedScrollConnection.onPreScroll`).
+- **Vista rejilla (blanco): SIN huecos** — solo obtenidas (`.filter{it.owned}`).
+- **Contador** se oculta al desplazar y reaparece al soltar (`state.isScrollInProgress`+`AnimatedVisibility`).
+- **Icono álbum+pokébola** recreado como **VECTOR** (`AlbumPokeballIcon`, Canvas) junto al interruptor y en el botón flotante (crop 66px se veía borroso).
+- **Botón flotante inferior-derecho = ORDENAR** (era "subir arriba", incorrecto). **Contextual:** blanco=8 opciones (añadidas *Por fecha de obtención de cartas* y *…de efectos visuales*, aprox. por nº); verde=SOLO *Por expansión*+dirección.
+- **Lupa = Buscar** (`SearchSheet`, **idéntico en ambas vistas**): texto, Conjuntos de filtros (visual), Favoritas/No favoritas, Lista de deseadas, **Rareza** (chips+Marcar todo), **Pokémon·Tipo** (10 tipos+Marcar todo), Otros (Con/Sin habilidad, ex), **Expansiones** (→`ExpansionSelectorSheet`), barra Buscar/✕/Restablecer. `applyFilter()` aplica query/fav/wish/rareza/tipo/habilidad/ex/sets a AMBAS vistas.
+- **Selector de Expansiones** = "Serie mostrada actualmente" + desplegable de **Serie** (agrupa por `set.series`) → expansiones seleccionables (multi-select, ✓).
+
+**🔎 Hallazgos del TCG Live real (13 Ago, en vivo):** la **lupa/Buscar es la MISMA en ambas vistas**; lo que cambia por interruptor
+es el **Ordenar** (flotante). Buscar real tiene ADEMÁS: **PS** mín/máx, **Daño de ataque** mín/máx, **Carta de Entrenador**
+(Objeto/Herramienta/Objeto Fósil/Partidario/Estadio), **Idioma** (9), **Conjuntos de filtros** (guardar). El selector de Expansiones
+real usa **"Serie A/Serie B"** (interno) y cada expansión tiene **sub-variantes** (artes de sobre, p.ej. GENES FORMIDABLES
+Charizard/Mewtwo/Pikachu) con "Marcar todo"; seleccionar resalta + serie muestra "Seleccionada" + botón → "Selección efectuada".
+
+**🔜 SIGUIENTE:** (1) añadir a Buscar: **PS mín/máx**, **Daño de ataque mín/máx**, **Carta de Entrenador**, **Idioma**, guardar
+**Conjuntos de filtros**. (2) **Sub-variantes por expansión** en el selector. (3) **Logos de expansión** reales con relleno arcoíris.
+(4) **Sección "Ataques"** en el detalle + **iconos de energía** reales. (5) Símbolos de rareza reales (◆/corona). (6) Validar el APK
+en el dispositivo y hacer canon cuando el usuario apruebe.
 
 ## 🎬 FRAMEWORK DE ANIMACIONES (21 Jul 2026) — pipeline propio, Kotlin puro + Compose
 **Workstream SEPARADO del motor de efectos 151.** Framework de animación propio, diseñado por fases

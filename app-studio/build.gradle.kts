@@ -59,6 +59,11 @@ dependencies {
     // (feature:packs) a pantalla completa. feature:packs es network-free (gacha/cards/profile locales,
     // sin Firebase/red): compatible con la Arquitectura Dual, igual que feature:combat/match.
     implementation(project(":feature:packs"))
+    // COLECCIÓN (Card Dex + Binder, réplica TCG Pocket): el Lab lee la colección REAL del jugador.
+    // data:profile es network-free (DataStore local): compatible con la Arquitectura Dual. El catálogo
+    // (data:cards), el modelo (engine:model) y el núcleo visual (core:designsystem, HoloCardImage) ya
+    // llegan por feature:combat; data:profile es implementation en feature:packs (no se expone) → aquí.
+    implementation(project(":data:profile"))
     // Motor de animaciones compartido (núcleo): el Studio HOSPEDA el mismo pipeline que el juego.
     // Es núcleo compartido (Compose puro, sin reglas de juego/red/Firebase): compatible con la
     // Arquitectura Dual y la Regla de Oro. `core:animation` llega transitivamente (api).
@@ -70,5 +75,8 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
+    // Carga de arte de carta (relacionadas en gris del Lab de Colección). core:designsystem ya usa coil
+    // internamente; aquí lo enlazamos explícito para el AsyncImage directo del detalle.
+    implementation(libs.coil.compose)
     debugImplementation(libs.compose.ui.tooling)
 }

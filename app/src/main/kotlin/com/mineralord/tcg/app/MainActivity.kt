@@ -113,9 +113,10 @@ private fun AppShell() {
             onExit = { screen = Screen.HOME },
             modifier = Modifier.fillMaxSize(),
         )
-        Screen.COLLECTION -> SubScreen(title = "Colección de cartas", onHome = { screen = Screen.HOME }) {
-            CollectionScreen(modifier = Modifier.fillMaxSize())
-        }
+        Screen.COLLECTION -> CollectionScreen(
+            onExit = { screen = Screen.HOME },
+            modifier = Modifier.fillMaxSize(),
+        )
         Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { screen = Screen.HOME }) {
             PacksScreen(modifier = Modifier.fillMaxSize())
         }

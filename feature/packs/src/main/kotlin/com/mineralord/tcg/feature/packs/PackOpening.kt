@@ -308,13 +308,6 @@ private fun CardScene(
             )
         }
 
-        // Pila de dorsos restantes (contexto de cuántas quedan).
-        BackStack(
-            remaining = remaining,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp).width(64.dp).fillMaxHeight(0.42f)
-                .graphicsLayer { alpha = (1f - exit.value) * (1f - collect.value) },
-        )
-
         // Progreso "n / total" (discreto, esquina superior).
         Text(
             "$indexLabel / $total",
@@ -342,20 +335,6 @@ private fun CardScene(
         if (pres.confetti > 0 && revealed) {
             ConfettiBurst(trigger = sparkTrigger, intensity = pres.confetti, modifier = Modifier.fillMaxSize())
         }
-
-        // Sombra de CONTACTO (vende profundidad): elipse bajo la carta, no gira con ella.
-        Box(
-            Modifier.align(Alignment.Center).fillMaxWidth(0.62f).height(26.dp)
-                .graphicsLayer { translationY = with(density) { 250.dp.toPx() } * (0.55f + 0.45f * emerge.value) }
-                .drawBehind {
-                    drawRoundRect(
-                        brush = Brush.radialGradient(
-                            listOf(Color.Black.copy(alpha = 0.45f * emerge.value * (1f - collect.value)), Color.Transparent),
-                        ),
-                        cornerRadius = CornerRadius(60f, 60f),
-                    )
-                },
-        )
 
         // ---- LA CARTA (protagonista) ----
         // Ángulo del giro leído en composición para elegir cara (dorso vs frente).
@@ -389,13 +368,17 @@ private fun CardScene(
                 },
             )
             if (showBack) {
-                // Cara trasera: mismas ESQUINAS que las cartas de la expansión (el arte del dorso ya
-                // trae las esquinas redondeadas transparentes, como los frentes → no se recorta a dp).
+                // Cara trasera: se RECORTA con la misma forma que el frente (RoundedCornerShape 10.dp).
+                // No dependemos de las esquinas "redondeadas" horneadas en el arte —esas dejaban picos
+                // negros en las esquinas—; el clip elimina cualquier esquina cuadrada residual.
+                // ContentScale.Crop para que el arte llene el rect y el clip corte limpio sin letterbox.
                 Image(
                     painter = painterResource(R.drawable.card_back_default),
                     contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize().padding(6.dp).graphicsLayer { rotationY = 180f },
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().padding(6.dp)
+                        .graphicsLayer { rotationY = 180f }
+                        .clip(RoundedCornerShape(10.dp)),
                 )
             } else {
                 // Frente HD interactivo (holo con el dedo). En reposo se puede inclinar; tocar = avanzar.
@@ -540,27 +523,6 @@ private fun CardFace(card: RevealedCard, modifier: Modifier = Modifier) {
                 Box(Modifier.size(18.dp).clip(CircleShape).background(Color(0xFFE53935)))
                 Text(card.name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
             }
-        }
-    }
-}
-
-/** Pila abanicada de dorsos oficiales (cartas por revelar). */
-@Composable
-private fun BackStack(remaining: Int, modifier: Modifier = Modifier) {
-    if (remaining <= 0) return
-    val n = remaining.coerceAtMost(5)
-    Box(modifier = modifier) {
-        repeat(n) { i ->
-            Image(
-                painter = painterResource(R.drawable.card_back_default),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .aspectRatio(0.72f)
-                    .graphicsLayer { translationX = i * 6f }
-                    .clip(RoundedCornerShape(8.dp)),
-            )
         }
     }
 }

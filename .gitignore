@@ -36,3 +36,6 @@ app/google-services.json
 /referencias_live - copia/
 
 entregables/
+
+# Fotogramas de referencia de vídeo (regenerables con ffmpeg)
+.vidref/
