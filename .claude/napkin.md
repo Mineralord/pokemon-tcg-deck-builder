@@ -2,6 +2,30 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## 📜 CANON EN EL REPO + AUDITORÍAS POR FASE (22 Ago 2026) — rama feature/studio-match-mode
+**El Canon vive AHORA en `docs/canon/`** (`fase-00`…`fase-10`, con `README.md` índice) — antes estaba
+fuera del repo. Auditorías de conformidad en `docs/audits/` (`AAAA-MM-DD-faseN-audit.md`).
+**Flujo de trabajo por fase (repetible):** auditar código vs esa fase del Canon → documentar hallazgos
+(severidad + decisión canónica + archivo) → arreglar → build verde → commit. En conflicto **manda la Fase 0**.
+**➡️ SIGUIENTE: continuar con la FASE 3 (Tienda y Precios).** Ya auditadas+arregladas: Fases 0, 1 y 2.
+**Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
+copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
+`pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).
+**Fase 2 — ECONOMÍA (substrato + primeras fuentes/consumos, ya commiteado):**
+- 4 recursos oficiales = `CurrencyKind{MONEDAS,CRISTALES,FICHAS,CREDITOS}` (en `data:profile`).
+  `PlayerProfile.balances: Map<CurrencyKind,Int>`; persistido en `ProfileRepository` (`credit`/`spend`
+  ATÓMICOS) y sincronizado en `ProfileSnapshotDto`. Parámetros en `data/profile/EconomyRules.kt`.
+- **Fuente:** ganar PvE → Cristales+Monedas (`GameViewModel.onGameFinished`). Concesión inicial de
+  Cristales (`seedBalancesOnce`, estado inicial, NO login-reward).
+- **Consumo:** compra de sobres con Cristales (`PacksViewModel.buyPack`, gasto atómico + tope 10/día);
+  `DailyPackLimiter`/`DailyPackState` REPURPOSADOS = "sobres comprados hoy" (ya no es código muerto).
+  Botón "Comprar sobre" en `PackStage` (`PacksScreen.kt`).
+- **UI:** 4 monedas en `HomeScreen` con identidad canónica; **tap → ficha informativa** (qué es/para qué
+  sirve/cómo se obtiene). Saldos reales (0 por defecto) leídos del perfil vía `MainActivity`.
+- Pendiente de economía (fases futuras): crafting/Fichas y reciclaje (Fase 5), mercado/Créditos (Fase 11),
+  más fuentes (PvP/logros/temporadas). `pending_shards` aún NO se sincroniza a la nube (falta conversión F5).
+**APK demo:** `app/build/outputs/apk/debug/app-debug.apk` (`./gradlew :app:assembleDebug`).
+
 ## 🏛 GOBERNANZA POR AGENTES (22 Jul 2026) — DC-5, canon operativo → `docs/GOBERNANZA-AGENTES.md`
 **El proyecto trabaja como un equipo AAA de agentes especializados, invocados AUTOMÁTICAMENTE
 según la tarea (no hay que pedirlo).** Antes de responder: identificar qué agentes participan;
