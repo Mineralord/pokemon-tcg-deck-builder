@@ -49,6 +49,7 @@ import com.mineralord.tcg.data.profile.CurrencyKind
 fun HomeScreen(
     modifier: Modifier = Modifier,
     balances: Map<CurrencyKind, Int> = emptyMap(),
+    avatarColors: List<Color>? = null,
     onCartadex: () -> Unit,
     onTienda: () -> Unit,
     onBarajas: () -> Unit,
@@ -94,7 +95,7 @@ fun HomeScreen(
                 .offset(y = (-34).dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AvatarHex()
+            AvatarHex(avatarColors)
             CoinBadge(count = balances[CurrencyKind.CREDITOS] ?: 0, onClick = { info = Currency.CREDITOS })
             Spacer(Modifier.height(14.dp))
             PlayButton(onClick = onJugar)
@@ -269,17 +270,22 @@ private fun HeroBanner() {
 }
 
 @Composable
-private fun AvatarHex() {
+private fun AvatarHex(avatarColors: List<Color>? = null) {
+    // Si hay un avatar cosmético equipado, se pinta con su paleta (Fase 3 §8: personalización).
+    val bg = avatarColors?.takeIf { it.isNotEmpty() }?.let { Brush.verticalGradient(it) }
+        ?: Brush.verticalGradient(listOf(Color(0xFFE9EDF2), Color(0xFFB9C2CC)))
     Box(
         modifier = Modifier
             .size(96.dp)
             .clip(HexagonShape())
-            .background(Brush.verticalGradient(listOf(Color(0xFFE9EDF2), Color(0xFFB9C2CC))))
+            .background(bg)
             .border(3.dp, TcgColors.Gold, HexagonShape()),
         contentAlignment = Alignment.Center,
     ) {
-        // Placeholder del avatar (Pokémon).
-        Box(Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFFFD54F)))
+        if (avatarColors.isNullOrEmpty()) {
+            // Placeholder del avatar (sin cosmético equipado).
+            Box(Modifier.size(48.dp).clip(CircleShape).background(Color(0xFFFFD54F)))
+        }
     }
 }
 

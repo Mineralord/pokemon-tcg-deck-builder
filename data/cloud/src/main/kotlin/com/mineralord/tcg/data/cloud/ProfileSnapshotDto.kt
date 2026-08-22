@@ -3,6 +3,7 @@ package com.mineralord.tcg.data.cloud
 import com.mineralord.tcg.data.cards.Deck
 import com.mineralord.tcg.data.cards.DeckEntry
 import com.mineralord.tcg.data.gacha.DailyPackState
+import com.mineralord.tcg.data.profile.CosmeticCategory
 import com.mineralord.tcg.data.profile.CurrencyKind
 import com.mineralord.tcg.data.profile.PlayerProfile
 import com.mineralord.tcg.engine.model.CardId
@@ -17,11 +18,15 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class ProfileSnapshotDto(
-    val schemaVersion: Int = 1,
+    val schemaVersion: Int = 2,
     val lastModified: Long = 0L,
     val owned: Map<String, Int> = emptyMap(),
     /** Saldo de los 4 recursos oficiales (nombre de [CurrencyKind] -> saldo). */
     val balances: Map<String, Int> = emptyMap(),
+    /** Cosméticos desbloqueados (ids). Ausente en snapshots v1 (default vacío). */
+    val ownedCosmetics: List<String> = emptyList(),
+    /** Cosmético equipado por categoría (nombre de [CosmeticCategory] -> id). */
+    val equippedCosmetics: Map<String, String> = emptyMap(),
     val dailyDayId: Long = 0L,
     val dailyOpenedToday: Int = 0,
     val seeded: Boolean = false,
@@ -48,6 +53,8 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     lastModified = lastModified,
     owned = owned,
     balances = balances.mapKeys { it.key.name },
+    ownedCosmetics = ownedCosmetics.toList(),
+    equippedCosmetics = equippedCosmetics.mapKeys { it.key.name },
     dailyDayId = daily.dayId,
     dailyOpenedToday = daily.openedToday,
     seeded = seeded,
@@ -70,6 +77,10 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
     owned = owned,
     balances = balances.mapNotNull { (name, value) ->
         runCatching { CurrencyKind.valueOf(name) }.getOrNull()?.let { it to value }
+    }.toMap(),
+    ownedCosmetics = ownedCosmetics.toSet(),
+    equippedCosmetics = equippedCosmetics.mapNotNull { (name, id) ->
+        runCatching { CosmeticCategory.valueOf(name) }.getOrNull()?.let { it to id }
     }.toMap(),
     daily = DailyPackState(dayId = dailyDayId, openedToday = dailyOpenedToday),
     seeded = seeded,

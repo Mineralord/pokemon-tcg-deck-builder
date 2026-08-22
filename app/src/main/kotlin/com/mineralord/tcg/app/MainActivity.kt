@@ -40,8 +40,9 @@ import com.mineralord.tcg.feature.decks.DecksScreen
 import com.mineralord.tcg.feature.game.MatchmakingScreen
 import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
+import kotlinx.coroutines.launch
 
-private enum class Screen { HOME, COLLECTION, PACKS, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
+private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +91,11 @@ private fun AppShell() {
     val ctx = LocalContext.current
     val profileRepo = remember { ProfileRepository(ctx.applicationContext) }
     val profile by profileRepo.profile.collectAsState(initial = PlayerProfile())
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Garantiza la concesión inicial de saldos (Cristales + Monedas) aunque el jugador
+    // no abra la pantalla de sobres: la Tienda de Cosméticos necesita Monedas.
+    androidx.compose.runtime.LaunchedEffect(Unit) { profileRepo.seedBalancesOnce() }
 
     BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
 
@@ -100,8 +106,11 @@ private fun AppShell() {
         Screen.HOME -> HomeScreen(
             modifier = Modifier.fillMaxSize(),
             balances = profile.balances,
+            avatarColors = profile.equippedIn(com.mineralord.tcg.data.profile.CosmeticCategory.AVATAR)
+                ?.let { com.mineralord.tcg.data.profile.CosmeticCatalog[it] }
+                ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
             onCartadex = { screen = Screen.COLLECTION },
-            onTienda = { screen = Screen.PACKS },
+            onTienda = { screen = Screen.STORE },
             onBarajas = { screen = Screen.DECKS },
             onPerfil = { screen = Screen.PROFILE },
             onJugar = { pickingDifficulty = true },
@@ -127,8 +136,24 @@ private fun AppShell() {
             onExit = { screen = Screen.HOME },
             modifier = Modifier.fillMaxSize(),
         )
-        Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { screen = Screen.HOME }) {
+        Screen.STORE -> SubScreen(title = "Tienda", onHome = { screen = Screen.HOME }) {
+            StoreHubScreen(
+                balances = profile.balances,
+                onSobres = { screen = Screen.PACKS },
+                onCosmeticos = { screen = Screen.COSMETICS },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { screen = Screen.STORE }) {
             PacksScreen(modifier = Modifier.fillMaxSize())
+        }
+        Screen.COSMETICS -> SubScreen(title = "Tienda · Cosméticos", onHome = { screen = Screen.STORE }) {
+            CosmeticStoreScreen(
+                profile = profile,
+                onBuy = { c -> scope.launch { profileRepo.buyCosmetic(c) } },
+                onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         Screen.DECKS -> SubScreen(title = "Barajas", onHome = { screen = Screen.HOME }) {
             DecksScreen(modifier = Modifier.fillMaxSize())

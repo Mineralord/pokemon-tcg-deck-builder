@@ -8,14 +8,27 @@ fuera del repo. Auditorías de conformidad en `docs/audits/` (`AAAA-MM-DD-faseN-
 **Flujo de trabajo por fase (repetible):** auditar código vs esa fase del Canon → documentar hallazgos
 (severidad + decisión canónica + archivo) → arreglar → build verde → commit. En conflicto **manda la Fase 0**.
 **➡️ SIGUIENTE: continuar con la FASE 4 (Obtención de Cartas).** Ya auditadas: Fases 0, 1, 2 y 3.
-**Fase 3 — TIENDA Y PRECIOS (auditada 22 Ago, `docs/audits/2026-08-22-fase3-audit.md`): CONFORME, sin fixes.**
-La Tienda de Sobres ya cumple el Canon (sus reglas se materializaron en la Fase 2: sobre 10 cartas, prob.
-oficiales, 2/24h acum. a 6, compra con Cristales tope 10/día, precio uniforme `PACK_PRICE_CRISTALES`, sin
-descuentos, apertura con omitir vía `PackOpeningOverlay.onSkip`). Cristales SOLO para sobres; Fichas/Créditos
-fuera de la Tienda. **Gap principal (F3-A, futuro, NO violación): Tienda de COSMÉTICOS inexistente → Monedas
-se ganan (PvE) pero sin sumidero.** Al construirla: hub de Tienda con secciones Sobres/Cosméticos (§2.2),
-rareza cosmética (Común…Mítico), colecciones y recompensas. Nota menor: `PacksUiState.maxPerDay` mal nombrado
-(es el tope del monedero=6, no un límite diario).
+**Fase 3 — TIENDA Y PRECIOS (auditada 22 Ago): Sobres CONFORME + Tienda de COSMÉTICOS implementada
+(Sprint "Tienda AAA v1", Demo).** Auditoría: `docs/audits/2026-08-22-fase3-audit.md`. **F3-A/B/C RESUELTOS.**
+La Tienda de Sobres ya cumplía el Canon (reglas de la Fase 2: 10 cartas, prob. oficiales, 2/24h acum. a 6,
+compra Cristales tope 10/día, precio uniforme, sin descuentos, omitir animación). **Tienda de Cosméticos
+(sumidero de Monedas):**
+- Dominio `data:profile/Cosmetic.kt`: `CosmeticCategory`(Avatar/Marco/Fondo/Tapete/Funda/Caja) · `CosmeticRarity`
+  (Común…Mítico §9.3) · `Cosmetic` + `CosmeticCatalog` (estático, aditivo, arte procedural propio, sin copyright).
+  Precio por rareza en `EconomyRules.cosmeticPrice(rarity, prestige)` (prestigio ×3, §14.3/§14.5).
+- Persistencia: `PlayerProfile.ownedCosmetics:Set` + `equippedCosmetics:Map<CosmeticCategory,id>`;
+  `ProfileRepository.buyCosmetic` (gasto ATÓMICO de Monedas, no re-compra) + `equipCosmetic`. Nube:
+  `ProfileSnapshotDto` **v2** (retro-compat v1, defaults vacíos) + **fusión aditiva** de `ownedCosmetics` en
+  `MergeStrategy` (nunca se pierde un cosmético). `equippedCosmetics` sigue al lado más reciente.
+- UI AAA `app/Store.kt`: piano-glass (Marvel Snap); `StoreHubScreen` (hub Sobres|Cosméticos, §2.2) +
+  `CosmeticStoreScreen` (pestañas por categoría, marcos por rareza con glow + **shimmer** en Legendario/Mítico,
+  preview procedural, ficha compra/equipar). Avatar equipado se refleja en `HomeScreen` (`AvatarHex`).
+- Concesión inicial `STARTER_MONEDAS=1500` (gate propio `MONEDAS_SEEDED`, aplica también a installs ya sembrados);
+  `seedBalancesOnce()` ahora se llama también en `AppShell` (LaunchedEffect). "TIENDA" → `Screen.STORE` (hub).
+- F3-C: `PacksUiState.maxPerDay` → `walletMax` (era el tope del monedero, no un límite diario).
+- **Pendiente F3 (futuro, no bloquea):** colecciones cosméticas (Cap. 10) + recompensas por colección (Cap. 11);
+  vías de obtención logros/eventos/temporadas/regalos (§12, Fases 6/10); categorías Efectos/Sonidos/Museo.
+- **`data:cloud` NO tiene test source set** (0 tests); cambios de merge validados por build verde de `:app`.
 **Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
 copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
 `pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).

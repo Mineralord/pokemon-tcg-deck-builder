@@ -121,7 +121,7 @@ fun PacksScreen(
                 PackStep.PACK -> PackStage(
                     expansion = expansion ?: PACK_CATALOG.first().expansions.first(),
                     remainingToday = state.remainingToday,
-                    maxPerDay = state.maxPerDay,
+                    walletMax = state.walletMax,
                     secondsToNext = state.secondsToNext,
                     deniedMessage = state.deniedMessage,
                     cristales = state.cristales,
@@ -147,7 +147,7 @@ fun PacksScreen(
 private fun PackStage(
     expansion: ExpansionUi,
     remainingToday: Int,
-    maxPerDay: Int,
+    walletMax: Int,
     secondsToNext: Long?,
     deniedMessage: String?,
     cristales: Int,
@@ -225,7 +225,7 @@ private fun PackStage(
                 color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp, textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(2.dp))
-            Text("Sobres: $remainingToday/$maxPerDay", color = Color(0xB3FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("Sobres: $remainingToday/$walletMax", color = Color(0xB3FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             countdown?.let {
                 Text("Próximo sobre en ${fmtCountdown(it)}", color = Color(0x99FFFFFF), fontSize = 11.sp)
             }
@@ -571,7 +571,7 @@ fun PackOpeningSimulator(
                     PackStep.PACK -> PackStage(
                         expansion = expansion ?: series.expansions.first(),
                         remainingToday = 999,
-                        maxPerDay = 999,
+                        walletMax = 999,
                         secondsToNext = null,
                         deniedMessage = null,
                         cristales = 9999,

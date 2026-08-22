@@ -38,6 +38,7 @@ class ProfileRepository(context: Context) {
     private val mapSerializer = MapSerializer(String.serializer(), Int.serializer())
     private val decksSerializer = ListSerializer(DeckDto.serializer())
     private val favoritesSerializer = SetSerializer(String.serializer())
+    private val stringMapSerializer = MapSerializer(String.serializer(), String.serializer())
 
     val profile: Flow<PlayerProfile> = store.data.map { prefs ->
         val ownedJson = prefs[OWNED] ?: "{}"
@@ -51,9 +52,15 @@ class ProfileRepository(context: Context) {
         val favorites = runCatching {
             json.decodeFromString(favoritesSerializer, prefs[FAVORITES] ?: "[]")
         }.getOrDefault(emptySet())
+        val ownedCosmetics = runCatching {
+            json.decodeFromString(favoritesSerializer, prefs[OWNED_COSMETICS] ?: "[]")
+        }.getOrDefault(emptySet())
+        val equippedCosmetics = decodeEquipped(prefs[EQUIPPED_COSMETICS])
         PlayerProfile(
             owned = owned,
             balances = balances,
+            ownedCosmetics = ownedCosmetics,
+            equippedCosmetics = equippedCosmetics,
             daily = DailyPackState(
                 dayId = prefs[DAILY_DAY] ?: 0L,
                 openedToday = prefs[DAILY_OPENED] ?: 0,
@@ -127,14 +134,79 @@ class ProfileRepository(context: Context) {
      */
     suspend fun seedBalancesOnce() {
         store.edit { prefs ->
-            if (prefs[BALANCES_SEEDED] == true) return@edit
             val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
-            balances[CurrencyKind.CRISTALES.name] =
-                (balances[CurrencyKind.CRISTALES.name] ?: 0) + EconomyRules.STARTER_CRISTALES
+            var changed = false
+            // Cristales (gate original). Concesión inicial para poder comprar sobres.
+            if (prefs[BALANCES_SEEDED] != true) {
+                balances[CurrencyKind.CRISTALES.name] =
+                    (balances[CurrencyKind.CRISTALES.name] ?: 0) + EconomyRules.STARTER_CRISTALES
+                prefs[BALANCES_SEEDED] = true
+                changed = true
+            }
+            // Monedas (gate propio). Se añadió con la Tienda de Cosméticos; su gate independiente
+            // permite que también corra en instalaciones cuyos Cristales ya se sembraron antes.
+            if (prefs[MONEDAS_SEEDED] != true) {
+                balances[CurrencyKind.MONEDAS.name] =
+                    (balances[CurrencyKind.MONEDAS.name] ?: 0) + EconomyRules.STARTER_MONEDAS
+                prefs[MONEDAS_SEEDED] = true
+                changed = true
+            }
+            if (changed) {
+                prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+                prefs.touch()
+            }
+        }
+    }
+
+    /**
+     * Compra un cosmético con **Monedas** (Fase 3 §3.3/§14). Operación ATÓMICA: si ya se
+     * posee o no hay saldo suficiente NO modifica nada y devuelve `false`. Un cosmético
+     * comprado queda vinculado permanentemente a la cuenta (§13.2).
+     */
+    suspend fun buyCosmetic(cosmetic: Cosmetic): Boolean {
+        var ok = false
+        store.edit { prefs ->
+            val owned = runCatching {
+                json.decodeFromString(favoritesSerializer, prefs[OWNED_COSMETICS] ?: "[]")
+            }.getOrDefault(emptySet())
+            if (cosmetic.id in owned) return@edit
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            val current = balances[CurrencyKind.MONEDAS.name] ?: 0
+            if (current < cosmetic.priceMonedas) return@edit
+            balances[CurrencyKind.MONEDAS.name] = current - cosmetic.priceMonedas
             prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
-            prefs[BALANCES_SEEDED] = true
+            prefs[OWNED_COSMETICS] = json.encodeToString(favoritesSerializer, owned + cosmetic.id)
+            prefs.touch()
+            ok = true
+        }
+        return ok
+    }
+
+    /**
+     * Equipa el cosmético [cosmeticId] en su [category] (uno por categoría). Requiere poseerlo;
+     * en caso contrario no hace nada. Un cosmético es exclusivamente estético (§13.4).
+     */
+    suspend fun equipCosmetic(category: CosmeticCategory, cosmeticId: String) {
+        store.edit { prefs ->
+            val owned = runCatching {
+                json.decodeFromString(favoritesSerializer, prefs[OWNED_COSMETICS] ?: "[]")
+            }.getOrDefault(emptySet())
+            if (cosmeticId !in owned) return@edit
+            val equipped = HashMap(decodeEquipped(prefs[EQUIPPED_COSMETICS]).mapKeys { it.key.name })
+            equipped[category.name] = cosmeticId
+            prefs[EQUIPPED_COSMETICS] = json.encodeToString(stringMapSerializer, equipped)
             prefs.touch()
         }
+    }
+
+    /** Decodifica el JSON de equipado (nombre de categoría -> id), ignorando categorías desconocidas. */
+    private fun decodeEquipped(raw: String?): Map<CosmeticCategory, String> {
+        val byName = runCatching {
+            json.decodeFromString(stringMapSerializer, raw ?: "{}")
+        }.getOrDefault(emptyMap())
+        return byName.mapNotNull { (name, id) ->
+            runCatching { CosmeticCategory.valueOf(name) }.getOrNull()?.let { it to id }
+        }.toMap()
     }
 
     /** Acredita [amount] unidades del recurso [kind] (Fase 2, Cap. 6). [amount] debe ser >= 0. */
@@ -291,6 +363,9 @@ class ProfileRepository(context: Context) {
         store.edit { prefs ->
             prefs[OWNED] = json.encodeToString(mapSerializer, profile.owned)
             prefs[BALANCES] = json.encodeToString(mapSerializer, profile.balances.mapKeys { it.key.name })
+            prefs[OWNED_COSMETICS] = json.encodeToString(favoritesSerializer, profile.ownedCosmetics)
+            prefs[EQUIPPED_COSMETICS] =
+                json.encodeToString(stringMapSerializer, profile.equippedCosmetics.mapKeys { it.key.name })
             prefs[DAILY_DAY] = profile.daily.dayId
             prefs[DAILY_OPENED] = profile.daily.openedToday
             prefs[SEEDED] = profile.seeded
@@ -383,5 +458,8 @@ class ProfileRepository(context: Context) {
         val PENDING_SHARDS = stringPreferencesKey("pending_shards_json")
         val BALANCES = stringPreferencesKey("balances_json")
         val BALANCES_SEEDED = booleanPreferencesKey("balances_seeded")
+        val MONEDAS_SEEDED = booleanPreferencesKey("monedas_seeded")
+        val OWNED_COSMETICS = stringPreferencesKey("owned_cosmetics_json")
+        val EQUIPPED_COSMETICS = stringPreferencesKey("equipped_cosmetics_json")
     }
 }

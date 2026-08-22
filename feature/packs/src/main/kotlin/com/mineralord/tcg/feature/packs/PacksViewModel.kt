@@ -42,7 +42,8 @@ data class RevealedCard(
 data class PacksUiState(
     val loading: Boolean = true,
     val remainingToday: Int = 0,
-    val maxPerDay: Int = 2,
+    /** Tope del monedero de sobres gratis (no un límite diario): sobres máx. acumulables. */
+    val walletMax: Int = 6,
     val revealed: List<RevealedCard> = emptyList(),
     val deniedMessage: String? = null,
     val totalCards: Int = 0,
@@ -141,7 +142,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(
             loading = false,
             remainingToday = credited.balance,
-            maxPerDay = regen.maxPacks,
+            walletMax = regen.maxPacks,
             totalCards = pool.totalCards,
             ownedDistinct = owned.size,
             secondsToNext = nextAt?.let { ((it - now) / 1000).coerceAtLeast(0) },

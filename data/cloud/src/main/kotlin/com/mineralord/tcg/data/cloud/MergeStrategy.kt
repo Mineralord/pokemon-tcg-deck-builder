@@ -50,6 +50,7 @@ object MergeStrategy {
      * - `owned`: máximo de copias por carta (la colección nunca decrece).
      * - `decks`: unión por id, conservando el de `updatedAt` más reciente.
      * - `favoriteDeckIds`: unión.
+     * - `ownedCosmetics`: unión (patrimonio permanente, nunca se pierde un cosmético).
      * - `seeded`: OR lógico.
      * - Estado de consumo (`daily`, `activeDeckId`) y `lastModified`: del lado
      *   más reciente, o de la nube si [preferCloudScalars].
@@ -72,6 +73,7 @@ object MergeStrategy {
             owned = ownedUnion,
             decks = decksById.values.toList(),
             favoriteDeckIds = local.favoriteDeckIds + cloud.favoriteDeckIds,
+            ownedCosmetics = local.ownedCosmetics + cloud.ownedCosmetics,
             seeded = local.seeded || cloud.seeded,
             activeDeckId = activeDeckId,
             lastModified = max(local.lastModified, cloud.lastModified),
