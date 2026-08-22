@@ -326,6 +326,27 @@ class Set151EffectsTest {
     }
 
     @Test
+    fun `FASE 53 - Hackeo Genomico ignora la restriccion 'no puede atacar el proximo turno' del ataque copiado`() {
+        val genome = attack("Genome Hacking", 0, EffectsDb.atkKey("sv3pt5-151", "Genome Hacking"))
+        val mew = PokemonInPlay(mon("mew", 180, EnergyType.PSYCHIC, genome))
+        // Activo rival con Cuchillada Acuática (Aqua Slash): 90 daño + "este Pokémon no puede
+        // atacar durante tu próximo turno" (EffectOp.NoAttackNextTurn).
+        val aquaSlash = attack("Aqua Slash", 90, EffectsDb.atkKey("sv3pt5-148", "Aqua Slash"))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.DARKNESS, aquaSlash))
+        val st = duel(mew, foe)
+
+        val used = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Genome Hacking"))
+        val chosen = PendingDecision.encodeAttackIndex(0)
+        val resolved = GameEngine(SeededRng(1)).apply(used.state, GameIntent.ResolveDecision(listOf(chosen)))
+
+        // El daño del ataque copiado se aplica...
+        assertEquals(90, resolved.state.opponent.active!!.damage)
+        // ...pero la restricción "no puede atacar el próximo turno" NO se pega a Mew (su ataque
+        // declarado siempre es "Hackeo Genómico"): puede volver a copiar el turno siguiente.
+        assertEquals(null, resolved.state.player.active!!.cannotAttackOnTurn)
+    }
+
+    @Test
     fun `FASE 54 - Regreso Espiritual coge un Partidario del descarte rival a su mano`() {
         val dummy = attack("x", 0, EffectId("none"))
         val gastly = PokemonInPlay(mon("Gastly", 60, EnergyType.PSYCHIC, dummy)).copy(turnsInPlay = 1)

@@ -525,8 +525,17 @@ class GameEngine(
         // descartan los ops dirigidos al defensor. No aplica si el ataque ignora los efectos del Defensor.
         val defenderImmuneToEffects = !ignoresDefEffects &&
             abilityEffects(state, foeSide, defender).any { it.immuneToAttackEffects }
-        val runEffect = if (effect != null && defenderImmuneToEffects)
-            effect.copy(ops = effect.ops.filterNot { opTargetsDefender(it) }) else effect
+        val runEffect = effect?.let { e ->
+            var ops = e.ops
+            // Kakuna — Manto de Capullo: el DEFENSOR es inmune a los EFECTOS del ataque (no al daño).
+            if (defenderImmuneToEffects) ops = ops.filterNot { opTargetsDefender(it) }
+            // Mew ex — Hackeo Genómico: al COPIAR un ataque (overrideAttack != null), la restricción
+            // "este Pokémon no puede usar este ataque durante tu próximo turno" queda ligada al NOMBRE
+            // del ataque copiado, no a Mew (cuyo ataque declarado siempre es "Hackeo Genómico"). Por eso
+            // el motor "olvida" el impedimento y Mew puede volver a copiar el turno siguiente.
+            if (overrideAttack != null) ops = ops.filterNot { it is EffectOp.NoAttackNextTurn }
+            if (ops === e.ops) e else e.copy(ops = ops)
+        }
         if (runEffect != null && !attackFizzles) {
             // endsTurnOnResolve = true: si el efecto deja una decisión, el turno se
             // cerrará al resolverla (ver resolveDecision), no aquí.
@@ -1225,7 +1234,7 @@ class GameEngine(
             .let { withPlayer(it, targetAfter, koSide) }
 
         // Registrar KO "durante el turno del rival" (no cuenta el auto-KO por recoil
-        // en el propio turno): habilita cartas condicionales como Mela.
+        // en el propio turno): habilita cartas condicionales como Melo.
         if (state.activeSide != koSide) {
             next = next.copy(koedLastOppTurn = next.koedLastOppTurn + koSide)
         }
