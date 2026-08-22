@@ -224,7 +224,10 @@ fun CardDetailDialog(
             // Chip de copias en la colección (como en TCG Live): se dibuja ENCIMA de la carta, así
             // el jugador ve cuántas tiene al abrir el detalle. Solo cuando se conocen las copias.
             if (copiesOwned != null && copiesCap != null) {
-                val complete = copiesOwned >= copiesCap
+                // Tope ilimitado (Energías Básicas): se muestra "∞" y nunca se marca como completo.
+                val unlimited = copiesCap == Int.MAX_VALUE
+                val capLabel = if (unlimited) "∞" else copiesCap.toString()
+                val complete = !unlimited && copiesOwned >= copiesCap
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -235,7 +238,7 @@ fun CardDetailDialog(
                         .padding(horizontal = 14.dp, vertical = 5.dp),
                 ) {
                     Text(
-                        "$copiesOwned / $copiesCap en la colección",
+                        "$copiesOwned / $capLabel en la colección",
                         color = if (complete) Color(0xFF1A1400) else Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Black,

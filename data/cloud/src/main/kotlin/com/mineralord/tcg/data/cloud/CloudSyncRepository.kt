@@ -105,9 +105,11 @@ class CloudSyncRepository(
             val fileId = metadata.getFileId() ?: drive.findProfileFileId(token)?.also { metadata.setFileId(it) }
             val cloud = if (fileId != null) drive.download(token, fileId) else null
             when (val r = MergeStrategy.resolve(local, cloud, preferCloud)) {
-                is Resolution.ImportCloud -> {
+                is Resolution.Merge -> {
+                    // Fusión aditiva: aplica la unión en local y resube para que la nube converja.
                     applyingRemote = true
                     try { profileRepo.importSnapshot(r.profile) } finally { applyingRemote = false }
+                    uploadSnapshot(token, r.profile.toSnapshot())
                 }
                 is Resolution.PushLocal -> uploadSnapshot(token, r.snapshot)
                 Resolution.Noop -> {}

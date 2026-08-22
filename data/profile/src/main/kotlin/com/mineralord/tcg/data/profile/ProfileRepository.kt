@@ -78,9 +78,11 @@ class ProfileRepository(context: Context) {
 
     /**
      * Añade cartas a la colección (acumula copias) RESPETANDO el tope por carta: 4 copias para una
-     * carta normal y [ENERGY_CAP] para cada variante de Energía Básica. Las copias que rebasan el tope
-     * NO se guardan (en el futuro se convertirán en moneda). Devuelve, por id, cuántas se DESCARTARON
-     * por exceso (0 si ninguna) para que la capa superior pueda contabilizar la moneda futura.
+     * carta normal; las Energías Básicas son ILIMITADAS (nunca desbordan). Las copias que rebasan el
+     * tope de una carta normal NO se pierden: se acumulan en [PENDING_SHARDS] para su futura
+     * conversión a Fichas (Fase 5), preservando el patrimonio del jugador (Preservación Absoluta /
+     * Reversibilidad). Devuelve, por id, cuántas se DESVIARON al excedente en esta llamada (0 si
+     * ninguna) para que la capa superior pueda informar al jugador.
      */
     suspend fun addCards(cardIds: List<String>): Map<String, Int> {
         val overflow = HashMap<String, Int>()
@@ -96,9 +98,25 @@ class ProfileRepository(context: Context) {
                 else merged[id] = now + 1
             }
             prefs[OWNED] = json.encodeToString(mapSerializer, merged)
+            if (overflow.isNotEmpty()) {
+                // Preserva el excedente (nunca se descarta) hasta que exista la conversión a Fichas.
+                val pending = runCatching {
+                    json.decodeFromString(mapSerializer, prefs[PENDING_SHARDS] ?: "{}")
+                }.getOrDefault(emptyMap())
+                val mergedPending = HashMap(pending)
+                overflow.forEach { (id, n) -> mergedPending[id] = (mergedPending[id] ?: 0) + n }
+                prefs[PENDING_SHARDS] = json.encodeToString(mapSerializer, mergedPending)
+            }
             prefs.touch()
         }
         return overflow
+    }
+
+    /** Excedente de duplicados preservado (id -> nº) pendiente de convertir a Fichas (Fase 5). */
+    val pendingShards: Flow<Map<String, Int>> = store.data.map { prefs ->
+        runCatching {
+            json.decodeFromString(mapSerializer, prefs[PENDING_SHARDS] ?: "{}")
+        }.getOrDefault(emptyMap())
     }
 
     /** Incremento de una copia respetando el tope de la carta [id] (usado en el sembrado). */
@@ -273,16 +291,24 @@ class ProfileRepository(context: Context) {
     )
 
     companion object {
-        /** Tope de copias por carta normal en la colección (el resto se descarta / futura moneda). */
+        /** Tope de copias por carta normal en la colección (el excedente se preserva para futura moneda). */
         const val CARD_CAP = 4
-        /** Tope de copias por CADA variante de Energía Básica (por tipo). */
-        const val ENERGY_CAP = 30
+
+        /**
+         * Tope "ilimitado". Por Canon (Fase 5 + directriz del propietario 2026-08-21), las Energías
+         * Básicas NO tienen tope de colección y NO generan Fichas por duplicado. Se representa con el
+         * máximo entero: nunca desbordan, nunca se descartan y nunca alimentan la conversión.
+         */
+        const val UNLIMITED = Int.MAX_VALUE
 
         /** ¿El id corresponde a una Energía Básica? (ids "energy-basic-<tipo>-energy"). */
         fun isEnergyId(id: String): Boolean = id.startsWith("energy")
 
-        /** Tope de copias aplicable a la carta [id] (para la UI: "n/4" o "n/30"). */
-        fun capFor(id: String): Int = if (isEnergyId(id)) ENERGY_CAP else CARD_CAP
+        /** ¿La carta [id] tiene tope de colección? Las Energías Básicas son ilimitadas. */
+        fun isCapped(id: String): Boolean = !isEnergyId(id)
+
+        /** Tope de copias aplicable a la carta [id]: 4 para cartas normales, ilimitado para energías. */
+        fun capFor(id: String): Int = if (isEnergyId(id)) UNLIMITED else CARD_CAP
 
         val OWNED = stringPreferencesKey("owned_json")
         val DAILY_DAY = longPreferencesKey("daily_day")
@@ -295,5 +321,6 @@ class ProfileRepository(context: Context) {
         val FAVORITES = stringPreferencesKey("favorite_deck_ids")
         val DECKS_SEEDED = booleanPreferencesKey("decks_seeded")
         val LAST_MODIFIED = longPreferencesKey("last_modified")
+        val PENDING_SHARDS = stringPreferencesKey("pending_shards_json")
     }
 }
