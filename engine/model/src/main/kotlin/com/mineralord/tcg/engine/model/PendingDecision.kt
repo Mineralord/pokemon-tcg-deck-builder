@@ -194,7 +194,7 @@ sealed interface PendingDecision {
          * propios elegibles (Banca y/o Activo). */
         val fromDiscard: Boolean = false,
         /**
-         * "Si lo haces, roba hasta tener N cartas" (Mela): tras resolver, si se
+         * "Si lo haces, roba hasta tener N cartas" (Melo): tras resolver, si se
          * unió al menos 1 Energía, roba hasta [thenDrawUpTo]. null = no roba. */
         val thenDrawUpTo: Int? = null,
         /**

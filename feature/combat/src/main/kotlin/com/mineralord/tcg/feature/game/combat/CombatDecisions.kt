@@ -274,7 +274,7 @@ private fun CounterSpread(
     }
 }
 
-/** Empareja Energías reveladas con Pokémon de Banca (Generador Eléctrico / Mela). */
+/** Empareja Energías reveladas con Pokémon de Banca (Generador Eléctrico / Melo). */
 @Composable
 private fun AttachPairing(
     decision: PendingDecision.AttachFromRevealed,

@@ -88,7 +88,7 @@ class EffectsDbTest {
         assertTrue(registry[EffectsDb.atkKey("sv1-38", "Passionate Singing")]!!.ops.any { it is EffectOp.AttachEnergyFromDiscard })
         // Concentrated Fire: daño escalable por moneda.
         assertTrue(registry[EffectsDb.atkKey("sv1-35", "Concentrated Fire")]!!.ops.any { it is EffectOp.CoinsPerEnergyDamage })
-        // Mela: Partidario condicional (requiere KO en el turno rival).
+        // Melo: Partidario condicional (requiere KO en el turno rival).
         val mela = registry[EffectId("sv4-167")]
         assertNotNull(mela)
         assertTrue(mela.requiresOwnKoLastTurn)

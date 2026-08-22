@@ -283,7 +283,7 @@ sealed interface EffectOp {
         val energyType: EnergyType?,
         val target: Target,
         /**
-         * "Si lo haces, roba hasta tener [thenDrawUpTo] cartas" (Mela). El robo
+         * "Si lo haces, roba hasta tener [thenDrawUpTo] cartas" (Melo). El robo
          * es ATÓMICO con el enganche: solo ocurre si se unió al menos 1 Energía.
          * null = no roba. */
         val thenDrawUpTo: Int? = null,
@@ -618,7 +618,7 @@ data class Effect(
     val attackDamage: List<DamageTerm> = emptyList(),
     /**
      * Si es true, la carta solo puede jugarse cuando alguno de TUS Pokémon fue
-     * Noqueado durante el último turno del rival (Mela). El motor lo comprueba
+     * Noqueado durante el último turno del rival (Melo). El motor lo comprueba
      * contra [GameState.koedLastOppTurn] en `playTrainer`/`legalIntents`. */
     val requiresOwnKoLastTurn: Boolean = false,
     /**

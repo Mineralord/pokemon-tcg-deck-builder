@@ -77,7 +77,7 @@ internal fun MutableMap<EffectId, Effect>.registerAcademiaDecks() {
     put(atkKey("sv1-35", "Concentrated Fire"),
         Effect(ops = listOf(EffectOp.CoinsPerEnergyDamage(EnergyType.FIRE, 80))))
 
-    // Mela (Partidario) — SOLO si te noquearon el turno pasado: une 1 Energía Fuego
+    // Melo (Partidario) — SOLO si te noquearon el turno pasado: une 1 Energía Fuego
     // Básica del descarte a 1 de tus Pokémon y roba hasta tener 6 cartas.
     put(EffectId("sv4-167"), Effect(
         ops = listOf(

@@ -224,7 +224,7 @@ class TrainerAbilityTest {
     }
 
     @Test
-    fun `Mela no se puede jugar si no te noquearon el turno pasado`() {
+    fun `Melo no se puede jugar si no te noquearon el turno pasado`() {
         val mela = trainer("sv4-167", TrainerKind.Supporter())
         val state = baseState(hand = listOf(mela), deck = (1..8).map { energy("d$it") })
             .copy(koedLastOppTurn = emptySet())
@@ -233,7 +233,7 @@ class TrainerAbilityTest {
     }
 
     @Test
-    fun `Mela une Fuego del descarte y roba hasta 6 si te noquearon`() {
+    fun `Melo une Fuego del descarte y roba hasta 6 si te noquearon`() {
         val mela = trainer("sv4-167", TrainerKind.Supporter())
         val state = baseState(hand = listOf(mela), deck = (1..8).map { energy("d$it") })
             .copy(
@@ -261,9 +261,9 @@ class TrainerAbilityTest {
     }
 
     @Test
-    fun `Mela sin Fuego en el descarte no engancha ni roba`() {
+    fun `Melo sin Fuego en el descarte no engancha ni roba`() {
         // Condición cumplida (te noquearon) pero descarte sin Energía Fuego → "si lo
-        // haces" no se cumple: no hay decisión, no roba (mano queda vacía tras descartar Mela).
+        // haces" no se cumple: no hay decisión, no roba (mano queda vacía tras descartar Melo).
         val mela = trainer("sv4-167", TrainerKind.Supporter())
         val state = baseState().let { s ->
             s.copy(

@@ -1332,7 +1332,7 @@ private fun DetailTable(card: Card) {
             TableEnergyRow("Coste de Retirada", p.retreatCost)
         }
         TableRow("Serie", seriesEs(card.set.series))
-        TableRow("Expansión", card.set.name.es)
+        TableRow("Expansión", expansionEs(card.set.name.es))
     }
 }
 
@@ -1584,6 +1584,26 @@ private fun seriesEs(series: String): String = when (series) {
     "XY" -> "XY"
     "Black & White" -> "Negro y Blanco"
     else -> series
+}
+
+/**
+ * Nombre OFICIAL de la expansión en español (el dato `set.name` viene en inglés).
+ * Fuente: nombres de lanzamiento en España según WikiDex (wikidex.net).
+ */
+private fun expansionEs(name: String): String = when (name) {
+    "151" -> "151"
+    "Scarlet & Violet" -> "Escarlata y Púrpura"
+    "Paldea Evolved" -> "Evoluciones en Paldea"
+    "Obsidian Flames" -> "Llamas Obsidianas"
+    "Paradox Rift" -> "Brecha Paradójica"
+    "Temporal Forces" -> "Fuerzas Temporales"
+    "Twilight Masquerade" -> "Mascarada Crepuscular"
+    "Shrouded Fable" -> "Fábula Sombría"
+    "Stellar Crown" -> "Corona Astral"
+    "Surging Sparks" -> "Chispas Fulgurantes"
+    "Destined Rivals" -> "Rivales Predestinados"
+    "Mega Evolution" -> "Megaevolución"
+    else -> name
 }
 
 private fun energyEs(t: EnergyType?): String = when (t) {

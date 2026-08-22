@@ -1448,7 +1448,7 @@ class EffectInterpreter {
             // Las energías unidas salen del descarte; el resto se queda (no se baraja).
             val newDiscard = ps.discard - attached.toSet()
             working = withPlayer(working, working.sideState(side).copy(discard = newDiscard), side)
-            // "Si lo haces, roba hasta N" (Mela): atómico, solo si se unió Energía.
+            // "Si lo haces, roba hasta N" (Melo): atómico, solo si se unió Energía.
             val drawUpTo = d.thenDrawUpTo
             if (drawUpTo != null && attached.isNotEmpty()) {
                 val have = working.sideState(side).hand.size

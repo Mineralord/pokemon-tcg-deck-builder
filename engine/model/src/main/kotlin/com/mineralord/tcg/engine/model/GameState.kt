@@ -197,7 +197,7 @@ data class GameState(
     /**
      * Lados que tuvieron algún Pokémon Noqueado DURANTE el último turno del rival
      * (no en el propio, p.ej. por recoil). Habilita cartas condicionales como
-     * Mela ("solo si te noquearon el turno pasado"). Se limpia para un lado
+     * Melo ("solo si te noquearon el turno pasado"). Se limpia para un lado
      * cuando termina SU turno (así refleja siempre el turno rival más reciente).
      */
     val koedLastOppTurn: Set<Side> = emptySet(),
