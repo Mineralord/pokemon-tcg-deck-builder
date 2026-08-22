@@ -3,11 +3,19 @@
 Runbook curado. Solo guía recurrente de alto valor.
 
 ## 📜 CANON EN EL REPO + AUDITORÍAS POR FASE (22 Ago 2026) — rama feature/studio-match-mode
-**El Canon vive AHORA en `docs/canon/`** (`fase-00`…`fase-10`, con `README.md` índice) — antes estaba
+**El Canon vive AHORA en `docs/canon/`** (`fase-00`…`fase-11`, con `README.md` índice) — antes estaba
 fuera del repo. Auditorías de conformidad en `docs/audits/` (`AAAA-MM-DD-faseN-audit.md`).
 **Flujo de trabajo por fase (repetible):** auditar código vs esa fase del Canon → documentar hallazgos
 (severidad + decisión canónica + archivo) → arreglar → build verde → commit. En conflicto **manda la Fase 0**.
-**➡️ SIGUIENTE: continuar con la FASE 3 (Tienda y Precios).** Ya auditadas+arregladas: Fases 0, 1 y 2.
+**➡️ SIGUIENTE: continuar con la FASE 4 (Obtención de Cartas).** Ya auditadas: Fases 0, 1, 2 y 3.
+**Fase 3 — TIENDA Y PRECIOS (auditada 22 Ago, `docs/audits/2026-08-22-fase3-audit.md`): CONFORME, sin fixes.**
+La Tienda de Sobres ya cumple el Canon (sus reglas se materializaron en la Fase 2: sobre 10 cartas, prob.
+oficiales, 2/24h acum. a 6, compra con Cristales tope 10/día, precio uniforme `PACK_PRICE_CRISTALES`, sin
+descuentos, apertura con omitir vía `PackOpeningOverlay.onSkip`). Cristales SOLO para sobres; Fichas/Créditos
+fuera de la Tienda. **Gap principal (F3-A, futuro, NO violación): Tienda de COSMÉTICOS inexistente → Monedas
+se ganan (PvE) pero sin sumidero.** Al construirla: hub de Tienda con secciones Sobres/Cosméticos (§2.2),
+rareza cosmética (Común…Mítico), colecciones y recompensas. Nota menor: `PacksUiState.maxPerDay` mal nombrado
+(es el tope del monedero=6, no un límite diario).
 **Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
 copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
 `pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).
