@@ -13,7 +13,7 @@ versionado, trazable y preservado junto al código.
 ## Jerarquía documental (Dec. 0.09)
 
 - **Nivel I — Canon Fundacional**: `fase-00-canon-del-proyecto.md`.
-- **Nivel II — Documentos Canónicos**: fases 01–10.
+- **Nivel II — Documentos Canónicos**: fases 01–11.
 - **Nivel III** — Documentación arquitectónica/técnica (código y `/docs`).
 - **Nivel IV** — Documentación operativa e histórica (auditorías, napkin).
 
@@ -32,6 +32,7 @@ versionado, trazable y preservado junto al código.
 | 8 | [fase-08-pve.md](fase-08-pve.md) | Actividad × Formato × Modo; IA sin ventajas artificiales |
 | 9 | [fase-09-pvp.md](fase-09-pvp.md) | Motor de reglas compartido; amigos/torneos; Tiempo Real/Por Turnos |
 | 10 | [fase-10-ranked-temporadas-competicion.md](fase-10-ranked-temporadas-competicion.md) | Rating por formato; temporadas; preservación histórica |
+| 11 | [fase-11-mercado-e-intercambios.md](fase-11-mercado-e-intercambios.md) | Mercado e intercambios; circulación sin destrucción; preservación del patrimonio |
 
 > Habrá más fases; se añadirán aquí conforme se aprueben.
 
