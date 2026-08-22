@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.data.cards.toDeck
+import com.mineralord.tcg.data.profile.CurrencyKind
+import com.mineralord.tcg.data.profile.EconomyRules
 import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.engine.events.CombatLog
 import com.mineralord.tcg.engine.model.Card
@@ -362,8 +364,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
         core.emit()
     }
 
-    /** Punto de extensión para recompensas de PvE (por ahora sin premio concreto). */
+    /** Recompensa de PvE: al VENCER, otorga Cristales y Monedas (Fase 2 §6.8). */
     private fun onGameFinished(winner: Side) {
-        // TODO(recompensas): otorgar recompensa de PvE cuando winner == Side.PLAYER.
+        if (winner != Side.PLAYER) return
+        viewModelScope.launch {
+            profileRepo.credit(CurrencyKind.CRISTALES, EconomyRules.PVE_WIN_CRISTALES)
+            profileRepo.credit(CurrencyKind.MONEDAS, EconomyRules.PVE_WIN_MONEDAS)
+        }
     }
 }

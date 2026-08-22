@@ -124,6 +124,11 @@ fun PacksScreen(
                     maxPerDay = state.maxPerDay,
                     secondsToNext = state.secondsToNext,
                     deniedMessage = state.deniedMessage,
+                    cristales = state.cristales,
+                    packPrice = state.packPrice,
+                    buyRemaining = state.buyRemaining,
+                    canBuy = state.canBuy,
+                    onBuy = viewModel::buyPack,
                     onBack = { step = PackStep.EXPANSION },
                     onOpen = viewModel::openPack,
                     onExpire = viewModel::refresh,
@@ -145,6 +150,11 @@ private fun PackStage(
     maxPerDay: Int,
     secondsToNext: Long?,
     deniedMessage: String?,
+    cristales: Int,
+    packPrice: Int,
+    buyRemaining: Int,
+    canBuy: Boolean,
+    onBuy: () -> Unit,
     onBack: () -> Unit,
     onOpen: () -> Unit,
     onExpire: () -> Unit,
@@ -219,6 +229,26 @@ private fun PackStage(
             countdown?.let {
                 Text("Próximo sobre en ${fmtCountdown(it)}", color = Color(0x99FFFFFF), fontSize = 11.sp)
             }
+            Spacer(Modifier.height(10.dp))
+            // Compra con Cristales (Fase 2 §7.4 / Fase 3 §4.6): además de los sobres gratis del monedero.
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (canBuy) Color(0xFF2E5FA8) else Color(0x332E5FA8))
+                    .clickable(enabled = canBuy, onClick = onBuy)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    "Comprar sobre · $packPrice 💎",
+                    color = if (canBuy) Color.White else Color(0x80FFFFFF),
+                    fontSize = 13.sp, fontWeight = FontWeight.Black,
+                )
+            }
+            Text(
+                "Cristales: $cristales · Compras restantes hoy: $buyRemaining",
+                color = Color(0x99FFFFFF), fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp),
+            )
             Spacer(Modifier.height(18.dp))
 
             // El sobre GRANDE con acercamiento a la parte superior. Se rasga con UN gesto continuo.
@@ -544,6 +574,11 @@ fun PackOpeningSimulator(
                         maxPerDay = 999,
                         secondsToNext = null,
                         deniedMessage = null,
+                        cristales = 9999,
+                        packPrice = 0,
+                        buyRemaining = 999,
+                        canBuy = true,
+                        onBuy = { revealed = s.generate(forceTier); session++; hudVisible = false; opening = true },
                         onBack = { step = PackStep.EXPANSION },
                         onOpen = { revealed = s.generate(forceTier); session++; hudVisible = false; opening = true },
                         onExpire = {},

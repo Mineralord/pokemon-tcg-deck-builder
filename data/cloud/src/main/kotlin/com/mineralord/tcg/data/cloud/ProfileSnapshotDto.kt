@@ -3,6 +3,7 @@ package com.mineralord.tcg.data.cloud
 import com.mineralord.tcg.data.cards.Deck
 import com.mineralord.tcg.data.cards.DeckEntry
 import com.mineralord.tcg.data.gacha.DailyPackState
+import com.mineralord.tcg.data.profile.CurrencyKind
 import com.mineralord.tcg.data.profile.PlayerProfile
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.EnergyType
@@ -19,6 +20,8 @@ data class ProfileSnapshotDto(
     val schemaVersion: Int = 1,
     val lastModified: Long = 0L,
     val owned: Map<String, Int> = emptyMap(),
+    /** Saldo de los 4 recursos oficiales (nombre de [CurrencyKind] -> saldo). */
+    val balances: Map<String, Int> = emptyMap(),
     val dailyDayId: Long = 0L,
     val dailyOpenedToday: Int = 0,
     val seeded: Boolean = false,
@@ -44,6 +47,7 @@ data class EntrySnapshotDto(val cardId: String, val count: Int)
 fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     lastModified = lastModified,
     owned = owned,
+    balances = balances.mapKeys { it.key.name },
     dailyDayId = daily.dayId,
     dailyOpenedToday = daily.openedToday,
     seeded = seeded,
@@ -64,6 +68,9 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
 
 fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
     owned = owned,
+    balances = balances.mapNotNull { (name, value) ->
+        runCatching { CurrencyKind.valueOf(name) }.getOrNull()?.let { it to value }
+    }.toMap(),
     daily = DailyPackState(dayId = dailyDayId, openedToday = dailyOpenedToday),
     seeded = seeded,
     decks = decks.map { d ->

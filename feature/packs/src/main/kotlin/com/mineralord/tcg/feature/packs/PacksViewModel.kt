@@ -8,6 +8,8 @@ import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.data.gacha.PackOpener
 import com.mineralord.tcg.data.gacha.PackPool
 import com.mineralord.tcg.data.gacha.RarityWeights
+import com.mineralord.tcg.data.profile.CurrencyKind
+import com.mineralord.tcg.data.profile.EconomyRules
 import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.engine.model.Rarity
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +54,15 @@ data class PacksUiState(
     /** Progreso de colección del set (cartas distintas poseídas / total del set) — como TCG Pocket. */
     val ownedInSet: Int = 0,
     val totalInSet: Int = 0,
+    // ---- Compra de sobres con Cristales (Fase 2 §7.4 / Fase 3 §4.6) ----
+    /** Saldo actual de Cristales del jugador. */
+    val cristales: Int = 0,
+    /** Precio en Cristales de un sobre comprado. */
+    val packPrice: Int = 0,
+    /** Compras de sobre que le quedan al jugador HOY (tope diario). */
+    val buyRemaining: Int = 0,
+    /** ¿Puede comprar ahora? (hay saldo y no ha llegado al tope diario). */
+    val canBuy: Boolean = false,
 )
 
 /**
@@ -65,6 +76,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private val clock = com.mineralord.tcg.data.profile.TrustedClock(app)
     private val opener = PackOpener()
     private val profileRepo = ProfileRepository(app)
+    private val buyLimiter = com.mineralord.tcg.data.gacha.DailyPackLimiter(EconomyRules.MAX_PACKS_BOUGHT_PER_DAY)
 
     private lateinit var repo: CardRepository
     private lateinit var pool: PackPool
@@ -72,6 +84,8 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private var wallet: com.mineralord.tcg.data.gacha.PackWallet? = null
     private var owned: Map<String, Int> = emptyMap()
     private var totalInSet: Int = 0
+    private var cristales: Int = 0
+    private var buyState: com.mineralord.tcg.data.gacha.DailyPackState = com.mineralord.tcg.data.gacha.DailyPackState()
 
     private val _state = MutableStateFlow(PacksUiState())
     val state: StateFlow<PacksUiState> = _state.asStateFlow()
@@ -96,13 +110,22 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             // Siembra la colección inicial con las cartas de los 3 mazos.
             val seed = StarterDecks.ALL.flatMap { it.expandedCardIds() }.map { it.raw }
             profileRepo.seedOnce(seed)
+            // Concesión inicial única de Cristales (estado inicial, no login-reward).
+            profileRepo.seedBalancesOnce()
             // Siembra el monedero de sobres en el primer uso: lleno, anclado al tiempo CONFIABLE.
             if (profileRepo.wallet.first() == null) {
                 profileRepo.saveWallet(com.mineralord.tcg.data.gacha.PackWallet(regen.maxPacks, clock.nowMs()))
             }
 
-            // Observa colección y monedero persistentes.
-            launch { profileRepo.profile.collect { owned = it.owned; refreshUi() } }
+            // Observa colección, saldo y estado de compra persistentes.
+            launch {
+                profileRepo.profile.collect {
+                    owned = it.owned
+                    cristales = it.balanceOf(CurrencyKind.CRISTALES)
+                    buyState = it.daily
+                    refreshUi()
+                }
+            }
             launch { profileRepo.wallet.collect { w -> wallet = w; refreshUi() } }
         }
     }
@@ -113,6 +136,8 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         val now = clock.nowMs()
         val credited = regen.credited(w, now)
         val nextAt = regen.nextPackAt(credited, now)
+        val today = now / 86_400_000L
+        val buyRemaining = buyLimiter.remaining(buyState, today)
         _state.value = _state.value.copy(
             loading = false,
             remainingToday = credited.balance,
@@ -122,6 +147,10 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             secondsToNext = nextAt?.let { ((it - now) / 1000).coerceAtLeast(0) },
             ownedInSet = owned.keys.count { it.startsWith(SET_151_PREFIX) },
             totalInSet = totalInSet,
+            cristales = cristales,
+            packPrice = EconomyRules.PACK_PRICE_CRISTALES,
+            buyRemaining = buyRemaining,
+            canBuy = cristales >= EconomyRules.PACK_PRICE_CRISTALES && buyRemaining > 0,
         )
     }
 
@@ -148,26 +177,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                     val opened = opener.open(
                         RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
                     )
-                    // Recuento acumulado para "n/tope" e "isNew", respetando el tope por carta (4 · 30).
-                    val running = HashMap<String, Int>()
-                    val revealed = opened.map { oc ->
-                        val card = repo[oc.id]
-                        val cap = ProfileRepository.capFor(oc.id.raw)
-                        val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
-                        running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
-                        val idRaw = oc.id.raw
-                        RevealedCard(
-                            name = card?.name?.es ?: idRaw,
-                            rarity = oc.rarity,
-                            imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
-                            isNew = before == 0,
-                            copiesOwned = (before + 1).coerceAtMost(cap),
-                            cap = cap,
-                            imageLarge = card?.artwork?.large(true),
-                            cardNumber = idRaw.substringAfterLast('-').toIntOrNull(),
-                            setCode = if (idRaw.startsWith("energy")) "energy" else idRaw.substringBeforeLast('-'),
-                        )
-                    }
+                    val revealed = buildReveals(opened)
                     _state.value = _state.value.copy(
                         remainingToday = attempt.remaining,
                         revealed = revealed,
@@ -177,6 +187,63 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                     profileRepo.addCards(opened.map { it.id.raw })
                 }
             }
+        }
+    }
+
+    /**
+     * Compra un sobre con Cristales (Fase 2 §7.4 / Fase 3 §4.6). Gasto atómico + tope diario de
+     * compras. Independiente del monedero de sobres gratuitos.
+     */
+    fun buyPack() {
+        if (_state.value.loading) return
+        viewModelScope.launch {
+            val today = clock.nowMs() / 86_400_000L
+            val attempt = buyLimiter.tryOpen(buyState, today)
+            if (attempt is com.mineralord.tcg.data.gacha.OpenAttempt.Denied) {
+                _state.value = _state.value.copy(
+                    deniedMessage = "Has alcanzado el máximo de ${buyLimiter.maxPerDay} sobres comprados hoy.",
+                )
+                return@launch
+            }
+            attempt as com.mineralord.tcg.data.gacha.OpenAttempt.Allowed
+            // Gasto ATÓMICO de Cristales: si no hay saldo, no se consume la compra diaria.
+            if (!profileRepo.spend(CurrencyKind.CRISTALES, EconomyRules.PACK_PRICE_CRISTALES)) {
+                _state.value = _state.value.copy(
+                    deniedMessage = "Cristales insuficientes (necesitas ${EconomyRules.PACK_PRICE_CRISTALES}).",
+                )
+                return@launch
+            }
+            profileRepo.setDaily(attempt.newState)
+            val opened = opener.open(
+                RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
+            )
+            val revealed = buildReveals(opened)
+            _state.value = _state.value.copy(revealed = revealed, deniedMessage = null, opening = true)
+            profileRepo.addCards(opened.map { it.id.raw })
+        }
+    }
+
+    /** Construye la lista de cartas reveladas (n/tope, isNew) para una apertura. */
+    private fun buildReveals(opened: List<com.mineralord.tcg.data.gacha.OpenedCard>): List<RevealedCard> {
+        // Recuento acumulado para "n/tope" e "isNew", respetando el tope por carta (4 · ∞ energías).
+        val running = HashMap<String, Int>()
+        return opened.map { oc ->
+            val card = repo[oc.id]
+            val cap = ProfileRepository.capFor(oc.id.raw)
+            val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
+            running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
+            val idRaw = oc.id.raw
+            RevealedCard(
+                name = card?.name?.es ?: idRaw,
+                rarity = oc.rarity,
+                imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
+                isNew = before == 0,
+                copiesOwned = (before + 1).coerceAtMost(cap),
+                cap = cap,
+                imageLarge = card?.artwork?.large(true),
+                cardNumber = idRaw.substringAfterLast('-').toIntOrNull(),
+                setCode = if (idRaw.startsWith("energy")) "energy" else idRaw.substringBeforeLast('-'),
+            )
         }
     }
 

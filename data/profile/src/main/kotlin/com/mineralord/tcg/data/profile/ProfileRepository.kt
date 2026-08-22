@@ -44,6 +44,7 @@ class ProfileRepository(context: Context) {
         val owned = runCatching {
             json.decodeFromString(mapSerializer, ownedJson)
         }.getOrDefault(emptyMap())
+        val balances = decodeBalances(prefs[BALANCES])
         val decks = runCatching {
             json.decodeFromString(decksSerializer, prefs[DECKS] ?: "[]").map { it.toDeck() }
         }.getOrDefault(emptyList())
@@ -52,6 +53,7 @@ class ProfileRepository(context: Context) {
         }.getOrDefault(emptySet())
         PlayerProfile(
             owned = owned,
+            balances = balances,
             daily = DailyPackState(
                 dayId = prefs[DAILY_DAY] ?: 0L,
                 openedToday = prefs[DAILY_OPENED] ?: 0,
@@ -117,6 +119,62 @@ class ProfileRepository(context: Context) {
         runCatching {
             json.decodeFromString(mapSerializer, prefs[PENDING_SHARDS] ?: "{}")
         }.getOrDefault(emptyMap())
+    }
+
+    /**
+     * Concesión inicial ÚNICA de Cristales (estado inicial de la cuenta, no recompensa por inicio
+     * de sesión). Gate propio para que también se aplique en instalaciones ya sembradas de cartas.
+     */
+    suspend fun seedBalancesOnce() {
+        store.edit { prefs ->
+            if (prefs[BALANCES_SEEDED] == true) return@edit
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            balances[CurrencyKind.CRISTALES.name] =
+                (balances[CurrencyKind.CRISTALES.name] ?: 0) + EconomyRules.STARTER_CRISTALES
+            prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+            prefs[BALANCES_SEEDED] = true
+            prefs.touch()
+        }
+    }
+
+    /** Acredita [amount] unidades del recurso [kind] (Fase 2, Cap. 6). [amount] debe ser >= 0. */
+    suspend fun credit(kind: CurrencyKind, amount: Int) {
+        if (amount <= 0) return
+        store.edit { prefs ->
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            balances[kind.name] = (balances[kind.name] ?: 0) + amount
+            prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+            prefs.touch()
+        }
+    }
+
+    /**
+     * Intenta gastar [amount] unidades del recurso [kind]. Operación atómica: si no hay saldo
+     * suficiente NO modifica nada y devuelve `false`. El saldo nunca queda negativo.
+     */
+    suspend fun spend(kind: CurrencyKind, amount: Int): Boolean {
+        if (amount <= 0) return true
+        var ok = false
+        store.edit { prefs ->
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            val current = balances[kind.name] ?: 0
+            if (current < amount) return@edit
+            balances[kind.name] = current - amount
+            prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+            prefs.touch()
+            ok = true
+        }
+        return ok
+    }
+
+    /** Decodifica el JSON de saldos (nombre de recurso -> saldo), ignorando claves desconocidas. */
+    private fun decodeBalances(raw: String?): Map<CurrencyKind, Int> {
+        val byName = runCatching {
+            json.decodeFromString(mapSerializer, raw ?: "{}")
+        }.getOrDefault(emptyMap())
+        return byName.mapNotNull { (name, value) ->
+            runCatching { CurrencyKind.valueOf(name) }.getOrNull()?.let { it to value }
+        }.toMap()
     }
 
     /** Incremento de una copia respetando el tope de la carta [id] (usado en el sembrado). */
@@ -232,6 +290,7 @@ class ProfileRepository(context: Context) {
     suspend fun importSnapshot(profile: PlayerProfile) {
         store.edit { prefs ->
             prefs[OWNED] = json.encodeToString(mapSerializer, profile.owned)
+            prefs[BALANCES] = json.encodeToString(mapSerializer, profile.balances.mapKeys { it.key.name })
             prefs[DAILY_DAY] = profile.daily.dayId
             prefs[DAILY_OPENED] = profile.daily.openedToday
             prefs[SEEDED] = profile.seeded
@@ -322,5 +381,7 @@ class ProfileRepository(context: Context) {
         val DECKS_SEEDED = booleanPreferencesKey("decks_seeded")
         val LAST_MODIFIED = longPreferencesKey("last_modified")
         val PENDING_SHARDS = stringPreferencesKey("pending_shards_json")
+        val BALANCES = stringPreferencesKey("balances_json")
+        val BALANCES_SEEDED = booleanPreferencesKey("balances_seeded")
     }
 }

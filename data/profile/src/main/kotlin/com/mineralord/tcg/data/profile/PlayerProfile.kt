@@ -7,6 +7,7 @@ import com.mineralord.tcg.data.gacha.DailyPackState
  * Estado persistente del jugador. Inmutable; el repositorio entrega copias.
  *
  * - [owned]: cartas en la colección (id -> nº de copias).
+ * - [balances]: saldo de los 4 recursos económicos oficiales (Fase 2, Cap. 6).
  * - [daily]: estado del límite diario de sobres.
  * - [seeded]: si ya se sembró la colección inicial (mazos desbloqueados).
  * - [decks]: barajas del jugador (starters + personalizadas).
@@ -17,6 +18,7 @@ import com.mineralord.tcg.data.gacha.DailyPackState
  */
 data class PlayerProfile(
     val owned: Map<String, Int> = emptyMap(),
+    val balances: Map<CurrencyKind, Int> = emptyMap(),
     val daily: DailyPackState = DailyPackState(),
     val seeded: Boolean = false,
     val decks: List<Deck> = emptyList(),
@@ -26,4 +28,7 @@ data class PlayerProfile(
 ) {
     val distinctOwned: Int get() = owned.size
     val totalOwned: Int get() = owned.values.sum()
+
+    /** Saldo del recurso [kind] (0 si nunca se ha acreditado). */
+    fun balanceOf(kind: CurrencyKind): Int = balances[kind] ?: 0
 }

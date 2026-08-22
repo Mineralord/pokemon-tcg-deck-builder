@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +34,8 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 import com.mineralord.tcg.core.designsystem.TcgTheme
 import com.mineralord.tcg.core.designsystem.motion.AnimationTheme
 import com.mineralord.tcg.core.designsystem.motion.MotionScreen
+import com.mineralord.tcg.data.profile.PlayerProfile
+import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.feature.decks.DecksScreen
 import com.mineralord.tcg.feature.game.MatchmakingScreen
 import com.mineralord.tcg.feature.game.OnlineGameScreen
@@ -82,6 +86,11 @@ private fun AppShell() {
     // Selector de dificultad PvE: se muestra al pulsar JUGAR y, al elegir, pasa a matchmaking.
     var pickingDifficulty by remember { mutableStateOf(false) }
 
+    // Saldos económicos (Fase 2, Cap. 6). Comparten el DataStore de proceso con el resto de pantallas.
+    val ctx = LocalContext.current
+    val profileRepo = remember { ProfileRepository(ctx.applicationContext) }
+    val profile by profileRepo.profile.collectAsState(initial = PlayerProfile())
+
     BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
 
     Box(Modifier.fillMaxSize()) {
@@ -90,6 +99,7 @@ private fun AppShell() {
     when (target) {
         Screen.HOME -> HomeScreen(
             modifier = Modifier.fillMaxSize(),
+            balances = profile.balances,
             onCartadex = { screen = Screen.COLLECTION },
             onTienda = { screen = Screen.PACKS },
             onBarajas = { screen = Screen.DECKS },

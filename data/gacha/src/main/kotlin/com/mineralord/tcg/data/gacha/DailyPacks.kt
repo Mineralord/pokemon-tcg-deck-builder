@@ -1,28 +1,31 @@
 package com.mineralord.tcg.data.gacha
 
 /**
- * Estado persistido del límite diario de sobres. `dayId` identifica el día
- * (p.ej. días epoch UTC); `openedToday` cuántos se han abierto en ese día.
+ * Estado persistido del límite diario de sobres COMPRADOS con Cristales (Fase 2 §7.4 /
+ * Fase 3 §4.6). `dayId` identifica el día (p.ej. días epoch UTC); `openedToday` cuántos
+ * sobres se han comprado en ese día.
  *
- * Es un dato puro y serializable: la persistencia real (DataStore) vivirá en
- * `:data:profile` (Android), pero la LÓGICA del límite es pura y se testea aquí.
+ * Nota histórica: originalmente contaba sobres GRATIS por día; los gratuitos pasaron al
+ * monedero con regeneración ([PackWallet]) y este contador se reutiliza ahora para el
+ * límite de COMPRA, que sí es diario. Es un dato puro y serializable: la persistencia real
+ * (DataStore) vive en `:data:profile`, pero la LÓGICA del límite es pura y se testea aquí.
  */
 data class DailyPackState(val dayId: Long = 0, val openedToday: Int = 0)
 
-/** Resultado de intentar abrir un sobre bajo el límite diario. */
+/** Resultado de intentar comprar un sobre bajo el límite diario. */
 sealed interface OpenAttempt {
-    /** Permitido: nuevo estado tras consumir un sobre, y cuántos quedan hoy. */
+    /** Permitido: nuevo estado tras consumir una compra, y cuántas quedan hoy. */
     data class Allowed(val newState: DailyPackState, val remainingToday: Int) : OpenAttempt
-    /** Denegado: se alcanzó el tope; segundos/ids hasta el reset los calcula la UI. */
+    /** Denegado: se alcanzó el tope diario de compras. */
     data class Denied(val state: DailyPackState) : OpenAttempt
 }
 
 /**
- * Aplica el tope de [maxPerDay] sobres por día. Función pura: dado el estado
- * persistido y el día actual, decide y devuelve el nuevo estado. El reset es
- * implícito: si cambia el día, el contador vuelve a 0.
+ * Aplica el tope de [maxPerDay] sobres COMPRADOS por día. Función pura: dado el estado
+ * persistido y el día actual, decide y devuelve el nuevo estado. El reset es implícito:
+ * si cambia el día, el contador vuelve a 0.
  */
-class DailyPackLimiter(val maxPerDay: Int = 2) {
+class DailyPackLimiter(val maxPerDay: Int = 10) {
 
     fun remaining(state: DailyPackState, today: Long): Int =
         if (state.dayId != today) maxPerDay else (maxPerDay - state.openedToday).coerceAtLeast(0)

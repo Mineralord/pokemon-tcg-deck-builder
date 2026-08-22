@@ -20,17 +20,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mineralord.tcg.core.designsystem.HexagonShape
 import com.mineralord.tcg.core.designsystem.TcgColors
+import com.mineralord.tcg.data.profile.CurrencyKind
 
 /**
  * Pantalla de Inicio — réplica del menú principal de TCG Live (capturas de
@@ -41,6 +48,7 @@ import com.mineralord.tcg.core.designsystem.TcgColors
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
+    balances: Map<CurrencyKind, Int> = emptyMap(),
     onCartadex: () -> Unit,
     onTienda: () -> Unit,
     onBarajas: () -> Unit,
@@ -48,6 +56,8 @@ fun HomeScreen(
     onJugar: () -> Unit,
     onJugarOnline: () -> Unit,
 ) {
+    // Moneda seleccionada para mostrar su ficha informativa (qué es, para qué sirve, cómo se obtiene).
+    var info by remember { mutableStateOf<Currency?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -69,7 +79,7 @@ fun HomeScreen(
                     .statusBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
-                StatusBar()
+                StatusBar(balances, onCurrency = { info = it })
                 Spacer(Modifier.height(10.dp))
                 Tabs()
                 Spacer(Modifier.height(12.dp))
@@ -85,7 +95,7 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             AvatarHex()
-            CoinBadge(count = 10)
+            CoinBadge(count = balances[CurrencyKind.CREDITOS] ?: 0, onClick = { info = Currency.CREDITOS })
             Spacer(Modifier.height(14.dp))
             PlayButton(onClick = onJugar)
         }
@@ -95,29 +105,119 @@ fun HomeScreen(
         // ---------- Navegación hexagonal inferior ----------
         HomeNav(onCartadex = onCartadex, onTienda = onTienda, onBarajas = onBarajas, onPerfil = onPerfil, onJugarOnline = onJugarOnline)
     }
+
+    info?.let { CurrencyInfoDialog(currency = it, onDismiss = { info = null }) }
 }
 
+/** Ficha informativa de un recurso: qué es, para qué sirve y cómo se obtiene (Fase 2, Cap. 6). */
 @Composable
-private fun StatusBar() {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Counter(Color(0xFF4FC3F7), "350")
-        Counter(Color(0xFFFFD54F), "440")
-        Counter(Color(0xFFB0BEC5), "0")
+private fun CurrencyInfoDialog(currency: Currency, onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xFF10161F))
+                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(18.dp))
+                .padding(20.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(22.dp).clip(CircleShape).background(currency.dot))
+                Spacer(Modifier.width(10.dp))
+                Text(currency.displayName, color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            }
+            Spacer(Modifier.height(14.dp))
+            InfoRow("Para qué sirve", currency.purpose)
+            Spacer(Modifier.height(10.dp))
+            InfoRow("Cómo se obtiene", currency.howObtained)
+            Spacer(Modifier.height(18.dp))
+            Box(
+                Modifier
+                    .align(Alignment.End)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0x22FFFFFF))
+                    .clickable(onClick = onDismiss)
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
+            ) { Text("Entendido", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        }
     }
 }
 
 @Composable
-private fun Counter(dotColor: Color, value: String) {
+private fun InfoRow(label: String, value: String) {
+    Column {
+        Text(label.uppercase(), color = Color(0x99FFFFFF), fontSize = 10.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(3.dp))
+        Text(value, color = Color.White, fontSize = 14.sp, lineHeight = 18.sp)
+    }
+}
+
+/**
+ * Los cuatro recursos económicos oficiales del proyecto.
+ * Canon: Fase 2 — Economía Principal, Cap. 6 (Sistema de Monedas). Cada recurso
+ * tiene una función única y no debe invadir la de otro (especialización económica).
+ */
+enum class Currency(
+    val kind: CurrencyKind,
+    val displayName: String,
+    val purpose: String,
+    val howObtained: String,
+    val dot: Color,
+) {
+    /** Azul — adquisición de sobres de cartas. */
+    CRISTALES(
+        CurrencyKind.CRISTALES, "Cristales",
+        "Adquisición de sobres de cartas.",
+        "Ganando partidas PvE y PvP, en eventos y al completar logros.",
+        Color(0xFF4FC3F7),
+    ),
+    /** Dorada — obtención de elementos cosméticos y recompensas de prestigio. */
+    MONEDAS(
+        CurrencyKind.MONEDAS, "Monedas",
+        "Obtención de elementos cosméticos y recompensas de prestigio.",
+        "Jugando partidas, con logros y recompensas de temporada.",
+        Color(0xFFFFD54F),
+    ),
+    /** Gris — fabricación de cartas mediante el sistema de crafting. */
+    FICHAS(
+        CurrencyKind.FICHAS, "Fichas",
+        "Fabricación de cartas mediante el sistema de crafting.",
+        "Reciclando cartas repetidas y con logros y eventos.",
+        Color(0xFFB0BEC5),
+    ),
+    /** Roja — funcionamiento del mercado y las actividades comerciales. */
+    CREDITOS(
+        CurrencyKind.CREDITOS, "Créditos",
+        "Funcionamiento del mercado y las actividades comerciales.",
+        "Con la actividad del mercado, logros y recompensas de temporada.",
+        TcgColors.Red,
+    ),
+}
+
+@Composable
+private fun StatusBar(balances: Map<CurrencyKind, Int>, onCurrency: (Currency) -> Unit) {
+    // Barra superior: Cristales (azul, izq.), Monedas (dorada, centro), Fichas (gris, der.).
+    // Los Créditos (rojo) se muestran en el clúster central bajo el avatar.
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Counter(Currency.CRISTALES, balances[CurrencyKind.CRISTALES] ?: 0, onCurrency)
+        Counter(Currency.MONEDAS, balances[CurrencyKind.MONEDAS] ?: 0, onCurrency)
+        Counter(Currency.FICHAS, balances[CurrencyKind.FICHAS] ?: 0, onCurrency)
+    }
+}
+
+@Composable
+private fun Counter(currency: Currency, value: Int, onClick: (Currency) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(Color(0x33000000))
+            .clickable { onClick(currency) }
+            .semantics { contentDescription = "${currency.displayName}: $value. ${currency.purpose}" }
             .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
-        Box(Modifier.size(16.dp).clip(CircleShape).background(dotColor))
+        Box(Modifier.size(16.dp).clip(CircleShape).background(currency.dot))
         Spacer(Modifier.width(6.dp))
-        Text(value, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text("$value", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
 }
 
@@ -184,7 +284,9 @@ private fun AvatarHex() {
 }
 
 @Composable
-private fun CoinBadge(count: Int) {
+private fun CoinBadge(count: Int, onClick: () -> Unit) {
+    // Créditos (rojo): funcionamiento del mercado y las actividades comerciales (Fase 2, Cap. 6).
+    val creditos = Currency.CREDITOS
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -192,9 +294,11 @@ private fun CoinBadge(count: Int) {
             .clip(RoundedCornerShape(50))
             .background(Color.White)
             .border(2.dp, Color(0xFFD0D0D0), RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = "${creditos.displayName}: $count. ${creditos.purpose}" }
             .padding(horizontal = 12.dp, vertical = 3.dp),
     ) {
-        Box(Modifier.size(16.dp).clip(CircleShape).background(TcgColors.Red))
+        Box(Modifier.size(16.dp).clip(CircleShape).background(creditos.dot))
         Spacer(Modifier.width(6.dp))
         Text("$count", color = TcgColors.Ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
     }
