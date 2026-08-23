@@ -49,4 +49,10 @@ fun studioLabs(
             onExitFullscreen = onExitFullscreen,
         )
     },
+    Lab(id = "cosmetics", title = "Cosmetics Lab") {
+        CosmeticsLabContent(
+            onEnterFullscreen = onEnterFullscreen,
+            onExitFullscreen = onExitFullscreen,
+        )
+    },
 )

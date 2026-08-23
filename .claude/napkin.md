@@ -65,8 +65,14 @@ muestra la previsualización REAL (WYSIWYG) vía `MatThemePreview`/`SleevePrevie
   filtros (obtenidos/favoritos, orden rareza/nombre); rejilla perezosa. **Favoritos persistentes**:
   `PlayerProfile.favoriteCosmetics` + `ProfileRepository.toggleCosmeticFavorite` + snapshot nube + fusión aditiva.
   Hub de Tienda gana sección **Colección** (`Screen.COSMETIC_COLLECTION`).
-- **Pendiente:** Cosmetics Lab en `app-studio` (preview/validate) · hook Museo/Legado (ARCHIVED/LEGACY) ·
-  audio SFX lazy · más assets CC0 (Kenney). Añadir cosmético = editar JSON, sin código.
+- **S5 parcial — Cosmetics Lab (Studio):** `app-studio/CosmeticsLab.kt` (`CosmeticsLabContent` registrado en
+  `StudioLabs.kt`, id `cosmetics`, pantalla completa vía `onEnterFullscreen`). Inspecciona TODO `Cosmetics.repo.all`
+  (incl. RESTRICTED etiquetados): rejilla adaptable por categoría, filtro Todos/Procedural/Con asset, **etiqueta
+  PROC/IMG/… indicando procedural vs asset**, nombre + **id monoespaciado**, rareza; ficha de metadata completa
+  (categoría/rareza/precio/renderer/assetRef/fuente/autor/repo/versión/estado/licencia). Thumbs: tapete/funda/
+  victoria/derrota delegan a previews de `feature:combat`; resto procedural local (self-contained, dup menor tolerada
+  en Studio). APK Studio: `entregables/TCG-Studio-debug.apk`.
+- **Pendiente:** hook Museo/Legado (ARCHIVED/LEGACY) · audio SFX lazy · más assets CC0 (Kenney). Añadir cosmético = JSON.
 **Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
 copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
 `pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).
