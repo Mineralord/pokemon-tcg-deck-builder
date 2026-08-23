@@ -163,7 +163,16 @@ private fun AppShell() {
             DecksScreen(modifier = Modifier.fillMaxSize())
         }
         Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { screen = Screen.HOME }) {
-            ProfileScreen(modifier = Modifier.fillMaxSize())
+            val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo
+            fun equipped(cat: com.mineralord.tcg.data.cosmetics.CosmeticCategory) =
+                repo[profile.equippedIn(cat)]
+            ProfileScreen(
+                modifier = Modifier.fillMaxSize(),
+                equippedAvatar = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR),
+                equippedFrame = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.MARCO),
+                equippedBackground = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FONDO),
+                equippedBadge = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.BADGE),
+            )
         }
     }
     }

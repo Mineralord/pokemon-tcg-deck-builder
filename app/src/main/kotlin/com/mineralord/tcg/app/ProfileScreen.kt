@@ -28,8 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import com.mineralord.tcg.core.designsystem.HexagonShape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,7 +47,14 @@ import com.mineralord.tcg.data.cloud.SyncStatus
  * nube (Google Drive). Se monta dentro del SubScreen (fondo navy).
  */
 @Composable
-fun ProfileScreen(modifier: Modifier = Modifier, vm: ProfileViewModel = viewModel()) {
+fun ProfileScreen(
+    modifier: Modifier = Modifier,
+    vm: ProfileViewModel = viewModel(),
+    equippedAvatar: com.mineralord.tcg.data.cosmetics.Cosmetic? = null,
+    equippedFrame: com.mineralord.tcg.data.cosmetics.Cosmetic? = null,
+    equippedBackground: com.mineralord.tcg.data.cosmetics.Cosmetic? = null,
+    equippedBadge: com.mineralord.tcg.data.cosmetics.Cosmetic? = null,
+) {
     val activity = LocalActivity()
     val authState by vm.authState.collectAsStateWithLifecycle()
     val syncStatus by vm.syncStatus.collectAsStateWithLifecycle()
@@ -64,6 +73,10 @@ fun ProfileScreen(modifier: Modifier = Modifier, vm: ProfileViewModel = viewMode
     ) {
         Spacer(Modifier.height(16.dp))
 
+        // Vitrina de cosméticos equipados (Fase 3 §21: perfil = identidad del jugador).
+        EquippedShowcase(equippedAvatar, equippedFrame, equippedBackground, equippedBadge)
+        Spacer(Modifier.height(20.dp))
+
         when (val state = authState) {
             is AuthState.SignedOut -> SignedOutContent(
                 onSignIn = { activity?.let { act -> vm.signIn(act) { authLauncher.launch(it) } } },
@@ -74,6 +87,55 @@ fun ProfileScreen(modifier: Modifier = Modifier, vm: ProfileViewModel = viewMode
                 lastSynced = lastSynced,
                 onRetry = vm::retry,
                 onSignOut = vm::signOut,
+            )
+        }
+    }
+}
+
+/** Convierte la paleta ARGB (Long) de un cosmético en colores Compose (fallback si vacía). */
+private fun com.mineralord.tcg.data.cosmetics.Cosmetic?.brushColors(fallback: List<Color>): List<Color> =
+    this?.colors?.takeIf { it.isNotEmpty() }?.map { Color(it) } ?: fallback
+
+/**
+ * Vitrina de los cosméticos equipados (avatar + marco + fondo + insignia). Es la "identidad"
+ * visual del jugador en el perfil (Fase 3 §21). Todo procedural, a partir de las paletas.
+ */
+@Composable
+private fun EquippedShowcase(
+    avatar: com.mineralord.tcg.data.cosmetics.Cosmetic?,
+    frame: com.mineralord.tcg.data.cosmetics.Cosmetic?,
+    background: com.mineralord.tcg.data.cosmetics.Cosmetic?,
+    badge: com.mineralord.tcg.data.cosmetics.Cosmetic?,
+) {
+    val bgColors = background.brushColors(listOf(TcgColors.NavyLight, TcgColors.Navy))
+    val frameColors = frame.brushColors(listOf(TcgColors.Gold, TcgColors.GoldDark))
+    val avatarColors = avatar.brushColors(listOf(Color(0xFFE9EDF2), Color(0xFFB9C2CC)))
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Brush.verticalGradient(bgColors)),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Avatar con marco (anillo del cosmético MARCO).
+        Box(
+            Modifier
+                .size(96.dp)
+                .clip(HexagonShape())
+                .background(Brush.verticalGradient(avatarColors))
+                .border(4.dp, Brush.verticalGradient(frameColors), HexagonShape()),
+        )
+        // Insignia equipada (esquina inferior derecha).
+        if (badge != null) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(12.dp)
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Brush.verticalGradient(badge.brushColors(listOf(TcgColors.Gold, TcgColors.GoldDark))))
+                    .border(2.dp, Color(0x66FFFFFF), CircleShape),
             )
         }
     }
