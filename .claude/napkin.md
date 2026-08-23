@@ -94,8 +94,17 @@ copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrant
 - 4 recursos oficiales = `CurrencyKind{MONEDAS,CRISTALES,FICHAS,CREDITOS}` (en `data:profile`).
   `PlayerProfile.balances: Map<CurrencyKind,Int>`; persistido en `ProfileRepository` (`credit`/`spend`
   ATÓMICOS) y sincronizado en `ProfileSnapshotDto`. Parámetros en `data/profile/EconomyRules.kt`.
-- **Fuente:** ganar PvE → Cristales+Monedas (`GameViewModel.onGameFinished`). Concesión inicial de
-  Cristales (`seedBalancesOnce`, estado inicial, NO login-reward).
+- **Fuente PvE (23 Ago):** terminar partida SIEMPRE premia (`GameViewModel.onGameFinished`): victoria
+  25 Cristales+10 Monedas · derrota 10+5 (participación, §4.3.1). El panel de fin (`GameOverPanel` en
+  `feature:combat/CombatScreen.kt`) MUESTRA la recompensa (Cristales cian/Monedas oro); cantidades vía
+  params de `CombatScreen` desde `MainActivity`/`EconomyRules` (combat NO depende de data:profile).
+- **Fuente PvP CASUAL (23 Ago) — DECISIÓN CANÓNICA (dueño):** el PvP online actual es CASUAL/no
+  clasificatorio (sin Rating ni temporada) → fuera de la regla de la Fase 10 Cap.VII (que reserva las
+  recompensas por TEMPORADA al **Ranked**). Como amistoso, premia por partida (menor que PvE): victoria
+  15 Cristales+8 Monedas · derrota 6+3 (`PVP_*` en `EconomyRules`, `OnlineGameController.onGameFinished`
+  acredita atómico; host y guest ven su lado como PLAYER). `OnlineGameScreen` reusa `CombatScreen` → mismo
+  panel con recompensa. **El Ranked por temporada (Fase 10) sigue SIN construir; cuando exista, convive.**
+- Concesión inicial de Cristales (`seedBalancesOnce`, estado inicial, NO login-reward).
 - **Consumo:** compra de sobres con Cristales (`PacksViewModel.buyPack`, gasto atómico + tope 10/día);
   `DailyPackLimiter`/`DailyPackState` REPURPOSADOS = "sobres comprados hoy" (ya no es código muerto).
   Botón "Comprar sobre" en `PackStage` (`PacksScreen.kt`).
