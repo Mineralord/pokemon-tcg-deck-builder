@@ -105,6 +105,19 @@ copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrant
   acredita atómico; host y guest ven su lado como PLAYER). `OnlineGameScreen` reusa `CombatScreen` → mismo
   panel con recompensa. **El Ranked por temporada (Fase 10) sigue SIN construir; cuando exista, convive.**
 - Concesión inicial de Cristales (`seedBalancesOnce`, estado inicial, NO login-reward).
+**Fase 5 — RECICLAJE/CRAFTING (23 Ago, Demo) — reciclar duplicados da Fichas:**
+- Canon: rareza = único parámetro económico; 9 **escalones** I..IX. Reciclar duplicado = §3.7 Tabla Oficial de
+  Conversión (4% del coste fabricar, mín 1): **1·1·2·4·4·6·8·14·28 Fichas** (Common…Hyper). Coste fabricar §3.4:
+  20·30·45·70·100·150·225·340·700 (aún NO implementado). Límite copias = **4** normal (energías ilimitadas).
+- **Decisión canónica (dueño):** el Canon solo codifica reciclaje AUTOMÁTICO de overflow (>4). Se aprobó reciclaje
+  MANUAL de **duplicados excedentes MANTENIENDO ≥1** (nunca la última copia, preserva colección/Museo §7). Ligera
+  extensión canónica; sin bucle (reciclar<<fabricar). El overflow automático (`pendingShards`) sigue pendiente de drenar.
+- `CraftingRules` (`data:profile`, rareza-agnóstico por escalón Int) = `recycleFichas`/`craftCost`. `RecycleScreen`
+  (`app`) mapea Rareza→escalón (`tierOf`). `ProfileRepository.recycleExtras(id,count,fichas)` = reduce conteo (floor 1)
+  + acredita FICHAS en un `edit` ATÓMICO. UI estilo colección (neumórfica clara): lista con arte/rareza/valor, selector
+  de cantidad, "seleccionar todo", total en vivo, confirmación. Entrada = hub de Tienda (sección "Reciclaje", `Screen.RECYCLE`).
+- **Pendiente Fase 5:** fabricar cartas (gastar Fichas, `craftCost` ya definido) · drenar `pendingShards`→Fichas (overflow
+  canónico auto §3.5) · reciclaje desde el Deck Builder (§4.x).
 - **Consumo:** compra de sobres con Cristales (`PacksViewModel.buyPack`, gasto atómico + tope 10/día);
   `DailyPackLimiter`/`DailyPackState` REPURPOSADOS = "sobres comprados hoy" (ya no es código muerto).
   Botón "Comprar sobre" en `PackStage` (`PacksScreen.kt`).
