@@ -3,11 +3,16 @@
 Runbook curado. Solo guía recurrente de alto valor.
 
 ## ⏸️ RETOMAR AQUÍ (23 Ago 2026) — COSMETIC ASSET LIBRARY, siguiente sprint
-Sesión pausada con árbol de git LIMPIO (todo committeado, último = `eb8b68a` Cosmetics Lab). Rama
+Sesión pausada con árbol de git LIMPIO (todo committeado, último = `0f20558` Kenney Emotes IMAGE). Rama
 `feature/studio-match-mode`, sin push (local). **Infra de cosméticos data-driven COMPLETA** (ver bloque
 "COSMETIC ASSET LIBRARY" más abajo): S1 registro · S2 licencias/ledger · S3 VFX+categorías · S4 perfil+colección
-+favoritos · S5 parcial Cosmetics Lab (Studio). **➡️ SIGUIENTE (elegir con el usuario):** (a) hook Museo/Legado
-para ARCHIVED/LEGACY · (b) audio SFX cosmético (lazy) · (c) integrar 1 pack CC0 Kenney (assetType=IMAGE, GREEN).
++favoritos · S5 parcial Cosmetics Lab (Studio) · **S6 ✅ 1er pack IMAGE = Kenney Emotes CC0** (commit `0f20558`).
+**➡️ SIGUIENTE (elegir con el usuario):** (a) hook Museo/Legado para ARCHIVED/LEGACY · (b) audio SFX cosmético (lazy).
+**S6 (23 Ago, Demo):** primer `assetType=IMAGE` real. 6 emotes vector del **Kenney Emotes Pack (CC0=GREEN)** en
+`app/src/main/assets/cosmetics/kenney-emotes/` (+`License.txt`), pack data-driven `kenney-emotes.json`. `CosmeticPreview`
+(app/Store.kt) gana rama IMAGE → carga con **Coil** desde `file:///android_asset/{assetRef}`, con prioridad sobre el render
+procedural. Binarios SOLO en `:app` (no en Studio → su Lab muestra fallback). **Patrón futuros packs GREEN: extraer
+binario→assets/→pack JSON→index.json.**
 Plan aprobado en `~/.claude/plans/merry-brewing-crescent.md`. Entregables: `entregables/TCG-Juego-debug.apk` +
 `TCG-Studio-debug.apk`. **Límite firme mantenido:** NO empaquetar assets Pokémon/PTCGO/KARDS (solo GREEN).
 
