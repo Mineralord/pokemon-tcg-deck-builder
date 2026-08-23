@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -192,6 +194,19 @@ private fun LabCard(cosmetic: Cosmetic, onClick: () -> Unit) {
 /** Previsualización: delega tapete/funda/efectos a feature:combat; el resto es procedural local. */
 @Composable
 private fun CosmeticThumb(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
+    // Cosméticos por ASSET (IMAGE): render fiel del binario (empaquetado en assets/, GREEN)
+    // vía Coil desde android_asset, igual que el juego. Manda sobre el placeholder procedural.
+    if (cosmetic.assetType == CosmeticAssetType.IMAGE && cosmetic.assetRef != null) {
+        Box(modifier.padding(10.dp), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = "file:///android_asset/${cosmetic.assetRef}",
+                contentDescription = cosmetic.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(0.82f),
+            )
+        }
+        return
+    }
     when (cosmetic.category) {
         CosmeticCategory.TAPETE -> MatThemePreview(cosmetic.id, modifier.clip(RoundedCornerShape(10.dp)))
         CosmeticCategory.FUNDA -> Box(modifier, contentAlignment = Alignment.Center) {
