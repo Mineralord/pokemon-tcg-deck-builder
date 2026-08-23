@@ -23,6 +23,7 @@ Mapea a `CosmeticLicense` (`GREEN`/`YELLOW`/`RED`/`ARCHIVE_ONLY`) y a `CosmeticS
 |---|---|---|---|---|
 | **Arte propio procedural** | Tapetes, fundas, avatares, marcos, cajas (Canvas Compose) | Nuestro | **GREEN** | Baseline por defecto: 0 bytes, offline, escala infinita |
 | **Kenney** (kenney.nl / OpenGameArt) | UI Pack, Particle Pack, iconos, audio | **CC0** | **GREEN** | Sin atribución obligatoria; ideal para VFX/badges/SFX |
+| **Kenney — Emotes Pack** (kenney.nl/assets/emotes-pack) | Emotes (caritas vector/pixel) | **CC0** | **GREEN** | ✅ **EMPAQUETADO** (1er asset IMAGE): 6 emotes vector en `app/src/main/assets/cosmetics/kenney-emotes/` (+`License.txt`). Pack `kenney-emotes.json`. |
 | **OpenGameArt** (filtrado) | UI, VFX, partículas, audio | Variada | GREEN si CC0 · YELLOW si CC-BY | Verificar **asset por asset**; CC-BY exige créditos |
 | itch.io / GameDev Market / CraftPix | UI/VFX premium | Licencia propia por asset | **YELLOW** | Revisar términos 1×1 antes de usar |
 | **KARDS-Assets** (Gary-nope) | CardBacks, UI, medallas, audio, data JSON | Sin LICENSE; extraídos de 1939 Games; README prohíbe uso comercial | **ARCHIVE-ONLY** | Assets © 1939 Games. **Valor para nosotros = arquitectónico** (taxonomía/metadata), no los binarios |

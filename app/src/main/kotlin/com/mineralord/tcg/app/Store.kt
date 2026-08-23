@@ -45,11 +45,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.HexagonShape
 import com.mineralord.tcg.data.cosmetics.Cosmetic
 import com.mineralord.tcg.data.cosmetics.Cosmetics
+import com.mineralord.tcg.data.cosmetics.CosmeticAssetType
 import com.mineralord.tcg.data.cosmetics.CosmeticCategory
 import com.mineralord.tcg.data.cosmetics.CosmeticRarity
 import com.mineralord.tcg.data.cosmetics.CosmeticStatus
@@ -540,6 +543,19 @@ private fun CollectionCard(
 private fun CosmeticPreview(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
     val colors = cosmetic.colors.map { Color(it) }.ifEmpty { listOf(Color.Gray, Color.DarkGray) }
     val brush = Brush.linearGradient(colors)
+    // Cosméticos por ASSET (IMAGE): el binario (empaquetado en assets/, licencia GREEN) manda
+    // sobre cualquier renderizador procedural. Se carga con Coil desde android_asset.
+    if (cosmetic.assetType == CosmeticAssetType.IMAGE && cosmetic.assetRef != null) {
+        Box(modifier.padding(10.dp), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = "file:///android_asset/${cosmetic.assetRef}",
+                contentDescription = cosmetic.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(0.82f),
+            )
+        }
+        return
+    }
     // Tapetes y fundas usan su previsualización REAL (WYSIWYG): lo que ves en la ficha es lo
     // que verás en la partida.
     when (cosmetic.category) {

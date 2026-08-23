@@ -1,6 +1,7 @@
 {
   "packs": [
     "core.json",
+    "kenney-emotes.json",
     "restricted.json"
   ]
 }

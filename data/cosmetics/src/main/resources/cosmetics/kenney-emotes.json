@@ -1,0 +1,11 @@
+{
+  "pack": "kenney-emotes",
+  "items": [
+    { "id": "emote-kenney-happy",  "category": "EMOTE", "rarity": "COMUN",      "name": "Sonriente",  "assetType": "IMAGE", "license": "GREEN", "assetRef": "cosmetics/kenney-emotes/emote_faceHappy.png", "source": "Kenney Emotes Pack", "author": "Kenney Vleugels", "originalUrl": "https://kenney.nl/assets/emotes-pack", "collection": "Kenney Emotes" },
+    { "id": "emote-kenney-sad",    "category": "EMOTE", "rarity": "COMUN",      "name": "Triste",     "assetType": "IMAGE", "license": "GREEN", "assetRef": "cosmetics/kenney-emotes/emote_faceSad.png", "source": "Kenney Emotes Pack", "author": "Kenney Vleugels", "originalUrl": "https://kenney.nl/assets/emotes-pack", "collection": "Kenney Emotes" },
+    { "id": "emote-kenney-angry",  "category": "EMOTE", "rarity": "POCO_COMUN", "name": "Enfadado",   "assetType": "IMAGE", "license": "GREEN", "assetRef": "cosmetics/kenney-emotes/emote_faceAngry.png", "source": "Kenney Emotes Pack", "author": "Kenney Vleugels", "originalUrl": "https://kenney.nl/assets/emotes-pack", "collection": "Kenney Emotes" },
+    { "id": "emote-kenney-laugh",  "category": "EMOTE", "rarity": "POCO_COMUN", "name": "Carcajada",  "assetType": "IMAGE", "license": "GREEN", "assetRef": "cosmetics/kenney-emotes/emote_laugh.png", "source": "Kenney Emotes Pack", "author": "Kenney Vleugels", "originalUrl": "https://kenney.nl/assets/emotes-pack", "collection": "Kenney Emotes" },
+    { "id": "emote-kenney-heart",  "category": "EMOTE", "rarity": "RARO",       "name": "Corazón",    "assetType": "IMAGE", "license": "GREEN", "assetRef": "cosmetics/kenney-emotes/emote_heart.png", "source": "Kenney Emotes Pack", "author": "Kenney Vleugels", "originalUrl": "https://kenney.nl/assets/emotes-pack", "collection": "Kenney Emotes" },
+    { "id": "emote-kenney-star",   "category": "EMOTE", "rarity": "RARO",       "name": "Estrella",   "assetType": "IMAGE", "license": "GREEN", "assetRef": "cosmetics/kenney-emotes/emote_star.png", "source": "Kenney Emotes Pack", "author": "Kenney Vleugels", "originalUrl": "https://kenney.nl/assets/emotes-pack", "collection": "Kenney Emotes" }
+  ]
+}
