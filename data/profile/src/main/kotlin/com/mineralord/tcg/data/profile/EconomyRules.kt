@@ -27,6 +27,25 @@ object EconomyRules {
     /** Monedas de participación al perder una partida PvE (menor que la victoria). */
     const val PVE_LOSS_MONEDAS = 5
 
+    // ----- PvP CASUAL (no clasificatorio) -----
+    // El Ranked competitivo premia por TEMPORADA (Fase 10, Cap. VII), NO por partida. El PvP
+    // online actual es CASUAL/no clasificatorio (sin Rating ni temporada): fuera del alcance de
+    // esa regla, otorga una recompensa de participación por partida (menor que el PvE, que es el
+    // pilar de progresión en solitario). Cuando exista el Ranked, este premio casual convive con
+    // las recompensas de temporada sin solaparse.
+
+    /** Cristales al ganar una partida PvP casual. */
+    const val PVP_WIN_CRISTALES = 15
+
+    /** Monedas al ganar una partida PvP casual. */
+    const val PVP_WIN_MONEDAS = 8
+
+    /** Cristales de participación al perder una partida PvP casual. */
+    const val PVP_LOSS_CRISTALES = 6
+
+    /** Monedas de participación al perder una partida PvP casual. */
+    const val PVP_LOSS_MONEDAS = 3
+
     /**
      * Concesión inicial única de Cristales (estado inicial de la cuenta, análogo a los
      * mazos de inicio; NO es una recompensa por inicio de sesión). Permite que un jugador

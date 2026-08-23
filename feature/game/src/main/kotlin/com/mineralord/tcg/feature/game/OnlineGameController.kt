@@ -11,6 +11,9 @@ import com.mineralord.tcg.data.netplay.toDtoFor
 import com.mineralord.tcg.data.netplay.toGameState
 import com.mineralord.tcg.data.netplay.toDto
 import com.mineralord.tcg.data.netplay.toIntent
+import com.mineralord.tcg.data.profile.CurrencyKind
+import com.mineralord.tcg.data.profile.EconomyRules
+import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.engine.events.CombatLog
 import com.mineralord.tcg.engine.events.GameEvent
 import com.mineralord.tcg.engine.model.Card
@@ -70,6 +73,9 @@ class OnlineGameController(
 
     /** Núcleo compartido con el modo PvE: dueño del estado, la preparación y el pipeline. */
     private val core = GameCore(scope)
+
+    /** Perfil local para acreditar la recompensa de PvP casual (atómico). */
+    private val profileRepo = ProfileRepository(app)
 
     override val ui: StateFlow<GameUiState> = core.ui
     override val fx: SharedFlow<FxCue> = core.fx
@@ -538,9 +544,20 @@ class OnlineGameController(
     private fun cardsFromIds(ids: List<String>): List<Card> =
         ids.mapNotNull { raw -> val cid = CardId(raw); core.repo[cid.printed]?.withId(cid) }
 
-    /** Punto de extensión para recompensas de PvP (por ahora sin premio concreto). */
+    /**
+     * Recompensa de PvP CASUAL (no clasificatorio): terminar una partida online SIEMPRE otorga
+     * recursos de participación (Canon Fase 2 §4.3.1). El Ranked por temporada (Fase 10, Cap. VII)
+     * es un sistema aparte y futuro; esto no lo suplanta. `winner == Side.PLAYER` = jugador local
+     * (host y guest ven su lado como PLAYER).
+     */
     private fun onGameFinished(winner: Side) {
-        // TODO(recompensas): otorgar recompensa de PvP según el resultado del jugador local.
+        val won = winner == Side.PLAYER
+        val cristales = if (won) EconomyRules.PVP_WIN_CRISTALES else EconomyRules.PVP_LOSS_CRISTALES
+        val monedas = if (won) EconomyRules.PVP_WIN_MONEDAS else EconomyRules.PVP_LOSS_MONEDAS
+        scope.launch {
+            profileRepo.credit(CurrencyKind.CRISTALES, cristales)
+            profileRepo.credit(CurrencyKind.MONEDAS, monedas)
+        }
     }
 
     /**

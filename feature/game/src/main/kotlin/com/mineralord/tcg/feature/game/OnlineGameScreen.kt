@@ -88,7 +88,13 @@ fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
             CodeWaitingCard(code = hosting.code, onCancel = onExit, modifier = modifier)
         } else {
             // Mismo tapete canónico que el modo vs IA.
-            com.mineralord.tcg.feature.game.combat.CombatScreen(onExit = onExit, modifier = modifier, vm = ctrl)
+            com.mineralord.tcg.feature.game.combat.CombatScreen(
+                onExit = onExit, modifier = modifier, vm = ctrl,
+                winCristales = com.mineralord.tcg.data.profile.EconomyRules.PVP_WIN_CRISTALES,
+                winMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVP_WIN_MONEDAS,
+                lossCristales = com.mineralord.tcg.data.profile.EconomyRules.PVP_LOSS_CRISTALES,
+                lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVP_LOSS_MONEDAS,
+            )
         }
         return
     }
