@@ -13,6 +13,12 @@ Sesión pausada con árbol de git LIMPIO (todo committeado, último = `0f20558` 
 (app/Store.kt) gana rama IMAGE → carga con **Coil** desde `file:///android_asset/{assetRef}`, con prioridad sobre el render
 procedural. Binarios SOLO en `:app` (no en Studio → su Lab muestra fallback). **Patrón futuros packs GREEN: extraer
 binario→assets/→pack JSON→index.json.**
+**AURA DE HABILIDAD UNIFICADA (23 Ago) — juego = Studio:** el indicador PERSISTENTE de habilidad del juego usa AHORA la
+MISMA aura del Studio. Fuente de verdad única `AbilityGlowVisuals` (core:animation-compose): `Passive`(rojo hue4, sin
+shimmer) / `Manual`(dorado hue45, shimmer). La comparten el contribuidor `AbilityGlowAnimations` (aura por EVENTO one-shot,
+capa Underglow) y el nuevo `PersistentAbilityGlow` (indicador de ESTADO en bucle). Dibujo núcleo `DrawScope.drawAbilityGlow`
+(bloom+rim+shimmer) reusado por `AbilityGlowNodeRenderer` y el persistente. `CombatScreen.AbilityGlowAura` delega en
+`PersistentAbilityGlow` (antes: borde pulsante propio). Cambiar el look = editar SOLO `AbilityGlowVisuals`+`drawAbilityGlow`.
 Plan aprobado en `~/.claude/plans/merry-brewing-crescent.md`. Entregables: `entregables/TCG-Juego-debug.apk` +
 `TCG-Studio-debug.apk`. **Límite firme mantenido:** NO empaquetar assets Pokémon/PTCGO/KARDS (solo GREEN).
 
