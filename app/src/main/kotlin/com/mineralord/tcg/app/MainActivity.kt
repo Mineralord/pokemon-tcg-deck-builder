@@ -127,6 +127,8 @@ private fun AppShell() {
             onExit = { screen = Screen.HOME },
             vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
             modifier = Modifier.fillMaxSize(),
+            matThemeId = profile.equippedIn(com.mineralord.tcg.data.profile.CosmeticCategory.TAPETE),
+            sleeveId = profile.equippedIn(com.mineralord.tcg.data.profile.CosmeticCategory.FUNDA),
         )
         Screen.ONLINE -> OnlineGameScreen(
             onExit = { screen = Screen.HOME },

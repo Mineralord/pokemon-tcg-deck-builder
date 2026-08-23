@@ -77,12 +77,20 @@ fun CardBack(
     mine: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Image(
-        painter = painterResource(R.drawable.card_back_default),
-        contentDescription = null,
-        contentScale = ContentScale.FillBounds,
-        modifier = modifier.size(width, height).clip(RoundedCornerShape(4.dp)),
-    )
+    val sleeve = com.mineralord.tcg.feature.game.combat.LocalCardSleeve.current
+    if (sleeve.style == com.mineralord.tcg.feature.game.combat.SleeveStyle.DEFAULT) {
+        Image(
+            painter = painterResource(R.drawable.card_back_default),
+            contentDescription = null,
+            contentScale = ContentScale.FillBounds,
+            modifier = modifier.size(width, height).clip(RoundedCornerShape(4.dp)),
+        )
+    } else {
+        com.mineralord.tcg.feature.game.combat.SleeveArt(
+            sleeve,
+            modifier.size(width, height).clip(RoundedCornerShape(4.dp)),
+        )
+    }
 }
 
 /**

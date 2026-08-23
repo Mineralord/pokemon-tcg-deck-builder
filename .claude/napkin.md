@@ -29,6 +29,17 @@ compra Cristales tope 10/día, precio uniforme, sin descuentos, omitir animació
 - **Pendiente F3 (futuro, no bloquea):** colecciones cosméticas (Cap. 10) + recompensas por colección (Cap. 11);
   vías de obtención logros/eventos/temporadas/regalos (§12, Fases 6/10); categorías Efectos/Sonidos/Museo.
 - **`data:cloud` NO tiene test source set** (0 tests); cambios de merge validados por build verde de `:app`.
+**Sprint "Cosméticos en partida: Tapetes + Fundas AAA" (22 Ago, Demo):** los cosméticos equipados YA se ven en
+combate. Temas de PRESENTACIÓN en `feature:combat/CosmeticThemes.kt` (mapeados por String id, NO dependen de
+data:profile): `MatTheme`+`matThemeFor(id)` (tapetes: arena/liga/campeon/maestro) revisten base+zonas+enrejado
+del `CombatMat` **manteniendo el LENTE GRIS central y los rieles idénticos** (todo por fracciones, proporciones
+intactas). `SleeveTheme`+`sleeveFor(id)`+`SleeveArt` = dorsos procedurales AAA (funda-lisa/ola/prisma/eclipse),
+provistos por `LocalCardSleeve` (CompositionLocal) en la raíz de `CombatScreen` → los dos `CardBack`
+(CombatComponents + board/BattleBoard) lo leen; DEFAULT sigue usando `card_back_default`. `CombatScreen` gana
+params `matThemeId`/`sleeveId`; `MainActivity` los pasa desde `profile.equippedIn(TAPETE/FUNDA)`. La TIENDA
+muestra la previsualización REAL (WYSIWYG) vía `MatThemePreview`/`SleevePreview` en `app/Store.kt`.
+**Cableado de visualización de cosméticos hecho:** avatar(Home) ✅ · tapete(partida) ✅ · funda(partida) ✅.
+**Pendiente:** marco/fondo(Home/Perfil) · caja de mazo(Barajas) · cosméticos en OnlineGameScreen (solo PvE por ahora).
 **Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
 copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
 `pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).

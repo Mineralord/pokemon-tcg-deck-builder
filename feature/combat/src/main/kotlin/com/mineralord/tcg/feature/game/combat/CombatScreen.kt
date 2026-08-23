@@ -159,10 +159,17 @@ fun CombatScreen(
     onExit: () -> Unit,
     vm: CombatSceneController,
     modifier: Modifier = Modifier,
+    /** Id del cosmético TAPETE equipado (Fase 3); null = tapete por defecto. */
+    matThemeId: String? = null,
+    /** Id del cosmético FUNDA equipado (Fase 3); null = dorso por defecto. */
+    sleeveId: String? = null,
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val state = ui.state
     val autoMotion = LocalCombatAutoMotion.current
+    // Cosméticos equipados aplicados a la presentación (tapete + funda). Neutros para la jugabilidad.
+    val matTheme = matThemeFor(matThemeId)
+    val sleeve = sleeveFor(sleeveId)
 
     // FX PREMIUM de ataque en el lente central (color+motivo por TIPO, ~1 s). SINCRONIZADO con
     // el IMPACTO de daño (FxCue.Damage): revienta sobre el Pokémon golpeado (el defensor =
@@ -287,6 +294,7 @@ fun CombatScreen(
     // El estado de mano (pendingPlay/foco), arrastre (dragCard/dragPos + bounds), y retirada
     // (retreatMode/benchDrag*) vive en `bi` (CombatBoardInteraction), compartido por las capas.
 
+    ProvideCardSleeve(sleeve) {
     Box(modifier.fillMaxSize().background(Color(0xFF06080D))) {
 
         // ---- Ceremonia inicial: reutiliza los overlays existentes ----
@@ -364,7 +372,7 @@ fun CombatScreen(
                 // de la lente central. Solo lectura del estado; el ambiente es pura presentación.
                 val activeType = if (litSide == null) null
                     else state.activePlayer.active?.card?.types?.firstOrNull()
-                SceneLayer(litSide = litSide, activeType = activeType, modifier = Modifier.matchParentSize())
+                SceneLayer(litSide = litSide, activeType = activeType, theme = matTheme, modifier = Modifier.matchParentSize())
 
                 // ---------- Capa AURAS (canónica, POR DEBAJO de las cartas) ----------
                 // Rastrea los Activos en el registro de coordenadas del motor; el glow (pasivo rojo /
@@ -610,16 +618,17 @@ fun CombatScreen(
             GameOverPanel(won = state.winner == Side.PLAYER, onExit = onExit)
         }
     }
+    }
 }
 
 /**
  * **Capa ESCENARIO** — el tapete oficial ([CombatMat]) y nada más: sin cartas, sin HUD, sin estado de
  * partida. Primera capa del compositor interno de [CombatScreen]. Neutra: no conoce perfiles, modos ni
- * conceptos del Studio; solo recibe parámetros de presentación ([litSide], [activeType]).
+ * conceptos del Studio; solo recibe parámetros de presentación ([litSide], [activeType], [theme]).
  */
 @Composable
-private fun SceneLayer(litSide: Side?, activeType: EnergyType?, modifier: Modifier = Modifier) {
-    CombatMat(modifier, litSide = litSide, activeType = activeType)
+private fun SceneLayer(litSide: Side?, activeType: EnergyType?, theme: MatTheme, modifier: Modifier = Modifier) {
+    CombatMat(modifier, litSide = litSide, activeType = activeType, theme = theme)
 }
 
 /**

@@ -51,7 +51,12 @@ import kotlinx.coroutines.launch
  * bajo el dedo que se expande y se desvanece (~650 ms). Toque premium, cero ruido en reposo.
  */
 @Composable
-fun CombatMat(modifier: Modifier = Modifier, litSide: Side? = null, activeType: EnergyType? = null) {
+fun CombatMat(
+    modifier: Modifier = Modifier,
+    litSide: Side? = null,
+    activeType: EnergyType? = null,
+    theme: MatTheme = MatTheme.Default,
+) {
     // Ondas activas nacidas de toques sobre la lente (cada una con su propio progreso 0→1).
     val ripples = remember { mutableStateListOf<LensRipple>() }
     val scope = rememberCoroutineScope()
@@ -111,8 +116,8 @@ fun CombatMat(modifier: Modifier = Modifier, litSide: Side? = null, activeType: 
         val w = size.width
         val h = size.height
 
-        // Base general.
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF141A26), Color(0xFF090C12))))
+        // Base general (tema).
+        drawRect(Brush.verticalGradient(listOf(theme.baseTop, theme.baseBottom)))
 
         // Arcos que delimitan la lente central (control = 2*centro - borde).
         val topEdge = 0.2594f * h
@@ -124,26 +129,26 @@ fun CombatMat(modifier: Modifier = Modifier, litSide: Side? = null, activeType: 
         val foeTop = 0f
         val foeBottom = topCtrl
         drawRect(
-            Brush.verticalGradient(listOf(Color(0xFF5E1B24), Color(0xFF34121A)), startY = foeTop, endY = foeBottom),
+            Brush.verticalGradient(listOf(theme.foeTop, theme.foeBottom), startY = foeTop, endY = foeBottom),
             topLeft = Offset(0f, foeTop),
             size = Size(w, foeBottom - foeTop),
         )
         // Textura de rombos acolchados, tenue y cálida (como el original, más sutil que el jugador).
         clipRect(0f, foeTop, w, foeBottom) {
-            drawDiamondLattice(w, foeTop, foeBottom, w * 0.11f, Color(0x12FFE0D0), 1f)
+            drawDiamondLattice(w, foeTop, foeBottom, w * 0.11f, theme.foeLattice, 1f)
         }
 
         // Zona del JUGADOR (azul marino) — desde el arco inferior hasta antes de la mano.
         val meTop = botCtrl
         val meBottom = 0.845f * h
         drawRect(
-            Brush.verticalGradient(listOf(Color(0xFF17264F), Color(0xFF0B1224)), startY = meTop, endY = meBottom),
+            Brush.verticalGradient(listOf(theme.meTop, theme.meBottom), startY = meTop, endY = meBottom),
             topLeft = Offset(0f, meTop),
             size = Size(w, meBottom - meTop),
         )
-        // Enrejado de rombos (argyle) claro sobre el navy — la textura más visible del tapete.
+        // Enrejado de rombos (argyle) claro sobre la zona del jugador — la textura más visible del tapete.
         clipRect(0f, meTop, w, meBottom) {
-            drawDiamondLattice(w, meTop, meBottom, w * 0.11f, Color(0x1A9FC0FF), 1.4f)
+            drawDiamondLattice(w, meTop, meBottom, w * 0.11f, theme.meLattice, 1.4f)
         }
 
         // Lente central (gris plateado claro, casi liso) — panel curvo grande.

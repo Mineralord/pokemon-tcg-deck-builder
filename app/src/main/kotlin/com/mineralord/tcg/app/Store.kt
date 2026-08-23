@@ -382,6 +382,27 @@ private fun ActionButton(label: String, enabled: Boolean, accent: Color, onClick
 private fun CosmeticPreview(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
     val colors = cosmetic.colors.map { Color(it) }.ifEmpty { listOf(Color.Gray, Color.DarkGray) }
     val brush = Brush.linearGradient(colors)
+    // Tapetes y fundas usan su previsualización REAL (WYSIWYG): lo que ves en la ficha es lo
+    // que verás en la partida.
+    when (cosmetic.category) {
+        CosmeticCategory.TAPETE -> {
+            com.mineralord.tcg.feature.game.combat.MatThemePreview(
+                cosmetic.id,
+                modifier.padding(8.dp).clip(RoundedCornerShape(10.dp)),
+            )
+            return
+        }
+        CosmeticCategory.FUNDA -> {
+            Box(modifier, contentAlignment = Alignment.Center) {
+                com.mineralord.tcg.feature.game.combat.SleevePreview(
+                    cosmetic.id,
+                    Modifier.fillMaxSize(0.7f).aspectRatio(0.72f),
+                )
+            }
+            return
+        }
+        else -> Unit
+    }
     when (cosmetic.category) {
         CosmeticCategory.AVATAR -> Box(
             modifier.padding(10.dp).clip(HexagonShape()).background(brush)

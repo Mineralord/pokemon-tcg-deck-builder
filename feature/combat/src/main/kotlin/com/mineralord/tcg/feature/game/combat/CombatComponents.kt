@@ -93,12 +93,17 @@ fun CombatCard(
  *  Para cambiar el diseño, sustituye ese drawable en feature/game/src/main/res/drawable. */
 @Composable
 fun CardBack(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(com.mineralord.tcg.feature.combat.R.drawable.card_back_default),
-        contentDescription = null,
-        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-        modifier = modifier,
-    )
+    val sleeve = LocalCardSleeve.current
+    if (sleeve.style == SleeveStyle.DEFAULT) {
+        Image(
+            painter = painterResource(com.mineralord.tcg.feature.combat.R.drawable.card_back_default),
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            modifier = modifier,
+        )
+    } else {
+        SleeveArt(sleeve, modifier)
+    }
 }
 
 /** Barra de PS fina bajo un Pokémon (verde→ámbar→rojo según fracción restante). */
