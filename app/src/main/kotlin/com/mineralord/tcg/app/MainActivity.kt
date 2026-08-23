@@ -129,6 +129,8 @@ private fun AppShell() {
             modifier = Modifier.fillMaxSize(),
             matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
             sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
+            victoryEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.VICTORIA),
+            defeatEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.DERROTA),
         )
         Screen.ONLINE -> OnlineGameScreen(
             onExit = { screen = Screen.HOME },

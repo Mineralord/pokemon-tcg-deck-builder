@@ -32,6 +32,24 @@
 
     { "id": "caja-roble",     "category": "CAJA",   "rarity": "COMUN",       "name": "Roble",    "renderer": "caja", "colors": ["0xFFA1887F", "0xFF5D4037"] },
     { "id": "caja-cromo",     "category": "CAJA",   "rarity": "RARO",        "name": "Cromo",    "renderer": "caja", "colors": ["0xFFB0BEC5", "0xFF455A64"] },
-    { "id": "caja-real",      "category": "CAJA",   "rarity": "LEGENDARIO",  "name": "Real",     "renderer": "caja", "colors": ["0xFFFFD54F", "0xFF6A1B9A"] }
+    { "id": "caja-real",      "category": "CAJA",   "rarity": "LEGENDARIO",  "name": "Real",     "renderer": "caja", "colors": ["0xFFFFD54F", "0xFF6A1B9A"] },
+
+    { "id": "victoria-confeti", "category": "VICTORIA", "rarity": "COMUN",      "name": "Confeti",  "renderer": "celebration", "animated": true, "colors": ["0xFFFFD54F", "0xFF66BB6A", "0xFF42A5F5", "0xFFEC407A"] },
+    { "id": "victoria-petalos", "category": "VICTORIA", "rarity": "RARO",       "name": "Pétalos",  "renderer": "celebration", "animated": true, "colors": ["0xFFFF80AB", "0xFFF48FB1", "0xFFFFFFFF"] },
+    { "id": "victoria-fuegos",  "category": "VICTORIA", "rarity": "EPICO",      "name": "Fuegos",   "renderer": "celebration", "animated": true, "colors": ["0xFFFFD54F", "0xFFFF4081", "0xFF40C4FF"] },
+
+    { "id": "derrota-brasas",   "category": "DERROTA",  "rarity": "COMUN",      "name": "Brasas",   "renderer": "celebration", "animated": true, "colors": ["0xFF8D6E63", "0xFFEF6C00"] },
+    { "id": "derrota-cenizas",  "category": "DERROTA",  "rarity": "RARO",       "name": "Cenizas",  "renderer": "celebration", "animated": true, "colors": ["0xFF9E9E9E", "0xFF616161"] },
+
+    { "id": "moneda-clasica",   "category": "MONEDA",   "rarity": "COMUN",      "name": "Clásica",  "renderer": "coin", "colors": ["0xFFFFE082", "0xFFC49000"] },
+    { "id": "moneda-plata",     "category": "MONEDA",   "rarity": "POCO_COMUN", "name": "Plata",    "renderer": "coin", "colors": ["0xFFE0E0E0", "0xFF9E9E9E"] },
+    { "id": "moneda-prisma",    "category": "MONEDA",   "rarity": "EPICO",      "name": "Prisma",   "renderer": "coin", "colors": ["0xFF00BCD4", "0xFF7C4DFF", "0xFFEC407A"] },
+
+    { "id": "badge-novato",     "category": "BADGE",    "rarity": "COMUN",      "name": "Novato",   "renderer": "badge", "colors": ["0xFF90A4AE", "0xFF546E7A"] },
+    { "id": "badge-veterano",   "category": "BADGE",    "rarity": "RARO",       "name": "Veterano", "renderer": "badge", "colors": ["0xFF42A5F5", "0xFF1565C0"] },
+    { "id": "badge-campeon",    "category": "BADGE",    "rarity": "LEGENDARIO", "name": "Campeón",  "renderer": "badge", "colors": ["0xFFFFD54F", "0xFFEF6C00"] },
+
+    { "id": "emote-sonrisa",    "category": "EMOTE",    "rarity": "COMUN",      "name": "Sonrisa",  "renderer": "emote", "colors": ["0xFFFFCA28", "0xFFF57F17"] },
+    { "id": "emote-rayo",       "category": "EMOTE",    "rarity": "POCO_COMUN", "name": "Rayo",     "renderer": "emote", "colors": ["0xFFFFF176", "0xFFFBC02D"] }
   ]
 }

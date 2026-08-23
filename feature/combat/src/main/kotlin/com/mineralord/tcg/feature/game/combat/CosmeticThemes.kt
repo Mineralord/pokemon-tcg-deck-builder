@@ -1,9 +1,16 @@
 package com.mineralord.tcg.feature.game.combat
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
@@ -269,4 +276,113 @@ private fun DrawScope.drawArcRail(w: Float, edgeY: Float, bulge: Float) {
 @Composable
 fun SleevePreview(id: String?, modifier: Modifier = Modifier) {
     SleeveArt(sleeveFor(id), modifier)
+}
+
+// ============================ EFECTOS DE VICTORIA / DERROTA ============================
+
+/** Motivo de la celebración/derrota (partículas procedurales). */
+enum class CelebrationMotif { CONFETTI, FIREWORKS, PETALS, EMBERS, ASH }
+
+/** Tema de un efecto de fin de partida (color + motivo), mapeado por id de cosmético. */
+data class CelebrationTheme(val colors: List<Color>, val motif: CelebrationMotif)
+
+/** Efecto de VICTORIA equipado (o el confeti dorado por defecto). */
+fun victoryEffectFor(id: String?): CelebrationTheme = when (id) {
+    "victoria-fuegos" -> CelebrationTheme(listOf(Color(0xFFFFD54F), Color(0xFFFF4081), Color(0xFF40C4FF)), CelebrationMotif.FIREWORKS)
+    "victoria-petalos" -> CelebrationTheme(listOf(Color(0xFFFF80AB), Color(0xFFF48FB1), Color(0xFFFFFFFF)), CelebrationMotif.PETALS)
+    "victoria-confeti", null -> CelebrationTheme(listOf(Color(0xFFFFD54F), Color(0xFF66BB6A), Color(0xFF42A5F5), Color(0xFFEC407A)), CelebrationMotif.CONFETTI)
+    else -> CelebrationTheme(listOf(Color(0xFFFFD54F), Color(0xFF66BB6A), Color(0xFF42A5F5)), CelebrationMotif.CONFETTI)
+}
+
+/** Efecto de DERROTA equipado (o las brasas grises por defecto). */
+fun defeatEffectFor(id: String?): CelebrationTheme = when (id) {
+    "derrota-cenizas" -> CelebrationTheme(listOf(Color(0xFF9E9E9E), Color(0xFF616161)), CelebrationMotif.ASH)
+    else -> CelebrationTheme(listOf(Color(0xFF8D6E63), Color(0xFFEF6C00)), CelebrationMotif.EMBERS)
+}
+
+private data class FxParticle(
+    val x: Float, val size: Float, val speed: Float, val phase: Float, val drift: Float, val colorIdx: Int,
+)
+
+/**
+ * Efecto de fin de partida PROCEDURAL a pantalla completa (arte propio, sin assets). Confeti/
+ * fuegos/pétalos que caen en victoria; brasas/cenizas que ascienden o descienden en derrota.
+ * Un único reloj continuo alimenta todas las partículas (barato). Se dibuja DETRÁS del panel.
+ */
+@Composable
+fun CosmeticCelebrationFx(theme: CelebrationTheme, modifier: Modifier = Modifier) {
+    val rng = remember(theme) { java.util.Random(theme.motif.ordinal * 1009L) }
+    val particles = remember(theme) {
+        List(46) {
+            FxParticle(
+                x = rng.nextFloat(),
+                size = 0.6f + rng.nextFloat(),
+                speed = 0.5f + rng.nextFloat(),
+                phase = rng.nextFloat(),
+                drift = (rng.nextFloat() - 0.5f),
+                colorIdx = if (theme.colors.isEmpty()) 0 else rng.nextInt(theme.colors.size),
+            )
+        }
+    }
+    val clock by rememberInfiniteTransition(label = "fx").animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(4200, easing = LinearEasing)),
+        label = "fxClock",
+    )
+    val rising = theme.motif == CelebrationMotif.EMBERS || theme.motif == CelebrationMotif.ASH
+    Canvas(modifier.fillMaxSize()) {
+        val w = size.width
+        val h = size.height
+        particles.forEach { p ->
+            val t = (clock * p.speed + p.phase) % 1f
+            val y = if (rising) h * (1f - t) else h * t
+            val x = w * (p.x + p.drift * 0.15f * kotlin.math.sin((t + p.phase) * 6.2832f))
+            val col = theme.colors.getOrElse(p.colorIdx) { Color.White }
+            val r = w * 0.010f * p.size
+            val alpha = (1f - kotlin.math.abs(t - 0.5f) * 1.4f).coerceIn(0f, 1f)
+            when (theme.motif) {
+                CelebrationMotif.CONFETTI, CelebrationMotif.ASH -> drawRect(
+                    col.copy(alpha = alpha),
+                    topLeft = Offset(x, y), size = Size(r * 1.6f, r * 2.6f),
+                )
+                CelebrationMotif.PETALS -> drawCircle(col.copy(alpha = alpha), radius = r * 1.4f, center = Offset(x, y))
+                CelebrationMotif.EMBERS -> {
+                    drawCircle(col.copy(alpha = alpha), radius = r, center = Offset(x, y))
+                    drawCircle(Color.White.copy(alpha = alpha * 0.5f), radius = r * 0.4f, center = Offset(x, y))
+                }
+                CelebrationMotif.FIREWORKS -> {
+                    // Estallidos radiales que laten con el reloj.
+                    val burst = (t * 1.6f).coerceAtMost(1f)
+                    val n = 9
+                    for (i in 0 until n) {
+                        val a = i / n.toFloat() * 6.2832f
+                        val rr = w * 0.10f * burst * p.size
+                        drawCircle(
+                            col.copy(alpha = (1f - burst) * alpha),
+                            radius = r * 0.7f,
+                            center = Offset(x + kotlin.math.cos(a) * rr, y + kotlin.math.sin(a) * rr),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Previsualización de un efecto de VICTORIA/DERROTA para la tienda. */
+@Composable
+fun CelebrationPreview(id: String?, victory: Boolean, modifier: Modifier = Modifier) {
+    val theme = if (victory) victoryEffectFor(id) else defeatEffectFor(id)
+    Canvas(modifier.fillMaxSize()) {
+        // Muestra estática: unas cuantas partículas del color/motivo (sin animar).
+        val w = size.width; val h = size.height
+        drawRect(Brush.verticalGradient(listOf(Color(0xFF11161F), Color(0xFF0A0E14))))
+        val cols = theme.colors
+        for (i in 0 until 18) {
+            val col = cols[i % cols.size]
+            val x = w * ((i * 53 % 100) / 100f)
+            val y = h * ((i * 31 % 100) / 100f)
+            drawCircle(col.copy(alpha = 0.9f), radius = w * 0.02f, center = Offset(x, y))
+        }
+    }
 }

@@ -163,6 +163,10 @@ fun CombatScreen(
     matThemeId: String? = null,
     /** Id del cosmético FUNDA equipado (Fase 3); null = dorso por defecto. */
     sleeveId: String? = null,
+    /** Id del cosmético EFECTO DE VICTORIA equipado; null = confeti por defecto. */
+    victoryEffectId: String? = null,
+    /** Id del cosmético EFECTO DE DERROTA equipado; null = brasas por defecto. */
+    defeatEffectId: String? = null,
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val state = ui.state
@@ -615,7 +619,11 @@ fun CombatScreen(
             enter = MotionTransitions.overlayEnter(),
             exit = MotionTransitions.overlayExit(),
         ) {
-            GameOverPanel(won = state.winner == Side.PLAYER, onExit = onExit)
+            GameOverPanel(
+                won = state.winner == Side.PLAYER,
+                effectId = if (state.winner == Side.PLAYER) victoryEffectId else defeatEffectId,
+                onExit = onExit,
+            )
         }
     }
     }
@@ -1808,8 +1816,13 @@ private fun CardInspector(card: Card, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun GameOverPanel(won: Boolean, onExit: () -> Unit) {
+private fun GameOverPanel(won: Boolean, effectId: String?, onExit: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
+        // Efecto cosmético de fin de partida (procedural), DETRÁS del panel.
+        CosmeticCelebrationFx(
+            theme = if (won) victoryEffectFor(effectId) else defeatEffectFor(effectId),
+            modifier = Modifier.fillMaxSize(),
+        )
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 if (won) "¡VICTORIA!" else "DERROTA",

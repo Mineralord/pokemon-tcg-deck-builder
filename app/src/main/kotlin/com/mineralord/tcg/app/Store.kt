@@ -401,6 +401,18 @@ private fun CosmeticPreview(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
             }
             return
         }
+        CosmeticCategory.VICTORIA -> {
+            com.mineralord.tcg.feature.game.combat.CelebrationPreview(
+                cosmetic.id, victory = true, modifier.clip(RoundedCornerShape(12.dp)),
+            )
+            return
+        }
+        CosmeticCategory.DERROTA -> {
+            com.mineralord.tcg.feature.game.combat.CelebrationPreview(
+                cosmetic.id, victory = false, modifier.clip(RoundedCornerShape(12.dp)),
+            )
+            return
+        }
         else -> Unit
     }
     when (cosmetic.category) {
@@ -429,8 +441,20 @@ private fun CosmeticPreview(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
             modifier.padding(12.dp).clip(RoundedCornerShape(6.dp)).background(brush)
                 .border(3.dp, Color(0x55000000), RoundedCornerShape(6.dp)),
         )
-        // Categorías futuras (monedas, insignias, emotes, efectos): previsualización genérica
-        // por paleta hasta que tengan su renderizador propio (fail-safe, no crash).
+        CosmeticCategory.MONEDA -> Box(modifier.padding(10.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.fillMaxSize(0.82f).clip(CircleShape).background(brush)
+                    .border(3.dp, Color(0x66FFFFFF), CircleShape),
+            )
+        }
+        CosmeticCategory.BADGE -> Box(modifier.padding(10.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.fillMaxSize(0.72f).clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 24.dp, bottomEnd = 24.dp))
+                    .background(brush).border(2.dp, cosmetic.rarity.color, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 24.dp, bottomEnd = 24.dp)),
+            )
+        }
+        // Categorías genéricas restantes (emotes, etc.): previsualización por paleta
+        // (fail-safe, no crash) hasta que tengan su renderizador propio.
         else -> Box(
             modifier.padding(10.dp).clip(RoundedCornerShape(12.dp)).background(brush)
                 .border(2.dp, cosmetic.rarity.color, RoundedCornerShape(12.dp)),
