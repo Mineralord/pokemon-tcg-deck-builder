@@ -41,4 +41,15 @@ class CosmeticRepositoryTest {
         assertEquals(CosmeticRarity.COMUN, avatares.first().rarity)
         assertTrue(avatares.all { it.category == CosmeticCategory.AVATAR })
     }
+
+    @Test
+    fun `los cosmeticos RESTRICTED se catalogan pero nunca aparecen en la tienda`() {
+        // Existen en el catálogo (trazabilidad/preservación §8/§32)…
+        val restricted = repo["ref.cardback.kards.legacy"]
+        assertNotNull(restricted)
+        assertEquals(CosmeticStatus.RESTRICTED, restricted.status)
+        assertTrue(!restricted.isDistributable)
+        // …pero NUNCA se ofrecen en la tienda (filtrados por status + licencia).
+        assertTrue(repo.shopByCategory(CosmeticCategory.FUNDA).none { it.status == CosmeticStatus.RESTRICTED })
+    }
 }

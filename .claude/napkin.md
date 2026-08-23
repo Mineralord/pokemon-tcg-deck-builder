@@ -40,6 +40,24 @@ params `matThemeId`/`sleeveId`; `MainActivity` los pasa desde `profile.equippedI
 muestra la previsualización REAL (WYSIWYG) vía `MatThemePreview`/`SleevePreview` en `app/Store.kt`.
 **Cableado de visualización de cosméticos hecho:** avatar(Home) ✅ · tapete(partida) ✅ · funda(partida) ✅.
 **Pendiente:** marco/fondo(Home/Perfil) · caja de mazo(Barajas) · cosméticos en OnlineGameScreen (solo PvE por ahora).
+**COSMETIC ASSET LIBRARY (22 Ago) — infra data-driven (plan aprobado `merry-brewing-crescent`):**
+- **Persistencia real:** perfil (owned/equipped/balances) = DataStore local + **Google Drive** (`data:cloud`,
+  `ProfileSnapshotDto` v2, fusión aditiva). **Firestore (`data:netfirestore`) = SOLO netplay online**, NO perfil.
+  Cosméticos NO usan Firestore.
+- **S1 (commit `0e359bc`):** módulo **`data:cosmetics`** (Kotlin puro, espejo de `data:cards`). Catálogo
+  data-driven en `resources/cosmetics/index.json`+`core.json` (§17, ya NO hardcodeado). `CosmeticDto`→`Cosmetic`
+  (metadata rica: status A-G, license GREEN/YELLOW/RED/ARCHIVE_ONLY, assetType, renderer/assetRef, source/author/
+  originalUrl, assetVersion/metadataVersion). `CosmeticRepository.load()` + `Cosmetics.repo` (cache lazy).
+  `CosmeticPricing` (precio por rareza, movido aquí para evitar dep circular). **IDs ESTABLES** conservados
+  (avatar-brasa, tapete-arena, funda-eclipse…) → saves/nube válidos. `data:profile` depende (api) de `data:cosmetics`.
+  Tienda usa `Cosmetics.repo.shopByCategory` (filtra ACTIVE+distribuible). Test `:data:cosmetics` verde.
+- **S2 (docs+catalog):** `docs/cosmetics/ASSET-LEDGER.md` (licencias: **Kenney=CC0 GREEN**; **KARDS=ARCHIVE-ONLY**
+  © 1939 Games; **Spirit-PTCGO** código GPL / assets **RED** IP Pokémon) + `GUIA-AÑADIR-COSMETICO.md` (manual).
+  `restricted.json` cataloga RESTRICTED (KARDS/PTCGO/Pokémon) como **metadata sin binario** (trazabilidad §8/§32);
+  la tienda los filtra. **Política firme: solo se empaqueta GREEN (procedural+CC0); NUNCA IP ajena aunque sea privado.**
+- **Pendiente (S3-S5):** VFX victory/defeat/battle vía pipeline `AnimationDirector` (NO nueva arq) · Coins/Badges/
+  Emotes/Backgrounds · audio SFX lazy · Colección de cosméticos (filtrar/ordenar/favoritos/estado) · Perfil muestra
+  equipados · Cosmetics Lab en Studio · hook Museo/Legado (ARCHIVED/LEGACY). Añadir cosmético = JSON, sin código.
 **Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
 copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
 `pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).

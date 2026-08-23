@@ -1,0 +1,49 @@
+{
+  "pack": "restricted",
+  "items": [
+    {
+      "id": "ref.sleeve.ptcgo.legacy",
+      "category": "FUNDA",
+      "rarity": "RARO",
+      "name": "PTCGO (referencia)",
+      "status": "RESTRICTED",
+      "license": "ARCHIVE_ONLY",
+      "assetType": "IMAGE",
+      "assetRef": null,
+      "source": "Pokémon TCG Online (client)",
+      "author": "The Pokémon Company / Creatures / Nintendo",
+      "sourceRepository": "https://github.com/Bratah123/Spirit-PTCGO",
+      "acquisitionMethod": "NONE",
+      "unlockMethod": "NONE"
+    },
+    {
+      "id": "ref.cardback.kards.legacy",
+      "category": "FUNDA",
+      "rarity": "RARO",
+      "name": "KARDS card back (referencia)",
+      "status": "RESTRICTED",
+      "license": "ARCHIVE_ONLY",
+      "assetType": "IMAGE",
+      "assetRef": null,
+      "source": "KARDS (1939 Games)",
+      "author": "1939 Games",
+      "sourceRepository": "https://github.com/Gary-nope/KARDS-Assets",
+      "acquisitionMethod": "NONE",
+      "unlockMethod": "NONE"
+    },
+    {
+      "id": "ref.avatar.pokemon.official",
+      "category": "AVATAR",
+      "rarity": "LEGENDARIO",
+      "name": "Pokémon oficial (referencia)",
+      "status": "RESTRICTED",
+      "license": "RED",
+      "assetType": "IMAGE",
+      "assetRef": null,
+      "source": "Pokémon oficial",
+      "author": "The Pokémon Company / Creatures / Nintendo",
+      "acquisitionMethod": "NONE",
+      "unlockMethod": "NONE"
+    }
+  ]
+}
