@@ -47,10 +47,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mineralord.tcg.core.designsystem.HexagonShape
-import com.mineralord.tcg.data.profile.Cosmetic
-import com.mineralord.tcg.data.profile.CosmeticCatalog
-import com.mineralord.tcg.data.profile.CosmeticCategory
-import com.mineralord.tcg.data.profile.CosmeticRarity
+import com.mineralord.tcg.data.cosmetics.Cosmetic
+import com.mineralord.tcg.data.cosmetics.Cosmetics
+import com.mineralord.tcg.data.cosmetics.CosmeticCategory
+import com.mineralord.tcg.data.cosmetics.CosmeticRarity
 import com.mineralord.tcg.data.profile.CurrencyKind
 import com.mineralord.tcg.data.profile.PlayerProfile
 
@@ -218,7 +218,7 @@ fun CosmeticStoreScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize(),
         ) {
-            items(CosmeticCatalog.byCategory(category), key = { it.id }) { cosmetic ->
+            items(Cosmetics.repo.shopByCategory(category), key = { it.id }) { cosmetic ->
                 CosmeticCard(
                     cosmetic = cosmetic,
                     owned = profile.ownsCosmetic(cosmetic.id),
@@ -428,6 +428,12 @@ private fun CosmeticPreview(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
         CosmeticCategory.CAJA -> Box(
             modifier.padding(12.dp).clip(RoundedCornerShape(6.dp)).background(brush)
                 .border(3.dp, Color(0x55000000), RoundedCornerShape(6.dp)),
+        )
+        // Categorías futuras (monedas, insignias, emotes, efectos): previsualización genérica
+        // por paleta hasta que tengan su renderizador propio (fail-safe, no crash).
+        else -> Box(
+            modifier.padding(10.dp).clip(RoundedCornerShape(12.dp)).background(brush)
+                .border(2.dp, cosmetic.rarity.color, RoundedCornerShape(12.dp)),
         )
     }
 }

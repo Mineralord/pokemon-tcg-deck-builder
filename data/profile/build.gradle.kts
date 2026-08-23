@@ -22,6 +22,10 @@ android {
 
 dependencies {
     api(project(":engine:model"))
+    // api: los tipos de cosméticos (CosmeticCategory, Cosmetic, …) forman parte de la API
+    // pública de data:profile (PlayerProfile.equippedCosmetics, buyCosmetic), así que los
+    // dependientes (data:cloud, app) los ven transitivamente.
+    api(project(":data:cosmetics"))
     implementation(project(":data:cards"))
     implementation(project(":data:gacha"))
     implementation(libs.androidx.datastore.preferences)

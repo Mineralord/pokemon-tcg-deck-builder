@@ -39,25 +39,7 @@ object EconomyRules {
     /** Máximo de sobres COMPRADOS por día (además de los gratuitos del monedero). */
     const val MAX_PACKS_BOUGHT_PER_DAY = 10
 
-    // ----- Consumos cosméticos (Fase 3 §14: precio por rareza en Monedas) -----
-
-    /**
-     * Precio en Monedas de un cosmético según su rareza (§14.3: el precio refleja la
-     * rareza/complejidad). Estable y transparente (§14.6). Los cosméticos de prestigio
-     * (§14.5) cuestan [PRESTIGE_MULTIPLIER]× el precio de su rareza: objetivos de muy
-     * largo plazo, símbolo de dedicación, nunca ventaja competitiva.
-     */
-    fun cosmeticPrice(rarity: CosmeticRarity, prestige: Boolean = false): Int {
-        val base = when (rarity) {
-            CosmeticRarity.COMUN -> 200
-            CosmeticRarity.POCO_COMUN -> 400
-            CosmeticRarity.RARO -> 800
-            CosmeticRarity.EPICO -> 1_500
-            CosmeticRarity.LEGENDARIO -> 3_000
-            CosmeticRarity.MITICO -> 6_000
-        }
-        return if (prestige) base * PRESTIGE_MULTIPLIER else base
-    }
-
-    private const val PRESTIGE_MULTIPLIER = 3
+    // El precio de los cosméticos por rareza (§14) vive en `data:cosmetics`
+    // (`CosmeticPricing`), junto al dominio cosmético, para mantener ese módulo
+    // autocontenido y evitar dependencias circulares con la economía.
 }

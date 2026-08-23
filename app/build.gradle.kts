@@ -55,6 +55,7 @@ dependencies {
     implementation(project(":feature:combat"))
     implementation(project(":feature:game"))
     implementation(project(":data:cards"))
+    implementation(project(":data:cosmetics"))
     implementation(project(":data:gacha"))
     implementation(project(":data:profile"))
     implementation(project(":data:cloud"))

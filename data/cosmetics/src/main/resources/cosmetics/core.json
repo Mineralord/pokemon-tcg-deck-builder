@@ -1,0 +1,37 @@
+{
+  "pack": "core",
+  "items": [
+    { "id": "avatar-brasa",   "category": "AVATAR", "rarity": "COMUN",       "name": "Brasa",    "renderer": "avatar", "colors": ["0xFFFF7043", "0xFFE64A19"] },
+    { "id": "avatar-marea",   "category": "AVATAR", "rarity": "POCO_COMUN",  "name": "Marea",    "renderer": "avatar", "colors": ["0xFF29B6F6", "0xFF0277BD"] },
+    { "id": "avatar-fronda",  "category": "AVATAR", "rarity": "RARO",        "name": "Fronda",   "renderer": "avatar", "colors": ["0xFF66BB6A", "0xFF2E7D32"] },
+    { "id": "avatar-quimera", "category": "AVATAR", "rarity": "EPICO",       "name": "Quimera",  "renderer": "avatar", "colors": ["0xFFAB47BC", "0xFF6A1B9A"] },
+    { "id": "avatar-solaris", "category": "AVATAR", "rarity": "LEGENDARIO",  "name": "Solaris",  "renderer": "avatar", "colors": ["0xFFFFD54F", "0xFFFF8F00"] },
+    { "id": "avatar-cosmos",  "category": "AVATAR", "rarity": "MITICO",      "name": "Cosmos",   "renderer": "avatar", "prestige": true, "animated": true, "colors": ["0xFFFF4081", "0xFF7C4DFF", "0xFF18FFFF"] },
+
+    { "id": "marco-acero",    "category": "MARCO",  "rarity": "COMUN",       "name": "Acero",    "renderer": "marco", "colors": ["0xFFB0BEC5", "0xFF607D8B"] },
+    { "id": "marco-jade",     "category": "MARCO",  "rarity": "POCO_COMUN",  "name": "Jade",     "renderer": "marco", "colors": ["0xFF26A69A", "0xFF00695C"] },
+    { "id": "marco-zafiro",   "category": "MARCO",  "rarity": "RARO",        "name": "Zafiro",   "renderer": "marco", "colors": ["0xFF42A5F5", "0xFF1565C0"] },
+    { "id": "marco-amatista", "category": "MARCO",  "rarity": "EPICO",       "name": "Amatista", "renderer": "marco", "colors": ["0xFF7E57C2", "0xFF4527A0"] },
+    { "id": "marco-aureo",    "category": "MARCO",  "rarity": "LEGENDARIO",  "name": "Áureo",    "renderer": "marco", "colors": ["0xFFFFCA28", "0xFFC49000"] },
+
+    { "id": "fondo-alba",     "category": "FONDO",  "rarity": "COMUN",       "name": "Alba",     "renderer": "fondo", "colors": ["0xFFFFE0B2", "0xFFFFB74D"] },
+    { "id": "fondo-bosque",   "category": "FONDO",  "rarity": "POCO_COMUN",  "name": "Bosque",   "renderer": "fondo", "colors": ["0xFF81C784", "0xFF2E7D32"] },
+    { "id": "fondo-abismo",   "category": "FONDO",  "rarity": "RARO",        "name": "Abismo",   "renderer": "fondo", "colors": ["0xFF1A237E", "0xFF000051"] },
+    { "id": "fondo-aurora",   "category": "FONDO",  "rarity": "EPICO",       "name": "Aurora",   "renderer": "fondo", "colors": ["0xFF00E5FF", "0xFF7C4DFF", "0xFF64FFDA"] },
+    { "id": "fondo-nebulosa", "category": "FONDO",  "rarity": "LEGENDARIO",  "name": "Nebulosa", "renderer": "fondo", "colors": ["0xFFFF4081", "0xFF7C4DFF", "0xFF3D5AFE"] },
+
+    { "id": "tapete-arena",   "category": "TAPETE", "rarity": "COMUN",       "name": "Arena",    "renderer": "mat.theme", "colors": ["0xFFD7CCC8", "0xFF8D6E63"] },
+    { "id": "tapete-liga",    "category": "TAPETE", "rarity": "RARO",        "name": "Liga",     "renderer": "mat.theme", "colors": ["0xFF3949AB", "0xFF1A237E"] },
+    { "id": "tapete-campeon", "category": "TAPETE", "rarity": "EPICO",       "name": "Campeón",  "renderer": "mat.theme", "colors": ["0xFFFF7043", "0xFFAD1457"] },
+    { "id": "tapete-maestro", "category": "TAPETE", "rarity": "LEGENDARIO",  "name": "Maestro",  "renderer": "mat.theme", "colors": ["0xFFFFD54F", "0xFFEF6C00", "0xFFB71C1C"] },
+
+    { "id": "funda-lisa",     "category": "FUNDA",  "rarity": "COMUN",       "name": "Lisa",     "renderer": "sleeve", "colors": ["0xFFCFD8DC", "0xFF90A4AE"] },
+    { "id": "funda-ola",      "category": "FUNDA",  "rarity": "POCO_COMUN",  "name": "Ola",      "renderer": "sleeve", "colors": ["0xFF4FC3F7", "0xFF0288D1"] },
+    { "id": "funda-prisma",   "category": "FUNDA",  "rarity": "EPICO",       "name": "Prisma",   "renderer": "sleeve", "colors": ["0xFF00BCD4", "0xFF7C4DFF", "0xFFEC407A"] },
+    { "id": "funda-eclipse",  "category": "FUNDA",  "rarity": "MITICO",      "name": "Eclipse",  "renderer": "sleeve", "prestige": true, "colors": ["0xFF212121", "0xFFFFC107", "0xFF212121"] },
+
+    { "id": "caja-roble",     "category": "CAJA",   "rarity": "COMUN",       "name": "Roble",    "renderer": "caja", "colors": ["0xFFA1887F", "0xFF5D4037"] },
+    { "id": "caja-cromo",     "category": "CAJA",   "rarity": "RARO",        "name": "Cromo",    "renderer": "caja", "colors": ["0xFFB0BEC5", "0xFF455A64"] },
+    { "id": "caja-real",      "category": "CAJA",   "rarity": "LEGENDARIO",  "name": "Real",     "renderer": "caja", "colors": ["0xFFFFD54F", "0xFF6A1B9A"] }
+  ]
+}

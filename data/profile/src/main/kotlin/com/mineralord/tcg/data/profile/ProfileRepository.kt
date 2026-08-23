@@ -9,6 +9,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.mineralord.tcg.data.cards.Deck
 import com.mineralord.tcg.data.cards.DeckEntry
+import com.mineralord.tcg.data.cosmetics.Cosmetic
+import com.mineralord.tcg.data.cosmetics.CosmeticCategory
 import com.mineralord.tcg.data.gacha.DailyPackState
 import com.mineralord.tcg.data.gacha.PackWallet
 import com.mineralord.tcg.engine.model.CardId

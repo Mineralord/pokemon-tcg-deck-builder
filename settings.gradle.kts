@@ -25,6 +25,7 @@ include(":engine:rules")
 // --- data: lógica de datos/gacha (Kotlin puro de momento) ---
 include(":data:gacha")
 include(":data:cards")
+include(":data:cosmetics")
 include(":data:profile")
 include(":data:cloud")
 include(":data:netplay")

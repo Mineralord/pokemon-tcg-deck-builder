@@ -1,6 +1,7 @@
 package com.mineralord.tcg.data.profile
 
 import com.mineralord.tcg.data.cards.Deck
+import com.mineralord.tcg.data.cosmetics.CosmeticCategory
 import com.mineralord.tcg.data.gacha.DailyPackState
 
 /**

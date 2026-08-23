@@ -106,8 +106,8 @@ private fun AppShell() {
         Screen.HOME -> HomeScreen(
             modifier = Modifier.fillMaxSize(),
             balances = profile.balances,
-            avatarColors = profile.equippedIn(com.mineralord.tcg.data.profile.CosmeticCategory.AVATAR)
-                ?.let { com.mineralord.tcg.data.profile.CosmeticCatalog[it] }
+            avatarColors = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR)
+                ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
                 ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
             onCartadex = { screen = Screen.COLLECTION },
             onTienda = { screen = Screen.STORE },
@@ -127,8 +127,8 @@ private fun AppShell() {
             onExit = { screen = Screen.HOME },
             vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
             modifier = Modifier.fillMaxSize(),
-            matThemeId = profile.equippedIn(com.mineralord.tcg.data.profile.CosmeticCategory.TAPETE),
-            sleeveId = profile.equippedIn(com.mineralord.tcg.data.profile.CosmeticCategory.FUNDA),
+            matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
+            sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
         )
         Screen.ONLINE -> OnlineGameScreen(
             onExit = { screen = Screen.HOME },

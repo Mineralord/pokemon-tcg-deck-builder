@@ -2,8 +2,8 @@ package com.mineralord.tcg.data.cloud
 
 import com.mineralord.tcg.data.cards.Deck
 import com.mineralord.tcg.data.cards.DeckEntry
+import com.mineralord.tcg.data.cosmetics.CosmeticCategory
 import com.mineralord.tcg.data.gacha.DailyPackState
-import com.mineralord.tcg.data.profile.CosmeticCategory
 import com.mineralord.tcg.data.profile.CurrencyKind
 import com.mineralord.tcg.data.profile.PlayerProfile
 import com.mineralord.tcg.engine.model.CardId
