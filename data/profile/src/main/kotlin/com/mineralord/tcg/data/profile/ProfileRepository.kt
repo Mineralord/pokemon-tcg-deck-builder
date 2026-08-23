@@ -257,6 +257,33 @@ class ProfileRepository(context: Context) {
         return ok
     }
 
+    /**
+     * Recicla [count] copias EXCEDENTES de la carta [cardId] (Canon Fase 5 §3.7): reduce el conteo
+     * poseído y acredita [fichas] Fichas en una operación ATÓMICA. Preserva SIEMPRE ≥1 copia (nunca
+     * destruye la última, respetando colección/Museo §7): si no hay suficientes excedentes, no toca
+     * nada y devuelve `false`. Nunca deja saldos ni conteos negativos.
+     */
+    suspend fun recycleExtras(cardId: String, count: Int, fichas: Int): Boolean {
+        if (count <= 0 || fichas < 0) return false
+        var ok = false
+        store.edit { prefs ->
+            val owned = HashMap(
+                runCatching { json.decodeFromString(mapSerializer, prefs[OWNED] ?: "{}") }
+                    .getOrDefault(emptyMap()),
+            )
+            val have = owned[cardId] ?: 0
+            if (have - 1 < count) return@edit // debe quedar al menos 1 copia
+            owned[cardId] = have - count
+            prefs[OWNED] = json.encodeToString(mapSerializer, owned)
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            balances[CurrencyKind.FICHAS.name] = (balances[CurrencyKind.FICHAS.name] ?: 0) + fichas
+            prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+            prefs.touch()
+            ok = true
+        }
+        return ok
+    }
+
     /** Decodifica el JSON de saldos (nombre de recurso -> saldo), ignorando claves desconocidas. */
     private fun decodeBalances(raw: String?): Map<CurrencyKind, Int> {
         val byName = runCatching {

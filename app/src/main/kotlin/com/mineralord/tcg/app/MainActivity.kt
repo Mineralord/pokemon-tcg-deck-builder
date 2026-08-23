@@ -42,7 +42,7 @@ import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 import kotlinx.coroutines.launch
 
-private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
+private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, RECYCLE, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -150,9 +150,14 @@ private fun AppShell() {
                 onSobres = { screen = Screen.PACKS },
                 onCosmeticos = { screen = Screen.COSMETICS },
                 onColeccion = { screen = Screen.COSMETIC_COLLECTION },
+                onReciclaje = { screen = Screen.RECYCLE },
                 modifier = Modifier.fillMaxSize(),
             )
         }
+        Screen.RECYCLE -> RecycleScreen(
+            onExit = { screen = Screen.STORE },
+            modifier = Modifier.fillMaxSize(),
+        )
         Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { screen = Screen.STORE }) {
             PacksScreen(modifier = Modifier.fillMaxSize())
         }

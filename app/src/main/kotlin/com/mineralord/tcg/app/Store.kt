@@ -94,6 +94,7 @@ fun StoreHubScreen(
     onSobres: () -> Unit,
     onCosmeticos: () -> Unit,
     onColeccion: () -> Unit,
+    onReciclaje: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -133,6 +134,15 @@ fun StoreHubScreen(
             accent = Color(0xFF66BB6A),
             currencyLabel = "Explora todo lo obtenible",
             onClick = onColeccion,
+        )
+        Spacer(Modifier.height(16.dp))
+        StoreSection(
+            title = "Reciclaje",
+            subtitle = "Convierte duplicados que te sobran en Fichas",
+            colors = listOf(Color(0xFF3A2A6B), Color(0xFF1E1238)),
+            accent = Color(0xFF7C4DFF),
+            currencyLabel = "${balances[CurrencyKind.FICHAS] ?: 0} 🧩  Fichas",
+            onClick = onReciclaje,
         )
     }
 }
