@@ -74,43 +74,17 @@ private val RcMuted = Color(0xFF8A93A6)
 private val RcAccent = Color(0xFF35C4E8)       // cian TCG Live
 private val RcFicha = Color(0xFF7C4DFF)        // identidad de las Fichas (morado)
 
-/** Escalón económico I..IX del Canon (§3.2) para una rareza del motor. */
-private fun tierOf(r: Rarity): Int = when (r) {
-    Rarity.COMMON -> 1
-    Rarity.UNCOMMON -> 2
-    Rarity.RARE -> 3
-    Rarity.RARE_HOLO -> 4
-    Rarity.DOUBLE_RARE -> 5          // Pokémon ex (Premium Base)
-    Rarity.ULTRA_RARE -> 6           // V / Full Art
-    Rarity.ILLUSTRATION_RARE -> 7
-    Rarity.SPECIAL_ILLUSTRATION_RARE -> 8
-    Rarity.HYPER_RARE -> 9
-    Rarity.PROMO -> 1
-}
-
-private fun rarityLabel(r: Rarity): String = when (r) {
-    Rarity.COMMON -> "Común"
-    Rarity.UNCOMMON -> "Poco común"
-    Rarity.RARE -> "Rara"
-    Rarity.RARE_HOLO -> "Rara Holo"
-    Rarity.DOUBLE_RARE -> "Doble Rara (ex)"
-    Rarity.ULTRA_RARE -> "Ultra Rara"
-    Rarity.ILLUSTRATION_RARE -> "Illustration Rare"
-    Rarity.SPECIAL_ILLUSTRATION_RARE -> "Special Illustration"
-    Rarity.HYPER_RARE -> "Hyper Rara"
-    Rarity.PROMO -> "Promo"
-}
-
-/** Una carta con copias de sobra, candidata a reciclaje. */
+/** Una carta con copias por encima del playset, candidata a destrucción. */
 private data class Recyclable(
     val id: String,
     val name: String,
-    val rarity: Rarity,
+    val card: Card,
     val owned: Int,
+    val playset: Int,
     val image: String,
 ) {
-    val extras: Int get() = owned - 1                       // conservamos ≥1
-    val fichasPer: Int get() = CraftingRules.recycleFichas(tierOf(rarity))
+    val extras: Int get() = owned - playset                 // conservamos el playset completo (4 o 1)
+    val fichasPer: Int get() = destroyValueOf(card)
 }
 
 @Composable
@@ -140,10 +114,11 @@ fun RecycleScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         derivedStateOf {
             val cat = catalog ?: return@derivedStateOf emptyList()
             owned.mapNotNull { (id, n) ->
-                if (n <= 1) return@mapNotNull null                      // sin excedentes
                 if (ProfileRepository.capFor(id) == ProfileRepository.UNLIMITED) return@mapNotNull null // energías
                 val c = cat[id] ?: return@mapNotNull null
-                Recyclable(id, c.name.es, c.rarity, n, c.artwork.smallEs ?: c.artwork.large(spanish = true))
+                val ps = playsetSize(c)
+                if (n <= ps) return@mapNotNull null                     // sin excedentes sobre el playset
+                Recyclable(id, c.name.es, c, n, ps, c.artwork.smallEs ?: c.artwork.large(spanish = true))
             }.sortedByDescending { it.fichasPer * it.extras }
         }
     }
@@ -204,8 +179,8 @@ fun RecycleScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 val snapshot = selection.toMap()
                 scope.launch {
                     snapshot.forEach { (id, q) ->
-                        val per = items.firstOrNull { it.id == id }?.fichasPer ?: 0
-                        repo.recycleExtras(id, q, q * per)
+                        val entry = items.firstOrNull { it.id == id } ?: return@forEach
+                        repo.destroyCopies(id, q, q * entry.fichasPer, entry.playset)
                     }
                     selection.clear()
                 }
@@ -225,7 +200,7 @@ private fun RecycleHeader(fichas: Int, onExit: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) { Text("‹", color = RcInk, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
         Spacer(Modifier.width(12.dp))
-        Text("Reciclaje", color = RcInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Text("Destrucción", color = RcInk, fontSize = 22.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.width(1.dp).weight(1f))
         FichaPill(fichas)
     }
@@ -258,7 +233,7 @@ private fun FichaGlyph(size: androidx.compose.ui.unit.Dp) {
 @Composable
 private fun HelpNote() {
     Text(
-        "Recicla los duplicados que te sobran por Fichas. Siempre conservas al menos 1 copia de cada carta.",
+        "Destruye los duplicados que te sobran por Fichas. Siempre conservas tu playset completo (4 copias, o 1 en cartas singleton).",
         color = RcMuted, fontSize = 12.5.sp, lineHeight = 16.sp,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
     )
@@ -270,7 +245,7 @@ private fun SelectAllRow(anySelected: Boolean, onAll: () -> Unit, onNone: () -> 
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Duplicados reciclables", color = RcInk, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("Duplicados destruibles", color = RcInk, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(Modifier.weight(1f))
         val label = if (anySelected) "Quitar todo" else "Seleccionar todo"
         Text(
@@ -295,7 +270,7 @@ private fun RecycleRow(r: Recyclable, qty: Int, onQty: (Int) -> Unit) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(r.name, color = RcInk, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(rarityLabel(r.rarity), color = RcMuted, fontSize = 12.sp)
+            Text(rarityLabelEs(r.card.rarity), color = RcMuted, fontSize = 12.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Tienes ${r.owned} · sobran ${r.extras}", color = RcMuted, fontSize = 11.5.sp)
                 Spacer(Modifier.width(8.dp))
@@ -338,7 +313,7 @@ private fun RecycleActionBar(totalCards: Int, totalFichas: Int, onRecycle: () ->
                 .background(RcAccent).clickable(onClick = onRecycle).padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Reciclar $totalCards", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            Text("Destruir $totalCards", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
             Spacer(Modifier.weight(1f))
             FichaGlyph(18.dp)
             Spacer(Modifier.width(6.dp))
@@ -358,10 +333,10 @@ private fun ConfirmDialog(totalCards: Int, totalFichas: Int, onCancel: () -> Uni
                 .clickable(enabled = false) {},
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("¿Reciclar duplicados?", color = RcInk, fontWeight = FontWeight.Black, fontSize = 18.sp)
+            Text("¿Destruir duplicados?", color = RcInk, fontWeight = FontWeight.Black, fontSize = 18.sp)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Vas a reciclar $totalCards duplicado(s) por $totalFichas Fichas. Conservarás al menos 1 copia de cada carta. Esta acción no se puede deshacer.",
+                "Vas a destruir $totalCards duplicado(s) por $totalFichas Fichas. Conservarás tu playset completo de cada carta. Esta acción no se puede deshacer.",
                 color = RcMuted, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 18.sp,
             )
             Spacer(Modifier.height(18.dp))
@@ -373,7 +348,7 @@ private fun ConfirmDialog(totalCards: Int, totalFichas: Int, onCancel: () -> Uni
                 Box(
                     Modifier.clip(RoundedCornerShape(12.dp)).background(RcAccent)
                         .clickable(onClick = onConfirm).padding(horizontal = 20.dp, vertical = 10.dp),
-                ) { Text("Reciclar", color = Color.White, fontWeight = FontWeight.Black) }
+                ) { Text("Destruir", color = Color.White, fontWeight = FontWeight.Black) }
             }
         }
     }
@@ -385,10 +360,10 @@ private fun EmptyState() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FichaGlyph(46.dp)
             Spacer(Modifier.height(14.dp))
-            Text("No tienes duplicados para reciclar", color = RcInk, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center)
+            Text("No tienes duplicados para destruir", color = RcInk, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Cuando acumules más de una copia de una carta, podrás reciclar las que te sobren por Fichas.",
+                "Cuando acumules copias por encima de tu playset, podrás destruir las que te sobren por Fichas.",
                 color = RcMuted, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 18.sp,
             )
         }

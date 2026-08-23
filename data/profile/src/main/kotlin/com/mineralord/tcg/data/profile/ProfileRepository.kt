@@ -100,31 +100,20 @@ class ProfileRepository(context: Context) {
      * ninguna) para que la capa superior pueda informar al jugador.
      */
     suspend fun addCards(cardIds: List<String>): Map<String, Int> {
-        val overflow = HashMap<String, Int>()
         store.edit { prefs ->
             val current = runCatching {
                 json.decodeFromString(mapSerializer, prefs[OWNED] ?: "{}")
             }.getOrDefault(emptyMap())
             val merged = HashMap(current)
-            cardIds.forEach { id ->
-                val cap = capFor(id)
-                val now = merged[id] ?: 0
-                if (now >= cap) overflow[id] = (overflow[id] ?: 0) + 1
-                else merged[id] = now + 1
-            }
+            // Directriz del propietario (2026-08-23): las cartas se ACUMULAN sin tope de colección
+            // (ya NO hay auto-conversión de excedentes a Fichas). El jugador destruye manualmente el
+            // excedente conservando su playset (Fase 5, herramienta de Destrucción). El límite de 4
+            // (o 1 ACE SPEC) sigue siendo del MAZO (DeckValidation), no de la colección.
+            cardIds.forEach { id -> merged[id] = (merged[id] ?: 0) + 1 }
             prefs[OWNED] = json.encodeToString(mapSerializer, merged)
-            if (overflow.isNotEmpty()) {
-                // Preserva el excedente (nunca se descarta) hasta que exista la conversión a Fichas.
-                val pending = runCatching {
-                    json.decodeFromString(mapSerializer, prefs[PENDING_SHARDS] ?: "{}")
-                }.getOrDefault(emptyMap())
-                val mergedPending = HashMap(pending)
-                overflow.forEach { (id, n) -> mergedPending[id] = (mergedPending[id] ?: 0) + n }
-                prefs[PENDING_SHARDS] = json.encodeToString(mapSerializer, mergedPending)
-            }
             prefs.touch()
         }
-        return overflow
+        return emptyMap()
     }
 
     /** Excedente de duplicados preservado (id -> nº) pendiente de convertir a Fichas (Fase 5). */
@@ -258,13 +247,14 @@ class ProfileRepository(context: Context) {
     }
 
     /**
-     * Recicla [count] copias EXCEDENTES de la carta [cardId] (Canon Fase 5 §3.7): reduce el conteo
-     * poseído y acredita [fichas] Fichas en una operación ATÓMICA. Preserva SIEMPRE ≥1 copia (nunca
-     * destruye la última, respetando colección/Museo §7): si no hay suficientes excedentes, no toca
-     * nada y devuelve `false`. Nunca deja saldos ni conteos negativos.
+     * DESTRUYE [count] copias EXCEDENTES de la carta [cardId] (Canon Fase 5 §3.7) y acredita [fichas]
+     * Fichas en una operación ATÓMICA. Conserva SIEMPRE al menos [keep] copias (el PLAYSET: 4 normal,
+     * 1 en singletons como ACE SPEC/Radiante) para no romper la posibilidad de armar mazos ni el
+     * legado (§7). Si no hay suficiente excedente por encima de [keep], no toca nada y devuelve
+     * `false`. Nunca deja saldos ni conteos negativos.
      */
-    suspend fun recycleExtras(cardId: String, count: Int, fichas: Int): Boolean {
-        if (count <= 0 || fichas < 0) return false
+    suspend fun destroyCopies(cardId: String, count: Int, fichas: Int, keep: Int): Boolean {
+        if (count <= 0 || fichas < 0 || keep < 0) return false
         var ok = false
         store.edit { prefs ->
             val owned = HashMap(
@@ -272,11 +262,40 @@ class ProfileRepository(context: Context) {
                     .getOrDefault(emptyMap()),
             )
             val have = owned[cardId] ?: 0
-            if (have - 1 < count) return@edit // debe quedar al menos 1 copia
+            if (have - keep < count) return@edit // debe conservarse el playset completo
             owned[cardId] = have - count
             prefs[OWNED] = json.encodeToString(mapSerializer, owned)
             val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
             balances[CurrencyKind.FICHAS.name] = (balances[CurrencyKind.FICHAS.name] ?: 0) + fichas
+            prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+            prefs.touch()
+            ok = true
+        }
+        return ok
+    }
+
+    /**
+     * FABRICA una copia de la carta [cardId] (Canon Fase 5 §3.4): gasta [cost] Fichas y suma 1 a la
+     * colección, en una operación ATÓMICA. Solo si hay Fichas suficientes y aún no se alcanza el
+     * playset [cap] (§3.6: nunca fabricar por encima del máximo permitido). Devuelve `false` si no
+     * se cumple alguna condición (sin tocar nada).
+     */
+    suspend fun craftCard(cardId: String, cost: Int, cap: Int): Boolean {
+        if (cost < 0 || cap <= 0) return false
+        var ok = false
+        store.edit { prefs ->
+            val owned = HashMap(
+                runCatching { json.decodeFromString(mapSerializer, prefs[OWNED] ?: "{}") }
+                    .getOrDefault(emptyMap()),
+            )
+            val have = owned[cardId] ?: 0
+            if (have >= cap) return@edit // ya tiene el playset completo
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            val fichas = balances[CurrencyKind.FICHAS.name] ?: 0
+            if (fichas < cost) return@edit // sin Fichas suficientes
+            balances[CurrencyKind.FICHAS.name] = fichas - cost
+            owned[cardId] = have + 1
+            prefs[OWNED] = json.encodeToString(mapSerializer, owned)
             prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
             prefs.touch()
             ok = true

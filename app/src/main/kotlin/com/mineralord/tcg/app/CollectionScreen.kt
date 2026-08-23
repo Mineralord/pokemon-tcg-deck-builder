@@ -339,9 +339,15 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
     var filter by remember { mutableStateOf(DexFilter()) }
     val savedSets = remember { mutableStateListOf<SavedFilterSet>() }
     var detail by remember { mutableStateOf<DexCard?>(null) }
+    var showDestroy by remember { mutableStateOf(false) }
     val favorites = remember { mutableStateListOf<String>() }
     val wishlist = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
+    // Fabricación/Destrucción (Fase 5) desde el visor de carta: repo + saldo de Fichas reactivo.
+    val context = LocalContext.current
+    val craftRepo = remember { ProfileRepository(context) }
+    var fichas by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) { craftRepo.profile.collectLatest { fichas = it.balances[com.mineralord.tcg.data.profile.CurrencyKind.FICHAS] ?: 0 } }
     val flatState = rememberLazyGridState()
     val groupedState = rememberLazyListState()
 
@@ -370,7 +376,7 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         val totalOwned = remember(sets) { sets.sumOf { s -> s.cards.sumOf { it.count } } }
 
         Column(Modifier.fillMaxSize()) {
-            CollectionHeader(onExit = onExit)
+            CollectionHeader(onExit = onExit, onDestroy = { showDestroy = true })
             RainbowRule()
             Toolbar(
                 totalOwned = totalOwned, grouped = grouped, counterVisible = !scrolling,
@@ -424,11 +430,18 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 allCards = allCards,
                 isFavorite = card.card.id.raw in favorites,
                 isWished = card.card.id.raw in wishlist,
+                fichas = fichas,
                 onToggleFavorite = { toggle(favorites, card.card.id.raw) },
                 onToggleWish = { toggle(wishlist, card.card.id.raw) },
+                onCraft = { scope.launch { craftRepo.craftCard(card.card.id.raw, craftCostOf(card.card), playsetSize(card.card)) } },
+                onDestroy = { scope.launch { craftRepo.destroyCopies(card.card.id.raw, 1, destroyValueOf(card.card), playsetSize(card.card)) } },
                 onOpenRelated = { detail = it },
                 onDismiss = { detail = null },
             )
+        }
+        // Herramienta de Destrucción (Fase 5): overlay a pantalla completa, propia de la colección.
+        if (showDestroy) {
+            RecycleScreen(onExit = { showDestroy = false }, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -437,7 +450,7 @@ private fun toggle(list: MutableList<String>, id: String) { if (id in list) list
 
 /** Cabecera: salir de pantalla completa (izq) · título "Mis cartas" centrado · ayuda (der). */
 @Composable
-private fun CollectionHeader(onExit: () -> Unit) {
+private fun CollectionHeader(onExit: () -> Unit, onDestroy: () -> Unit) {
     Box(Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 10.dp), contentAlignment = Alignment.Center) {
         Txt("Mis cartas", 22.sp, Ink, FontWeight.Black)
         Box(
@@ -445,11 +458,12 @@ private fun CollectionHeader(onExit: () -> Unit) {
                 .shadow(2.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onExit),
             contentAlignment = Alignment.Center,
         ) { Txt("⤢", 15.sp, Muted, FontWeight.Black) }
+        // Herramienta de Destrucción de duplicados (Fase 5), propia de la colección.
         Box(
             Modifier.align(Alignment.CenterEnd).padding(end = 16.dp).size(30.dp)
-                .shadow(2.dp, CircleShape).clip(CircleShape).background(Panel),
+                .shadow(2.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onDestroy),
             contentAlignment = Alignment.Center,
-        ) { Txt("?", 15.sp, Muted, FontWeight.Black) }
+        ) { Txt("🗑", 14.sp, Muted, FontWeight.Black) }
     }
 }
 
@@ -1173,8 +1187,11 @@ private fun CardDetailSheet(
     allCards: List<DexCard>,
     isFavorite: Boolean,
     isWished: Boolean,
+    fichas: Int,
     onToggleFavorite: () -> Unit,
     onToggleWish: () -> Unit,
+    onCraft: () -> Unit,
+    onDestroy: () -> Unit,
     onOpenRelated: (DexCard) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1256,6 +1273,14 @@ private fun CardDetailSheet(
             }
             Spacer(Modifier.height(14.dp))
 
+            // Fabricación / Destrucción (Canon Fase 5). Las Energías Básicas quedan fuera (ilimitadas).
+            if (!ProfileRepository.isEnergyId(card.card.id.raw)) {
+                CraftDestroyRow(
+                    card = card, fichas = fichas, onCraft = onCraft, onDestroy = onDestroy,
+                )
+                Spacer(Modifier.height(14.dp))
+            }
+
             // Panel blanco con datos + relacionadas.
             Column(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp)
@@ -1291,6 +1316,70 @@ private fun CardDetailSheet(
 
         // Popup de variantes de idioma.
         if (showLangs) LanguagePopup(ownedCount = card.count, onDismiss = { showLangs = false })
+    }
+}
+
+/**
+ * Fila de Fabricación/Destrucción del visor (Canon Fase 5). Fabricar suma 1 copia gastando Fichas
+ * (hasta el playset); Destruir convierte 1 excedente en Fichas conservando el playset. Muestra el
+ * progreso del playset y desactiva lo que no aplica (sin Fichas / playset completo / sin excedente).
+ */
+@Composable
+private fun CraftDestroyRow(card: DexCard, fichas: Int, onCraft: () -> Unit, onDestroy: () -> Unit) {
+    val playset = playsetSize(card.card)
+    val cost = craftCostOf(card.card)
+    val value = destroyValueOf(card.card)
+    val canCraft = card.count < playset && fichas >= cost
+    val canDestroy = card.count > playset
+    var confirmDestroy by remember(card) { mutableStateOf(false) }
+    val fichaColor = Color(0xFF7C4DFF)
+    val destroyColor = Color(0xFFE0564E)
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Txt("Playset ${card.count.coerceAtMost(playset)}/$playset" + if (card.count > playset) "  ·  ${card.count - playset} excedente(s)" else "", 12.sp, Muted, FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ActionPill("Fabricar", "$cost 🧩", Accent, enabled = canCraft, onClick = onCraft)
+            ActionPill("Destruir", "+$value 🧩", destroyColor, enabled = canDestroy, onClick = { confirmDestroy = true })
+        }
+    }
+
+    if (confirmDestroy) {
+        Box(Modifier.fillMaxSize().background(Color(0x66000000)).noRippleClick { confirmDestroy = false }, contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.padding(28.dp).clip(RoundedCornerShape(20.dp)).background(Panel).padding(22.dp).noRippleClick { },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Txt("¿Destruir 1 copia?", 18.sp, Ink, FontWeight.Black)
+                Spacer(Modifier.height(8.dp))
+                Txt("Recibirás $value Fichas. Conservarás tu playset ($playset). No se puede deshacer.", 13.sp, Muted, FontWeight.Medium, Modifier.fillMaxWidth(), align = TextAlign.Center)
+                Spacer(Modifier.height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        Modifier.clip(RoundedCornerShape(12.dp)).border(1.5.dp, Muted, RoundedCornerShape(12.dp))
+                            .noRippleClick { confirmDestroy = false }.padding(horizontal = 20.dp, vertical = 10.dp),
+                    ) { Txt("Cancelar", 13.sp, Ink, FontWeight.Bold) }
+                    Box(
+                        Modifier.clip(RoundedCornerShape(12.dp)).background(destroyColor)
+                            .noRippleClick { confirmDestroy = false; onDestroy() }.padding(horizontal = 20.dp, vertical = 10.dp),
+                    ) { Txt("Destruir", 13.sp, Color.White, FontWeight.Black) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionPill(label: String, sub: String, accent: Color, enabled: Boolean, onClick: () -> Unit) {
+    val bg = if (enabled) accent else accent.copy(alpha = 0.28f)
+    Column(
+        Modifier.clip(RoundedCornerShape(14.dp)).background(bg)
+            .then(if (enabled) Modifier.noRippleClick(onClick) else Modifier)
+            .padding(horizontal = 22.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Txt(label, 14.sp, Color.White, FontWeight.Black)
+        Txt(sub, 11.sp, Color(0xE6FFFFFF), FontWeight.Bold)
     }
 }
 
