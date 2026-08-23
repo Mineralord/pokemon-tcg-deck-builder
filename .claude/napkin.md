@@ -55,9 +55,15 @@ muestra la previsualización REAL (WYSIWYG) vía `MatThemePreview`/`SleevePrevie
   © 1939 Games; **Spirit-PTCGO** código GPL / assets **RED** IP Pokémon) + `GUIA-AÑADIR-COSMETICO.md` (manual).
   `restricted.json` cataloga RESTRICTED (KARDS/PTCGO/Pokémon) como **metadata sin binario** (trazabilidad §8/§32);
   la tienda los filtra. **Política firme: solo se empaqueta GREEN (procedural+CC0); NUNCA IP ajena aunque sea privado.**
-- **Pendiente (S3-S5):** VFX victory/defeat/battle vía pipeline `AnimationDirector` (NO nueva arq) · Coins/Badges/
-  Emotes/Backgrounds · audio SFX lazy · Colección de cosméticos (filtrar/ordenar/favoritos/estado) · Perfil muestra
-  equipados · Cosmetics Lab en Studio · hook Museo/Legado (ARCHIVED/LEGACY). Añadir cosmético = JSON, sin código.
+- **S3 (commit `acc352b`):** efectos de fin de partida como cosméticos (VICTORIA/DERROTA) → `CosmeticCelebrationFx`
+  procedural en `feature:combat/CosmeticThemes.kt` (`victoryEffectFor`/`defeatEffectFor`, mapeado por String id),
+  dibujado tras `GameOverPanel`; `CombatScreen` gana `victoryEffectId`/`defeatEffectId` (desde MainActivity). Reusa
+  Compose animation (NO nueva arq). Catálogo ampliado: VICTORIA/DERROTA/MONEDA/BADGE/EMOTE con previews en tienda.
+- **S4 parcial (commit `e76dd19`):** `ProfileScreen` muestra vitrina de equipados (avatar+marco+fondo+insignia)
+  procedural; MainActivity resuelve vía `Cosmetics.repo[profile.equippedIn(cat)]`.
+- **Pendiente:** Colección de cosméticos (pestaña filtrar/ordenar/favoritos/estado/procedencia — nota: favoritos
+  necesitaría campo nuevo en perfil) · Cosmetics Lab en `app-studio` (preview/validate) · hook Museo/Legado
+  (ARCHIVED/LEGACY) · audio SFX lazy · más assets CC0 (Kenney). Añadir cosmético = editar JSON, sin código.
 **Fase 0 (fixes de preservación, ya commiteados):** fusión de nube ADITIVA (unión de colección por máx.
 copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrantes preservados en
 `pending_shards` (no se descartan); **Energías Básicas ILIMITADAS y sin Fichas** (`capFor`→`UNLIMITED`).
