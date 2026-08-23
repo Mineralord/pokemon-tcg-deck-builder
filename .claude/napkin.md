@@ -125,8 +125,12 @@ copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrant
   confirmación. Fabricar disponible aun sin poseer (hasta el playset, §3.6). (5) La herramienta de Destrucción es **propia de
   la COLECCIÓN** (overlay `RecycleScreen` desde la cabecera 🗑), RETIRADA de la Tienda. `craftCard`/`destroyCopies` atómicos.
   `CraftingRules`(escalón)·`Crafting.kt`(app: `tierOf`/`playsetSize`/`craftCostOf`/`destroyValueOf`).
-- **Pendiente Fase 5 (sig. sprint pedido por el dueño):** en la herramienta de Destrucción: vista **grid (defecto)** + lista
-  (2ª vista, toggle) · **mismo buscador y filtros de la colección** (la herramienta comparte la colección). Fabricar desde Deck Builder.
+- **Fase 5 v3 (23 Ago) — Destrucción INTEGRADA en la colección:** la herramienta es ahora un **MODO** de `CollectionScreen`
+  (botón 🗑 cabecera), no pantalla aparte. Reutiliza los MISMOS `sets`/`SearchSheet`/`DexFilter`/`applyFilter`. **Grid por
+  defecto** (tiles con badge excedente/selección, tap = sel/limpiar todo el excedente) + **Lista** (2ª vista, toggle ☰/▦, con
+  stepper +/-). "Seleccionar todo" respeta el suelo de playset. Barra de acción con total en vivo + confirmación. **Borrado
+  `RecycleScreen.kt`** (lógica integrada). Composables `Destroy*` en `CollectionScreen.kt`. Todo se hace desde la colección.
+- **Pendiente Fase 5:** fabricar desde el Deck Builder (§4.x).
 - **Consumo:** compra de sobres con Cristales (`PacksViewModel.buyPack`, gasto atómico + tope 10/día);
   `DailyPackLimiter`/`DailyPackState` REPURPOSADOS = "sobres comprados hoy" (ya no es código muerto).
   Botón "Comprar sobre" en `PackStage` (`PacksScreen.kt`).
