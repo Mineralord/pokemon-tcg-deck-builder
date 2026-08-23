@@ -1405,46 +1405,11 @@ private fun BoxScope.ToolPeek(tool: Card) {
  */
 @Composable
 private fun BoxScope.AbilityGlowAura(glow: AbilityGlow, modifier: Modifier = Modifier) {
-    val color = when (glow) {
-        AbilityGlow.PASSIVE -> Color(0xFFFF3B30) // rojo brillante: habilidad pasiva activa
-        AbilityGlow.MANUAL -> Color(0xFFFFD400)  // dorado brillante: habilidad manual disponible
-    }
-    val infinite = rememberInfiniteTransition(label = "abilityGlow")
-    val pulse by infinite.animateFloat(
-        initialValue = 0.35f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
-        label = "abilityGlowPulse",
-    )
-    Box(
-        modifier.drawBehind {
-            val r = CornerRadius(size.minDimension * 0.13f, size.minDimension * 0.13f)
-            val w = size.minDimension
-            // 1) Halo interior suave que emana del borde hacia dentro (glow).
-            drawRoundRect(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color.Transparent, color.copy(alpha = 0.42f * pulse)),
-                    center = center,
-                    radius = size.maxDimension * 0.62f,
-                ),
-                cornerRadius = r,
-            )
-            // 2) Trazo exterior ancho translúcido (bloom) + 3) trazo fino brillante (contorno nítido).
-            val inset = 1.5f.dp.toPx()
-            drawRoundRect(
-                color = color.copy(alpha = 0.30f * pulse),
-                topLeft = Offset(inset, inset),
-                size = Size(size.width - inset * 2, size.height - inset * 2),
-                cornerRadius = r,
-                style = Stroke(width = w * 0.10f * (0.6f + 0.4f * pulse)),
-            )
-            drawRoundRect(
-                color = color.copy(alpha = 0.55f + 0.45f * pulse),
-                topLeft = Offset(inset, inset),
-                size = Size(size.width - inset * 2, size.height - inset * 2),
-                cornerRadius = r,
-                style = Stroke(width = (2f.dp.toPx() + 1.5f.dp.toPx() * pulse)),
-            )
-        },
+    // Indicador persistente = MISMA aura que el Studio (bloom + rim-glow + shimmer), data-driven
+    // por AbilityGlowVisuals. PASSIVE → rojo estable; MANUAL → dorado con shimmer (call-to-action).
+    com.mineralord.tcg.core.animationcompose.PersistentAbilityGlow(
+        manual = glow == AbilityGlow.MANUAL,
+        modifier = modifier,
     )
 }
 

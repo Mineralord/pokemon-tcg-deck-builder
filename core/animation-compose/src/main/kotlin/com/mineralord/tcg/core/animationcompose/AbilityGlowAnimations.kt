@@ -20,11 +20,7 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 val AbilityGlowAnimations = AnimationDefinitionContributor { builder ->
     builder.register(AnimationRequest.AbilityGlowRequested::class) { request ->
-        val visual = if (request.manual) {
-            GlowVisual(hue = 45f, saturation = 0.9f, bloomRadius = 1.05f, edgeWidth = 0.07f, breathCycles = 3f, shimmer = 0.9f)
-        } else {
-            GlowVisual(hue = 4f, saturation = 0.9f, bloomRadius = 0.95f, edgeWidth = 0.06f, breathCycles = 2f, shimmer = 0f)
-        }
+        val visual = AbilityGlowVisuals.forManual(request.manual)
         AnimationDefinition(
             id = AnimationId("glow:${if (request.manual) "manual" else "passive"}:${request.sourcePokemonId}"),
             name = "AbilityGlow:${if (request.manual) "Manual" else "Passive"}",
