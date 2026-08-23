@@ -167,6 +167,11 @@ fun CombatScreen(
     victoryEffectId: String? = null,
     /** Id del cosmético EFECTO DE DERROTA equipado; null = brasas por defecto. */
     defeatEffectId: String? = null,
+    /** Recompensa PvE a mostrar al terminar (Fase 2 §6.8): Cristales/Monedas por victoria y derrota. */
+    winCristales: Int = 0,
+    winMonedas: Int = 0,
+    lossCristales: Int = 0,
+    lossMonedas: Int = 0,
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val state = ui.state
@@ -619,9 +624,12 @@ fun CombatScreen(
             enter = MotionTransitions.overlayEnter(),
             exit = MotionTransitions.overlayExit(),
         ) {
+            val playerWon = state.winner == Side.PLAYER
             GameOverPanel(
-                won = state.winner == Side.PLAYER,
-                effectId = if (state.winner == Side.PLAYER) victoryEffectId else defeatEffectId,
+                won = playerWon,
+                effectId = if (playerWon) victoryEffectId else defeatEffectId,
+                cristales = if (playerWon) winCristales else lossCristales,
+                monedas = if (playerWon) winMonedas else lossMonedas,
                 onExit = onExit,
             )
         }
@@ -1816,7 +1824,13 @@ private fun CardInspector(card: Card, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun GameOverPanel(won: Boolean, effectId: String?, onExit: () -> Unit) {
+private fun GameOverPanel(
+    won: Boolean,
+    effectId: String?,
+    cristales: Int,
+    monedas: Int,
+    onExit: () -> Unit,
+) {
     Box(Modifier.fillMaxSize().background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
         // Efecto cosmético de fin de partida (procedural), DETRÁS del panel.
         CosmeticCelebrationFx(
@@ -1829,8 +1843,29 @@ private fun GameOverPanel(won: Boolean, effectId: String?, onExit: () -> Unit) {
                 color = if (won) CombatTheme.Gold else CombatTheme.Foe,
                 fontWeight = FontWeight.Black, fontSize = 34.sp, letterSpacing = 2.sp,
             )
+            // Recompensa PvE otorgada (Fase 2 §6.8): terminar la partida siempre premia.
+            if (cristales > 0 || monedas > 0) {
+                Text(
+                    "RECOMPENSA",
+                    color = CombatTheme.Muted, fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp, letterSpacing = 3.sp,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    if (cristales > 0) RewardChip("+$cristales", "Cristales", Color(0xFF35C4E8))
+                    if (monedas > 0) RewardChip("+$monedas", "Monedas", CombatTheme.Gold)
+                }
+            }
             PillButton("Volver al inicio", enabled = true, accent = CombatTheme.Gold, onClick = onExit)
         }
+    }
+}
+
+/** Ficha de recurso ganado en el panel de fin de partida (cantidad + nombre, con su color). */
+@Composable
+private fun RewardChip(amount: String, name: String, accent: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(amount, color = accent, fontWeight = FontWeight.Black, fontSize = 26.sp)
+        Text(name, color = accent.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
     }
 }
 

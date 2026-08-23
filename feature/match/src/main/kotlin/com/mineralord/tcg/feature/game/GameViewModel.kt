@@ -364,12 +364,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
         core.emit()
     }
 
-    /** Recompensa de PvE: al VENCER, otorga Cristales y Monedas (Fase 2 §6.8). */
+    /**
+     * Recompensa de PvE (Fase 2 §6.8): terminar una partida SIEMPRE otorga recursos. La
+     * victoria da la recompensa plena; la derrota, una recompensa de participación menor
+     * (§4.3.1: la economía no debe ser una barrera para jugar).
+     */
     private fun onGameFinished(winner: Side) {
-        if (winner != Side.PLAYER) return
+        val won = winner == Side.PLAYER
+        val cristales = if (won) EconomyRules.PVE_WIN_CRISTALES else EconomyRules.PVE_LOSS_CRISTALES
+        val monedas = if (won) EconomyRules.PVE_WIN_MONEDAS else EconomyRules.PVE_LOSS_MONEDAS
         viewModelScope.launch {
-            profileRepo.credit(CurrencyKind.CRISTALES, EconomyRules.PVE_WIN_CRISTALES)
-            profileRepo.credit(CurrencyKind.MONEDAS, EconomyRules.PVE_WIN_MONEDAS)
+            profileRepo.credit(CurrencyKind.CRISTALES, cristales)
+            profileRepo.credit(CurrencyKind.MONEDAS, monedas)
         }
     }
 }

@@ -18,6 +18,16 @@ object EconomyRules {
     const val PVE_WIN_MONEDAS = 10
 
     /**
+     * Cristales de PARTICIPACIÓN al perder una partida PvE. El Canon exige que la economía
+     * "no se convierta en una barrera para jugar" (Fase 2, §4.3.1): terminar una partida
+     * SIEMPRE otorga algo. Cantidad menor que la victoria (balance ajustable, §8.1.3).
+     */
+    const val PVE_LOSS_CRISTALES = 10
+
+    /** Monedas de participación al perder una partida PvE (menor que la victoria). */
+    const val PVE_LOSS_MONEDAS = 5
+
+    /**
      * Concesión inicial única de Cristales (estado inicial de la cuenta, análogo a los
      * mazos de inicio; NO es una recompensa por inicio de sesión). Permite que un jugador
      * nuevo pueda comprar algún sobre antes de acumular Cristales jugando.

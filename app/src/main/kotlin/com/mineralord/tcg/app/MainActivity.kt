@@ -131,6 +131,10 @@ private fun AppShell() {
             sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
             victoryEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.VICTORIA),
             defeatEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.DERROTA),
+            winCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_CRISTALES,
+            winMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_MONEDAS,
+            lossCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_CRISTALES,
+            lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_MONEDAS,
         )
         Screen.ONLINE -> OnlineGameScreen(
             onExit = { screen = Screen.HOME },
