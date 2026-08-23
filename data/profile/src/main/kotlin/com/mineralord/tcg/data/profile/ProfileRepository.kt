@@ -58,11 +58,15 @@ class ProfileRepository(context: Context) {
             json.decodeFromString(favoritesSerializer, prefs[OWNED_COSMETICS] ?: "[]")
         }.getOrDefault(emptySet())
         val equippedCosmetics = decodeEquipped(prefs[EQUIPPED_COSMETICS])
+        val favoriteCosmetics = runCatching {
+            json.decodeFromString(favoritesSerializer, prefs[FAVORITE_COSMETICS] ?: "[]")
+        }.getOrDefault(emptySet())
         PlayerProfile(
             owned = owned,
             balances = balances,
             ownedCosmetics = ownedCosmetics,
             equippedCosmetics = equippedCosmetics,
+            favoriteCosmetics = favoriteCosmetics,
             daily = DailyPackState(
                 dayId = prefs[DAILY_DAY] ?: 0L,
                 openedToday = prefs[DAILY_OPENED] ?: 0,
@@ -197,6 +201,18 @@ class ProfileRepository(context: Context) {
             val equipped = HashMap(decodeEquipped(prefs[EQUIPPED_COSMETICS]).mapKeys { it.key.name })
             equipped[category.name] = cosmeticId
             prefs[EQUIPPED_COSMETICS] = json.encodeToString(stringMapSerializer, equipped)
+            prefs.touch()
+        }
+    }
+
+    /** Alterna el estado de favorito de un cosmético (Fase 3 §20: colección con favoritos). */
+    suspend fun toggleCosmeticFavorite(cosmeticId: String) {
+        store.edit { prefs ->
+            val current = runCatching {
+                json.decodeFromString(favoritesSerializer, prefs[FAVORITE_COSMETICS] ?: "[]")
+            }.getOrDefault(emptySet())
+            val next = if (cosmeticId in current) current - cosmeticId else current + cosmeticId
+            prefs[FAVORITE_COSMETICS] = json.encodeToString(favoritesSerializer, next)
             prefs.touch()
         }
     }
@@ -368,6 +384,7 @@ class ProfileRepository(context: Context) {
             prefs[OWNED_COSMETICS] = json.encodeToString(favoritesSerializer, profile.ownedCosmetics)
             prefs[EQUIPPED_COSMETICS] =
                 json.encodeToString(stringMapSerializer, profile.equippedCosmetics.mapKeys { it.key.name })
+            prefs[FAVORITE_COSMETICS] = json.encodeToString(favoritesSerializer, profile.favoriteCosmetics)
             prefs[DAILY_DAY] = profile.daily.dayId
             prefs[DAILY_OPENED] = profile.daily.openedToday
             prefs[SEEDED] = profile.seeded
@@ -463,5 +480,6 @@ class ProfileRepository(context: Context) {
         val MONEDAS_SEEDED = booleanPreferencesKey("monedas_seeded")
         val OWNED_COSMETICS = stringPreferencesKey("owned_cosmetics_json")
         val EQUIPPED_COSMETICS = stringPreferencesKey("equipped_cosmetics_json")
+        val FAVORITE_COSMETICS = stringPreferencesKey("favorite_cosmetics_json")
     }
 }

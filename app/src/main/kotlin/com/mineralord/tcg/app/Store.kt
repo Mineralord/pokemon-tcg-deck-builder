@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
@@ -51,6 +52,7 @@ import com.mineralord.tcg.data.cosmetics.Cosmetic
 import com.mineralord.tcg.data.cosmetics.Cosmetics
 import com.mineralord.tcg.data.cosmetics.CosmeticCategory
 import com.mineralord.tcg.data.cosmetics.CosmeticRarity
+import com.mineralord.tcg.data.cosmetics.CosmeticStatus
 import com.mineralord.tcg.data.profile.CurrencyKind
 import com.mineralord.tcg.data.profile.PlayerProfile
 
@@ -88,6 +90,7 @@ fun StoreHubScreen(
     balances: Map<CurrencyKind, Int>,
     onSobres: () -> Unit,
     onCosmeticos: () -> Unit,
+    onColeccion: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -118,6 +121,15 @@ fun StoreHubScreen(
             accent = MonedasGold,
             currencyLabel = "${balances[CurrencyKind.MONEDAS] ?: 0} 🪙  Monedas",
             onClick = onCosmeticos,
+        )
+        Spacer(Modifier.height(16.dp))
+        StoreSection(
+            title = "Colección",
+            subtitle = "Tu vitrina · equipar, favoritos y progreso",
+            colors = listOf(Color(0xFF1B4B4A), Color(0xFF0E2827)),
+            accent = Color(0xFF66BB6A),
+            currencyLabel = "Explora todo lo obtenible",
+            onClick = onColeccion,
         )
     }
 }
@@ -368,6 +380,152 @@ private fun ActionButton(label: String, enabled: Boolean, accent: Color, onClick
             label,
             color = if (enabled) Color(0xFF10161F) else Color(0x80FFFFFF),
             fontWeight = FontWeight.Black, fontSize = 15.sp,
+        )
+    }
+}
+
+// ============================ COLECCIÓN DE COSMÉTICOS ============================
+
+/** Orden de la colección. */
+private enum class CosmeticSort(val label: String) { RAREZA("Rareza"), NOMBRE("Nombre") }
+
+/**
+ * Colección de cosméticos (Fase 3 §20): TODO el catálogo por categoría, con estado (equipado/
+ * en posesión/bloqueado), rareza, procedencia y favoritos. Filtros: solo obtenidos, solo
+ * favoritos, y orden por rareza/nombre. Los obtenidos se pueden equipar; cualquiera se marca
+ * como favorito. Diseñada para escalar a miles de entradas (rejilla perezosa).
+ */
+@Composable
+fun CosmeticCollectionScreen(
+    profile: PlayerProfile,
+    onEquip: (Cosmetic) -> Unit,
+    onToggleFavorite: (Cosmetic) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var category by remember { mutableStateOf(CosmeticCategory.AVATAR) }
+    var ownedOnly by remember { mutableStateOf(false) }
+    var favoritesOnly by remember { mutableStateOf(false) }
+    var sort by remember { mutableStateOf(CosmeticSort.RAREZA) }
+
+    val items = remember(category, ownedOnly, favoritesOnly, sort, profile.ownedCosmetics, profile.favoriteCosmetics) {
+        Cosmetics.repo.byCategory(category)
+            .filter { it.status != CosmeticStatus.RESTRICTED && it.status != CosmeticStatus.EXPERIMENTAL }
+            .filter { !ownedOnly || profile.ownsCosmetic(it.id) }
+            .filter { !favoritesOnly || it.id in profile.favoriteCosmetics }
+            .let { list -> if (sort == CosmeticSort.NOMBRE) list.sortedBy { it.name } else list }
+    }
+    val ownedCount = Cosmetics.repo.byCategory(category).count { profile.ownsCosmetic(it.id) }
+    val total = Cosmetics.repo.byCategory(category).count { it.status != CosmeticStatus.RESTRICTED }
+
+    Column(modifier.fillMaxSize().background(StoreBg)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Colección", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+            Chip("$ownedCount / $total", Color(0xFF66BB6A))
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(CosmeticCategory.entries.toList()) { c ->
+                CategoryTab(c.displayName, active = c == category) { category = c }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip("Obtenidos", ownedOnly) { ownedOnly = !ownedOnly }
+            FilterChip("Favoritos", favoritesOnly) { favoritesOnly = !favoritesOnly }
+            FilterChip("Orden: ${sort.label}", false) {
+                sort = if (sort == CosmeticSort.RAREZA) CosmeticSort.NOMBRE else CosmeticSort.RAREZA
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(items, key = { it.id }) { cosmetic ->
+                CollectionCard(
+                    cosmetic = cosmetic,
+                    owned = profile.ownsCosmetic(cosmetic.id),
+                    equipped = profile.equippedIn(cosmetic.category) == cosmetic.id,
+                    favorite = cosmetic.id in profile.favoriteCosmetics,
+                    onClick = { if (profile.ownsCosmetic(cosmetic.id)) onEquip(cosmetic) },
+                    onFavorite = { onToggleFavorite(cosmetic) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterChip(label: String, active: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(if (active) Color(0xFF2E7D32) else Glass)
+            .border(1.dp, if (active) Color(0xFF66BB6A) else GlassBorder, RoundedCornerShape(50))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    ) {
+        Text(label, color = if (active) Color.White else Color(0xB3FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun CollectionCard(
+    cosmetic: Cosmetic,
+    owned: Boolean,
+    equipped: Boolean,
+    favorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+) {
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Glass)
+            .rarityFrame(cosmetic.rarity, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
+            CosmeticPreview(cosmetic, Modifier.fillMaxSize().alpha(if (owned) 1f else 0.35f))
+            // Estrella de favorito (siempre disponible), esquina superior izquierda.
+            Text(
+                if (favorite) "★" else "☆",
+                color = if (favorite) MonedasGold else Color(0xB3FFFFFF),
+                fontSize = 20.sp, fontWeight = FontWeight.Black,
+                modifier = Modifier.align(Alignment.TopStart).clickable(onClick = onFavorite),
+            )
+            when {
+                equipped -> Chip("Equipado", cosmetic.rarity.color, Modifier.align(Alignment.TopEnd))
+                owned -> Chip("Obtenido", Color(0xFF66BB6A), Modifier.align(Alignment.TopEnd))
+                else -> Chip("🔒", Color(0x88FFFFFF), Modifier.align(Alignment.TopEnd))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(cosmetic.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+        Text(cosmetic.rarity.displayName, color = cosmetic.rarity.color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        // Procedencia (Fase 3 §15.5): de dónde viene el cosmético.
+        Text(
+            cosmetic.source ?: "Tienda",
+            color = Color(0x80FFFFFF), fontSize = 10.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            when { equipped -> "✓ En uso"; owned -> "Tocar para equipar"; else -> "${cosmetic.priceMonedas} 🪙 en la tienda" },
+            color = if (owned) Color(0x99FFFFFF) else MonedasGold, fontSize = 11.sp,
         )
     }
 }

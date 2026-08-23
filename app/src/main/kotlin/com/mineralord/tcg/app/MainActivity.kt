@@ -42,7 +42,7 @@ import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 import kotlinx.coroutines.launch
 
-private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
+private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,6 +145,7 @@ private fun AppShell() {
                 balances = profile.balances,
                 onSobres = { screen = Screen.PACKS },
                 onCosmeticos = { screen = Screen.COSMETICS },
+                onColeccion = { screen = Screen.COSMETIC_COLLECTION },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -156,6 +157,14 @@ private fun AppShell() {
                 profile = profile,
                 onBuy = { c -> scope.launch { profileRepo.buyCosmetic(c) } },
                 onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Screen.COSMETIC_COLLECTION -> SubScreen(title = "Colección de cosméticos", onHome = { screen = Screen.STORE }) {
+            CosmeticCollectionScreen(
+                profile = profile,
+                onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                onToggleFavorite = { c -> scope.launch { profileRepo.toggleCosmeticFavorite(c.id) } },
                 modifier = Modifier.fillMaxSize(),
             )
         }

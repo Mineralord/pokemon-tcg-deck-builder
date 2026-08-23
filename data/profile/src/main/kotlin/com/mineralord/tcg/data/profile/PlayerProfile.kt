@@ -24,6 +24,7 @@ data class PlayerProfile(
     val balances: Map<CurrencyKind, Int> = emptyMap(),
     val ownedCosmetics: Set<String> = emptySet(),
     val equippedCosmetics: Map<CosmeticCategory, String> = emptyMap(),
+    val favoriteCosmetics: Set<String> = emptySet(),
     val daily: DailyPackState = DailyPackState(),
     val seeded: Boolean = false,
     val decks: List<Deck> = emptyList(),

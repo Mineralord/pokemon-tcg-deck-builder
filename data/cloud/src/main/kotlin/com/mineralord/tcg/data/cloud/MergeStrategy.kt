@@ -74,6 +74,7 @@ object MergeStrategy {
             decks = decksById.values.toList(),
             favoriteDeckIds = local.favoriteDeckIds + cloud.favoriteDeckIds,
             ownedCosmetics = local.ownedCosmetics + cloud.ownedCosmetics,
+            favoriteCosmetics = local.favoriteCosmetics + cloud.favoriteCosmetics,
             seeded = local.seeded || cloud.seeded,
             activeDeckId = activeDeckId,
             lastModified = max(local.lastModified, cloud.lastModified),

@@ -27,6 +27,8 @@ data class ProfileSnapshotDto(
     val ownedCosmetics: List<String> = emptyList(),
     /** Cosmético equipado por categoría (nombre de [CosmeticCategory] -> id). */
     val equippedCosmetics: Map<String, String> = emptyMap(),
+    /** Cosméticos marcados como favoritos (ids). */
+    val favoriteCosmetics: List<String> = emptyList(),
     val dailyDayId: Long = 0L,
     val dailyOpenedToday: Int = 0,
     val seeded: Boolean = false,
@@ -55,6 +57,7 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     balances = balances.mapKeys { it.key.name },
     ownedCosmetics = ownedCosmetics.toList(),
     equippedCosmetics = equippedCosmetics.mapKeys { it.key.name },
+    favoriteCosmetics = favoriteCosmetics.toList(),
     dailyDayId = daily.dayId,
     dailyOpenedToday = daily.openedToday,
     seeded = seeded,
@@ -82,6 +85,7 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
     equippedCosmetics = equippedCosmetics.mapNotNull { (name, id) ->
         runCatching { CosmeticCategory.valueOf(name) }.getOrNull()?.let { it to id }
     }.toMap(),
+    favoriteCosmetics = favoriteCosmetics.toSet(),
     daily = DailyPackState(dayId = dailyDayId, openedToday = dailyOpenedToday),
     seeded = seeded,
     decks = decks.map { d ->
