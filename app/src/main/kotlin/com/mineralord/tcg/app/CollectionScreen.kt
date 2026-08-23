@@ -339,7 +339,11 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
     var filter by remember { mutableStateOf(DexFilter()) }
     val savedSets = remember { mutableStateListOf<SavedFilterSet>() }
     var detail by remember { mutableStateOf<DexCard?>(null) }
-    var showDestroy by remember { mutableStateOf(false) }
+    // Herramienta de Destrucción (Fase 5) como MODO de la colección: reutiliza sets/filtro/buscador.
+    var destroyMode by remember { mutableStateOf(false) }
+    var destroyGrid by remember { mutableStateOf(true) }          // grid por defecto; lista = 2ª vista
+    val destroySel = remember { mutableStateMapOf<String, Int>() } // cardId -> nº a destruir
+    var destroyConfirm by remember { mutableStateOf(false) }
     val favorites = remember { mutableStateListOf<String>() }
     val wishlist = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
@@ -375,33 +379,97 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         }
         val totalOwned = remember(sets) { sets.sumOf { s -> s.cards.sumOf { it.count } } }
 
+        // Cartas destruibles (con excedente sobre el playset), respetando el buscador/filtros COMPARTIDOS.
+        val destroyable = remember(sets, filter, destroyMode) {
+            if (!destroyMode) emptyList()
+            else applyFilter(
+                sets.flatMap { it.cards }.filter {
+                    !ProfileRepository.isEnergyId(it.card.id.raw) && it.count > playsetSize(it.card)
+                },
+                filter, favorites, wishlist,
+            ).sortedByDescending { destroyValueOf(it.card) * (it.count - playsetSize(it.card)) }
+        }
+        val destroyTotalCards = destroySel.values.sum()
+        val destroyTotalFichas = destroySel.entries.sumOf { (id, q) ->
+            q * (destroyable.firstOrNull { it.card.id.raw == id }?.let { destroyValueOf(it.card) } ?: 0)
+        }
+
         Column(Modifier.fillMaxSize()) {
-            CollectionHeader(onExit = onExit, onDestroy = { showDestroy = true })
-            RainbowRule()
-            Toolbar(
-                totalOwned = totalOwned, grouped = grouped, counterVisible = !scrolling,
-                onToggle = { grouped = it }, onSearch = { showSearch = true },
-            )
-            // "Mostrar todo" solo en la vista agrupada; se oculta/muestra según la dirección del scroll.
-            if (grouped) {
-                AnimatedVisibility(
-                    visible = toggleVisible,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) { MostrarTodoRow(showAll, onChange = { showAll = it }) }
-            }
-            Box(Modifier.fillMaxSize().nestedScroll(nested)) {
-                if (grouped) {
-                    GroupedView(sets, favorites, wishlist, filter, showAll, sort, sortAsc, groupedState, onOpen = { detail = it })
-                } else {
-                    FlatView(sets, favorites, wishlist, filter, sort, sortAsc, flatState, onOpen = { detail = it })
-                }
-                // Botón flotante inferior-derecho = ORDENAR (como TCG Live). Sus opciones cambian con la vista.
-                OrdenarButton(
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-                    onClick = { showSort = true },
+            if (destroyMode) {
+                DestroyTopBar(
+                    fichas = fichas, grid = destroyGrid,
+                    onToggleGrid = { destroyGrid = !destroyGrid },
+                    onSearch = { showSearch = true },
+                    onExit = { destroyMode = false; destroySel.clear() },
                 )
+                DestroySelectAllRow(
+                    anySelected = destroyTotalCards > 0,
+                    onAll = { destroyable.forEach { destroySel[it.card.id.raw] = it.count - playsetSize(it.card) } },
+                    onNone = { destroySel.clear() },
+                )
+                Box(Modifier.fillMaxSize()) {
+                    if (destroyable.isEmpty()) {
+                        Txt("No tienes duplicados por encima de tu playset.", 13.sp, Muted, FontWeight.SemiBold, Modifier.align(Alignment.Center).padding(32.dp), align = TextAlign.Center)
+                    } else if (destroyGrid) {
+                        DestroyGrid(destroyable, destroySel)
+                    } else {
+                        DestroyList(destroyable, destroySel)
+                    }
+                }
+            } else {
+                CollectionHeader(onExit = onExit, onDestroy = { destroyMode = true })
+                RainbowRule()
+                Toolbar(
+                    totalOwned = totalOwned, grouped = grouped, counterVisible = !scrolling,
+                    onToggle = { grouped = it }, onSearch = { showSearch = true },
+                )
+                // "Mostrar todo" solo en la vista agrupada; se oculta/muestra según la dirección del scroll.
+                if (grouped) {
+                    AnimatedVisibility(
+                        visible = toggleVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) { MostrarTodoRow(showAll, onChange = { showAll = it }) }
+                }
+                Box(Modifier.fillMaxSize().nestedScroll(nested)) {
+                    if (grouped) {
+                        GroupedView(sets, favorites, wishlist, filter, showAll, sort, sortAsc, groupedState, onOpen = { detail = it })
+                    } else {
+                        FlatView(sets, favorites, wishlist, filter, sort, sortAsc, flatState, onOpen = { detail = it })
+                    }
+                    // Botón flotante inferior-derecho = ORDENAR (como TCG Live). Sus opciones cambian con la vista.
+                    OrdenarButton(
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                        onClick = { showSort = true },
+                    )
+                }
             }
+        }
+
+        // Barra de acción de Destrucción + confirmación (overlays).
+        if (destroyMode && destroyTotalCards > 0) {
+            DestroyActionBar(
+                totalCards = destroyTotalCards, totalFichas = destroyTotalFichas,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                onDestroy = { destroyConfirm = true },
+            )
+        }
+        if (destroyConfirm) {
+            DestroyConfirmDialog(
+                totalCards = destroyTotalCards, totalFichas = destroyTotalFichas,
+                onCancel = { destroyConfirm = false },
+                onConfirm = {
+                    destroyConfirm = false
+                    val snapshot = destroySel.toMap()
+                    scope.launch {
+                        snapshot.forEach { (id, q) ->
+                            val entry = destroyable.firstOrNull { it.card.id.raw == id } ?: return@forEach
+                            craftRepo.destroyCopies(id, q, q * destroyValueOf(entry.card), playsetSize(entry.card))
+                        }
+                        destroySel.clear()
+                    }
+                },
+            )
         }
 
         if (showSort) {
@@ -438,10 +506,6 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 onOpenRelated = { detail = it },
                 onDismiss = { detail = null },
             )
-        }
-        // Herramienta de Destrucción (Fase 5): overlay a pantalla completa, propia de la colección.
-        if (showDestroy) {
-            RecycleScreen(onExit = { showDestroy = false }, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -1380,6 +1444,202 @@ private fun ActionPill(label: String, sub: String, accent: Color, enabled: Boole
     ) {
         Txt(label, 14.sp, Color.White, FontWeight.Black)
         Txt(sub, 11.sp, Color(0xE6FFFFFF), FontWeight.Bold)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODO DESTRUCCIÓN (Fase 5): herramienta propia de la colección. Reutiliza sets/filtro/buscador.
+// Grid (por defecto) + lista. Conserva SIEMPRE el playset (4, o 1 en singletons).
+// ─────────────────────────────────────────────────────────────────────────────
+
+private val DestroyColor = Color(0xFFE0564E)
+private val FichaColor = Color(0xFF7C4DFF)
+
+@Composable
+private fun DestroyTopBar(fichas: Int, grid: Boolean, onToggleGrid: () -> Unit, onSearch: () -> Unit, onExit: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(30.dp).shadow(2.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onExit),
+            contentAlignment = Alignment.Center,
+        ) { Txt("‹", 20.sp, Ink, FontWeight.Black) }
+        Spacer(Modifier.width(10.dp))
+        Txt("Destrucción", 20.sp, Ink, FontWeight.Black)
+        Spacer(Modifier.weight(1f))
+        // Alternar grid ↔ lista (grid por defecto).
+        Box(
+            Modifier.size(32.dp).shadow(2.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onToggleGrid),
+            contentAlignment = Alignment.Center,
+        ) { Txt(if (grid) "☰" else "▦", 15.sp, Ink, FontWeight.Black) }
+        Spacer(Modifier.width(8.dp))
+        // Buscar (MISMO buscador/filtros de la colección).
+        Box(
+            Modifier.size(32.dp).shadow(2.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onSearch),
+            contentAlignment = Alignment.Center,
+        ) { Txt("🔍", 14.sp, Ink, FontWeight.Black) }
+        Spacer(Modifier.width(8.dp))
+        Row(
+            Modifier.clip(RoundedCornerShape(50)).background(Panel).padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Txt("🧩", 13.sp, FichaColor, FontWeight.Black)
+            Spacer(Modifier.width(4.dp))
+            Txt("$fichas", 14.sp, Ink, FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun DestroySelectAllRow(anySelected: Boolean, onAll: () -> Unit, onNone: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Txt("Duplicados destruibles", 14.sp, Ink, FontWeight.Bold)
+        Spacer(Modifier.weight(1f))
+        Txt(
+            if (anySelected) "Quitar todo" else "Seleccionar todo", 13.sp, Accent, FontWeight.Bold,
+            Modifier.noRippleClick { if (anySelected) onNone() else onAll() }.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun DestroyGrid(cards: List<DexCard>, sel: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Int>) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 110.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        gridItems(cards, key = { it.card.id.raw }) { c ->
+            val extras = c.count - playsetSize(c.card)
+            val qty = sel[c.card.id.raw] ?: 0
+            DestroyTile(c, extras, qty) {
+                if (qty > 0) sel.remove(c.card.id.raw) else sel[c.card.id.raw] = extras
+            }
+        }
+    }
+}
+
+@Composable
+private fun DestroyTile(c: DexCard, extras: Int, qty: Int, onToggle: () -> Unit) {
+    val value = destroyValueOf(c.card)
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(0.72f)
+                .then(if (qty > 0) Modifier.border(3.dp, DestroyColor, RoundedCornerShape(10.dp)) else Modifier)
+                .noRippleClick(onToggle),
+            contentAlignment = Alignment.TopEnd,
+        ) {
+            AsyncImage(
+                model = c.imageEs ?: c.imageLarge, contentDescription = c.name, contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+            )
+            // Badge de excedente / selección.
+            Box(
+                Modifier.padding(4.dp).clip(RoundedCornerShape(50)).background(if (qty > 0) DestroyColor else Color(0xCC2B3346))
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
+            ) { Txt(if (qty > 0) "×$qty" else "+$extras", 11.sp, Color.White, FontWeight.Black) }
+        }
+        Spacer(Modifier.height(3.dp))
+        Txt("$value 🧩 c/u", 10.sp, FichaColor, FontWeight.Bold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun DestroyList(cards: List<DexCard>, sel: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Int>) {
+    androidx.compose.foundation.lazy.LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 110.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(cards, key = { it.card.id.raw }) { c ->
+            val extras = c.count - playsetSize(c.card)
+            val qty = sel[c.card.id.raw] ?: 0
+            DestroyListRow(c, extras, qty) { q -> if (q <= 0) sel.remove(c.card.id.raw) else sel[c.card.id.raw] = q.coerceIn(0, extras) }
+        }
+    }
+}
+
+@Composable
+private fun DestroyListRow(c: DexCard, extras: Int, qty: Int, onQty: (Int) -> Unit) {
+    val value = destroyValueOf(c.card)
+    Row(
+        Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(Panel).padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = c.imageEs ?: c.imageLarge, contentDescription = c.name, contentScale = ContentScale.Fit,
+            modifier = Modifier.width(50.dp).aspectRatio(0.72f).clip(RoundedCornerShape(6.dp)),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Txt(c.name, 15.sp, Ink, FontWeight.Bold, maxLines = 1)
+            Txt(rarityLabelEs(c.rarity), 12.sp, Muted, FontWeight.Medium)
+            Txt("Tienes ${c.count} · sobran $extras · +$value 🧩 c/u", 11.5.sp, FichaColor, FontWeight.Bold)
+        }
+        Spacer(Modifier.width(8.dp))
+        DestroyStepper(qty, extras, onQty)
+    }
+}
+
+@Composable
+private fun DestroyStepper(qty: Int, max: Int, onQty: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        DestroyStepBtn("−", qty > 0) { onQty(qty - 1) }
+        Txt("$qty", 16.sp, Ink, FontWeight.Black, Modifier.width(30.dp), align = TextAlign.Center)
+        DestroyStepBtn("+", qty < max) { onQty(qty + 1) }
+    }
+}
+
+@Composable
+private fun DestroyStepBtn(glyph: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(30.dp).clip(CircleShape).background(if (enabled) DestroyColor else DestroyColor.copy(alpha = 0.25f))
+            .then(if (enabled) Modifier.noRippleClick(onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) { Txt(glyph, 18.sp, Color.White, FontWeight.Black) }
+}
+
+@Composable
+private fun DestroyActionBar(totalCards: Int, totalFichas: Int, modifier: Modifier, onDestroy: () -> Unit) {
+    Box(modifier.fillMaxWidth().padding(14.dp)) {
+        Row(
+            Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp))
+                .background(DestroyColor).noRippleClick(onDestroy).padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Txt("Destruir $totalCards", 16.sp, Color.White, FontWeight.Black)
+            Spacer(Modifier.weight(1f))
+            Txt("+$totalFichas 🧩", 18.sp, Color.White, FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun DestroyConfirmDialog(totalCards: Int, totalFichas: Int, onCancel: () -> Unit, onConfirm: () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color(0x88000000)).noRippleClick(onCancel), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.padding(28.dp).clip(RoundedCornerShape(20.dp)).background(Panel).padding(22.dp).noRippleClick { },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Txt("¿Destruir duplicados?", 18.sp, Ink, FontWeight.Black)
+            Spacer(Modifier.height(8.dp))
+            Txt("Vas a destruir $totalCards duplicado(s) por $totalFichas Fichas. Conservarás tu playset completo. No se puede deshacer.", 13.sp, Muted, FontWeight.Medium, Modifier.fillMaxWidth(), align = TextAlign.Center)
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    Modifier.clip(RoundedCornerShape(12.dp)).border(1.5.dp, Muted, RoundedCornerShape(12.dp)).noRippleClick(onCancel).padding(horizontal = 20.dp, vertical = 10.dp),
+                ) { Txt("Cancelar", 13.sp, Ink, FontWeight.Bold) }
+                Box(
+                    Modifier.clip(RoundedCornerShape(12.dp)).background(DestroyColor).noRippleClick(onConfirm).padding(horizontal = 20.dp, vertical = 10.dp),
+                ) { Txt("Destruir", 13.sp, Color.White, FontWeight.Black) }
+            }
+        }
     }
 }
 
