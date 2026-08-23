@@ -116,8 +116,17 @@ copias, no last-write-wins) en `data/cloud/MergeStrategy.kt`; duplicados sobrant
   (`app`) mapea Rareza→escalón (`tierOf`). `ProfileRepository.recycleExtras(id,count,fichas)` = reduce conteo (floor 1)
   + acredita FICHAS en un `edit` ATÓMICO. UI estilo colección (neumórfica clara): lista con arte/rareza/valor, selector
   de cantidad, "seleccionar todo", total en vivo, confirmación. Entrada = hub de Tienda (sección "Reciclaje", `Screen.RECYCLE`).
-- **Pendiente Fase 5:** fabricar cartas (gastar Fichas, `craftCost` ya definido) · drenar `pendingShards`→Fichas (overflow
-  canónico auto §3.5) · reciclaje desde el Deck Builder (§4.x).
+- **Fase 5 v2 (23 Ago) — DECISIÓN CANÓNICA (dueño), rediseño:** (1) **NO auto-conversión**: las cartas se ACUMULAN sin
+  tope de colección (`addCards` ya no desborda; `pendingShards` legado). El límite 4 (o 1 ACE SPEC) es del **MAZO**
+  (`DeckValidation`), NO de la colección; los playsets se usan en cualquier mazo a la vez (mazos no consumen `owned`).
+  (2) "Reciclaje" → **DESTRUCCIÓN** en toda la UI. (3) Suelo de destrucción = **PLAYSET completo** (4, o 1 en singletons
+  Radiante/ACE SPEC vía `playsetSize`): `destroyCopies(keep=playset)`; "seleccionar todo" nunca deja menos. (4) **Fabricar/
+  Destruir DESDE EL VISOR** de carta (`CraftDestroyRow` en `CollectionScreen`): coste/valor por rareza, progreso de playset,
+  confirmación. Fabricar disponible aun sin poseer (hasta el playset, §3.6). (5) La herramienta de Destrucción es **propia de
+  la COLECCIÓN** (overlay `RecycleScreen` desde la cabecera 🗑), RETIRADA de la Tienda. `craftCard`/`destroyCopies` atómicos.
+  `CraftingRules`(escalón)·`Crafting.kt`(app: `tierOf`/`playsetSize`/`craftCostOf`/`destroyValueOf`).
+- **Pendiente Fase 5 (sig. sprint pedido por el dueño):** en la herramienta de Destrucción: vista **grid (defecto)** + lista
+  (2ª vista, toggle) · **mismo buscador y filtros de la colección** (la herramienta comparte la colección). Fabricar desde Deck Builder.
 - **Consumo:** compra de sobres con Cristales (`PacksViewModel.buyPack`, gasto atómico + tope 10/día);
   `DailyPackLimiter`/`DailyPackState` REPURPOSADOS = "sobres comprados hoy" (ya no es código muerto).
   Botón "Comprar sobre" en `PackStage` (`PacksScreen.kt`).
