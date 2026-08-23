@@ -2,6 +2,15 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## ⏸️ RETOMAR AQUÍ (23 Ago 2026) — COSMETIC ASSET LIBRARY, siguiente sprint
+Sesión pausada con árbol de git LIMPIO (todo committeado, último = `eb8b68a` Cosmetics Lab). Rama
+`feature/studio-match-mode`, sin push (local). **Infra de cosméticos data-driven COMPLETA** (ver bloque
+"COSMETIC ASSET LIBRARY" más abajo): S1 registro · S2 licencias/ledger · S3 VFX+categorías · S4 perfil+colección
++favoritos · S5 parcial Cosmetics Lab (Studio). **➡️ SIGUIENTE (elegir con el usuario):** (a) hook Museo/Legado
+para ARCHIVED/LEGACY · (b) audio SFX cosmético (lazy) · (c) integrar 1 pack CC0 Kenney (assetType=IMAGE, GREEN).
+Plan aprobado en `~/.claude/plans/merry-brewing-crescent.md`. Entregables: `entregables/TCG-Juego-debug.apk` +
+`TCG-Studio-debug.apk`. **Límite firme mantenido:** NO empaquetar assets Pokémon/PTCGO/KARDS (solo GREEN).
+
 ## 📜 CANON EN EL REPO + AUDITORÍAS POR FASE (22 Ago 2026) — rama feature/studio-match-mode
 **El Canon vive AHORA en `docs/canon/`** (`fase-00`…`fase-11`, con `README.md` índice) — antes estaba
 fuera del repo. Auditorías de conformidad en `docs/audits/` (`AAAA-MM-DD-faseN-audit.md`).
