@@ -435,7 +435,7 @@ private fun CardScene(
                 }
                 // Dato de colección (secundario, sin competir con la recompensa).
                 Text(
-                    "${card.copiesOwned}/${card.cap} en la colección",
+                    "${card.copiesOwned} en la colección",
                     color = if (iridescent) Color(0x992A2438) else Color(0x99FFFFFF),
                     fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 )

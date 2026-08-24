@@ -494,20 +494,20 @@ class ProfileRepository(context: Context) {
         const val CARD_CAP = 4
 
         /**
-         * Tope "ilimitado". Por Canon (Fase 5 + directriz del propietario 2026-08-21), las Energías
-         * Básicas NO tienen tope de colección y NO generan Fichas por duplicado. Se representa con el
-         * máximo entero: nunca desbordan, nunca se descartan y nunca alimentan la conversión.
+         * Tope de colección de cada tipo de Energía Básica (directriz del propietario 2026-08-23).
+         * El jugador puede conservar hasta 25 por tipo; el excedente (26+) es destruible por Fichas y
+         * las energías también pueden fabricarse hasta este tope (igual que el playset de una carta).
          */
-        const val UNLIMITED = Int.MAX_VALUE
+        const val ENERGY_CAP = 25
 
         /** ¿El id corresponde a una Energía Básica? (ids "energy-basic-<tipo>-energy"). */
         fun isEnergyId(id: String): Boolean = id.startsWith("energy")
 
-        /** ¿La carta [id] tiene tope de colección? Las Energías Básicas son ilimitadas. */
-        fun isCapped(id: String): Boolean = !isEnergyId(id)
+        /** Toda carta tiene tope de colección (las Energías Básicas usan [ENERGY_CAP], las demás [CARD_CAP]). */
+        fun isCapped(id: String): Boolean = true
 
-        /** Tope de copias aplicable a la carta [id]: 4 para cartas normales, ilimitado para energías. */
-        fun capFor(id: String): Int = if (isEnergyId(id)) UNLIMITED else CARD_CAP
+        /** Tope de copias aplicable a la carta [id]: 25 para Energías Básicas, 4 para el resto. */
+        fun capFor(id: String): Int = if (isEnergyId(id)) ENERGY_CAP else CARD_CAP
 
         val OWNED = stringPreferencesKey("owned_json")
         val DAILY_DAY = longPreferencesKey("daily_day")

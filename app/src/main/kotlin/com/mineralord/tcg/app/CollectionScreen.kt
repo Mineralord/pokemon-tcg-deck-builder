@@ -384,7 +384,7 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
             if (!destroyMode) emptyList()
             else applyFilter(
                 sets.flatMap { it.cards }.filter {
-                    !ProfileRepository.isEnergyId(it.card.id.raw) && it.count > playsetSize(it.card)
+                    it.count > playsetSize(it.card)
                 },
                 filter, favorites, wishlist,
             ).sortedByDescending { destroyValueOf(it.card) * (it.count - playsetSize(it.card)) }
@@ -1337,13 +1337,11 @@ private fun CardDetailSheet(
             }
             Spacer(Modifier.height(14.dp))
 
-            // Fabricación / Destrucción (Canon Fase 5). Las Energías Básicas quedan fuera (ilimitadas).
-            if (!ProfileRepository.isEnergyId(card.card.id.raw)) {
-                CraftDestroyRow(
-                    card = card, fichas = fichas, onCraft = onCraft, onDestroy = onDestroy,
-                )
-                Spacer(Modifier.height(14.dp))
-            }
+            // Fabricación / Destrucción (Canon Fase 5). Incluye Energías Básicas (tope 25 por tipo).
+            CraftDestroyRow(
+                card = card, fichas = fichas, onCraft = onCraft, onDestroy = onDestroy,
+            )
+            Spacer(Modifier.height(14.dp))
 
             // Panel blanco con datos + relacionadas.
             Column(
@@ -1395,12 +1393,14 @@ private fun CraftDestroyRow(card: DexCard, fichas: Int, onCraft: () -> Unit, onD
     val value = destroyValueOf(card.card)
     val canCraft = card.count < playset && fichas >= cost
     val canDestroy = card.count > playset
+    val isEnergy = ProfileRepository.isEnergyId(card.card.id.raw)
     var confirmDestroy by remember(card) { mutableStateOf(false) }
     val fichaColor = Color(0xFF7C4DFF)
     val destroyColor = Color(0xFFE0564E)
+    val floorLabel = if (isEnergy) "Colección" else "Playset"
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Txt("Playset ${card.count.coerceAtMost(playset)}/$playset" + if (card.count > playset) "  ·  ${card.count - playset} excedente(s)" else "", 12.sp, Muted, FontWeight.SemiBold)
+        Txt("$floorLabel ${card.count.coerceAtMost(playset)}/$playset" + if (card.count > playset) "  ·  ${card.count - playset} excedente(s)" else "", 12.sp, Muted, FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ActionPill("Fabricar", "$cost 🧩", Accent, enabled = canCraft, onClick = onCraft)
@@ -1416,7 +1416,7 @@ private fun CraftDestroyRow(card: DexCard, fichas: Int, onCraft: () -> Unit, onD
             ) {
                 Txt("¿Destruir 1 copia?", 18.sp, Ink, FontWeight.Black)
                 Spacer(Modifier.height(8.dp))
-                Txt("Recibirás $value Fichas. Conservarás tu playset ($playset). No se puede deshacer.", 13.sp, Muted, FontWeight.Medium, Modifier.fillMaxWidth(), align = TextAlign.Center)
+                Txt("Recibirás $value Fichas. Conservarás " + (if (isEnergy) "$playset energías" else "tu playset ($playset)") + ". No se puede deshacer.", 13.sp, Muted, FontWeight.Medium, Modifier.fillMaxWidth(), align = TextAlign.Center)
                 Spacer(Modifier.height(18.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Box(

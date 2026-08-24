@@ -448,14 +448,14 @@ private class SimPacks(
             val card = repo[oc.id]
             val cap = com.mineralord.tcg.data.profile.ProfileRepository.capFor(oc.id.raw)
             val idRaw = oc.id.raw
-            val before = ((owned[idRaw] ?: 0) + (running[idRaw] ?: 0)).coerceAtMost(cap)
+            val before = (owned[idRaw] ?: 0) + (running[idRaw] ?: 0)
             running[idRaw] = (running[idRaw] ?: 0) + 1
             RevealedCard(
                 name = card?.name?.es ?: idRaw,
                 rarity = oc.rarity,
                 imageUrl = card?.artwork?.smallEs,
                 isNew = before == 0,
-                copiesOwned = (before + 1).coerceAtMost(cap),
+                copiesOwned = before + 1,
                 cap = cap,
                 imageLarge = card?.artwork?.large(true),
                 cardNumber = idRaw.substringAfterLast('-').toIntOrNull(),

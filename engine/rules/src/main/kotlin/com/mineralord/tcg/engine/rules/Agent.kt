@@ -3,6 +3,7 @@ package com.mineralord.tcg.engine.rules
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.Side
+import com.mineralord.tcg.engine.model.canPayEnergyCost
 
 /**
  * Política de decisión de un jugador automático. El motor le pide una acción
@@ -31,7 +32,7 @@ class GreedyAgent : Agent {
         val active = me.active ?: return GameIntent.EndTurn
 
         // 1) ¿Hay un ataque pagable? Atacar (además, termina el turno).
-        val affordable = active.card.attacks.firstOrNull { active.attachedEnergyCount >= it.convertedCost }
+        val affordable = active.card.attacks.firstOrNull { canPayEnergyCost(active.attachedEnergy, it.cost) }
         if (affordable != null) return GameIntent.Attack(affordable.name.es)
 
         // 2) ¿Energía en mano? Unirla al Activo para habilitar un ataque futuro.

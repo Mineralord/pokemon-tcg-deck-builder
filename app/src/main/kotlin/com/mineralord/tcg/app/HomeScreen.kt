@@ -80,6 +80,8 @@ fun HomeScreen(
                     .statusBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
+                // Margen extra bajo el notch: separa los contadores del recorte de cámara/estado.
+                Spacer(Modifier.height(28.dp))
                 StatusBar(balances, onCurrency = { info = it })
                 Spacer(Modifier.height(10.dp))
                 Tabs()

@@ -2,6 +2,7 @@ package com.mineralord.tcg.feature.game
 
 import android.app.Application
 import com.mineralord.tcg.data.cards.CardRepository
+import com.mineralord.tcg.data.netplay.FxCueDto
 import com.mineralord.tcg.data.netplay.GameIntentDto
 import com.mineralord.tcg.data.netplay.GameReplay
 import com.mineralord.tcg.data.netplay.MatchRole
@@ -177,6 +178,7 @@ class OnlineGameController(
             is NetMessage.RequestSnapshot -> if (isHost) broadcast()
             is NetMessage.LogLine -> { core.log += msg.text; core.emit() }
             is NetMessage.Fx -> onFx(msg)
+            is NetMessage.FxBatch -> if (!isHost) onFxBatch(msg)
             is NetMessage.Bye -> { core.log += "El rival abandonó (${msg.reason})."; core.emit() }
         }
     }
@@ -488,19 +490,52 @@ class OnlineGameController(
      */
     private fun afterHostApply(events: List<GameEvent>) {
         broadcast()
-        scope.launch {
-            events.filterIsInstance<GameEvent.CoinFlipped>().forEach { e ->
-                send(NetMessage.Fx("COIN", side = null, amount = if (e.heads) 1 else 0))
-            }
-            core.playEventFx(events)
-        }
+        // TODAS las animaciones de combate viajan al invitado (no solo la moneda): rótulos de ataque/
+        // habilidad, daño, KO, premios, curación, estadio… en SU perspectiva (lados volteados). Así PvP
+        // se ve EXACTAMENTE igual que PvE para ambos jugadores, sin distinción.
+        val cues = events.mapNotNull { it.toFxCue() }
+        if (cues.isNotEmpty()) send(NetMessage.FxBatch(cues.map { it.toGuestDto() }))
+        scope.launch { core.playEventFx(events) }
     }
 
-    /** GUEST/HOST: recibe una señal de animación por cable y la reemite localmente. */
+    /** GUEST: revive por cable un lote de animaciones del host, con el mismo espaciado que PvE/host. */
+    private fun onFxBatch(msg: NetMessage.FxBatch) {
+        val cues = msg.cues.map { it.toCue() }
+        scope.launch { core.playCueFx(cues) }
+    }
+
+    /** GUEST/HOST: señal de animación puntual por cable (legado). La moneda de ceremonia usa otra vía. */
     private fun onFx(msg: NetMessage.Fx) {
         when (msg.kind) {
             "COIN" -> core.tryEmitFx(FxCue.Coin(Side.PLAYER, msg.amount == 1))
         }
+    }
+
+    /**
+     * Mapea un [FxCue] del host a [FxCueDto] para el invitado, VOLTEANDO el lado a su perspectiva
+     * (host = PLAYER; el invitado se ve a sí mismo como PLAYER). La moneda neutral (side null) no voltea.
+     */
+    private fun FxCue.toGuestDto(): FxCueDto = when (this) {
+        is FxCue.Attack -> FxCueDto.Attack(side.other().name, attackName)
+        is FxCue.AbilityUse -> FxCueDto.AbilityUse(side.other().name, pokemon.raw, manual)
+        is FxCue.Damage -> FxCueDto.Damage(side.other().name, amount, weakness, resistance)
+        is FxCue.Heal -> FxCueDto.Heal(side.other().name, amount)
+        is FxCue.Knockout -> FxCueDto.Knockout(side.other().name)
+        is FxCue.Prize -> FxCueDto.Prize(side.other().name, count)
+        is FxCue.Coin -> FxCueDto.Coin(side?.other()?.name, heads)
+        is FxCue.StadiumPlaced -> FxCueDto.StadiumPlaced(side.other().name, card.raw)
+    }
+
+    /** Reconstruye un [FxCue] desde su DTO recibido por red (ya en la perspectiva del invitado). */
+    private fun FxCueDto.toCue(): FxCue = when (this) {
+        is FxCueDto.Attack -> FxCue.Attack(Side.valueOf(side), attackName)
+        is FxCueDto.AbilityUse -> FxCue.AbilityUse(Side.valueOf(side), CardId(pokemon), manual)
+        is FxCueDto.Damage -> FxCue.Damage(Side.valueOf(side), amount, weakness, resistance)
+        is FxCueDto.Heal -> FxCue.Heal(Side.valueOf(side), amount)
+        is FxCueDto.Knockout -> FxCue.Knockout(Side.valueOf(side))
+        is FxCueDto.Prize -> FxCue.Prize(Side.valueOf(side), count)
+        is FxCueDto.Coin -> FxCue.Coin(side?.let { Side.valueOf(it) }, heads)
+        is FxCueDto.StadiumPlaced -> FxCue.StadiumPlaced(Side.valueOf(side), CardId(card))
     }
 
     /** GUEST: recibe una foto del estado y la pinta (rehidratada en su perspectiva). */

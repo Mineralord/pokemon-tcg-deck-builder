@@ -807,7 +807,15 @@ class EffectInterpreter {
                 EffectResult(state, emptyList())
             is EffectOp.DeEvolveDefender -> {
                 // Involuciona el Activo rival: la carta de fase más alta (la actual) vuelve a la
-                // mano de su dueño; el Pokémon pasa a ser la carta inferior de la pila de evolución.
+                // mano de su dueño; el Pokémon pasa a ser la carta inmediatamente inferior de la pila.
+                //
+                // Regla oficial de INVOLUCIÓN (Compendio de Reglas): al involucionar, el DAÑO y las
+                // cartas UNIDAS (Energías/Herramientas) PERMANECEN, pero las Condiciones Especiales y
+                // los EFECTOS sobre el Pokémon se ELIMINAN (igual que al evolucionar/retirarse). Por eso
+                // reconstruimos el Pokémon conservando solo daño + cartas unidas + rasgos permanentes
+                // (fósil), y dejamos que el resto de campos transitorios vuelvan a su valor por defecto.
+                // Además `turnsInPlay = 0`: un Pokémon recién involucionado no puede volver a evolucionar
+                // ese mismo turno.
                 val foeSide = src.actingSide.other()
                 val foe = state.sideState(foeSide)
                 val defender = foe.active
@@ -816,7 +824,19 @@ class EffectInterpreter {
                 if (defender == null || topCard == null || below == null) EffectResult(state, emptyList())
                 else {
                     var working = updatePokemon(state, defender.card.id) {
-                        it.copy(card = below, evolutionStack = it.evolutionStack.dropLast(1))
+                        PokemonInPlay(
+                            card = below,
+                            damage = it.damage,                       // el daño permanece
+                            attachedEnergy = it.attachedEnergy,       // las Energías permanecen
+                            attachedTools = it.attachedTools,         // las Herramientas permanecen
+                            evolutionStack = it.evolutionStack.dropLast(1),
+                            turnsInPlay = 0,                          // no puede evolucionar este turno
+                            // statuses (Condiciones Especiales) y todos los efectos transitorios se
+                            // ELIMINAN al usar los valores por defecto (no se copian de `it`).
+                            sourceCard = it.sourceCard,               // rasgos permanentes (fósil)
+                            immuneToSpecialConditions = it.immuneToSpecialConditions,
+                            cannotRetreat = it.cannotRetreat,
+                        )
                     }
                     working = withPlayer(working, working.sideState(foeSide).copy(hand = foe.hand + topCard), foeSide)
                     EffectResult(working, listOf(GameEvent.DeEvolved(foeSide, topCard.id, below.id)))

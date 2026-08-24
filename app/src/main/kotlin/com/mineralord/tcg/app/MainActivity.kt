@@ -83,7 +83,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppShell() {
-    var screen by remember { mutableStateOf(Screen.HOME) }
+    // Pila de navegación: el retroceso (gesto/botón del sistema o botón de la barra) retrocede UN paso,
+    // no salta siempre a Inicio. HOME es la raíz y nunca se saca de la pila.
+    val backStack = remember { androidx.compose.runtime.mutableStateListOf(Screen.HOME) }
+    val screen = backStack.last()
+    fun navigate(to: Screen) { if (backStack.last() != to) backStack.add(to) }
+    fun replace(to: Screen) { backStack[backStack.lastIndex] = to }
+    fun back() { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
     // Selector de dificultad PvE: se muestra al pulsar JUGAR y, al elegir, pasa a matchmaking.
     var pickingDifficulty by remember { mutableStateOf(false) }
 
@@ -97,7 +103,7 @@ private fun AppShell() {
     // no abra la pantalla de sobres: la Tienda de Cosméticos necesita Monedas.
     androidx.compose.runtime.LaunchedEffect(Unit) { profileRepo.seedBalancesOnce() }
 
-    BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
+    BackHandler(enabled = backStack.size > 1) { back() }
 
     Box(Modifier.fillMaxSize()) {
     // Transición coherente entre pantallas (crossfade Motion). Cada estado se resuelve dentro.
@@ -109,22 +115,23 @@ private fun AppShell() {
             avatarColors = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR)
                 ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
                 ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
-            onCartadex = { screen = Screen.COLLECTION },
-            onTienda = { screen = Screen.STORE },
-            onBarajas = { screen = Screen.DECKS },
-            onPerfil = { screen = Screen.PROFILE },
+            onCartadex = { navigate(Screen.COLLECTION) },
+            onTienda = { navigate(Screen.STORE) },
+            onBarajas = { navigate(Screen.DECKS) },
+            onPerfil = { navigate(Screen.PROFILE) },
             onJugar = { pickingDifficulty = true },
-            onJugarOnline = { screen = Screen.ONLINE },
+            onJugarOnline = { navigate(Screen.ONLINE) },
         )
         Screen.MATCHMAKING -> MatchmakingScreen(
             deckName = "Mega-Charizard X ex",
-            onCancel = { screen = Screen.HOME },
-            onMatched = { screen = Screen.GAME },
+            onCancel = { back() },
+            // Reemplaza matchmaking por la partida: al salir de la partida se vuelve a Inicio, no aquí.
+            onMatched = { replace(Screen.GAME) },
             modifier = Modifier.fillMaxSize(),
         )
         // Combate vs IA: pantalla canónica de combate.
         Screen.GAME -> com.mineralord.tcg.feature.game.combat.CombatScreen(
-            onExit = { screen = Screen.HOME },
+            onExit = { back() },
             vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
             modifier = Modifier.fillMaxSize(),
             matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
@@ -137,26 +144,26 @@ private fun AppShell() {
             lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_MONEDAS,
         )
         Screen.ONLINE -> OnlineGameScreen(
-            onExit = { screen = Screen.HOME },
+            onExit = { back() },
             modifier = Modifier.fillMaxSize(),
         )
         Screen.COLLECTION -> CollectionScreen(
-            onExit = { screen = Screen.HOME },
+            onExit = { back() },
             modifier = Modifier.fillMaxSize(),
         )
-        Screen.STORE -> SubScreen(title = "Tienda", onHome = { screen = Screen.HOME }) {
+        Screen.STORE -> SubScreen(title = "Tienda", onHome = { back() }) {
             StoreHubScreen(
                 balances = profile.balances,
-                onSobres = { screen = Screen.PACKS },
-                onCosmeticos = { screen = Screen.COSMETICS },
-                onColeccion = { screen = Screen.COSMETIC_COLLECTION },
+                onSobres = { navigate(Screen.PACKS) },
+                onCosmeticos = { navigate(Screen.COSMETICS) },
+                onColeccion = { navigate(Screen.COSMETIC_COLLECTION) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { screen = Screen.STORE }) {
+        Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { back() }) {
             PacksScreen(modifier = Modifier.fillMaxSize())
         }
-        Screen.COSMETICS -> SubScreen(title = "Tienda · Cosméticos", onHome = { screen = Screen.STORE }) {
+        Screen.COSMETICS -> SubScreen(title = "Tienda · Cosméticos", onHome = { back() }) {
             CosmeticStoreScreen(
                 profile = profile,
                 onBuy = { c -> scope.launch { profileRepo.buyCosmetic(c) } },
@@ -164,7 +171,7 @@ private fun AppShell() {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Screen.COSMETIC_COLLECTION -> SubScreen(title = "Colección de cosméticos", onHome = { screen = Screen.STORE }) {
+        Screen.COSMETIC_COLLECTION -> SubScreen(title = "Colección de cosméticos", onHome = { back() }) {
             CosmeticCollectionScreen(
                 profile = profile,
                 onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
@@ -172,10 +179,10 @@ private fun AppShell() {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Screen.DECKS -> SubScreen(title = "Barajas", onHome = { screen = Screen.HOME }) {
+        Screen.DECKS -> SubScreen(title = "Barajas", onHome = { back() }) {
             DecksScreen(modifier = Modifier.fillMaxSize())
         }
-        Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { screen = Screen.HOME }) {
+        Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { back() }) {
             val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo
             fun equipped(cat: com.mineralord.tcg.data.cosmetics.CosmeticCategory) =
                 repo[profile.equippedIn(cat)]
@@ -195,7 +202,7 @@ private fun AppShell() {
             onPick = { difficulty ->
                 com.mineralord.tcg.feature.game.PveConfig.difficulty = difficulty
                 pickingDifficulty = false
-                screen = Screen.MATCHMAKING
+                navigate(Screen.MATCHMAKING)
             },
             onDismiss = { pickingDifficulty = false },
             modifier = Modifier.fillMaxSize(),

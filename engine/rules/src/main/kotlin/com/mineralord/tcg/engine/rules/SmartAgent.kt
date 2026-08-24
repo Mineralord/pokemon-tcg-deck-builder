@@ -7,6 +7,7 @@ import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.PendingDecision
 import com.mineralord.tcg.engine.model.PokemonInPlay
 import com.mineralord.tcg.engine.model.Side
+import com.mineralord.tcg.engine.model.canPayEnergyCost
 
 /**
  * IA de juego real: resuelve decisiones pendientes y usa [GameEngine.legalIntents] para jugar
@@ -212,7 +213,7 @@ class SmartAgent(
         bestAffordableDamage(pip) * 1000 + pip.remainingHp
 
     private fun affordableAttacks(pip: PokemonInPlay): List<Attack> =
-        pip.card.attacks.filter { pip.attachedEnergyCount >= it.convertedCost }
+        pip.card.attacks.filter { canPayEnergyCost(pip.attachedEnergy, it.cost) }
 
     private fun bestAffordableDamage(pip: PokemonInPlay): Int =
         affordableAttacks(pip).maxOfOrNull { it.fixedDamage() } ?: 0

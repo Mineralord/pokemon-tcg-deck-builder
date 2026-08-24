@@ -97,6 +97,9 @@ class GameCore(private val scope: CoroutineScope) {
     suspend fun playEventFx(events: List<com.mineralord.tcg.engine.events.GameEvent>) =
         playFx(events) { _fx.emit(it) }
 
+    /** Reproduce una lista YA MAPEADA de cues (invitado PvP: los recibe del host por red). */
+    suspend fun playCueFx(cues: List<FxCue>) = playCues(cues) { _fx.emit(it) }
+
     // ----------------------------------------------------------------- preparación
     // Mutaciones IDÉNTICAS en ambos modos (elegir Activo, alternar Banca).
 

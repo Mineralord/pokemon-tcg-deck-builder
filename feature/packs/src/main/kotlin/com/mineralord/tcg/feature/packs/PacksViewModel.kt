@@ -30,7 +30,7 @@ data class RevealedCard(
     val isNew: Boolean = false,
     /** Copias poseídas tras añadir esta carta (para "COPIAS EN LA COLECCIÓN n/tope"). */
     val copiesOwned: Int = 0,
-    /** Tope de copias de esta carta (4 normal · 30 por variante de Energía Básica). */
+    /** Tope de colección de esta carta (4 normal · 25 por tipo de Energía Básica). */
     val cap: Int = 4,
     // Datos para abrir el MISMO visor de la colección (holo + manipulación con el dedo) al tocarla.
     val imageLarge: String? = null,
@@ -231,7 +231,8 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         return opened.map { oc ->
             val card = repo[oc.id]
             val cap = ProfileRepository.capFor(oc.id.raw)
-            val before = ((owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)).coerceAtMost(cap)
+            // Total REAL poseído (sin recortar al tope): la etiqueta muestra cuántas tiene en total.
+            val before = (owned[oc.id.raw] ?: 0) + (running[oc.id.raw] ?: 0)
             running[oc.id.raw] = (running[oc.id.raw] ?: 0) + 1
             val idRaw = oc.id.raw
             RevealedCard(
@@ -239,7 +240,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                 rarity = oc.rarity,
                 imageUrl = card?.artwork?.smallEs,   // solo español; null -> punto rojo
                 isNew = before == 0,
-                copiesOwned = (before + 1).coerceAtMost(cap),
+                copiesOwned = before + 1,
                 cap = cap,
                 imageLarge = card?.artwork?.large(true),
                 cardNumber = idRaw.substringAfterLast('-').toIntOrNull(),

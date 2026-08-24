@@ -52,22 +52,32 @@ fun GameEvent.toFxCue(): FxCue? = when (this) {
  * golpes para que las animaciones no se solapen (feel de TCG Live). [emitCue] entrega
  * cada señal al flujo de FX del controlador correspondiente.
  */
-suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) -> Unit) {
-    for (e in events) {
-        val cue = e.toFxCue() ?: continue
+suspend fun playFx(events: List<GameEvent>, emitCue: suspend (FxCue) -> Unit) =
+    playCues(events.mapNotNull { it.toFxCue() }, emitCue)
+
+/**
+ * Reproduce una lista YA MAPEADA de [FxCue] con el espaciado cinematográfico compartido. Es la vía
+ * que usa el invitado PvP (que recibe los cues del host por red) para animar EXACTAMENTE igual que el
+ * host y que PvE, sin volver a pasar por los eventos del motor.
+ */
+suspend fun playCues(cues: List<FxCue>, emitCue: suspend (FxCue) -> Unit) {
+    for (cue in cues) {
         emitCue(cue)
-        when (cue) {
-            // El rótulo actúa como ANUNCIO cinematográfico: se lee ANTES de que impacte la acción.
-            is FxCue.Attack -> delay(1150)
-            is FxCue.AbilityUse -> delay(1150)
-            is FxCue.Damage -> delay(360)
-            is FxCue.Knockout -> delay(420)
-            is FxCue.Prize -> delay(200)
-            is FxCue.Coin -> delay(700)
-            is FxCue.StadiumPlaced -> delay(420)   // deja asentar la carta antes del siguiente golpe
-            else -> {}
-        }
+        delay(cue.playbackDelayMs())
     }
+}
+
+/** Espaciado tras cada cue (feel de TCG Live). Único para PvE, host PvP e invitado PvP. */
+private fun FxCue.playbackDelayMs(): Long = when (this) {
+    // El rótulo actúa como ANUNCIO cinematográfico: se lee ANTES de que impacte la acción.
+    is FxCue.Attack -> 1150
+    is FxCue.AbilityUse -> 1150
+    is FxCue.Damage -> 360
+    is FxCue.Knockout -> 420
+    is FxCue.Prize -> 200
+    is FxCue.Coin -> 700
+    is FxCue.StadiumPlaced -> 420   // deja asentar la carta antes del siguiente golpe
+    else -> 0
 }
 
 /**

@@ -79,8 +79,11 @@ class Set151EffectsTest {
         provides = EnergyProvision.Fixed(listOf(type)), stateModifiers = emptyList(), effect = EffectId("none"),
     )
 
+    // El coste numérico representa N símbolos Incoloros {C} (como en los datos reales: la lista tipada
+    // es la fuente de verdad y `convertedCost` es su tamaño). Así el chequeo de coste por TIPOS del
+    // motor recibe una lista coherente, no vacía.
     private fun attack(name: String, dmg: Int, effect: EffectId, cost: Int = 0) =
-        Attack(LocalizedText(name, name), emptyList(), cost, DamageModel.Fixed(dmg), effect)
+        Attack(LocalizedText(name, name), List(cost) { EnergyType.COLORLESS }, cost, DamageModel.Fixed(dmg), effect)
 
     /** Estado mínimo: mi Activo ataca al Activo rival (turno 3, sin premios en juego relevante). */
     private fun duel(mine: PokemonInPlay, foe: PokemonInPlay, foeHand: List<com.mineralord.tcg.engine.model.Card> = emptyList()): GameState {
@@ -2639,6 +2642,78 @@ class Set151EffectsTest {
         assertTrue(r.events.any { it is GameEvent.KnockedOut }, "la fase Básica (60 PS) no aguanta 100 de daño")
         assertTrue(r.state.opponent.hand.any { it.id.raw == "kakuna" }, "la fase alta vuelve a la mano")
         assertTrue(r.state.opponent.discard.any { it.id.raw == "weedle" }, "la fase Básica noqueada va al descarte")
+    }
+
+    @Test
+    fun `Rayo Involutivo Escenario A - el evolucionado sobrevive pero la preevolucion queda KO por el dano previo`() {
+        // Charizard ex 330 PS con 60 de daño previo: 100 más = 160 (< 330, sobrevive) → involuciona a
+        // Charmeleon (90 PS); 160 de daño en 90 PS = K.O. inmediato. La fase alta vuelve a la mano.
+        val a = attack("Devolution Ray", 100, EffectsDb.atkKey("sv3pt5-142", "Devolution Ray"), cost = 2)
+        val aerodactyl = PokemonInPlay(
+            mon("aerodactyl", 120, EnergyType.COLORLESS, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.COLORLESS), energy("e2", EnergyType.COLORLESS)),
+        )
+        val charmeleon = mon("charmeleon", 90, EnergyType.FIRE, a).copy(stage = Stage.Stage1, evolvesFrom = "charizard")
+        val charizardEx = mon("charizard", 330, EnergyType.FIRE, a).copy(stage = Stage.Stage2, evolvesFrom = "charmeleon")
+        val defender = PokemonInPlay(charizardEx, evolutionStack = listOf(charmeleon)).copy(damage = 60)
+        val r = GameEngine(SeededRng(1)).apply(duel(aerodactyl, defender), GameIntent.Attack("Devolution Ray"))
+
+        assertTrue(r.accepted, r.rejection)
+        assertTrue(r.events.any { it is GameEvent.DeEvolved }, "el evolucionado sobrevivió y se involucionó")
+        assertTrue(r.state.opponent.hand.any { it.id.raw == "charizard" }, "la fase alta vuelve a la mano")
+        assertTrue(r.events.any { it is GameEvent.KnockedOut }, "160 de daño en 90 PS → K.O.")
+        assertTrue(r.state.opponent.discard.any { it.id.raw == "charmeleon" }, "la preevolución noqueada va al descarte")
+    }
+
+    @Test
+    fun `Rayo Involutivo Escenario B - la preevolucion sobrevive con la vida exacta restante`() {
+        // Stage 2 (150 PS, 0 daño previo): 100 de daño → involuciona a Stage 1 (110 PS) conservando 100
+        // de daño → sobrevive con 10 PS restantes (110 - 100).
+        val a = attack("Devolution Ray", 100, EffectsDb.atkKey("sv3pt5-142", "Devolution Ray"), cost = 2)
+        val aerodactyl = PokemonInPlay(
+            mon("aerodactyl", 120, EnergyType.COLORLESS, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.COLORLESS), energy("e2", EnergyType.COLORLESS)),
+        )
+        val stage1 = mon("stage1", 110, EnergyType.GRASS, a).copy(stage = Stage.Stage1, evolvesFrom = "basic")
+        val stage2 = mon("stage2", 150, EnergyType.GRASS, a).copy(stage = Stage.Stage2, evolvesFrom = "stage1")
+        val defender = PokemonInPlay(stage2, evolutionStack = listOf(stage1))
+        val r = GameEngine(SeededRng(1)).apply(duel(aerodactyl, defender), GameIntent.Attack("Devolution Ray"))
+
+        assertTrue(r.accepted, r.rejection)
+        val active = r.state.opponent.active!!
+        assertEquals("stage1", active.card.id.raw, "involucionó a la Fase 1")
+        assertEquals(100, active.damage, "el daño se conserva")
+        assertEquals(10, active.remainingHp, "queda con exactamente 10 PS (110 - 100)")
+        assertFalse(r.events.any { it is GameEvent.KnockedOut }, "no queda K.O.")
+    }
+
+    @Test
+    fun `Rayo Involutivo elimina Condiciones Especiales y efectos pero conserva dano y Energias`() {
+        // Regla oficial de involución: el daño y las cartas unidas PERMANECEN; las Condiciones
+        // Especiales y los efectos sobre el Pokémon se ELIMINAN.
+        val a = attack("Devolution Ray", 100, EffectsDb.atkKey("sv3pt5-142", "Devolution Ray"), cost = 2)
+        val aerodactyl = PokemonInPlay(
+            mon("aerodactyl", 120, EnergyType.COLORLESS, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.COLORLESS), energy("e2", EnergyType.COLORLESS)),
+        )
+        val basic = mon("charmander", 260, EnergyType.FIRE, a) // PS altos: 100 no noquea tras involucionar
+        val evolved = mon("charmeleon", 260, EnergyType.FIRE, a).copy(stage = Stage.Stage1, evolvesFrom = "charmander")
+        val defender = PokemonInPlay(
+            evolved,
+            evolutionStack = listOf(basic),
+            attachedEnergy = listOf(energy("de1", EnergyType.FIRE)),
+            statuses = setOf(Status.ASLEEP),
+            preventDamageOnTurn = 999,   // efecto transitorio que debe eliminarse al involucionar
+        ).copy(damage = 20)
+        val r = GameEngine(SeededRng(1)).apply(duel(aerodactyl, defender), GameIntent.Attack("Devolution Ray"))
+
+        assertTrue(r.accepted, r.rejection)
+        val active = r.state.opponent.active!!
+        assertEquals("charmander", active.card.id.raw, "involucionó a su fase Básica")
+        assertTrue(active.statuses.isEmpty(), "las Condiciones Especiales se eliminan al involucionar")
+        assertEquals(null, active.preventDamageOnTurn, "los efectos transitorios se eliminan al involucionar")
+        assertEquals(120, active.damage, "el daño permanece (20 previo + 100 del ataque)")
+        assertTrue(active.attachedEnergy.any { it.id.raw == "de1" }, "las Energías unidas permanecen")
     }
 
     // ---------------- FASE 36: pasivos condicionados por aliado en juego ----------------

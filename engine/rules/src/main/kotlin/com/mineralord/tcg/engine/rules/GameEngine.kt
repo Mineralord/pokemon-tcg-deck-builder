@@ -12,6 +12,7 @@ import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.EnergyProvision
 import com.mineralord.tcg.engine.model.EnergyType
+import com.mineralord.tcg.engine.model.canPayEnergyCost
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.ModKind
 import com.mineralord.tcg.engine.model.PassiveModifier
@@ -364,7 +365,7 @@ class GameEngine(
             return EngineResult.reject(state, "${attacker.card.name.es} no puede atacar este turno")
         }
         if (overrideAttack == null &&
-            attacker.attachedEnergyCount < effectiveAttackCost(atk, attacker, state, state.activeSide)) {
+            !canPayAttack(atk, attacker, state, state.activeSide)) {
             return EngineResult.reject(state, "Energía insuficiente para ${atk.name.es}")
         }
 
@@ -1056,21 +1057,25 @@ class GameEngine(
      * Coste de energía efectivo de un ataque, con el recargo temporal "+{C} para atacar"
      * (Muk — Prisión Viscosa). Auto-expira por turno.
      */
-    private fun effectiveAttackCost(
+    /**
+     * ¿Se puede pagar el coste de [atk] con las Energías unidas al [attacker]? Aplica la regla oficial
+     * de TIPOS (ver [canPayEnergyCost]): cada símbolo específico exige una Energía de ESE tipo y los
+     * Incoloros aceptan cualquiera. Contempla el recargo temporal "+{C} para atacar" (Muk — Prisión
+     * Viscosa) y el ataque gratis por aliado (Nidoking — Rey Entusiasta). Respeta el bloqueo de Habilidades.
+     */
+    private fun canPayAttack(
         atk: com.mineralord.tcg.engine.model.Attack,
         attacker: PokemonInPlay,
         state: GameState,
         side: Side,
-    ): Int {
-        // Nidoking — Rey Entusiasta: sus ataques no cuestan Energía si hay un aliado con el
-        // nombre requerido (Nidoqueen) en juego. Respeta el bloqueo de Habilidades.
+    ): Boolean {
         val freeByAlly = abilityEffects(state, side, attacker).any { e ->
             e.freeAttackIfAllyNamed != null &&
                 state.sideState(side).allInPlay.any { nameMatches(it, e.freeAttackIfAllyNamed!!) }
         }
-        if (freeByAlly) return 0
+        if (freeByAlly) return true
         val bump = if (attacker.attackCostBumpOnTurn == state.turn) attacker.attackCostBumpAmount else 0
-        return atk.convertedCost + bump
+        return canPayEnergyCost(attacker.attachedEnergy, atk.cost, bump)
     }
 
     private fun effectiveRetreatCost(state: GameState, side: Side): Int {
@@ -1591,7 +1596,7 @@ class GameEngine(
         // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
         // o si el Activo está restringido este turno por Jet Wing y similares).
         if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn) {
-            active?.card?.attacks?.filter { active.attachedEnergyCount >= effectiveAttackCost(it, active, state, state.activeSide) }
+            active?.card?.attacks?.filter { canPayAttack(it, active, state, state.activeSide) }
                 ?.forEach { intents += GameIntent.Attack(it.name.es) }
         }
         // Ataques usables desde la Banca (Alakazam ex — Mano Dimensional): golpean al Activo rival.
@@ -1601,7 +1606,7 @@ class GameEngine(
                 b.card.attacks
                     .filter {
                         effects[it.effect]?.usableFromBench == true &&
-                            b.attachedEnergyCount >= effectiveAttackCost(it, b, state, state.activeSide)
+                            canPayAttack(it, b, state, state.activeSide)
                     }
                     .forEach { intents += GameIntent.Attack(it.name.es, attacker = b.card.id) }
             }

@@ -3,6 +3,7 @@ package com.mineralord.tcg.feature.game.combat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -33,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -218,10 +220,23 @@ fun CombatScreen(
     val stadiumRender = remember { AnimationRenderState() }
     val stadiumDirector = rememberCanonicalAnimationDirector(stadiumCoords, stadiumRender)
 
+    // Menú de PAUSA / OPCIONES (lo abre el botón superior-izquierdo, sobre el descarte rival). Los
+    // ajustes se hoistean aquí para persistir durante la partida (rememberSaveable). Único para PvE/PvP.
+    // · `cardVfxEnabled` (pestaña ACCESIBILIDAD): efectos visuales de animación de las cartas para
+    //   ataques y Evolución. Cuando está DESACTIVADO se suprimen los rótulos/embate/sacudida/aura/estadio
+    //   (leído en vivo por los colectores de FX de abajo).
+    // · `disableVfx` (pestaña GENERAL → registro de combate): ajuste del registro; hoy solo estado.
+    var showPause by remember { mutableStateOf(false) }
+    var showSurrender by remember { mutableStateOf(false) }
+    var musicVol by rememberSaveable { mutableStateOf(0.6f) }
+    var sfxVol by rememberSaveable { mutableStateOf(0.6f) }
+    var disableVfx by rememberSaveable { mutableStateOf(false) }
+    var cardVfxEnabled by rememberSaveable { mutableStateOf(true) }
+
     // Al jugar un Estadio (cualquiera de los dos lados): dispara la colocación AAA.
     LaunchedEffect(Unit) {
         vm.fx.collect { cue ->
-            if (cue is FxCue.StadiumPlaced) {
+            if (cue is FxCue.StadiumPlaced && cardVfxEnabled) {
                 stadiumDirector.submit(AnimationRequest.StadiumPlaced(cue.side.name, cue.card.raw))
             }
         }
@@ -231,7 +246,7 @@ fun CombatScreen(
     // después por el espaciado de `playFx`, cumpliendo el orden anuncio → acción.
     LaunchedEffect(Unit) {
         vm.fx.collect { cue ->
-            if (cue is FxCue.Attack) {
+            if (cue is FxCue.Attack && cardVfxEnabled) {
                 bannerDirector.submit(
                     AnimationRequest.AttackStarted(
                         attackerId = cue.side.name,
@@ -248,7 +263,7 @@ fun CombatScreen(
     // habilidades del rival y las pasivas automáticas. El efecto llega después (orden anuncio → acción).
     LaunchedEffect(Unit) {
         vm.fx.collect { cue ->
-            if (cue is FxCue.AbilityUse) {
+            if (cue is FxCue.AbilityUse && cardVfxEnabled) {
                 bannerDirector.submit(
                     AnimationRequest.AbilityActivated(
                         sourcePokemonId = cue.pokemon.raw,
@@ -276,7 +291,7 @@ fun CombatScreen(
     // cumpliendo la jerarquía rótulo → embate/impacto → (KO). Se aplican en MatchLayer sobre cada Activo.
     LaunchedEffect(Unit) {
         vm.fx.collect { cue ->
-            if (cue is FxCue.Damage) when (cue.side) {
+            if (cue is FxCue.Damage && cardVfxEnabled) when (cue.side) {
                 Side.PLAYER -> { bi.shakeSeqPlayer++; bi.lungeSeqOpp++ }
                 Side.OPPONENT -> { bi.shakeSeqOpp++; bi.lungeSeqPlayer++ }
             }
@@ -457,7 +472,7 @@ fun CombatScreen(
                     myTurn = myTurn,
                     mustPromote = mustPromote,
                     retreatMode = bi.retreatMode,
-                    onExit = onExit,
+                    onOpenSettings = { showPause = true },
                     onOpenLog = { showLog = true },
                     onCancelRetreat = { bi.retreatMode = false; bi.benchDragCard = null },
                 )
@@ -501,6 +516,40 @@ fun CombatScreen(
         // Registro de batalla: diálogo Motion.
         MotionDialog(visible = showLog, onDismiss = { showLog = false }) {
             BattleLogBody(ui.log, onDismiss = { showLog = false })
+        }
+
+        // Menú de PAUSA / OPCIONES (velo semitransparente sobre el tablero). RENDIRSE = salir de la
+        // partida (onExit). Único para PvE y PvP.
+        if (showPause) {
+            PauseOptionsSheet(
+                music = musicVol, onMusic = { musicVol = it },
+                sfx = sfxVol, onSfx = { sfxVol = it },
+                disableVfx = disableVfx, onDisableVfx = { disableVfx = it },
+                cardVfxEnabled = cardVfxEnabled, onCardVfxEnabled = { cardVfxEnabled = it },
+                // RENDIRSE cierra el menú y abre la confirmación que sube desde abajo.
+                onSurrender = { showPause = false; showSurrender = true },
+                onDismiss = { showPause = false },
+            )
+        }
+
+        // Confirmación de RENDIRSE: panel inferior que sube suavemente sobre el tablero (sin velo),
+        // como en TCG Live. "ME RINDO" abandona (onExit); "MEJOR NO" (o tocar fuera) cancela.
+        if (showSurrender) {
+            Box(
+                Modifier.fillMaxSize().clickable(
+                    interactionSource = remember { MutableInteractionSource() }, indication = null,
+                ) { showSurrender = false },
+            )
+        }
+        MotionPanel(
+            visible = showSurrender,
+            edge = MotionEdge.Bottom,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            SurrenderConfirmBody(
+                onConfirm = { showSurrender = false; onExit() },
+                onCancel = { showSurrender = false },
+            )
         }
 
         // Visor a DETALLE (giroscopio + holo + pinch): conserva su propio scrim/gyro; se
@@ -561,6 +610,13 @@ fun CombatScreen(
                             val canUseAbility: (Ability) -> Boolean = { ability ->
                                 GameIntent.UseAbility(actionPip.card.id, ability.name.es) in legal
                             }
+                            // El motor es la ÚNICA autoridad de qué ataque es usable AHORA: coste por TIPOS
+                            // de energía, recargos, turno 1, restricciones y excepciones (ataque gratis por
+                            // aliado como Nidoking, y las que añadamos en el futuro). Si el motor lo ofrece
+                            // como intent legal, el botón se habilita; si no, se atenúa.
+                            val canUseAttack: (String) -> Boolean = { name ->
+                                GameIntent.Attack(name) in legal
+                            }
                             val abilityUsed: (Ability) -> Boolean = { actionPip.card.id in state.abilitiesUsedThisTurn }
                             if (isMyActive) {
                                 ActiveActions(
@@ -571,6 +627,7 @@ fun CombatScreen(
                                     onRetreat = { inspect = null; bi.retreatMode = true },
                                     onUseAbility = onUseAbility,
                                     canUseAbility = canUseAbility,
+                                    canUseAttack = canUseAttack,
                                     abilityUsed = abilityUsed,
                                 )
                             } else {
@@ -722,12 +779,13 @@ private fun HudLayer(
     myTurn: Boolean,
     mustPromote: Boolean,
     retreatMode: Boolean,
-    onExit: () -> Unit,
+    onOpenSettings: () -> Unit,
     onOpenLog: () -> Unit,
     onCancelRetreat: () -> Unit,
 ) {
     Box(Modifier.place(BoardGeometry.TopSettings, boardW, boardH)) {
-        IconChip("⏻", CombatTheme.Foe, onExit)
+        // Abre el menú de PAUSA / OPCIONES (RENDIRSE vive dentro del menú, no aquí).
+        IconChip("⚙", CombatTheme.OnSurface, onOpenSettings)
     }
     // Columna derecha 1:1 con TCG Live: pestañas de estado (rival arriba / jugador
     // abajo, espejo) con barra de turno + chevrones + temporizador + premios, y el
@@ -1610,6 +1668,7 @@ private fun ActiveActions(
     onRetreat: () -> Unit,
     onUseAbility: (Ability) -> Unit,
     canUseAbility: (Ability) -> Boolean,
+    canUseAttack: (String) -> Boolean,
     abilityUsed: (Ability) -> Boolean,
 ) {
     Column(
@@ -1644,7 +1703,7 @@ private fun ActiveActions(
                 attack = atk,
                 type = type,
                 finish = finish,
-                enabled = true,
+                enabled = canUseAttack(atk.name.es),
                 used = false,
                 // Texto de regla REAL impreso; en blanco si el ataque solo hace daño → sin descripción.
                 description = atk.text.es,

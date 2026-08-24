@@ -62,6 +62,26 @@ fun GameIntentDto.toIntent(): GameIntent = when (this) {
 }
 
 /**
+ * DTO serializable de una señal de animación de combate (espejo de `FxCue` de la capa de UI, que este
+ * módulo de datos no puede importar). El host mapea sus `FxCue` a estos DTO —VOLTEANDO el lado a la
+ * perspectiva del invitado— y los envía en un [NetMessage.FxBatch]; el invitado los revive con el MISMO
+ * pipeline de animación que el host y que el modo PvE, para que rótulos/ataques/daño/KO se vean igual.
+ *
+ * [side] es el nombre del enum `Side` ("PLAYER"/"OPPONENT") o null (moneda neutral compartida).
+ */
+@Serializable
+sealed interface FxCueDto {
+    @Serializable data class Attack(val side: String, val attackName: String) : FxCueDto
+    @Serializable data class AbilityUse(val side: String, val pokemon: String, val manual: Boolean) : FxCueDto
+    @Serializable data class Damage(val side: String, val amount: Int, val weakness: Boolean, val resistance: Boolean) : FxCueDto
+    @Serializable data class Heal(val side: String, val amount: Int) : FxCueDto
+    @Serializable data class Knockout(val side: String) : FxCueDto
+    @Serializable data class Prize(val side: String, val count: Int) : FxCueDto
+    @Serializable data class Coin(val side: String?, val heads: Boolean) : FxCueDto
+    @Serializable data class StadiumPlaced(val side: String, val card: String) : FxCueDto
+}
+
+/**
  * Mensaje que viaja por el [MatchTransport] entre los dos dispositivos.
  * Host-autoritativo: el invitado envía [Intent]; el host responde con [Snapshot].
  */
@@ -126,9 +146,14 @@ sealed interface NetMessage {
     @Serializable
     data class LogLine(val text: String) : NetMessage
 
-    /** Señal de animación para el invitado (ver FxCue en :feature:game). */
+    /** Señal de animación puntual para el invitado (legado; la moneda de ceremonia). */
     @Serializable
     data class Fx(val kind: String, val side: String?, val amount: Int = 0) : NetMessage
+
+    /** Lote ORDENADO de animaciones de combate para el invitado, ya en SU perspectiva (lados volteados
+     *  por el host). El invitado lo reproduce con el mismo espaciado que el host/PvE. */
+    @Serializable
+    data class FxBatch(val cues: List<FxCueDto>) : NetMessage
 
     /** Fin de la conexión / abandono. */
     @Serializable

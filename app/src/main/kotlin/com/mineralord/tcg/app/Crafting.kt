@@ -1,6 +1,7 @@
 package com.mineralord.tcg.app
 
 import com.mineralord.tcg.data.profile.CraftingRules
+import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonMechanic
@@ -28,9 +29,11 @@ internal fun tierOf(r: Rarity): Int = when (r) {
  * Tamaño del PLAYSET de una carta = copias máximas útiles en un mazo (regla oficial): **4** para la
  * mayoría, **1** para singletons (ACE SPEC; Radiante, que también es único por mazo). Es el suelo que
  * la Destrucción conserva y el tope hasta el que se puede Fabricar (Fase 5 §3.6). Las Energías Básicas
- * no tienen playset (ilimitadas) y quedan fuera de ambas herramientas.
+ * usan su propio tope de colección ([ProfileRepository.ENERGY_CAP] = 25): se fabrican hasta él y su
+ * excedente (26+) se destruye conservando esas 25.
  */
 internal fun playsetSize(card: Card): Int = when {
+    ProfileRepository.isEnergyId(card.id.raw) -> ProfileRepository.ENERGY_CAP
     card is TrainerCard && card.kind.isAceSpec -> 1
     card is PokemonCard && card.mechanic == PokemonMechanic.Radiant -> 1
     else -> 4
