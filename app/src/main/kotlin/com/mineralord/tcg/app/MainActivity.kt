@@ -179,9 +179,10 @@ private fun AppShell() {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Screen.DECKS -> SubScreen(title = "Barajas", onHome = { back() }) {
-            DecksScreen(modifier = Modifier.fillMaxSize())
-        }
+        Screen.DECKS -> DecksScreen(
+            modifier = Modifier.fillMaxSize(),
+            onHome = { back() },
+        )
         Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { back() }) {
             val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo
             fun equipped(cat: com.mineralord.tcg.data.cosmetics.CosmeticCategory) =

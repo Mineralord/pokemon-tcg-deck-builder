@@ -2,6 +2,7 @@ package com.mineralord.tcg.feature.decks
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,21 +10,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,24 +32,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.mineralord.tcg.core.designsystem.CardDetailDialog
+import coil.compose.AsyncImage
+import com.mineralord.tcg.core.designsystem.BarajasPalette
 import com.mineralord.tcg.core.designsystem.DeckBox
-import com.mineralord.tcg.core.designsystem.TcgColors
-import com.mineralord.tcg.engine.model.Supertype
+import com.mineralord.tcg.core.designsystem.typeColor
 
-private val ScreenBg = Color(0xFF1B2430)
-private val CollectionBg = Color(0xFF141B24)
-
-private enum class EditCat(val label: String) { TODO("BARAJA"), POKEMON("POKÉMON"), TRAINER("ENTRENADORES"), ENERGY("ENERGÍA") }
-
-/** Editor de baraja: cabecera + pestañas de categoría + rejilla del mazo + colección. */
+/**
+ * #7 — Editor de baraja (chasis, réplica clara de TCG Live): cabecera tintada con
+ * el acento de la baraja (nombre + lápiz + "…" + estrella), caja 3D + "Modificar",
+ * sub-paneles Energía/Accesorios/Cartas destacadas, chip n/60 + Editar, rejilla de
+ * huecos y pie Cancelar/Guardar.
+ *
+ * Lo funcional cableado: renombrar (lápiz), menú "…" (eliminar/copiar), guardar y
+ * cancelar (con "Salir sin guardar"). Todo lo aún no implementado (Modificar,
+ * sub-paneles, Editar, añadir/editar cartas, estrella) abre un `InfoDialog`
+ * "Próximamente".
+ */
 @Composable
 fun DeckEditorScreen(
     deckId: String,
@@ -61,163 +67,251 @@ fun DeckEditorScreen(
     LaunchedEffect(deckId) { viewModel.start(deckId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    BackHandler { onBack() }
-
-    var cat by remember { mutableStateOf(EditCat.TODO) }
-    var menuOpen by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf(false) }
-    var showFilters by remember { mutableStateOf(false) }
-    var detailUrl by remember { mutableStateOf<String?>(null) }
+    var menuOpen by remember { mutableStateOf(false) }
+    var exitPrompt by remember { mutableStateOf(false) }
+    var deletePrompt by remember { mutableStateOf(false) }
+    var infoMsg by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pickerOpen by remember { mutableStateOf(false) }
+
+    fun soon(area: String) { infoMsg = area to "Esta función aún no está disponible." }
+    fun attemptExit() { if (state.dirty) exitPrompt = true else onBack() }
+    BackHandler { if (pickerOpen) pickerOpen = false else attemptExit() }
 
     if (!state.exists && !state.loading) {
         LaunchedEffect(Unit) { onBack() }
         return
     }
 
-    Column(modifier = modifier.fillMaxSize().background(ScreenBg)) {
-        // Cabecera roja: caja + nombre + ⋮
+    // Selector de cartas (#8) a pantalla completa.
+    if (pickerOpen) {
+        DeckCardPicker(
+            total = state.total,
+            deckCards = state.deckCards,
+            collection = state.collection,
+            onAdd = viewModel::addCard,
+            onRemove = viewModel::removeCard,
+            onClearAll = viewModel::clearDeck,
+            onSoon = { area -> infoMsg = area to "Esta función aún no está disponible." },
+            onDone = { pickerOpen = false },
+        )
+        infoMsg?.let { (title, body) -> InfoDialog(title = title, body = body, onClose = { infoMsg = null }) }
+        return
+    }
+
+    val accent = typeColor(state.type)
+
+    Column(modifier = modifier.fillMaxSize().background(BarajasPalette.BgBottom)) {
+        // Cabecera tintada con el acento de la baraja.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(lerp(accent, Color.White, 0.18f), accent)))
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+        ) {
+            // Fila: nombre + lápiz · "…" · estrella.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.35f))
+                        .clickable { renaming = true }
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(state.name, color = BarajasPalette.Ink, fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                    Text("✎", color = BarajasPalette.Ink, fontSize = 15.sp)
+                }
+                Spacer(Modifier.size(10.dp))
+                HeaderIcon("⋮") { menuOpen = true }
+                Spacer(Modifier.size(8.dp))
+                HeaderIcon("☆") { soon("Marcar como favorita") }
+            }
+            Spacer(Modifier.height(14.dp))
+            // Caja 3D + "Modificar".
+            Row(verticalAlignment = Alignment.Bottom) {
+                DeckBox(type = state.type, modifier = Modifier.size(84.dp, 100.dp))
+                Spacer(Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(BarajasPalette.Surface)
+                        .clickable { soon("Modificar portada") }
+                        .padding(horizontal = 22.dp, vertical = 9.dp),
+                ) { Text("Modificar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            }
+        }
+
+        // Sub-paneles Energía / Accesorios / Cartas destacadas.
         Row(
-            modifier = Modifier.fillMaxWidth().background(TcgColors.Red).padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SubPanel("Energía", Modifier.weight(1f)) { soon("Energía") }
+            SubPanel("Accesorios", Modifier.weight(1f)) { soon("Accesorios") }
+            SubPanel("Cartas destacadas", Modifier.weight(1f)) { soon("Cartas destacadas") }
+        }
+
+        // Chip n/60 + Editar.
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DeckBox(type = state.type, modifier = Modifier.size(40.dp, 40.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(state.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp, maxLines = 1)
-                Text(
-                    "${state.total}/60 · " + if (state.valid) "✓ válida" else "⚠ ${state.reasons.firstOrNull() ?: "no válida"}",
-                    color = if (state.valid) Color(0xFFB8F0B8) else Color(0xFFFFD7D7),
-                    fontSize = 10.sp,
-                )
-            }
-            Box {
-                Text("⋮", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp,
-                    modifier = Modifier.clickable { menuOpen = true }.padding(horizontal = 8.dp))
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(text = { Text("Renombrar") }, onClick = { menuOpen = false; renaming = true })
-                    DropdownMenuItem(text = { Text("Borrar baraja") }, onClick = { menuOpen = false; viewModel.deleteDeck(onBack) })
-                }
-            }
-        }
-
-        // Pestañas de categoría con conteos.
-        Row(Modifier.fillMaxWidth().background(Color(0xFF0F1620))) {
-            EditCat.entries.forEach { c ->
-                val n = when (c) {
-                    EditCat.TODO -> state.total
-                    EditCat.POKEMON -> state.pokemonCount
-                    EditCat.TRAINER -> state.trainerCount
-                    EditCat.ENERGY -> state.energyCount
-                }
-                val sel = c == cat
-                Column(
-                    Modifier.weight(1f).clickable { cat = c }.padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(c.label, color = if (sel) TcgColors.Gold else Color(0xCCFFFFFF), fontWeight = FontWeight.Black, fontSize = 10.sp, textAlign = TextAlign.Center)
-                    Text("$n", color = if (sel) TcgColors.Gold else Color(0x99FFFFFF), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
-            }
-        }
-
-        // Rejilla del mazo (filtrada por categoría). Tocar = quitar 1.
-        val deckShown = state.deckCards.filter {
-            when (cat) {
-                EditCat.TODO -> true
-                EditCat.POKEMON -> it.supertype == Supertype.POKEMON
-                EditCat.TRAINER -> it.supertype == Supertype.TRAINER
-                EditCat.ENERGY -> it.supertype == Supertype.ENERGY
-            }
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(5),
-            contentPadding = PaddingValues(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-        ) {
-            items(deckShown.size, key = { deckShown[it].id }) { i ->
-                val c = deckShown[i]
-                DeckCardCell(
-                    name = c.name, imageEs = c.imageEs, badge = "${c.inDeck}",
-                    onClick = { viewModel.removeCard(c.id) },
-                    onLongClick = { detailUrl = c.imageLarge },
-                )
-            }
-        }
-
-        // Panel inferior: COLECCIÓN DE CARTAS + FILTROS/ORDENAR.
-        Column(modifier = Modifier.weight(1.25f).fillMaxWidth().background(CollectionBg)) {
+            Spacer(Modifier.weight(1f))
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(BarajasPalette.Surface)
+                    .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(50))
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("COLECCIÓN DE CARTAS", color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text("🗂", fontSize = 13.sp)
+                Spacer(Modifier.size(6.dp))
+                Text("${state.total}/60", color = BarajasPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PanelButton("≡ FILTROS", Modifier.weight(1f)) { showFilters = true }
-                PanelButton("⇅ ORDENAR", Modifier.weight(1f)) { showFilters = true }
+            Spacer(Modifier.size(10.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(BarajasPalette.Surface)
+                    .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(50))
+                    .clickable { pickerOpen = true }
+                    .padding(horizontal = 18.dp, vertical = 7.dp),
+            ) { Text("Editar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        }
+
+        // Rejilla del mazo (cartas actuales, solo lectura) + hueco "+".
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            contentPadding = PaddingValues(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            items(state.deckCards.size, key = { state.deckCards[it].id }) { i ->
+                CardSlot(imageEs = state.deckCards[i].imageEs) { pickerOpen = true }
             }
-            Spacer(Modifier.height(8.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
-                contentPadding = PaddingValues(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(state.collection.size, key = { state.collection[it].id }) { i ->
-                    val c = state.collection[i]
-                    DeckCardCell(
-                        name = c.name, imageEs = c.imageEs,
-                        badge = if (c.inDeck > 0) "${c.inDeck}" else null,
-                        dim = !c.canAdd && c.inDeck == 0,
-                        badgeColor = TcgColors.Red,
-                        onClick = { if (c.canAdd) viewModel.addCard(c.id) },
-                        onLongClick = { detailUrl = c.imageLarge },
-                    )
-                }
-            }
+            item(key = "add") { CardSlot(imageEs = null) { pickerOpen = true } }
+        }
+
+        // Pie: Cancelar / Guardar.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .navigationBarsPadding(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            DialogButton(
+                text = "Cancelar",
+                textColor = BarajasPalette.Muted,
+                borderColor = BarajasPalette.HairlineBorder,
+                modifier = Modifier.weight(1f),
+                onClick = { attemptExit() },
+            )
+            DialogButton(
+                text = "Guardar",
+                textColor = Color.White,
+                borderColor = Color.Transparent,
+                filled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onBack,
+            )
         }
     }
 
     if (renaming) {
-        var text by remember { mutableStateOf(state.name) }
-        AlertDialog(
-            onDismissRequest = { renaming = false },
-            confirmButton = { TextButton(onClick = { viewModel.rename(text); renaming = false }) { Text("Guardar") } },
-            dismissButton = { TextButton(onClick = { renaming = false }) { Text("Cancelar") } },
-            title = { Text("Renombrar baraja") },
-            text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true) },
+        RenameDeckDialog(
+            current = state.name,
+            onCancel = { renaming = false },
+            onConfirm = { newName -> viewModel.rename(newName); renaming = false },
         )
     }
-
-    if (showFilters) {
-        FilterSortSheet(
-            initialFilter = viewModel.currentFilter,
-            initialSort = viewModel.currentSort,
-            expansions = state.availableExpansions,
-            count = { viewModel.countMatching(it) },
-            onApply = { f, s -> viewModel.setFilter(f); viewModel.setSort(s); showFilters = false },
-            onDismiss = { showFilters = false },
+    if (exitPrompt) {
+        ExitWithoutSaveDialog(
+            onCancel = { exitPrompt = false },
+            onConfirm = { exitPrompt = false; viewModel.discardChanges(onBack) },
         )
     }
-
-    detailUrl?.let { url ->
-        CardDetailDialog(imageUrl = url, contentDescription = null, onDismiss = { detailUrl = null })
+    if (menuOpen) {
+        DeckOptionsMenu(
+            onDismiss = { menuOpen = false },
+            onEliminar = { menuOpen = false; deletePrompt = true },
+            onVerCartas = { menuOpen = false; soon("Ver todas las cartas de la baraja") },
+            onMostrarCodigo = { menuOpen = false; soon("Mostrar código") },
+            onCopiar = { menuOpen = false; viewModel.duplicateDeck(); infoMsg = "Copia creada" to "Se ha creado una copia de esta baraja." },
+        )
     }
+    if (deletePrompt) {
+        ConfirmDialog(
+            title = "Eliminar baraja",
+            body = "¿Quieres eliminar esta baraja?\nLas cartas permanecerán en tu colección.",
+            confirmText = "Vale",
+            confirmFilled = false,
+            confirmColor = BarajasPalette.DeleteRed,
+            onCancel = { deletePrompt = false },
+            onConfirm = { deletePrompt = false; viewModel.deleteDeck(onBack) },
+        )
+    }
+    infoMsg?.let { (title, body) -> InfoDialog(title = title, body = body, onClose = { infoMsg = null }) }
 }
 
 @Composable
-private fun PanelButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun HeaderIcon(glyph: String, onClick: () -> Unit) {
     Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(BarajasPalette.Surface)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Text(glyph, color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+}
+
+/** Sub-panel de la cabecera (Energía / Accesorios / Cartas destacadas). */
+@Composable
+private fun SubPanel(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF2E3A49))
+            .clip(RoundedCornerShape(14.dp))
+            .background(BarajasPalette.Surface)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(label, color = BarajasPalette.DeckName, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 1)
+        Spacer(Modifier.height(8.dp))
+        Text("＋", color = BarajasPalette.Muted, fontSize = 22.sp, fontWeight = FontWeight.Light)
+    }
+}
+
+/** Hueco de carta del mazo (miniatura o "+"). */
+@Composable
+private fun CardSlot(imageEs: String?, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.72f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(BarajasPalette.Hollow)
+            .border(1.dp, BarajasPalette.HollowBorder, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp)
+        if (imageEs != null) {
+            AsyncImage(
+                model = imageEs,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+            )
+        } else {
+            Text("＋", color = BarajasPalette.Muted, fontSize = 32.sp, fontWeight = FontWeight.Light)
+        }
     }
 }

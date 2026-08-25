@@ -55,6 +55,7 @@ data class EditorUiState(
     val deckCards: List<EditorCardUi> = emptyList(),     // cartas en el mazo (inDeck>0)
     val collection: List<EditorCardUi> = emptyList(),    // colección poseída, filtrada/ordenada
     val availableExpansions: List<String> = emptyList(), // códigos (= nombres) presentes en la colección
+    val dirty: Boolean = false,                          // hay cambios sin guardar respecto al estado inicial
 )
 
 /**
@@ -76,6 +77,9 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
 
     private var ownedCardsCache: List<Card> = emptyList()
 
+    /** Snapshot de la baraja al entrar al editor (para descartar cambios). */
+    private var original: Deck? = null
+
     val currentFilter: CardFilter get() = filter.value
     val currentSort: CardSort get() = sort.value
 
@@ -85,6 +89,7 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     fun start(id: String) {
         if (deckId.value == id) return
         deckId.value = id
+        original = null   // se captura en el primer build de esta baraja
         viewModelScope.launch {
             if (!::repo.isInitialized) repo = withContext(Dispatchers.Default) { CardRepository.load() }
             combine(profileRepo.profile, deckId, filter, sort) { profile, id2, f, s ->
@@ -101,6 +106,7 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun build(deck: Deck, owned: Map<String, Int>, f: CardFilter, s: CardSort): EditorUiState {
+        if (original == null) original = deck   // captura el estado inicial al abrir el editor
         val inDeck: Map<String, Int> = deck.entries.associate { it.cardId.raw to it.count }
         // Copias por NOMBRE en el mazo (sumando distintas versiones/expansiones),
         // para aplicar el límite de 4 por nombre — no por cardId. Ver DeckValidation.
@@ -145,6 +151,8 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
 
         val validity = DeckValidation.validate(deck, repo)
         val expansions = ownedCards.map { it.first.set.code }.distinct().sorted()
+        val orig = original
+        val dirty = orig != null && (deck.entries != orig.entries || deck.name != orig.name)
 
         return EditorUiState(
             loading = false,
@@ -161,6 +169,7 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
             deckCards = deckCards,
             collection = collection,
             availableExpansions = expansions,
+            dirty = dirty,
         )
     }
 
@@ -183,11 +192,35 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Quita todas las cartas del mazo (botón "Quitar todas" del selector). */
+    fun clearDeck() = mutate { entries -> entries.clear() }
+
     fun rename(newName: String) {
         val deckId = state.value.deckId
         viewModelScope.launch {
             val deck = profileRepo.currentDeck(deckId) ?: return@launch
             profileRepo.upsertDeck(deck.copy(name = newName.ifBlank { deck.name }))
+        }
+    }
+
+    /** Descarta los cambios de la sesión restaurando la baraja a su estado inicial. */
+    fun discardChanges(onDone: () -> Unit) {
+        val orig = original
+        if (orig == null) { onDone(); return }
+        viewModelScope.launch {
+            profileRepo.upsertDeck(orig)
+            onDone()
+        }
+    }
+
+    /** Crea una copia de la baraja actual (id nuevo, sufijo "(copia)"). */
+    fun duplicateDeck() {
+        val id = state.value.deckId
+        viewModelScope.launch {
+            val src = profileRepo.currentDeck(id) ?: return@launch
+            profileRepo.upsertDeck(
+                src.copy(id = "custom-" + System.currentTimeMillis(), name = src.name + " (copia)", isCustom = true),
+            )
         }
     }
 
