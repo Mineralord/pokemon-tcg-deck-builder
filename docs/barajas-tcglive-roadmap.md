@@ -64,6 +64,16 @@ videos de referencia. Se implementa **por partes**, un comportamiento por vez.
   (tocar añade si `canAdd`; badges de poseídas y copias en mazo; atenuadas si no se pueden
   añadir). Pie "Vale" cian. Cableado real a `addCard/removeCard/clearDeck`. [Video 3, 01:15+]
 
+- **Panel de filtros (#9)**: `DeckFilterSheet` (bottom sheet) abierto desde las lupas 🔍
+  del picker (que ahora se iluminan si hay filtro activo). Buscador por nombre + pastillas
+  toggle: *Otros* (Con habilidad, Pokémon ex, Básico, Fase 1, Fase 2 → `Characteristic`),
+  *Carta de Entrenador* (Objeto/Herramienta/Partidario/Estadio + "Marcar todo" →
+  `TrainerCategory`) y *Expansiones* (de la colección + "Marcar todo"). Pie **X** /
+  **Restablecer** / **Buscar** (cian). Trabaja sobre un borrador local y sólo aplica al pulsar
+  Buscar (`viewModel.setFilter`). Modelo puro extendido: `CardFilter.trainerKinds` + `nameQuery`,
+  reutilizando `applyFilterSort`. NOTA: "Objeto Fósil" y "ex Megaevolución" no están modelados
+  aún; se omiten hasta que existan en el modelo de cartas. [Video 3, 02:38–02:56]
+
 ### Política actual
 **Todo lo aún NO implementado abre un pop-up "Próximamente"** (`InfoDialog` / `soon(area)`):
 Modificar portada, sub-paneles (Energía/Accesorios/Cartas destacadas), Editar, añadir/editar

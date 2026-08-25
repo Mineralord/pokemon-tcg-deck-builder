@@ -73,10 +73,15 @@ fun DeckEditorScreen(
     var deletePrompt by remember { mutableStateOf(false) }
     var infoMsg by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pickerOpen by remember { mutableStateOf(false) }
+    var filtersOpen by remember { mutableStateOf(false) }
 
     fun soon(area: String) { infoMsg = area to "Esta función aún no está disponible." }
     fun attemptExit() { if (state.dirty) exitPrompt = true else onBack() }
-    BackHandler { if (pickerOpen) pickerOpen = false else attemptExit() }
+    BackHandler {
+        if (filtersOpen) filtersOpen = false
+        else if (pickerOpen) pickerOpen = false
+        else attemptExit()
+    }
 
     if (!state.exists && !state.loading) {
         LaunchedEffect(Unit) { onBack() }
@@ -93,8 +98,18 @@ fun DeckEditorScreen(
             onRemove = viewModel::removeCard,
             onClearAll = viewModel::clearDeck,
             onSoon = { area -> infoMsg = area to "Esta función aún no está disponible." },
+            onOpenFilters = { filtersOpen = true },
+            filtersActive = !viewModel.currentFilter.isEmpty,
             onDone = { pickerOpen = false },
         )
+        if (filtersOpen) {
+            DeckFilterSheet(
+                initial = viewModel.currentFilter,
+                expansions = state.availableExpansions,
+                onApply = { f -> viewModel.setFilter(f); filtersOpen = false },
+                onClose = { filtersOpen = false },
+            )
+        }
         infoMsg?.let { (title, body) -> InfoDialog(title = title, body = body, onClose = { infoMsg = null }) }
         return
     }

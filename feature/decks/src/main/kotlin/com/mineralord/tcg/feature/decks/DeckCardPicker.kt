@@ -55,6 +55,8 @@ internal fun DeckCardPicker(
     onRemove: (String) -> Unit,
     onClearAll: () -> Unit,
     onSoon: (String) -> Unit,
+    onOpenFilters: () -> Unit,
+    filtersActive: Boolean,
     onDone: () -> Unit,
 ) {
     var cols by remember { mutableStateOf(5) }
@@ -69,7 +71,7 @@ internal fun DeckCardPicker(
             ToolbarPill("− Quitar todas", BarajasPalette.DeleteRed) { onClearAll() }
             ToolbarPill("Autocreación", BarajasPalette.Muted) { onSoon("Autocreación") }
             Spacer(Modifier.weight(1f))
-            ToolbarIcon("🔍") { onSoon("Buscar / filtros") }
+            ToolbarIcon("🔍", active = filtersActive) { onOpenFilters() }
             ToolbarIcon("－") { onSoon("Alejar") }
             ToolbarIcon("＋") { onSoon("Acercar") }
         }
@@ -115,7 +117,7 @@ internal fun DeckCardPicker(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { cols = if (cols == 5) 3 else 5 }.padding(horizontal = 8.dp),
             )
-            ToolbarIcon("🔍") { onSoon("Buscar / filtros") }
+            ToolbarIcon("🔍", active = filtersActive) { onOpenFilters() }
         }
 
         // Rejilla de la colección (tocar = añadir 1 si se puede).
@@ -167,16 +169,16 @@ private fun ToolbarPill(text: String, color: Color, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ToolbarIcon(glyph: String, onClick: () -> Unit) {
+private fun ToolbarIcon(glyph: String, active: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(BarajasPalette.Surface)
-            .border(1.dp, BarajasPalette.HairlineBorder, CircleShape)
+            .background(if (active) BarajasPalette.NavIcon else BarajasPalette.Surface)
+            .border(1.dp, if (active) BarajasPalette.NavIcon else BarajasPalette.HairlineBorder, CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(glyph, color = BarajasPalette.Muted, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+    ) { Text(glyph, color = if (active) Color.White else BarajasPalette.Muted, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
 }
 
 /**
