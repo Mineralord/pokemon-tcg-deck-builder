@@ -6,9 +6,6 @@ import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.Stage
 import com.mineralord.tcg.engine.model.Supertype
 import com.mineralord.tcg.engine.model.PokemonMechanic
-import com.mineralord.tcg.engine.model.TrainerCard
-import com.mineralord.tcg.engine.model.TrainerCategory
-import com.mineralord.tcg.engine.model.TrainerKind
 
 /** Característica filtrable (subconjunto fiel del panel de TCG Live). */
 enum class Characteristic { HAS_ABILITY, POKEMON_EX, BASIC, STAGE_1, STAGE_2 }
@@ -26,23 +23,14 @@ data class CardFilter(
     val weaknesses: Set<EnergyType> = emptySet(),
     val expansions: Set<String> = emptySet(),           // códigos de set
     val characteristics: Set<Characteristic> = emptySet(),
-    val trainerKinds: Set<TrainerCategory> = emptySet(), // sub-tipos de Carta de Entrenador
-    val nameQuery: String = "",                          // buscador por nombre (es)
 ) {
     val isEmpty: Boolean
         get() = supertypes.isEmpty() && energyTypes.isEmpty() && weaknesses.isEmpty() &&
-            expansions.isEmpty() && characteristics.isEmpty() && trainerKinds.isEmpty() &&
-            nameQuery.isBlank()
+            expansions.isEmpty() && characteristics.isEmpty()
 
     fun matches(card: Card): Boolean {
         if (supertypes.isNotEmpty() && card.supertype !in supertypes) return false
         if (expansions.isNotEmpty() && card.set.code !in expansions) return false
-        if (nameQuery.isNotBlank() && !card.name.es.contains(nameQuery.trim(), ignoreCase = true)) return false
-
-        if (trainerKinds.isNotEmpty()) {
-            val trainer = card as? TrainerCard ?: return false
-            if (trainerCategory(trainer) !in trainerKinds) return false
-        }
 
         val poke = card as? PokemonCard
         if (energyTypes.isNotEmpty()) {
@@ -55,13 +43,6 @@ data class CardFilter(
             if (!characteristics.all { hasCharacteristic(card, it) }) return false
         }
         return true
-    }
-
-    private fun trainerCategory(card: TrainerCard): TrainerCategory = when (card.kind) {
-        is TrainerKind.Supporter -> TrainerCategory.SUPPORTER
-        is TrainerKind.Item -> TrainerCategory.ITEM
-        is TrainerKind.Stadium -> TrainerCategory.STADIUM
-        is TrainerKind.Tool -> TrainerCategory.TOOL
     }
 
     private fun hasCharacteristic(card: Card, c: Characteristic): Boolean {

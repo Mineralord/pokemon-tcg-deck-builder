@@ -64,15 +64,15 @@ videos de referencia. Se implementa **por partes**, un comportamiento por vez.
   (tocar añade si `canAdd`; badges de poseídas y copias en mazo; atenuadas si no se pueden
   añadir). Pie "Vale" cian. Cableado real a `addCard/removeCard/clearDeck`. [Video 3, 01:15+]
 
-- **Panel de filtros (#9)**: `DeckFilterSheet` (bottom sheet) abierto desde las lupas 🔍
-  del picker (que ahora se iluminan si hay filtro activo). Buscador por nombre + pastillas
-  toggle: *Otros* (Con habilidad, Pokémon ex, Básico, Fase 1, Fase 2 → `Characteristic`),
-  *Carta de Entrenador* (Objeto/Herramienta/Partidario/Estadio + "Marcar todo" →
-  `TrainerCategory`) y *Expansiones* (de la colección + "Marcar todo"). Pie **X** /
-  **Restablecer** / **Buscar** (cian). Trabaja sobre un borrador local y sólo aplica al pulsar
-  Buscar (`viewModel.setFilter`). Modelo puro extendido: `CardFilter.trainerKinds` + `nameQuery`,
-  reutilizando `applyFilterSort`. NOTA: "Objeto Fósil" y "ex Megaevolución" no están modelados
-  aún; se omiten hasta que existan en el modelo de cartas. [Video 3, 02:38–02:56]
+- **Panel de filtros + Expansiones (#9 y #10)**: se **reutiliza el `FilterSortSheet`
+  existente** (el panel fiel de TCG Live, arte propio), abierto desde las lupas 🔍 del picker
+  (que se iluminan si hay filtro activo). Cubre las dos pestañas **FILTROS/ORDENAR**:
+  Categoría (supertipo), Tipo de energía + Debilidad (emblemas), Características y **sección
+  EXPANSIÓN** (marcado por set) — es el "Selector de Expansiones" de #10. Botón rojo
+  "VER N CARTAS" (con conteo en vivo vía `viewModel.countMatching`) + ✗. Aplica con
+  `setFilter`/`setSort`. NO se crea panel nuevo: `DeckCardPicker` sólo aporta
+  `onOpenFilters`/`filtersActive` y `DeckEditorScreen` monta el sheet ya existente.
+  [Video 3, 02:38–02:56]
 
 ### Política actual
 **Todo lo aún NO implementado abre un pop-up "Próximamente"** (`InfoDialog` / `soon(area)`):
@@ -94,13 +94,10 @@ y del menú "…" (ver cartas / mostrar código).
    **Autocreación** / lupa / zoom % (+/−); chip `n/60` + toggle "5 columnas" + buscador;
    rejilla de colección con contador de poseídas y badge `−`/copias (`1/2`) si está en el
    mazo; botón **Vale** cian. [Video 3, 01:15–02:38]
-9. **Panel de filtros** (bottom sheet): buscador + pastillas toggle — *Otros* (Con/Sin
-   habilidad, Pokémon ex, ex Megaevolución), *Carta de Entrenador* (Objeto, Herramienta,
-   Objeto Fósil, Partidario, Estadio + "Marcar todo"), *Expansiones*; pie **Buscar** (cian)
-   / **X** / **Restablecer**. [Video 3, 02:38–02:56]
-10. **Selector de Expansiones**: dropdown "Serie mostrada actualmente" + logos de sets con
-    "Marcar todo" (usar nuestros sets/arte propio). [Video 3, 02:56]
 11. **Estadísticas / curva** del mazo (vista de nodos morada). [Video 3, 02:54–02:58]
+
+> #9 (panel de filtros) y #10 (selector de expansiones) → **hechos** reutilizando
+> `FilterSortSheet` (ver sección ✅ Hecho).
 
 ## Notas de diseño
 - **Botón "Vale": dos variantes** — rojo-outline (destructivo: borrar) vs cian-relleno

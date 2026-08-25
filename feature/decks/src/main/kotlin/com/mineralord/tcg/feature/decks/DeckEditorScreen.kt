@@ -103,11 +103,13 @@ fun DeckEditorScreen(
             onDone = { pickerOpen = false },
         )
         if (filtersOpen) {
-            DeckFilterSheet(
-                initial = viewModel.currentFilter,
+            FilterSortSheet(
+                initialFilter = viewModel.currentFilter,
+                initialSort = viewModel.currentSort,
                 expansions = state.availableExpansions,
-                onApply = { f -> viewModel.setFilter(f); filtersOpen = false },
-                onClose = { filtersOpen = false },
+                count = viewModel::countMatching,
+                onApply = { f, s -> viewModel.setFilter(f); viewModel.setSort(s); filtersOpen = false },
+                onDismiss = { filtersOpen = false },
             )
         }
         infoMsg?.let { (title, body) -> InfoDialog(title = title, body = body, onClose = { infoMsg = null }) }
