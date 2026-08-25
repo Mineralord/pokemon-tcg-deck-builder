@@ -54,6 +54,7 @@ internal fun DeckCardPicker(
     onAdd: (String) -> Unit,
     onRemove: (String) -> Unit,
     onClearAll: () -> Unit,
+    onAutoBuild: () -> Unit,
     onSoon: (String) -> Unit,
     onOpenFilters: () -> Unit,
     filtersActive: Boolean,
@@ -69,7 +70,7 @@ internal fun DeckCardPicker(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ToolbarPill("− Quitar todas", BarajasPalette.DeleteRed) { onClearAll() }
-            ToolbarPill("Autocreación", BarajasPalette.Muted) { onSoon("Autocreación") }
+            ToolbarPill("Autocreación", BarajasPalette.Muted) { onAutoBuild() }
             Spacer(Modifier.weight(1f))
             ToolbarIcon("🔍", active = filtersActive) { onOpenFilters() }
             ToolbarIcon("－") { onSoon("Alejar") }

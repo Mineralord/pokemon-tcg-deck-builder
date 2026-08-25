@@ -195,6 +195,43 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     /** Quita todas las cartas del mazo (botón "Quitar todas" del selector). */
     fun clearDeck() = mutate { entries -> entries.clear() }
 
+    /**
+     * Autocreación: rellena el mazo hasta [DeckValidation.DECK_SIZE] con energías
+     * básicas de los [types] elegidos (1 o 2), repartidas de forma equilibrada
+     * (round-robin). No toca las cartas ya presentes; sólo añade energía. Si el mazo
+     * ya está lleno o no hay energía básica de esos tipos en el catálogo, no hace nada.
+     * Devuelve por [onResult] cuántas energías añadió.
+     */
+    fun autoComplete(types: Set<EnergyType>, onResult: (Int) -> Unit) {
+        val id = state.value.deckId
+        viewModelScope.launch {
+            val deck = profileRepo.currentDeck(id) ?: run { onResult(0); return@launch }
+            val deficit = DeckValidation.DECK_SIZE - deck.totalCards
+            if (deficit <= 0 || types.isEmpty()) { onResult(0); return@launch }
+
+            // Una carta de energía básica por tipo elegido (la primera del catálogo).
+            val energyByType: Map<EnergyType, CardId> = types.mapNotNull { t ->
+                (repo.all.firstOrNull { it is BasicEnergy && it.type == t } as? BasicEnergy)?.let { t to it.id }
+            }.toMap()
+            if (energyByType.isEmpty()) { onResult(0); return@launch }
+
+            val order = types.filter { it in energyByType }
+            val entries = deck.entries.toMutableList()
+            var added = 0
+            while (added < deficit) {
+                val cid = energyByType.getValue(order[added % order.size])
+                val idx = entries.indexOfFirst { it.cardId == cid }
+                if (idx >= 0) entries[idx] = entries[idx].copy(count = entries[idx].count + 1)
+                else entries += DeckEntry(cid, 1)
+                added++
+            }
+            val type = dominantType(entries, repo)
+            val headliner = entries.firstOrNull { (repo[it.cardId] as? PokemonCard) != null }?.cardId ?: deck.headliner
+            profileRepo.upsertDeck(deck.copy(entries = entries, type = type, headliner = headliner))
+            onResult(added)
+        }
+    }
+
     fun rename(newName: String) {
         val deckId = state.value.deckId
         viewModelScope.launch {

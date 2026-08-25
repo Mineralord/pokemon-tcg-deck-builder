@@ -74,11 +74,13 @@ fun DeckEditorScreen(
     var infoMsg by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pickerOpen by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var autoBuildOpen by remember { mutableStateOf(false) }
 
     fun soon(area: String) { infoMsg = area to "Esta función aún no está disponible." }
     fun attemptExit() { if (state.dirty) exitPrompt = true else onBack() }
     BackHandler {
-        if (filtersOpen) filtersOpen = false
+        if (autoBuildOpen) autoBuildOpen = false
+        else if (filtersOpen) filtersOpen = false
         else if (pickerOpen) pickerOpen = false
         else attemptExit()
     }
@@ -97,6 +99,7 @@ fun DeckEditorScreen(
             onAdd = viewModel::addCard,
             onRemove = viewModel::removeCard,
             onClearAll = viewModel::clearDeck,
+            onAutoBuild = { autoBuildOpen = true },
             onSoon = { area -> infoMsg = area to "Esta función aún no está disponible." },
             onOpenFilters = { filtersOpen = true },
             filtersActive = !viewModel.currentFilter.isEmpty,
@@ -110,6 +113,19 @@ fun DeckEditorScreen(
                 count = viewModel::countMatching,
                 onApply = { f, s -> viewModel.setFilter(f); viewModel.setSort(s); filtersOpen = false },
                 onDismiss = { filtersOpen = false },
+            )
+        }
+        if (autoBuildOpen) {
+            AutoBuildDialog(
+                onConfirm = { types ->
+                    autoBuildOpen = false
+                    viewModel.autoComplete(types) { added ->
+                        infoMsg = "Autocreación" to
+                            if (added > 0) "Se añadieron $added energías básicas para completar la baraja."
+                            else "La baraja ya está completa (60 cartas)."
+                    }
+                },
+                onCancel = { autoBuildOpen = false },
             )
         }
         infoMsg?.let { (title, body) -> InfoDialog(title = title, body = body, onClose = { infoMsg = null }) }

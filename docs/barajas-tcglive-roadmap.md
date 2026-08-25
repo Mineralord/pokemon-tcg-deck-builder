@@ -74,6 +74,14 @@ videos de referencia. Se implementa **por partes**, un comportamiento por vez.
   `onOpenFilters`/`filtersActive` y `DeckEditorScreen` monta el sheet ya existente.
   [Video 3, 02:38–02:56]
 
+- **Autocreación (toolbar del selector)**: `AutoBuildDialog` — popup réplica de TCG Live
+  ("Autocreación" + divisor + "Selecciona hasta dos tipos."), rejilla 2-col de los 10 tipos
+  (emblema `TypeEmblem` + nombre en femenino concordando con "Energía"), selección de **hasta 2
+  tipos**, pie Cancelar / **Vale** (cian, deshabilitado sin selección). Al confirmar,
+  `DeckEditorViewModel.autoComplete(types)` **rellena el mazo hasta 60** con energías básicas de
+  esos tipos repartidas en round-robin (no toca las cartas existentes) y muestra un `InfoDialog`
+  con el nº añadido. Cableado real desde el pill "Autocreación" del `DeckCardPicker`.
+
 ### Política actual
 **Todo lo aún NO implementado abre un pop-up "Próximamente"** (`InfoDialog` / `soon(area)`):
 Modificar portada, sub-paneles (Energía/Accesorios/Cartas destacadas), Editar, añadir/editar
