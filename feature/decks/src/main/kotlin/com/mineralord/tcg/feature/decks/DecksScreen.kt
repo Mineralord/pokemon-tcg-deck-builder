@@ -15,13 +15,20 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.LaunchedEffect
+import com.mineralord.tcg.data.cards.PrebuiltDecks
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,156 +78,193 @@ private const val MAX_DECKS = 50
 fun DecksScreen(
     modifier: Modifier = Modifier,
     onHome: () -> Unit = {},
+    selectionMode: Boolean = false,
+    onSelect: (String) -> Unit = {},
     viewModel: DecksViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    var section by remember { mutableStateOf(DeckSection.MINE) }
     var editingDeckId by remember { mutableStateOf<String?>(null) }
-
-    // Si hay edición activa, el editor toma toda la pantalla.
-    editingDeckId?.let { id ->
-        DeckEditorScreen(deckId = id, onBack = { editingDeckId = null }, modifier = modifier)
-        return
-    }
-
+    var pickedId by remember { mutableStateOf<String?>(null) }
     var editMode by remember { mutableStateOf(false) }
-    var selectedId by remember { mutableStateOf<String?>(null) }
     var deletingId by remember { mutableStateOf<String?>(null) }
     var helpOpen by remember { mutableStateOf(false) }
     var guideOpen by remember { mutableStateOf(false) }
     var videoGuideOpen by remember { mutableStateOf(false) }
     var createMenuOpen by remember { mutableStateOf(false) }
     var infoMsg by remember { mutableStateOf<String?>(null) }
+    var expandedGroups by remember { mutableStateOf(setOf(PrebuiltDecks.ACADEMIA_2024)) }
+
     val gridState = rememberLazyGridState()
+    val thematicState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    // La barra inferior y los controles flotantes solo se muestran mientras se arrastra.
-    val dragging = gridState.isScrollInProgress
 
-    // Solo barajas del jugador en esta pantalla (las preconstruidas viven aparte).
-    val decks = state.decks.filter { !it.isPrebuilt }
+    val mineDecks = state.decks.filter { !it.isPrebuilt }
+    val thematicDecks = state.decks.filter { it.isPrebuilt }
+    val dragging = if (section == DeckSection.MINE) gridState.isScrollInProgress else thematicState.isScrollInProgress
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
-    ) {
-        Header(
-            editMode = editMode,
-            onToggleEdit = { editMode = !editMode },
-            onHelp = { helpOpen = true },
-        )
-        RainbowDivider()
+    // Baraja en edición/examen; se conserva durante la animación de salida del editor.
+    var lastEditId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(editingDeckId) { if (editingDeckId != null) lastEditId = editingDeckId }
+    val editId = editingDeckId ?: lastEditId
+    val editingDeck = state.decks.firstOrNull { it.id == editId }
 
-        Box(Modifier.fillMaxSize()) {
-            if (state.loading) {
-                CircularProgressIndicator(
-                    color = BarajasPalette.NavIcon,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            } else {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Fixed(2),
-                    // Deja hueco arriba para el chip flotante y abajo para la barra de navegación.
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 56.dp, bottom = 96.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    item(key = "create") {
-                        CreateDeckTile { createMenuOpen = true }
-                    }
-                    items(decks.size, key = { decks[it].id }) { i ->
-                        DeckTile(
-                            deck = decks[i],
-                            number = i + 1,
-                            editMode = editMode,
-                            onDelete = { deletingId = decks[i].id },
-                            onClick = { if (!editMode) selectedId = decks[i].id },
+    Box(modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
+        ) {
+            Header(
+                section = section,
+                editMode = editMode,
+                selectionMode = selectionMode,
+                onToggleSection = {
+                    section = if (section == DeckSection.MINE) DeckSection.THEMATIC else DeckSection.MINE
+                    editMode = false
+                },
+                onToggleEdit = { editMode = !editMode },
+                onHelp = { helpOpen = true },
+            )
+            RainbowDivider()
+
+            Box(Modifier.fillMaxSize()) {
+                if (state.loading) {
+                    CircularProgressIndicator(color = BarajasPalette.NavIcon, modifier = Modifier.align(Alignment.Center))
+                } else when (section) {
+                    DeckSection.MINE -> {
+                        LazyVerticalGrid(
+                            state = gridState,
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 56.dp, bottom = 96.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            if (!selectionMode) item(key = "create") { CreateDeckTile { createMenuOpen = true } }
+                            items(mineDecks.size, key = { mineDecks[it].id }) { i ->
+                                val d = mineDecks[i]
+                                DeckTile(
+                                    deck = d,
+                                    number = i + 1,
+                                    editMode = editMode,
+                                    selected = selectionMode && pickedId == d.id,
+                                    onDelete = { deletingId = d.id },
+                                    onClick = {
+                                        when {
+                                            selectionMode -> if (d.playable) pickedId = d.id else infoMsg = "Esta baraja no está lista para jugar (debe tener 60 cartas válidas)."
+                                            !editMode -> editingDeckId = d.id
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        DeckCountChip(
+                            count = mineDecks.size, max = MAX_DECKS,
+                            modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 10.dp),
                         )
                     }
+                    DeckSection.THEMATIC -> ThematicContent(
+                        decks = thematicDecks,
+                        listState = thematicState,
+                        expandedGroups = expandedGroups,
+                        selectedId = if (selectionMode) pickedId else null,
+                        onToggleGroup = { g -> expandedGroups = if (g in expandedGroups) expandedGroups - g else expandedGroups + g },
+                        onOpen = { d ->
+                            when {
+                                selectionMode -> if (d.playable) pickedId = d.id else infoMsg = "Esta baraja no está lista para jugar (te faltan cartas)."
+                                else -> editingDeckId = d.id
+                            }
+                        },
+                    )
+                }
+
+                // Controles flotantes de scroll (solo Mis barajas, al arrastrar).
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = dragging && section == DeckSection.MINE,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                ) {
+                    ScrollChevrons(
+                        onUp = { scope.launch { gridState.animateScrollToItem(0) } },
+                        onDown = { scope.launch { gridState.animateScrollToItem(mineDecks.size) } },
+                    )
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = dragging,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp),
+                ) { HomeFab(onClick = onHome) }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = dragging,
+                    enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) { BottomNavBar(onHome = onHome) }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = editMode && section == DeckSection.MINE,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+                ) { SaveButton(onClick = { editMode = false }) }
+
+                // Botón "SELECCIONAR" (cian) del flujo de selección para combate.
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = selectionMode && pickedId != null,
+                    enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .padding(horizontal = 40.dp, vertical = 20.dp).navigationBarsPadding(),
+                ) {
+                    DialogButton(
+                        text = "SELECCIONAR",
+                        textColor = Color.White,
+                        borderColor = Color.Transparent,
+                        filled = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { pickedId?.let { viewModel.setActive(it); onSelect(it) } },
+                    )
                 }
             }
+        }
 
-            // Chip "n/25" fijo sobre la lista.
-            DeckCountChip(
-                count = decks.size,
-                max = MAX_DECKS,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 16.dp, top = 10.dp),
-            )
-
-            // Controles flotantes (solo al arrastrar): chevrons a la derecha y ↩ a Inicio.
-            androidx.compose.animation.AnimatedVisibility(
-                visible = dragging,
-                enter = androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 8.dp),
-            ) {
-                ScrollChevrons(
-                    onUp = { scope.launch { gridState.animateScrollToItem(0) } },
-                    onDown = { scope.launch { gridState.animateScrollToItem(decks.size) } },
+        // Editor / examen con transición premium (entra deslizando suave desde la derecha).
+        androidx.compose.animation.AnimatedVisibility(
+            visible = editingDeckId != null,
+            enter = androidx.compose.animation.slideInHorizontally(
+                animationSpec = androidx.compose.animation.core.tween(360),
+            ) { it } + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutHorizontally(
+                animationSpec = androidx.compose.animation.core.tween(300),
+            ) { it } + androidx.compose.animation.fadeOut(),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            editId?.let { id ->
+                DeckEditorScreen(
+                    deckId = id,
+                    readOnly = editingDeck?.isPrebuilt == true,
+                    onDuplicate = {
+                        viewModel.duplicateDeck(id)
+                        editingDeckId = null
+                        section = DeckSection.MINE
+                        infoMsg = "Se copió la baraja temática a Mis barajas."
+                    },
+                    onBack = { editingDeckId = null },
+                    modifier = Modifier.fillMaxSize(),
                 )
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = dragging,
-                enter = androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 80.dp),
-            ) {
-                HomeFab(onClick = onHome)
-            }
-
-            // Barra de navegación inferior (auto-oculta salvo al arrastrar).
-            androidx.compose.animation.AnimatedVisibility(
-                visible = dragging,
-                enter = androidx.compose.animation.slideInVertically { it } + androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.slideOutVertically { it } + androidx.compose.animation.fadeOut(),
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) {
-                BottomNavBar(onHome = onHome)
-            }
-
-            // Botón "Guardar" del modo edición (sale del modo al pulsarlo).
-            androidx.compose.animation.AnimatedVisibility(
-                visible = editMode,
-                enter = androidx.compose.animation.fadeIn(),
-                exit = androidx.compose.animation.fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp),
-            ) {
-                SaveButton(onClick = { editMode = false })
             }
         }
     }
 
-    // B) Diálogo de confirmación de borrado.
+    // Diálogos.
     deletingId?.let { id ->
-        DeleteDeckDialog(
-            onCancel = { deletingId = null },
-            onConfirm = { viewModel.deleteDeck(id); deletingId = null },
-        )
+        DeleteDeckDialog(onCancel = { deletingId = null }, onConfirm = { viewModel.deleteDeck(id); deletingId = null })
     }
-
-    val selected = state.decks.firstOrNull { it.id == selectedId }
-    if (selected != null) {
-        DeckDetailSheet(
-            deck = selected,
-            onDismiss = { selectedId = null },
-            onSetActive = { viewModel.setActive(selected.id) },
-            onToggleFavorite = { viewModel.toggleFavorite(selected.id) },
-            onEdit = { selectedId = null; editingDeckId = selected.id },
-            onDuplicate = { viewModel.duplicateDeck(selected.id); selectedId = null },
-            onDelete = { viewModel.deleteDeck(selected.id); selectedId = null },
-        )
-    }
-
-    // 1) Menú de ayuda del botón "?".
     if (helpOpen) {
         HelpMenu(
             onDismiss = { helpOpen = false },
@@ -230,8 +274,6 @@ fun DecksScreen(
     }
     if (guideOpen) GuideCarousel(onClose = { guideOpen = false })
     if (videoGuideOpen) VideoGuide(onClose = { videoGuideOpen = false })
-
-    // 2) Menú "Crear" (desde la celda +).
     if (createMenuOpen) {
         CreateMenu(
             onDismiss = { createMenuOpen = false },
@@ -244,73 +286,135 @@ fun DecksScreen(
     infoMsg?.let { PlaceholderDialog(title = it, onClose = { infoMsg = null }) }
 }
 
+/** Las dos "pantallas" de barajas: propias (banda roja) y temáticas (banda verde). */
+private enum class DeckSection { MINE, THEMATIC }
+
+private val HeaderRed = Color(0xFFE0574F)
+private val HeaderGreen = Color(0xFF56AF64)
+private val SelectCyan = Color(0xFF3FC8E4)
+
 /**
- * Cabecera. En reposo: título a la izquierda + píldora "Editar" + botón "?". En
- * modo edición: título "Edición en curso" centrado y sin botones (se sale con
- * "Guardar").
+ * Cabecera con banda de color (roja en Mis barajas, verde en Barajas temáticas). El
+ * TÍTULO actúa de conmutador entre ambas secciones. En Mis barajas incluye "Editar";
+ * en modo edición muestra "Edición en curso" centrado.
  */
 @Composable
-private fun Header(editMode: Boolean, onToggleEdit: () -> Unit, onHelp: () -> Unit) {
-    if (editMode) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(top = 18.dp, bottom = 12.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                "Edición en curso",
-                color = BarajasPalette.Ink,
-                fontWeight = FontWeight.Black,
-                fontSize = 20.sp,
-            )
+private fun Header(
+    section: DeckSection,
+    editMode: Boolean,
+    selectionMode: Boolean = false,
+    onToggleSection: () -> Unit,
+    onToggleEdit: () -> Unit,
+    onHelp: () -> Unit,
+) {
+    val band = if (section == DeckSection.MINE) HeaderRed else HeaderGreen
+    Column(Modifier.fillMaxWidth().background(band).statusBarsPadding()) {
+        if (editMode && section == DeckSection.MINE) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Edición en curso", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            }
+            return@Column
         }
-        return
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Título = conmutador de sección.
+            Column(modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(onClick = onToggleSection).padding(vertical = 2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (section == DeckSection.MINE) "Mis barajas" else "Barajas temáticas",
+                        color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp, maxLines = 1,
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text("⇄", color = Color.White.copy(alpha = 0.9f), fontWeight = FontWeight.Black, fontSize = 17.sp)
+                }
+                Text(
+                    when {
+                        selectionMode -> "Elige tu baraja y pulsa SELECCIONAR"
+                        section == DeckSection.MINE -> "Ver barajas temáticas"
+                        else -> "Ver mis barajas"
+                    },
+                    color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                )
+            }
+            if (section == DeckSection.MINE && !selectionMode) {
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Surface)
+                        .clickable(onClick = onToggleEdit).padding(horizontal = 20.dp, vertical = 9.dp),
+                ) { Text(if (editMode) "Listo" else "Editar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                Spacer(Modifier.size(10.dp))
+            }
+            Box(
+                modifier = Modifier.size(38.dp).clip(CircleShape).background(BarajasPalette.Surface).clickable(onClick = onHelp),
+                contentAlignment = Alignment.Center,
+            ) { Text("?", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        }
     }
+}
+
+/**
+ * Contenido de "Barajas temáticas": grupos colapsables por serie/expansión (hoy,
+ * Academia de Combate 2024). Cada baraja se puede examinar aunque no se posean sus
+ * cartas; al tocarla se abre el examen (reverso para las cartas que faltan).
+ */
+@Composable
+private fun ThematicContent(
+    decks: List<DeckUi>,
+    listState: LazyListState,
+    expandedGroups: Set<String>,
+    selectedId: String?,
+    onToggleGroup: (String) -> Unit,
+    onOpen: (DeckUi) -> Unit,
+) {
+    val groups = remember(decks) { decks.groupBy { it.folder ?: "Otras" }.toList().sortedBy { it.first } }
+    LazyColumn(
+        state = listState,
+        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        groups.forEach { (folder, list) ->
+            val expanded = folder in expandedGroups
+            item(key = "hdr-$folder") {
+                GroupHeader(title = folder, count = list.size, expanded = expanded, onClick = { onToggleGroup(folder) })
+            }
+            if (expanded) {
+                val rows = list.chunked(2)
+                itemsIndexed(rows, key = { ri, _ -> "$folder-row-$ri" }) { ri, row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = if (ri == 0) 12.dp else 0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        row.forEachIndexed { ci, d ->
+                            Box(Modifier.weight(1f)) {
+                                DeckTile(deck = d, number = ri * 2 + ci + 1, selected = selectedId == d.id, onClick = { onOpen(d) })
+                            }
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Cabecera de grupo colapsable (nombre de serie/expansión + conteo + chevron). */
+@Composable
+private fun GroupHeader(title: String, count: Int, expanded: Boolean, onClick: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(BarajasPalette.Surface)
+            .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            "Mis barajas",
-            color = BarajasPalette.Ink,
-            fontWeight = FontWeight.Black,
-            fontSize = 26.sp,
-            modifier = Modifier.weight(1f),
-        )
-        // Píldora "Editar".
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(BarajasPalette.Surface)
-                .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(50))
-                .clickable(onClick = onToggleEdit)
-                .padding(horizontal = 22.dp, vertical = 9.dp),
-        ) {
-            Text(
-                if (editMode) "Listo" else "Editar",
-                color = BarajasPalette.Muted,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-            )
-        }
-        Spacer(Modifier.size(10.dp))
-        // Botón de ayuda "?".
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(BarajasPalette.Surface)
-                .border(1.dp, BarajasPalette.HairlineBorder, CircleShape)
-                .clickable(onClick = onHelp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("?", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
+        Text(title, color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text("$count", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Spacer(Modifier.size(8.dp))
+        Text(if (expanded) "▾" else "▸", color = BarajasPalette.Muted, fontWeight = FontWeight.Black, fontSize = 16.sp)
     }
 }
 
@@ -380,6 +484,7 @@ private fun DeckTile(
     deck: DeckUi,
     number: Int,
     editMode: Boolean = false,
+    selected: Boolean = false,
     onDelete: () -> Unit = {},
     onClick: () -> Unit,
 ) {
@@ -389,6 +494,7 @@ private fun DeckTile(
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(BarajasPalette.Surface)
+            .then(if (selected) Modifier.border(3.dp, SelectCyan, RoundedCornerShape(18.dp)) else Modifier)
             .clickable(onClick = onClick)
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

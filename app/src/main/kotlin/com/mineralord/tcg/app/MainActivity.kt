@@ -42,7 +42,7 @@ import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 import kotlinx.coroutines.launch
 
-private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, MATCHMAKING, GAME, ONLINE, PROFILE }
+private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,6 +92,8 @@ private fun AppShell() {
     fun back() { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
     // Selector de dificultad PvE: se muestra al pulsar JUGAR y, al elegir, pasa a matchmaking.
     var pickingDifficulty by remember { mutableStateOf(false) }
+    // Continuación tras elegir baraja en la pantalla de selección (PvE o PvP).
+    var afterDeckSelect by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     // Saldos económicos (Fase 2, Cap. 6). Comparten el DataStore de proceso con el resto de pantallas.
     val ctx = LocalContext.current
@@ -119,8 +121,8 @@ private fun AppShell() {
             onTienda = { navigate(Screen.STORE) },
             onBarajas = { navigate(Screen.DECKS) },
             onPerfil = { navigate(Screen.PROFILE) },
-            onJugar = { pickingDifficulty = true },
-            onJugarOnline = { navigate(Screen.ONLINE) },
+            onJugar = { afterDeckSelect = { pickingDifficulty = true }; navigate(Screen.DECK_SELECT) },
+            onJugarOnline = { afterDeckSelect = { navigate(Screen.ONLINE) }; navigate(Screen.DECK_SELECT) },
         )
         Screen.MATCHMAKING -> MatchmakingScreen(
             deckName = "Mega-Charizard X ex",
@@ -182,6 +184,17 @@ private fun AppShell() {
         Screen.DECKS -> DecksScreen(
             modifier = Modifier.fillMaxSize(),
             onHome = { back() },
+        )
+        Screen.DECK_SELECT -> DecksScreen(
+            modifier = Modifier.fillMaxSize(),
+            onHome = { afterDeckSelect = null; back() },
+            selectionMode = true,
+            onSelect = {
+                back()                       // cierra la selección
+                val next = afterDeckSelect
+                afterDeckSelect = null
+                next?.invoke()
+            },
         )
         Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { back() }) {
             val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo

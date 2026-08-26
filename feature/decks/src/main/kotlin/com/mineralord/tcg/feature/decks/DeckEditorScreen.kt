@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.BarajasPalette
 import com.mineralord.tcg.core.designsystem.DeckBox
@@ -62,6 +64,8 @@ fun DeckEditorScreen(
     deckId: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
+    onDuplicate: () -> Unit = {},
     viewModel: DeckEditorViewModel = viewModel(),
 ) {
     LaunchedEffect(deckId) { viewModel.start(deckId) }
@@ -150,17 +154,19 @@ fun DeckEditorScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(50))
                         .background(Color.White.copy(alpha = 0.35f))
-                        .clickable { renaming = true }
+                        .then(if (readOnly) Modifier else Modifier.clickable { renaming = true })
                         .padding(horizontal = 18.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(state.name, color = BarajasPalette.Ink, fontWeight = FontWeight.Bold,
                         fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
-                    Text("✎", color = BarajasPalette.Ink, fontSize = 15.sp)
+                    if (!readOnly) Text("✎", color = BarajasPalette.Ink, fontSize = 15.sp)
                 }
                 Spacer(Modifier.size(10.dp))
-                HeaderIcon("⋮") { menuOpen = true }
-                Spacer(Modifier.size(8.dp))
+                if (!readOnly) {
+                    HeaderIcon("⋮") { menuOpen = true }
+                    Spacer(Modifier.size(8.dp))
+                }
                 HeaderIcon("☆") { soon("Marcar como favorita") }
             }
             Spacer(Modifier.height(14.dp))
@@ -206,15 +212,17 @@ fun DeckEditorScreen(
                 Spacer(Modifier.size(6.dp))
                 Text("${state.total}/60", color = BarajasPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
-            Spacer(Modifier.size(10.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(BarajasPalette.Surface)
-                    .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(50))
-                    .clickable { pickerOpen = true }
-                    .padding(horizontal = 18.dp, vertical = 7.dp),
-            ) { Text("Editar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            if (!readOnly) {
+                Spacer(Modifier.size(10.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(BarajasPalette.Surface)
+                        .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(50))
+                        .clickable { pickerOpen = true }
+                        .padding(horizontal = 18.dp, vertical = 7.dp),
+                ) { Text("Editar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            }
         }
 
         // Rejilla del mazo (cartas actuales, solo lectura) + hueco "+".
@@ -226,12 +234,19 @@ fun DeckEditorScreen(
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
             items(state.deckCards.size, key = { state.deckCards[it].id }) { i ->
-                CardSlot(imageEs = state.deckCards[i].imageEs) { pickerOpen = true }
+                val c = state.deckCards[i]
+                // En examen (readOnly), las cartas no poseídas se muestran con el reverso.
+                CardSlot(
+                    imageEs = c.imageEs,
+                    showBack = readOnly && c.owned <= 0,
+                    count = c.inDeck,
+                    onClick = { if (!readOnly) pickerOpen = true },
+                )
             }
-            item(key = "add") { CardSlot(imageEs = null) { pickerOpen = true } }
+            if (!readOnly) item(key = "add") { CardSlot(imageEs = null) { pickerOpen = true } }
         }
 
-        // Pie: Cancelar / Guardar.
+        // Pie: examen → "Duplicar"; edición → Cancelar / Guardar.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -239,21 +254,39 @@ fun DeckEditorScreen(
                 .navigationBarsPadding(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            DialogButton(
-                text = "Cancelar",
-                textColor = BarajasPalette.Muted,
-                borderColor = BarajasPalette.HairlineBorder,
-                modifier = Modifier.weight(1f),
-                onClick = { attemptExit() },
-            )
-            DialogButton(
-                text = "Guardar",
-                textColor = Color.White,
-                borderColor = Color.Transparent,
-                filled = true,
-                modifier = Modifier.weight(1f),
-                onClick = onBack,
-            )
+            if (readOnly) {
+                DialogButton(
+                    text = "Volver",
+                    textColor = BarajasPalette.Muted,
+                    borderColor = BarajasPalette.HairlineBorder,
+                    modifier = Modifier.weight(1f),
+                    onClick = onBack,
+                )
+                DialogButton(
+                    text = "Duplicar en Mis barajas",
+                    textColor = Color.White,
+                    borderColor = Color.Transparent,
+                    filled = true,
+                    modifier = Modifier.weight(1.4f),
+                    onClick = onDuplicate,
+                )
+            } else {
+                DialogButton(
+                    text = "Cancelar",
+                    textColor = BarajasPalette.Muted,
+                    borderColor = BarajasPalette.HairlineBorder,
+                    modifier = Modifier.weight(1f),
+                    onClick = { attemptExit() },
+                )
+                DialogButton(
+                    text = "Guardar",
+                    textColor = Color.White,
+                    borderColor = Color.Transparent,
+                    filled = true,
+                    modifier = Modifier.weight(1f),
+                    onClick = onBack,
+                )
+            }
         }
     }
 
@@ -323,9 +356,14 @@ private fun SubPanel(label: String, modifier: Modifier = Modifier, onClick: () -
     }
 }
 
-/** Hueco de carta del mazo (miniatura o "+"). */
+/** Hueco de carta del mazo (miniatura, reverso si no se posee, o "+"). */
 @Composable
-private fun CardSlot(imageEs: String?, onClick: () -> Unit) {
+private fun CardSlot(
+    imageEs: String?,
+    showBack: Boolean = false,
+    count: Int = 0,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -336,7 +374,14 @@ private fun CardSlot(imageEs: String?, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        if (imageEs != null) {
+        if (showBack) {
+            Image(
+                painter = painterResource(com.mineralord.tcg.feature.decks.R.drawable.card_back_default),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+            )
+        } else if (imageEs != null) {
             AsyncImage(
                 model = imageEs,
                 contentDescription = null,
@@ -345,6 +390,16 @@ private fun CardSlot(imageEs: String?, onClick: () -> Unit) {
             )
         } else {
             Text("＋", color = BarajasPalette.Muted, fontSize = 32.sp, fontWeight = FontWeight.Light)
+        }
+        if (count > 1) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(3.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(BarajasPalette.NavIcon)
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
+            ) { Text("×$count", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black) }
         }
     }
 }
