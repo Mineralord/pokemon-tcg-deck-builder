@@ -3,6 +3,7 @@ package com.mineralord.tcg.feature.decks
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mineralord.tcg.data.cards.AutoDeckBuilder
 import com.mineralord.tcg.data.cards.CardFilter
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.CardSort
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -196,39 +198,25 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     fun clearDeck() = mutate { entries -> entries.clear() }
 
     /**
-     * Autocreación: rellena el mazo hasta [DeckValidation.DECK_SIZE] con energías
-     * básicas de los [types] elegidos (1 o 2), repartidas de forma equilibrada
-     * (round-robin). No toca las cartas ya presentes; sólo añade energía. Si el mazo
-     * ya está lleno o no hay energía básica de esos tipos en el catálogo, no hace nada.
-     * Devuelve por [onResult] cuántas energías añadió.
+     * Autocreación INTELIGENTE: construye un mazo legal de 60 cartas con [AutoDeckBuilder]
+     * a partir de la colección poseída y los [types] de foco (1-2). Respeta el rulebook
+     * (60 cartas, 4 por nombre, líneas de evolución, ≥1 Básico) y los principios competitivos
+     * (insignia + acompañantes, motor de Entrenadores, energía baja). **Reemplaza** el mazo
+     * actual. Devuelve por [onResult] el total de cartas del mazo generado (o 0 si falla).
      */
     fun autoComplete(types: Set<EnergyType>, onResult: (Int) -> Unit) {
         val id = state.value.deckId
         viewModelScope.launch {
             val deck = profileRepo.currentDeck(id) ?: run { onResult(0); return@launch }
-            val deficit = DeckValidation.DECK_SIZE - deck.totalCards
-            if (deficit <= 0 || types.isEmpty()) { onResult(0); return@launch }
-
-            // Una carta de energía básica por tipo elegido (la primera del catálogo).
-            val energyByType: Map<EnergyType, CardId> = types.mapNotNull { t ->
-                (repo.all.firstOrNull { it is BasicEnergy && it.type == t } as? BasicEnergy)?.let { t to it.id }
-            }.toMap()
-            if (energyByType.isEmpty()) { onResult(0); return@launch }
-
-            val order = types.filter { it in energyByType }
-            val entries = deck.entries.toMutableList()
-            var added = 0
-            while (added < deficit) {
-                val cid = energyByType.getValue(order[added % order.size])
-                val idx = entries.indexOfFirst { it.cardId == cid }
-                if (idx >= 0) entries[idx] = entries[idx].copy(count = entries[idx].count + 1)
-                else entries += DeckEntry(cid, 1)
-                added++
+            val profile = profileRepo.profile.first()
+            val entries = withContext(Dispatchers.Default) {
+                AutoDeckBuilder.build(owned = profile.owned, all = repo.all, focus = types)
             }
+            if (entries.isEmpty()) { onResult(0); return@launch }
             val type = dominantType(entries, repo)
             val headliner = entries.firstOrNull { (repo[it.cardId] as? PokemonCard) != null }?.cardId ?: deck.headliner
             profileRepo.upsertDeck(deck.copy(entries = entries, type = type, headliner = headliner))
-            onResult(added)
+            onResult(entries.sumOf { it.count })
         }
     }
 

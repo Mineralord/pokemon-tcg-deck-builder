@@ -119,10 +119,10 @@ fun DeckEditorScreen(
             AutoBuildDialog(
                 onConfirm = { types ->
                     autoBuildOpen = false
-                    viewModel.autoComplete(types) { added ->
+                    viewModel.autoComplete(types) { total ->
                         infoMsg = "Autocreación" to
-                            if (added > 0) "Se añadieron $added energías básicas para completar la baraja."
-                            else "La baraja ya está completa (60 cartas)."
+                            if (total > 0) "Se generó una baraja de $total cartas siguiendo una estrategia de construcción."
+                            else "No hay suficientes cartas en tu colección para autocrear con esos tipos."
                     }
                 },
                 onCancel = { autoBuildOpen = false },
