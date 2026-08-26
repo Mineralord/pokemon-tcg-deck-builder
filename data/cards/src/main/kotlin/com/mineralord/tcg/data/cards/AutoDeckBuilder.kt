@@ -6,9 +6,7 @@ import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.Damage
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.PokemonCard
-import com.mineralord.tcg.engine.model.PokemonMechanic
 import com.mineralord.tcg.engine.model.Stage
-import com.mineralord.tcg.engine.model.Supertype
 import com.mineralord.tcg.engine.model.TrainerCard
 import com.mineralord.tcg.engine.model.TrainerKind
 import kotlin.random.Random
@@ -16,24 +14,27 @@ import kotlin.random.Random
 /**
  * Autocreación INTELIGENTE de mazos. Función pura (testeable) que, dado lo que el jugador
  * posee y 1-2 tipos de foco, construye un mazo legal de 60 cartas siguiendo el rulebook
- * (`docs/canon/rulebook.txt`) y los principios competitivos (`docs/canon/construccion-de-mazos.md`):
+ * (`docs/canon/rulebook.txt`) y los principios competitivos (`docs/canon/construccion-de-mazos.md`).
  *
- *  - 60 cartas exactas, máx. 4 por nombre (salvo Energía Básica), ≥1 Básico.
- *  - 1-2 Pokémon insignia (atacantes) + acompañantes de apoyo; líneas de evolución completas
- *    (4-3-2 / 4-3 / 3-2 / 2-2) limitadas por lo poseído.
- *  - Motor de Entrenadores priorizando robo/búsqueda/cambio (Regla de 4).
- *  - Energía básica del foco repartida por la distribución de tipos de los atacantes.
- *  - VARIEDAD: rota entre perfiles de ratio y varía la insignia con [rng].
+ * Reglas de lógica de construcción (permanentes, válidas para cartas futuras):
+ *  1. **60 exactas, máx. 4 por nombre** (salvo Energía Básica), **≥1 Básico**.
+ *  2. **Sólo cartas poseídas**: nunca se incluyen más copias (incluida ENERGÍA) de las que el
+ *     jugador tiene en su colección. La energía básica no tiene límite de 4, pero SÍ está
+ *     limitada por lo poseído.
+ *  3. **Afinidad de tipo de los Entrenadores**: un Entrenador cuyo texto sólo beneficia a un
+ *     tipo (p.ej. Melo→Fuego, Generador Eléctrico→Rayo) se EXCLUYE si ese tipo no está en el
+ *     foco. La afinidad se DERIVA del texto de la carta (símbolos {R}/{L}… o "Fire Energy",
+ *     "Lightning Pokémon"…), así funciona automáticamente al añadir cartas nuevas.
+ *  4. **Incoloro sólo de relleno**: si el jugador elige tipos elementales, el mazo se llena con
+ *     Pokémon de esos tipos; los Pokémon Incoloros sólo entran si NO hay suficientes del foco.
+ *     Si el jugador elige COLORLESS como foco, los Incoloros son de primera clase.
+ *  5. **1-2 insignia + acompañantes**, líneas de evolución por ratio (4-3-2/4-3/3-2/2-2),
+ *     motor de Entrenadores (robo/búsqueda/cambio, Regla de 4), energía baja del foco.
+ *  6. **VARIEDAD**: rota entre perfiles de ratio y varía la insignia con [rng].
  */
 object AutoDeckBuilder {
 
-    /** Perfil de ratios (rangos); el total siempre cuadra a 60. */
-    data class Profile(
-        val name: String,
-        val pokemon: IntRange,
-        val trainer: IntRange,
-        val energy: IntRange,
-    )
+    data class Profile(val name: String, val pokemon: IntRange, val trainer: IntRange, val energy: IntRange)
 
     val PROFILES = listOf(
         Profile("Competitivo", 12..18, 30..40, 8..12),
@@ -41,7 +42,6 @@ object AutoDeckBuilder {
         Profile("Intermedio", 15..20, 24..32, 10..15),
     )
 
-    /** Nombres (en inglés, coincidencia por prefijo) de Entrenadores de alto valor de motor. */
     private val STAPLE_PRIORITY = listOf(
         "Professor's Research", "Professor", "Iono", "Boss's Orders", "Ultra Ball",
         "Nest Ball", "Great Ball", "Poké Ball", "Pokémon Communication", "Rare Candy",
@@ -51,10 +51,6 @@ object AutoDeckBuilder {
     private const val DECK_SIZE = 60
     private const val MAX_COPIES = 4
 
-    /**
-     * Construye el mazo. [owned] = cardId→copias poseídas. [all] = catálogo (para líneas de
-     * evolución y energía básica). [focus] = 1-2 tipos elegidos. Devuelve las entradas del mazo.
-     */
     fun build(
         owned: Map<String, Int>,
         all: List<Card>,
@@ -67,43 +63,47 @@ object AutoDeckBuilder {
         }
         val ownedCount: Map<String, Int> = ownedCards.associate { it.first.id.raw to it.second }
 
-        // Tipos de foco efectivos: si vacío, inferir de los Pokémon poseídos.
         val focusTypes: List<EnergyType> = when {
             focus.isNotEmpty() -> focus.toList()
             else -> inferFocus(ownedCards.map { it.first })
         }.ifEmpty { listOf(EnergyType.COLORLESS) }
+        val wantColorless = EnergyType.COLORLESS in focusTypes
 
-        val ownedPokemon = ownedCards.filter { it.first is PokemonCard }
-            .map { it.first as PokemonCard to it.second }
+        val ownedPokemon = ownedCards.map { it.first }.filterIsInstance<PokemonCard>()
         val ownedByNameEn: Map<String, PokemonCard> = ownedPokemon
-            .sortedByDescending { it.second }
-            .associate { it.first.name.en to it.first }
+            .sortedByDescending { ownedCount[it.id.raw] ?: 0 }
+            .associateBy { it.name.en }
 
-        // --- Perfil (variedad) ---
         val profile = PROFILES[rng.nextInt(PROFILES.size)]
         val energyTarget = profile.energy.random(rng)
         val pokemonTarget = profile.pokemon.random(rng)
 
-        // Contador acumulado del mazo (por cardId) y por nombre (para la regla de 4).
         val counts = LinkedHashMap<String, Int>()
         val nameCount = HashMap<String, Int>()
-        fun canAddName(card: Card): Boolean =
-            card is BasicEnergy || (nameCount[card.name.en] ?: 0) < MAX_COPIES
-        fun add(card: Card, n: Int) {
-            if (n <= 0) return
+
+        /** Añade hasta [want] copias respetando: poseídas, regla de 4 (salvo energía básica) y 60. */
+        fun addCapped(card: Card, want: Int): Int {
+            if (want <= 0) return 0
+            val ownedRem = (ownedCount[card.id.raw] ?: 0) - (counts[card.id.raw] ?: 0)
+            val nameRem = if (card is BasicEnergy) Int.MAX_VALUE else MAX_COPIES - (nameCount[card.name.en] ?: 0)
+            val sizeRem = DECK_SIZE - counts.values.sum()
+            val n = minOf(want, ownedRem, nameRem, sizeRem)
+            if (n <= 0) return 0
             counts[card.id.raw] = (counts[card.id.raw] ?: 0) + n
             if (card !is BasicEnergy) nameCount[card.name.en] = (nameCount[card.name.en] ?: 0) + n
+            return n
         }
+        fun total() = counts.values.sum()
+        fun pokemonCount() = counts.entries.filter { byId[it.key] is PokemonCard }.sumOf { it.value }
 
         // ---------- 1) POKÉMON ----------
-        // Candidatos a insignia: atacantes del foco, mejores primero, con algo de azar.
+        val onFocus: (PokemonCard) -> Boolean = { p -> p.types.any { it in focusTypes } }
+
         val flagshipCandidates = ownedPokemon
-            .map { it.first }
-            .filter { it.types.any { t -> t in focusTypes } && it.attacks.isNotEmpty() }
+            .filter { onFocus(it) && it.attacks.isNotEmpty() }
             .distinctBy { it.name.en }
             .sortedByDescending { attackerScore(it) }
 
-        // Elige 1-2 familias insignia (raíces distintas) barajando entre los mejores.
         val topPool = flagshipCandidates.take(6).shuffled(rng)
         val flagshipCount = if (topPool.size >= 2 && rng.nextBoolean()) 2 else 1
         val flagships = mutableListOf<PokemonCard>()
@@ -111,95 +111,127 @@ object AutoDeckBuilder {
         for (c in topPool) {
             val root = evolutionRoot(c, ownedByNameEn)?.name?.en ?: c.name.en
             if (root in usedRoots) continue
-            flagships += c
-            usedRoots += root
+            flagships += c; usedRoots += root
             if (flagships.size >= flagshipCount) break
         }
-
-        // Construye la línea de cada insignia con ratios por fase.
         for (top in flagships) {
-            val line = buildLine(top, ownedByNameEn, ownedCount, rng)
-            for ((card, n) in line) {
-                val allowed = minOf(n, MAX_COPIES - (nameCount[card.name.en] ?: 0), ownedCount[card.id.raw] ?: 0)
-                add(card, allowed)
-            }
+            for ((card, n) in buildLine(top, ownedByNameEn, ownedCount, rng)) addCapped(card, n)
         }
 
-        // Acompañantes: Básicos de apoyo (foco/incoloro) con ataque o habilidad, hasta el objetivo.
-        val companions = ownedPokemon.map { it.first }
-            .filter { it.isBasic && (it.name.en !in usedRoots) }
-            .filter { it.types.any { t -> t in focusTypes } || it.types.contains(EnergyType.COLORLESS) }
+        // Acompañantes DEL FOCO primero (Básicos de apoyo con ataque o habilidad).
+        val focusCompanions = ownedPokemon
+            .filter { it.isBasic && it.name.en !in usedRoots && onFocus(it) }
             .filter { it.attacks.isNotEmpty() || it.abilities.isNotEmpty() }
             .distinctBy { it.name.en }
             .sortedByDescending { supportScore(it) }
-        var ci = 0
-        while (pokemonCount(counts, byId) < pokemonTarget && ci < companions.size) {
-            val c = companions[ci]; ci++
-            if (!canAddName(c)) continue
-            val n = minOf(2, ownedCount[c.id.raw] ?: 0)
-            add(c, n)
+        for (c in focusCompanions) {
+            if (pokemonCount() >= pokemonTarget) break
+            addCapped(c, 2)
         }
 
-        // ---------- 2) ENERGÍA ----------
-        // Reparte energyTarget entre los tipos de foco que tengan Energía Básica en el catálogo,
-        // ponderando por la presencia de cada tipo entre los Pokémon ya incluidos.
-        val basicEnergyByType: Map<EnergyType, BasicEnergy> = focusTypes.mapNotNull { t ->
-            (all.firstOrNull { it is BasicEnergy && it.type == t } as? BasicEnergy)?.let { t to it }
-        }.toMap()
-        val energyTypes = basicEnergyByType.keys.toList().ifEmpty {
-            // Sin energía básica del foco → usa los tipos de los atacantes que sí la tengan.
-            (all.filterIsInstance<BasicEnergy>().map { it.type }.distinct()).take(1)
+        // Incoloro SÓLO como relleno si el foco es elemental y aún faltan Pokémon.
+        if (!wantColorless && pokemonCount() < pokemonTarget) {
+            val colorlessFill = ownedPokemon
+                .filter { it.isBasic && it.name.en !in usedRoots && it.types.all { t -> t == EnergyType.COLORLESS } }
+                .filter { it.attacks.isNotEmpty() || it.abilities.isNotEmpty() }
+                .distinctBy { it.name.en }
+                .sortedByDescending { supportScore(it) }
+            for (c in colorlessFill) {
+                if (pokemonCount() >= pokemonTarget) break
+                addCapped(c, 2)
+            }
         }
+
+        // ---------- 2) ENERGÍA (del foco, respetando lo poseído) ----------
+        // Mejor carta de energía básica poseída por tipo de foco.
+        val energyCardByType: Map<EnergyType, BasicEnergy> = focusTypes.mapNotNull { t ->
+            all.filterIsInstance<BasicEnergy>().filter { it.type == t }
+                .maxByOrNull { ownedCount[it.id.raw] ?: 0 }
+                ?.takeIf { (ownedCount[it.id.raw] ?: 0) > 0 }
+                ?.let { t to it }
+        }.toMap()
+        val energyTypes = energyCardByType.keys.toList()
         if (energyTypes.isNotEmpty()) {
             val weights = typeWeights(counts, byId, energyTypes)
-            val split = distribute(energyTarget, energyTypes, weights, rng)
-            for ((t, n) in split) {
-                val e = basicEnergyByType[t] ?: (all.firstOrNull { it is BasicEnergy && it.type == t } as? BasicEnergy)
-                if (e != null) add(e, n)
+            for ((t, want) in distribute(energyTarget, energyTypes, weights, rng)) {
+                energyCardByType[t]?.let { addCapped(it, want) }
             }
         }
 
-        // ---------- 3) ENTRENADORES ----------
-        val trainerTarget = DECK_SIZE - total(counts)
-        if (trainerTarget > 0) {
-            val ownedTrainers = ownedCards.map { it.first }.filterIsInstance<TrainerCard>()
-                .distinctBy { it.name.en }
-            // Prioridad: staples de motor primero (en orden), luego resto por tipo.
-            val ranked = ownedTrainers.sortedWith(
-                compareBy(
-                    { stapleRank(it) },
-                    { trainerKindRank(it) },
-                    { it.name.es.lowercase() },
-                ),
-            )
-            var ti = 0
-            while (total(counts) < DECK_SIZE && ti < ranked.size) {
-                val t = ranked[ti]; ti++
-                if (stapleRank(t) == Int.MAX_VALUE && t.kind is TrainerKind.Stadium &&
-                    stadiumCount(counts, byId) >= 2
-                ) continue
-                val want = if (stapleRank(t) < STAPLE_PRIORITY.size) 4 else 2
-                val n = minOf(want, MAX_COPIES, ownedCount[t.id.raw] ?: 0, DECK_SIZE - total(counts))
-                add(t, n)
-            }
+        // ---------- 3) ENTRENADORES (excluyendo afinidad fuera del foco) ----------
+        val ownedTrainers = ownedCards.map { it.first }.filterIsInstance<TrainerCard>()
+            .distinctBy { it.name.en }
+            .filter { affinityAllowed(it, focusTypes) }
+            .sortedWith(compareBy({ stapleRank(it) }, { trainerKindRank(it) }, { it.name.es.lowercase() }))
+        for (t in ownedTrainers) {
+            if (total() >= DECK_SIZE) break
+            if (stapleRank(t) == Int.MAX_VALUE && t.kind is TrainerKind.Stadium &&
+                stadiumCount(counts, byId) >= 2
+            ) continue
+            val want = if (stapleRank(t) < STAPLE_PRIORITY.size) 4 else 2
+            addCapped(t, want)
         }
 
-        // ---------- 4) RECONCILIAR A 60 EXACTAS ----------
-        // El hueco restante se cubre con energía básica del foco (siempre disponible).
-        var deficit = DECK_SIZE - total(counts)
-        if (deficit > 0) {
-            val fillType = energyTypes.firstOrNull() ?: EnergyType.COLORLESS
-            val e = (all.firstOrNull { it is BasicEnergy && it.type == fillType } as? BasicEnergy)
-                ?: all.filterIsInstance<BasicEnergy>().firstOrNull()
-            if (e != null) add(e, deficit) else deficit = trimToSize(counts) // sin energía: recorta
-        } else if (deficit < 0) {
-            trimExcess(counts, -deficit)
+        // ---------- 4) RELLENO HASTA 60 (sólo con cartas poseídas) ----------
+        // Orden: más Entrenadores → copias extra de Pokémon del mazo → más energía del foco →
+        // cualquier otra energía poseída. Nunca inventa copias.
+        if (total() < DECK_SIZE) {
+            val fillers = ArrayList<Card>()
+            fillers += ownedTrainers
+            fillers += counts.keys.mapNotNull { byId[it] as? PokemonCard }
+            fillers += energyTypes.mapNotNull { energyCardByType[it] as Card? }
+            fillers += ownedCards.map { it.first }.filterIsInstance<BasicEnergy>()
+            var progressed = true
+            while (total() < DECK_SIZE && progressed) {
+                progressed = false
+                for (c in fillers) {
+                    if (total() >= DECK_SIZE) break
+                    if (addCapped(c, 1) > 0) progressed = true
+                }
+            }
         }
 
         return counts.filter { it.value > 0 }.map { (id, n) -> DeckEntry(CardId(id), n) }
     }
 
-    // ---------------- helpers ----------------
+    // ---------------- afinidad de tipo de Entrenadores (data-driven) ----------------
+
+    private val SYMBOL_TYPE = mapOf(
+        "{G}" to EnergyType.GRASS, "{R}" to EnergyType.FIRE, "{W}" to EnergyType.WATER,
+        "{L}" to EnergyType.LIGHTNING, "{P}" to EnergyType.PSYCHIC, "{F}" to EnergyType.FIGHTING,
+        "{D}" to EnergyType.DARKNESS, "{M}" to EnergyType.METAL, "{N}" to EnergyType.DRAGON,
+        "{Y}" to EnergyType.FAIRY,
+    )
+    private val EN_TYPE = mapOf(
+        "Grass" to EnergyType.GRASS, "Fire" to EnergyType.FIRE, "Water" to EnergyType.WATER,
+        "Lightning" to EnergyType.LIGHTNING, "Psychic" to EnergyType.PSYCHIC, "Fighting" to EnergyType.FIGHTING,
+        "Darkness" to EnergyType.DARKNESS, "Metal" to EnergyType.METAL, "Dragon" to EnergyType.DRAGON,
+        "Fairy" to EnergyType.FAIRY,
+    )
+
+    /**
+     * Tipos a los que el Entrenador está "atado" según su texto (símbolos {R}… o
+     * "<Tipo> Energy/Pokémon"). Ignora COLORLESS (genérico). Vacío = genérico/sin restricción.
+     */
+    private fun trainerAffinity(t: TrainerCard): Set<EnergyType> {
+        val es = t.text.es
+        val en = t.text.en
+        val found = HashSet<EnergyType>()
+        for ((sym, ty) in SYMBOL_TYPE) if (es.contains(sym) || en.contains(sym)) found += ty
+        for ((word, ty) in EN_TYPE) {
+            if (Regex("\\b$word\\s+(Energy|Pok)", RegexOption.IGNORE_CASE).containsMatchIn(en)) found += ty
+        }
+        found.remove(EnergyType.COLORLESS)
+        return found
+    }
+
+    /** Permitido si es genérico o si alguna de sus afinidades está en el foco. */
+    private fun affinityAllowed(t: TrainerCard, focus: List<EnergyType>): Boolean {
+        val aff = trainerAffinity(t)
+        return aff.isEmpty() || aff.any { it in focus }
+    }
+
+    // ---------------- otros helpers ----------------
 
     private fun inferFocus(cards: List<Card>): List<EnergyType> {
         val w = HashMap<EnergyType, Int>()
@@ -210,9 +242,7 @@ object AutoDeckBuilder {
     }
 
     private fun attackerScore(p: PokemonCard): Int {
-        val stageBonus = when (p.stage) {
-            Stage.Stage2 -> 40; Stage.Stage1 -> 20; else -> 0
-        }
+        val stageBonus = when (p.stage) { Stage.Stage2 -> 40; Stage.Stage1 -> 20; else -> 0 }
         val exBonus = if (p.mechanic.prizesWhenKO >= 2) 50 else 0
         val dmg = p.attacks.maxOfOrNull { (it.baseDamage as? Damage.Fixed)?.value ?: (it.convertedCost * 20) } ?: 0
         return p.hp + stageBonus + exBonus + dmg
@@ -225,43 +255,32 @@ object AutoDeckBuilder {
         return p.hp / 10 + abilityBonus + exBonus + lowRetreat
     }
 
-    /** Raíz Básica de la línea de evolución de [p] (siguiendo evolvesFrom entre lo poseído). */
     private fun evolutionRoot(p: PokemonCard, ownedByNameEn: Map<String, PokemonCard>): PokemonCard? {
-        var cur: PokemonCard = p
-        var guard = 0
+        var cur = p; var guard = 0
         while (cur.evolvesFrom != null && guard++ < 4) {
-            val pre = ownedByNameEn[cur.evolvesFrom] ?: return if (cur.isBasic) cur else null
-            cur = pre
+            cur = ownedByNameEn[cur.evolvesFrom] ?: return if (cur.isBasic) cur else null
         }
         return cur
     }
 
-    /**
-     * Construye la línea de evolución de [top] con ratios por fase, limitada por lo poseído.
-     * Si la línea no puede completarse (falta un eslabón poseído), devuelve vacío para que el
-     * llamador escoja otra insignia.
-     */
     private fun buildLine(
         top: PokemonCard,
         ownedByNameEn: Map<String, PokemonCard>,
         ownedCount: Map<String, Int>,
         rng: Random,
     ): List<Pair<PokemonCard, Int>> {
-        // Cadena desde el top hacia abajo.
         val chain = ArrayList<PokemonCard>()
-        var cur: PokemonCard? = top
-        var guard = 0
+        var cur: PokemonCard? = top; var guard = 0
         while (cur != null && guard++ < 4) {
             chain += cur
             val from = cur.evolvesFrom ?: break
-            cur = ownedByNameEn[from] ?: return emptyList() // eslabón no poseído → línea inválida
+            cur = ownedByNameEn[from] ?: return emptyList()
         }
-        chain.reverse() // [Básico, Fase1, (Fase2)]
-
+        chain.reverse()
         val ratios: List<Int> = when (chain.size) {
-            1 -> listOf(if (top.mechanic.prizesWhenKO >= 2) 2 else 3) // Básico atacante (ex: 2-3)
+            1 -> listOf(if (top.mechanic.prizesWhenKO >= 2) 2 else 3)
             2 -> if (rng.nextBoolean()) listOf(4, 3) else listOf(3, 2)
-            else -> listOf(4, 3, 2).let { base -> if (rng.nextBoolean()) listOf(4, 2, 3) else base }
+            else -> if (rng.nextBoolean()) listOf(4, 2, 3) else listOf(4, 3, 2)
         }
         return chain.mapIndexed { i, card ->
             card to minOf(ratios.getOrElse(i) { 1 }, ownedCount[card.id.raw] ?: 0, MAX_COPIES)
@@ -269,7 +288,7 @@ object AutoDeckBuilder {
     }
 
     private fun typeWeights(counts: Map<String, Int>, byId: Map<String, Card>, types: List<EnergyType>): Map<EnergyType, Int> {
-        val w = types.associateWith { 1 }.toMutableMap() // suavizado: +1 a cada tipo
+        val w = types.associateWith { 1 }.toMutableMap()
         for ((id, n) in counts) {
             val p = byId[id] as? PokemonCard ?: continue
             for (t in p.types) if (t in w) w[t] = (w[t] ?: 0) + n
@@ -277,7 +296,6 @@ object AutoDeckBuilder {
         return w
     }
 
-    /** Reparte [total] entre [types] proporcional a [weights], repartiendo el resto por peso. */
     private fun distribute(total: Int, types: List<EnergyType>, weights: Map<EnergyType, Int>, rng: Random): Map<EnergyType, Int> {
         if (types.size == 1) return mapOf(types[0] to total)
         val sum = types.sumOf { weights[it] ?: 1 }.coerceAtLeast(1)
@@ -301,26 +319,6 @@ object AutoDeckBuilder {
         is TrainerKind.Stadium -> 3
     }
 
-    private fun total(counts: Map<String, Int>): Int = counts.values.sum()
-    private fun pokemonCount(counts: Map<String, Int>, byId: Map<String, Card>): Int =
-        counts.entries.filter { byId[it.key] is PokemonCard }.sumOf { it.value }
     private fun stadiumCount(counts: Map<String, Int>, byId: Map<String, Card>): Int =
         counts.entries.filter { (byId[it.key] as? TrainerCard)?.kind is TrainerKind.Stadium }.sumOf { it.value }
-
-    private fun trimExcess(counts: LinkedHashMap<String, Int>, by: Int) {
-        var left = by
-        val it = counts.keys.toList().asReversed().iterator()
-        while (left > 0 && it.hasNext()) {
-            val k = it.next()
-            val cur = counts[k] ?: 0
-            val cut = minOf(cur, left)
-            counts[k] = cur - cut; left -= cut
-            if (counts[k] == 0) counts.remove(k)
-        }
-    }
-
-    private fun trimToSize(counts: LinkedHashMap<String, Int>): Int {
-        trimExcess(counts, total(counts) - DECK_SIZE)
-        return 0
-    }
 }

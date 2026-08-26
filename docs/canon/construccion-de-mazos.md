@@ -44,6 +44,21 @@ En todos los casos el **total es 60**. Si el jugador no posee suficientes Entren
 el perfil, el hueco se rellena con energía básica del foco (siempre disponible), garantizando
 las 60 cartas independientemente de si tiene playset 2/4 o 4/4.
 
+## Reglas de lógica (permanentes, válidas para cartas futuras)
+
+- **Sólo cartas poseídas**: nunca se incluyen más copias de las que el jugador tiene en su
+  colección — **incluida la energía básica** (aunque no tenga límite de 4, sí lo tiene por lo
+  poseído). Si tienes 5 energías Lucha, el mazo usará como mucho 5.
+- **Afinidad de tipo de los Entrenadores**: un Entrenador cuyo texto sólo beneficia a un tipo
+  (p.ej. *Melo*→Fuego, *Generador Eléctrico*→Rayo) se **excluye** si ese tipo no está en el
+  foco. La afinidad se **deriva del texto** de la carta (símbolos `{R}`/`{L}`… o `"Fire Energy"`,
+  `"Lightning Pokémon"`…), así funciona automáticamente al incorporar cartas nuevas — no hay
+  lista que mantener a mano.
+- **Incoloro sólo de relleno**: con foco elemental, el mazo se llena con Pokémon de esos tipos;
+  los Pokémon **Incoloros** sólo entran si **no hay suficientes** del foco en la colección. Si el
+  jugador elige **COLORLESS** como uno de los tipos, los Incoloros pasan a ser de primera clase
+  (para quien quiera un mazo incoloro a propósito).
+
 ## Fuentes
 
 - TCG Protectors — *Pokémon TCG Deck Building Guide (2025): Ratios, Rules & Strategy*.
