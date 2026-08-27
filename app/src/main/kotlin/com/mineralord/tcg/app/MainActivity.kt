@@ -42,7 +42,15 @@ import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 import kotlinx.coroutines.launch
 
-private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE, FRIENDS }
+/**
+ * Subpantallas que se APILAN sobre las páginas principales (a pantalla completa, sin barra inferior).
+ * Las 4 páginas principales (Inicio · Cartas · Amigos · Logros) viven en el [HorizontalPager] y no
+ * están aquí. "Menú" es un popup, no una página.
+ */
+private enum class Screen { STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE }
+
+/** Nº de páginas principales navegables por deslizamiento. */
+private const val MAIN_PAGES = 4
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,152 +91,240 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppShell() {
-    // Pila de navegación: el retroceso (gesto/botón del sistema o botón de la barra) retrocede UN paso,
-    // no salta siempre a Inicio. HOME es la raíz y nunca se saca de la pila.
-    val backStack = remember { androidx.compose.runtime.mutableStateListOf(Screen.HOME) }
-    val screen = backStack.last()
-    fun navigate(to: Screen) { if (backStack.last() != to) backStack.add(to) }
-    fun replace(to: Screen) { backStack[backStack.lastIndex] = to }
-    fun back() { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
-    // Selector de dificultad PvE: se muestra al pulsar JUGAR y, al elegir, pasa a matchmaking.
-    var pickingDifficulty by remember { mutableStateOf(false) }
-    // Continuación tras elegir baraja en la pantalla de selección (PvE o PvP).
-    var afterDeckSelect by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // Páginas principales (Inicio · Cartas · Amigos · Logros): se navegan por DESLIZAMIENTO
+    // horizontal (HorizontalPager) y comparten la barra inferior, siempre presente.
+    val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { MAIN_PAGES })
 
-    // Saldos económicos (Fase 2, Cap. 6). Comparten el DataStore de proceso con el resto de pantallas.
+    // Subpantallas apiladas ENCIMA (a pantalla completa, sin barra). El retroceso las cierra.
+    val overlay = remember { androidx.compose.runtime.mutableStateListOf<Screen>() }
+    fun push(to: Screen) { if (overlay.lastOrNull() != to) overlay.add(to) }
+    fun replace(to: Screen) { if (overlay.isNotEmpty()) overlay[overlay.lastIndex] = to else overlay.add(to) }
+    fun back() { if (overlay.isNotEmpty()) overlay.removeAt(overlay.lastIndex) }
+
+    // Código de expansión para abrir DIRECTAMENTE el rasgado (desde el escaparate de la Home).
+    var packsDirectCode by remember { mutableStateOf<String?>(null) }
+    // Selector de dificultad PvE.
+    var pickingDifficulty by remember { mutableStateOf(false) }
+    // Continuación tras elegir baraja (PvE o PvP).
+    var afterDeckSelect by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // Popup "Menú" (placeholder por ahora).
+    var menuOpen by remember { mutableStateOf(false) }
+
     val ctx = LocalContext.current
     val profileRepo = remember { ProfileRepository(ctx.applicationContext) }
     val profile by profileRepo.profile.collectAsState(initial = PlayerProfile())
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
-    // Garantiza la concesión inicial de saldos (Cristales + Monedas) aunque el jugador
-    // no abra la pantalla de sobres: la Tienda de Cosméticos necesita Monedas.
     androidx.compose.runtime.LaunchedEffect(Unit) { profileRepo.seedBalancesOnce() }
 
-    BackHandler(enabled = backStack.size > 1) { back() }
+    fun goToPage(i: Int) { scope.launch { pager.animateScrollToPage(i) } }
+
+    // Retroceso: cierra popup → cierra overlay → vuelve a Inicio si estás en otra página.
+    BackHandler(enabled = menuOpen || overlay.isNotEmpty() || pager.currentPage != 0) {
+        when {
+            menuOpen -> menuOpen = false
+            overlay.isNotEmpty() -> back()
+            else -> goToPage(0)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
-    // Transición coherente entre pantallas (crossfade Motion). Cada estado se resuelve dentro.
-    MotionScreen(targetState = screen, modifier = Modifier.fillMaxSize()) { target ->
-    when (target) {
-        Screen.HOME -> HomeScreen(
-            modifier = Modifier.fillMaxSize(),
-            balances = profile.balances,
-            avatarColors = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR)
-                ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
-                ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
-            onCartadex = { navigate(Screen.COLLECTION) },
-            onTienda = { navigate(Screen.STORE) },
-            onBarajas = { navigate(Screen.DECKS) },
-            onPerfil = { navigate(Screen.PROFILE) },
-            onJugar = { afterDeckSelect = { pickingDifficulty = true }; navigate(Screen.DECK_SELECT) },
-            onJugarOnline = { afterDeckSelect = { navigate(Screen.ONLINE) }; navigate(Screen.DECK_SELECT) },
-            onAmigos = { navigate(Screen.FRIENDS) },
-        )
-        Screen.MATCHMAKING -> MatchmakingScreen(
-            deckName = "Mega-Charizard X ex",
-            onCancel = { back() },
-            // Reemplaza matchmaking por la partida: al salir de la partida se vuelve a Inicio, no aquí.
-            onMatched = { replace(Screen.GAME) },
-            modifier = Modifier.fillMaxSize(),
-        )
-        // Combate vs IA: pantalla canónica de combate.
-        Screen.GAME -> com.mineralord.tcg.feature.game.combat.CombatScreen(
-            onExit = { back() },
-            vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
-            modifier = Modifier.fillMaxSize(),
-            matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
-            sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
-            victoryEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.VICTORIA),
-            defeatEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.DERROTA),
-            winCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_CRISTALES,
-            winMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_MONEDAS,
-            lossCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_CRISTALES,
-            lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_MONEDAS,
-        )
-        Screen.ONLINE -> OnlineGameScreen(
-            onExit = { back() },
-            modifier = Modifier.fillMaxSize(),
-        )
-        Screen.COLLECTION -> CollectionScreen(
-            onExit = { back() },
-            modifier = Modifier.fillMaxSize(),
-        )
-        Screen.STORE -> SubScreen(title = "Tienda", onHome = { back() }) {
-            StoreHubScreen(
-                balances = profile.balances,
-                onSobres = { navigate(Screen.PACKS) },
-                onCosmeticos = { navigate(Screen.COSMETICS) },
-                onColeccion = { navigate(Screen.COSMETIC_COLLECTION) },
-                modifier = Modifier.fillMaxSize(),
+        // ---- Base: páginas principales con barra inferior compartida ----
+        Column(Modifier.fillMaxSize()) {
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pager,
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                // Deslizamiento AAA puro (sin crossfade): cada página se mueve con el dedo.
+                beyondViewportPageCount = 1,
+            ) { page ->
+                when (page) {
+                    0 -> HomeScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        balances = profile.balances,
+                        avatarColors = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR)
+                            ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
+                            ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
+                        onCartadex = { /* Misiones: popup por implementar */ },
+                        onTienda = { push(Screen.STORE) },
+                        onBarajas = { push(Screen.DECKS) },
+                        onPerfil = { push(Screen.PROFILE) },
+                        onJugar = { afterDeckSelect = { pickingDifficulty = true }; push(Screen.DECK_SELECT) },
+                        onJugarOnline = { afterDeckSelect = { push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
+                        onAmigos = { goToPage(2) },
+                        // Tocar un sobre lleva DIRECTO a "Rasga el sobre" de la 151 (sin selector).
+                        onOpenPack = { packsDirectCode = "sv3pt5"; push(Screen.PACKS) },
+                    )
+                    1 -> CollectionScreen(
+                        onExit = { goToPage(0) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    2 -> FriendsScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        onBack = { goToPage(0) },
+                    )
+                    else -> PartidasScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        // Versus → hub PvP (elige baraja → online). Individual → PvE (baraja → dificultad).
+                        onVersus = { afterDeckSelect = { push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
+                        onIndividual = { afterDeckSelect = { pickingDifficulty = true }; push(Screen.DECK_SELECT) },
+                        onBarajas = { push(Screen.DECKS) },
+                    )
+                }
+            }
+            MainBottomNav(
+                current = pager.currentPage,
+                onSelect = { goToPage(it) },
+                onMenu = { menuOpen = true },
             )
         }
-        Screen.PACKS -> SubScreen(title = "Tienda · Sobres", onHome = { back() }) {
-            PacksScreen(modifier = Modifier.fillMaxSize())
-        }
-        Screen.COSMETICS -> SubScreen(title = "Tienda · Cosméticos", onHome = { back() }) {
-            CosmeticStoreScreen(
-                profile = profile,
-                onBuy = { c -> scope.launch { profileRepo.buyCosmetic(c) } },
-                onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Screen.COSMETIC_COLLECTION -> SubScreen(title = "Colección de cosméticos", onHome = { back() }) {
-            CosmeticCollectionScreen(
-                profile = profile,
-                onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
-                onToggleFavorite = { c -> scope.launch { profileRepo.toggleCosmeticFavorite(c.id) } },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        Screen.DECKS -> DecksScreen(
-            modifier = Modifier.fillMaxSize(),
-            onHome = { back() },
-        )
-        Screen.DECK_SELECT -> DecksScreen(
-            modifier = Modifier.fillMaxSize(),
-            onHome = { afterDeckSelect = null; back() },
-            selectionMode = true,
-            onSelect = {
-                back()                       // cierra la selección
-                val next = afterDeckSelect
-                afterDeckSelect = null
-                next?.invoke()
-            },
-        )
-        Screen.PROFILE -> {
-            val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo
-            fun equipped(cat: com.mineralord.tcg.data.cosmetics.CosmeticCategory) =
-                repo[profile.equippedIn(cat)]
-            ProfileScreen(
-                modifier = Modifier.fillMaxSize(),
-                onBack = { back() },
-                onOpenCollection = { navigate(Screen.COLLECTION) },
-                equippedAvatar = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR),
-                equippedFrame = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.MARCO),
-                equippedBackground = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FONDO),
-                equippedBadge = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.BADGE),
-            )
-        }
-        Screen.FRIENDS -> FriendsScreen(
-            modifier = Modifier.fillMaxSize(),
-            onBack = { back() },
-        )
-    }
-    }
 
-    if (pickingDifficulty) {
-        DifficultyDialog(
-            onPick = { difficulty ->
-                com.mineralord.tcg.feature.game.PveConfig.difficulty = difficulty
-                pickingDifficulty = false
-                navigate(Screen.MATCHMAKING)
-            },
-            onDismiss = { pickingDifficulty = false },
-            modifier = Modifier.fillMaxSize(),
-        )
+        // ---- Overlays (subpantallas a pantalla completa) ----
+        val top = overlay.lastOrNull()
+        if (top != null) {
+            MotionScreen(targetState = top, modifier = Modifier.fillMaxSize()) { target ->
+                when (target) {
+                    Screen.MATCHMAKING -> MatchmakingScreen(
+                        deckName = "Mega-Charizard X ex",
+                        onCancel = { back() },
+                        onMatched = { replace(Screen.GAME) },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Screen.GAME -> com.mineralord.tcg.feature.game.combat.CombatScreen(
+                        onExit = { back() },
+                        vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
+                        modifier = Modifier.fillMaxSize(),
+                        matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
+                        sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
+                        victoryEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.VICTORIA),
+                        defeatEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.DERROTA),
+                        winCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_CRISTALES,
+                        winMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_MONEDAS,
+                        lossCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_CRISTALES,
+                        lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_MONEDAS,
+                    )
+                    Screen.ONLINE -> OnlineGameScreen(
+                        onExit = { back() },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Screen.STORE -> SubScreen(title = "Tienda", onHome = { back() }) {
+                        StoreHubScreen(
+                            balances = profile.balances,
+                            onSobres = { packsDirectCode = null; push(Screen.PACKS) },
+                            onCosmeticos = { push(Screen.COSMETICS) },
+                            onColeccion = { push(Screen.COSMETIC_COLLECTION) },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Screen.PACKS -> {
+                        // Modo directo (desde Home): pantalla limpia sin barra "‹ Inicio". Modo tienda: con barra.
+                        if (packsDirectCode != null) {
+                            PacksScreen(
+                                modifier = Modifier.fillMaxSize(),
+                                directExpansionCode = packsDirectCode,
+                                onExit = { back() },
+                            )
+                        } else {
+                            SubScreen(title = "Tienda · Sobres", onHome = { back() }) {
+                                PacksScreen(modifier = Modifier.fillMaxSize())
+                            }
+                        }
+                    }
+                    Screen.COSMETICS -> SubScreen(title = "Tienda · Cosméticos", onHome = { back() }) {
+                        CosmeticStoreScreen(
+                            profile = profile,
+                            onBuy = { c -> scope.launch { profileRepo.buyCosmetic(c) } },
+                            onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Screen.COSMETIC_COLLECTION -> SubScreen(title = "Colección de cosméticos", onHome = { back() }) {
+                        CosmeticCollectionScreen(
+                            profile = profile,
+                            onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                            onToggleFavorite = { c -> scope.launch { profileRepo.toggleCosmeticFavorite(c.id) } },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    Screen.DECKS -> DecksScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        onHome = { back() },
+                    )
+                    Screen.DECK_SELECT -> DecksScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        onHome = { afterDeckSelect = null; back() },
+                        selectionMode = true,
+                        onSelect = {
+                            back()
+                            val next = afterDeckSelect
+                            afterDeckSelect = null
+                            next?.invoke()
+                        },
+                    )
+                    Screen.PROFILE -> {
+                        val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo
+                        fun equipped(cat: com.mineralord.tcg.data.cosmetics.CosmeticCategory) =
+                            repo[profile.equippedIn(cat)]
+                        ProfileScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            onBack = { back() },
+                            onOpenCollection = { back(); goToPage(1) },
+                            equippedAvatar = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR),
+                            equippedFrame = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.MARCO),
+                            equippedBackground = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FONDO),
+                            equippedBadge = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.BADGE),
+                        )
+                    }
+                }
+            }
+        }
+
+        if (pickingDifficulty) {
+            DifficultyDialog(
+                onPick = { difficulty ->
+                    com.mineralord.tcg.feature.game.PveConfig.difficulty = difficulty
+                    pickingDifficulty = false
+                    push(Screen.MATCHMAKING)
+                },
+                onDismiss = { pickingDifficulty = false },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        if (menuOpen) {
+            MenuPopup(onDismiss = { menuOpen = false })
+        }
     }
+}
+
+/** Página principal aún no implementada (p. ej. Logros). Placeholder con el chasis claro. */
+@Composable
+private fun ComingSoonPage(title: String) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(TcgColors.Cream),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, color = TcgColors.Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
+            Text("Próximamente", color = TcgColors.Ink.copy(alpha = 0.5f), fontSize = 14.sp)
+        }
+    }
+}
+
+/** Popup del "Menú" (placeholder). El contenido real se implementará más adelante. */
+@Composable
+private fun MenuPopup(onDismiss: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .background(TcgColors.Cream, androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("Menú", color = TcgColors.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            Text("Próximamente", color = TcgColors.Ink.copy(alpha = 0.5f), fontSize = 13.sp)
+        }
     }
 }
 

@@ -76,6 +76,8 @@ class ProfileRepository(context: Context) {
             activeDeckId = prefs[ACTIVE_DECK],
             favoriteDeckIds = favorites,
             friendCode = prefs[FRIEND_CODE] ?: "",
+            packBalance = prefs[PACK_BALANCE],
+            packLastCreditAt = prefs[PACK_LAST_CREDIT],
             lastModified = prefs[LAST_MODIFIED] ?: 0L,
         )
     }
@@ -460,6 +462,10 @@ class ProfileRepository(context: Context) {
             prefs[DECKS_SEEDED] = true
             // El código de amigo importado solo sobrescribe si trae valor (no borrar el local).
             if (profile.friendCode.isNotBlank()) prefs[FRIEND_CODE] = profile.friendCode
+            // Restaura el monedero de sobres de la cuenta (cierra el exploit reinstalar+login):
+            // si el snapshot trae saldo, se impone sobre cualquier siembra local "a tope".
+            profile.packBalance?.let { prefs[PACK_BALANCE] = it }
+            profile.packLastCreditAt?.let { prefs[PACK_LAST_CREDIT] = it }
             prefs[LAST_MODIFIED] = profile.lastModified
         }
     }

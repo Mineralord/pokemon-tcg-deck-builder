@@ -32,6 +32,14 @@ data class PlayerProfile(
     val favoriteDeckIds: Set<String> = emptySet(),
     /** Código de amigo único del jugador (12 dígitos). Vacío hasta generarse la 1ª vez. */
     val friendCode: String = "",
+    /**
+     * Monedero de sobres gratis (saldo). Viaja con la cuenta para que reinstalar +
+     * login NO regale sobres: al importar el snapshot se restaura el saldo real en
+     * vez de re-sembrar el tope. null solo en el primerísimo arranque local.
+     */
+    val packBalance: Int? = null,
+    /** Instante (ms, reloj confiable) del último crédito de sobre. Acompaña a [packBalance]. */
+    val packLastCreditAt: Long? = null,
     val lastModified: Long = 0L,
 ) {
     val distinctOwned: Int get() = owned.size

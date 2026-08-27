@@ -72,6 +72,14 @@ private enum class PackStep { EXPANSION, PACK }
 fun PacksScreen(
     modifier: Modifier = Modifier,
     viewModel: PacksViewModel = viewModel(),
+    /**
+     * Si se indica, salta la pantalla "Elige una expansión" y abre DIRECTAMENTE la etapa de
+     * rasgado del sobre de esa expansión (código de set, p. ej. "sv3pt5"). Lo usa el escaparate
+     * de la Home: tocar un sobre lleva justo a "Rasga el sobre por arriba".
+     */
+    directExpansionCode: String? = null,
+    /** Salir de la pantalla cuando se entró en modo directo (retrocede a la Home). */
+    onExit: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -86,10 +94,16 @@ fun PacksScreen(
         return
     }
 
-    // Flujo directo a "Elige una expansión" (sin pantalla de serie). Serie única por ahora.
-    var step by remember { mutableStateOf(PackStep.EXPANSION) }
+    // Expansión pedida en modo directo (si el código existe en el catálogo).
+    val directExpansion = remember(directExpansionCode) {
+        directExpansionCode?.let { code ->
+            PACK_CATALOG.flatMap { it.expansions }.firstOrNull { it.code == code }
+        }
+    }
+    // En modo directo arrancamos en la etapa de rasgado; si no, en "Elige una expansión".
+    var step by remember { mutableStateOf(if (directExpansion != null) PackStep.PACK else PackStep.EXPANSION) }
     val series = remember { PACK_CATALOG.first() }
-    var expansion by remember { mutableStateOf<ExpansionUi?>(null) }
+    var expansion by remember { mutableStateOf(directExpansion) }
 
     Box(
         modifier = modifier
@@ -129,7 +143,9 @@ fun PacksScreen(
                     buyRemaining = state.buyRemaining,
                     canBuy = state.canBuy,
                     onBuy = viewModel::buyPack,
-                    onBack = { step = PackStep.EXPANSION },
+                    // En modo directo (desde la Home) el "atrás" sale a la Home; si vinimos del
+                    // selector, vuelve a "Elige una expansión".
+                    onBack = { if (directExpansion != null) onExit() else step = PackStep.EXPANSION },
                     onOpen = viewModel::openPack,
                     onExpire = viewModel::refresh,
                 )

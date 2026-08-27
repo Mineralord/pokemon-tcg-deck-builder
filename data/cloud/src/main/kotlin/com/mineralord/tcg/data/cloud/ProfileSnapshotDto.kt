@@ -37,6 +37,10 @@ data class ProfileSnapshotDto(
     val decks: List<DeckSnapshotDto> = emptyList(),
     /** Código de amigo único del jugador (viaja con la cuenta). Ausente en snapshots antiguos. */
     val friendCode: String = "",
+    /** Monedero de sobres gratis (saldo). Viaja con la cuenta para evitar el exploit reinstalar+login. */
+    val packBalance: Int? = null,
+    /** Instante del último crédito de sobre (ms, reloj confiable). Acompaña a [packBalance]. */
+    val packLastCreditAt: Long? = null,
 )
 
 @Serializable
@@ -66,6 +70,8 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     activeDeckId = activeDeckId,
     favoriteDeckIds = favoriteDeckIds.toList(),
     friendCode = friendCode,
+    packBalance = packBalance,
+    packLastCreditAt = packLastCreditAt,
     decks = decks.map { d ->
         DeckSnapshotDto(
             id = d.id,
@@ -105,5 +111,7 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
     activeDeckId = activeDeckId,
     favoriteDeckIds = favoriteDeckIds.toSet(),
     friendCode = friendCode,
+    packBalance = packBalance,
+    packLastCreditAt = packLastCreditAt,
     lastModified = lastModified,
 )
