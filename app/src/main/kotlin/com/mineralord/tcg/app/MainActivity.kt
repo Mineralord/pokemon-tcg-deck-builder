@@ -42,7 +42,7 @@ import com.mineralord.tcg.feature.game.OnlineGameScreen
 import com.mineralord.tcg.feature.packs.PacksScreen
 import kotlinx.coroutines.launch
 
-private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE }
+private enum class Screen { HOME, COLLECTION, STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE, FRIENDS }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,6 +123,7 @@ private fun AppShell() {
             onPerfil = { navigate(Screen.PROFILE) },
             onJugar = { afterDeckSelect = { pickingDifficulty = true }; navigate(Screen.DECK_SELECT) },
             onJugarOnline = { afterDeckSelect = { navigate(Screen.ONLINE) }; navigate(Screen.DECK_SELECT) },
+            onAmigos = { navigate(Screen.FRIENDS) },
         )
         Screen.MATCHMAKING -> MatchmakingScreen(
             deckName = "Mega-Charizard X ex",
@@ -196,18 +197,24 @@ private fun AppShell() {
                 next?.invoke()
             },
         )
-        Screen.PROFILE -> SubScreen(title = "Perfil", onHome = { back() }) {
+        Screen.PROFILE -> {
             val repo = com.mineralord.tcg.data.cosmetics.Cosmetics.repo
             fun equipped(cat: com.mineralord.tcg.data.cosmetics.CosmeticCategory) =
                 repo[profile.equippedIn(cat)]
             ProfileScreen(
                 modifier = Modifier.fillMaxSize(),
+                onBack = { back() },
+                onOpenCollection = { navigate(Screen.COLLECTION) },
                 equippedAvatar = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR),
                 equippedFrame = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.MARCO),
                 equippedBackground = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FONDO),
                 equippedBadge = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.BADGE),
             )
         }
+        Screen.FRIENDS -> FriendsScreen(
+            modifier = Modifier.fillMaxSize(),
+            onBack = { back() },
+        )
     }
     }
 

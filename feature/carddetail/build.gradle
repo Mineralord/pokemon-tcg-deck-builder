@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mineralord.tcg.feature.decks"
+    namespace = "com.mineralord.tcg.feature.carddetail"
     compileSdk = 35
 
     defaultConfig {
@@ -25,14 +25,10 @@ android {
 
 dependencies {
     implementation(project(":core:designsystem"))
-    implementation(project(":feature:carddetail"))
     implementation(project(":engine:model"))
-    implementation(project(":data:cards"))
     implementation(project(":data:profile"))
 
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.coil.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)

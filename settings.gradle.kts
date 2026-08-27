@@ -46,6 +46,7 @@ include(":feature:combat")
 //     Studio; el Studio depende de ella SIN arrastrar red/Firebase. ---
 include(":feature:match")
 include(":feature:packs")
+include(":feature:carddetail")
 include(":feature:decks")
 include(":feature:game")
 include(":app")

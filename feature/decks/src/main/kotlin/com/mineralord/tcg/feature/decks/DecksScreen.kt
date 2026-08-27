@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.mineralord.tcg.core.designsystem.fadingScrollbar
 import androidx.compose.runtime.LaunchedEffect
 import com.mineralord.tcg.data.cards.PrebuiltDecks
 import androidx.compose.foundation.shape.CircleShape
@@ -42,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -140,7 +140,7 @@ fun DecksScreen(
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 56.dp, bottom = 96.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().fadingScrollbar(gridState),
                         ) {
                             if (!selectionMode) item(key = "create") { CreateDeckTile { createMenuOpen = true } }
                             items(mineDecks.size, key = { mineDecks[it].id }) { i ->
@@ -375,7 +375,7 @@ private fun ThematicContent(
         state = listState,
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().fadingScrollbar(listState),
     ) {
         groups.forEach { (folder, list) ->
             val expanded = folder in expandedGroups
@@ -546,80 +546,36 @@ private fun DeckTile(
     }
 }
 
-/** Carta destacada de la baraja (para la cara de la caja): 1er Pokémon con arte ES. */
+/** Imagen de una carta destacada por id (si sigue en el mazo y tiene arte ES). */
+private fun DeckUi.featuredImageAt(index: Int): String? =
+    featured.getOrNull(index)?.let { id -> cards.firstOrNull { it.id == id }?.imageEs }
+
+/**
+ * PORTADA de la caja: 1ª destacada elegida por el jugador; si no hay, el 1er Pokémon
+ * con arte ES (o la 1ª carta con arte).
+ */
 private fun DeckUi.headlinerImage(): String? =
-    cards.firstOrNull { it.supertype == Supertype.POKEMON && it.imageEs != null }?.imageEs
+    featuredImageAt(0)
+        ?: cards.firstOrNull { it.supertype == Supertype.POKEMON && it.imageEs != null }?.imageEs
         ?: cards.firstOrNull { it.imageEs != null }?.imageEs
 
-/** Segunda carta que asoma delante de la caja (distinta del headliner si es posible). */
-private fun DeckUi.secondImage(): String? {
-    val imgs = cards.mapNotNull { it.imageEs }
-    return imgs.getOrNull(1) ?: imgs.getOrNull(0)
-}
+/**
+ * Cartas laterales que asoman detrás de la caja (hasta 2, RECTAS): las destacadas
+ * 2ª y 3ª elegidas por el jugador; si no hay destacadas, las siguientes del mazo.
+ */
+private fun DeckUi.sideImages(): List<String> =
+    if (featured.isNotEmpty()) listOfNotNull(featuredImageAt(1), featuredImageAt(2))
+    else cards.mapNotNull { it.imageEs }.drop(1).take(2)
 
-/** La "caja" 3D tintada con el acento, con la carta destacada en la cara frontal. */
+/** La "caja" 3D tintada con el acento, con la portada y laterales destacados. */
 @Composable
 private fun DeckBoxArt(deck: DeckUi, accent: Color, modifier: Modifier = Modifier) {
-    val accentLight = lerp(accent, Color.White, 0.28f)
-    val accentDark = lerp(accent, Color.Black, 0.30f)
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        // Cuerpo de la caja.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.74f)
-                .aspectRatio(0.84f)
-                .align(Alignment.Center)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Brush.verticalGradient(listOf(accentLight, accent))),
-        ) {
-            // Lomo derecho (efecto 3D).
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.12f)
-                    .background(Brush.horizontalGradient(listOf(accent, accentDark))),
-            )
-            // Carta destacada en la cara frontal.
-            val head = deck.headlinerImage()
-            if (head != null) {
-                AsyncImage(
-                    model = head,
-                    contentDescription = deck.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 14.dp, start = 12.dp, end = 20.dp)
-                        .fillMaxWidth()
-                        .aspectRatio(0.72f)
-                        .clip(RoundedCornerShape(4.dp)),
-                )
-            }
-            // Emblema del tipo, abajo-izquierda de la caja.
-            TypeEmblem(
-                type = deck.type,
-                size = 26.dp,
-                modifier = Modifier.align(Alignment.BottomStart).padding(8.dp),
-            )
-        }
-        // Carta secundaria asomando delante, abajo-derecha.
-        val second = deck.secondImage()
-        if (second != null) {
-            AsyncImage(
-                model = second,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 6.dp, bottom = 10.dp)
-                    .fillMaxWidth(0.30f)
-                    .aspectRatio(0.72f)
-                    .rotate(6f)
-                    .clip(RoundedCornerShape(4.dp))
-                    .border(1.5.dp, Color.White, RoundedCornerShape(4.dp)),
-            )
-        }
-    }
+    DeckBoxPreview(
+        type = deck.type,
+        cover = deck.headlinerImage(),
+        sides = deck.sideImages(),
+        modifier = modifier,
+    )
 }
 
 /** Botón circular apilado con chevrons ▲▼ para saltar al inicio/fin de la lista. */

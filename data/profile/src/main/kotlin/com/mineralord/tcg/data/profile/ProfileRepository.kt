@@ -75,8 +75,27 @@ class ProfileRepository(context: Context) {
             decks = decks,
             activeDeckId = prefs[ACTIVE_DECK],
             favoriteDeckIds = favorites,
+            friendCode = prefs[FRIEND_CODE] ?: "",
             lastModified = prefs[LAST_MODIFIED] ?: 0L,
         )
+    }
+
+    /**
+     * Devuelve el código de amigo del jugador, generándolo y persistiéndolo la primera vez.
+     * Idempotente: si ya existe, lo devuelve tal cual (no lo regenera). El código viaja con la
+     * cuenta vía snapshot de nube; el sistema de amigos podrá validarlo/reasignarlo en servidor.
+     */
+    suspend fun ensureFriendCode(): String {
+        val existing = store.data.first()[FRIEND_CODE]
+        if (!existing.isNullOrBlank()) return existing
+        val code = generateFriendCode()
+        store.edit { prefs ->
+            if (prefs[FRIEND_CODE].isNullOrBlank()) {
+                prefs[FRIEND_CODE] = code
+                prefs.touch()
+            }
+        }
+        return store.data.first()[FRIEND_CODE] ?: code
     }
 
     /** Siembra la colección inicial una sola vez (mazos desbloqueados). */
@@ -439,6 +458,8 @@ class ProfileRepository(context: Context) {
             else prefs.remove(ACTIVE_DECK)
             prefs[FAVORITES] = json.encodeToString(favoritesSerializer, profile.favoriteDeckIds)
             prefs[DECKS_SEEDED] = true
+            // El código de amigo importado solo sobrescribe si trae valor (no borrar el local).
+            if (profile.friendCode.isNotBlank()) prefs[FRIEND_CODE] = profile.friendCode
             prefs[LAST_MODIFIED] = profile.lastModified
         }
     }
@@ -464,6 +485,7 @@ class ProfileRepository(context: Context) {
         val entries: List<EntryDto>,
         val isCustom: Boolean,
         val updatedAt: Long = 0L,
+        val featured: List<String> = emptyList(),
     )
 
     @Serializable
@@ -477,6 +499,7 @@ class ProfileRepository(context: Context) {
         entries = entries.map { EntryDto(it.cardId.raw, it.count) },
         isCustom = isCustom,
         updatedAt = updatedAt,
+        featured = featured.map { it.raw },
     )
 
     private fun DeckDto.toDeck() = Deck(
@@ -487,6 +510,7 @@ class ProfileRepository(context: Context) {
         entries = entries.map { DeckEntry(CardId(it.cardId), it.count) },
         isCustom = isCustom,
         updatedAt = updatedAt,
+        featured = featured.map { CardId(it) },
     )
 
     companion object {
@@ -499,6 +523,9 @@ class ProfileRepository(context: Context) {
          * las energías también pueden fabricarse hasta este tope (igual que el playset de una carta).
          */
         const val ENERGY_CAP = 25
+
+        /** Genera un código de amigo aleatorio de 12 dígitos (puede empezar por 0). */
+        fun generateFriendCode(): String = buildString { repeat(12) { append(('0'..'9').random()) } }
 
         /** ¿El id corresponde a una Energía Básica? (ids "energy-basic-<tipo>-energy"). */
         fun isEnergyId(id: String): Boolean = id.startsWith("energy")
@@ -527,5 +554,6 @@ class ProfileRepository(context: Context) {
         val OWNED_COSMETICS = stringPreferencesKey("owned_cosmetics_json")
         val EQUIPPED_COSMETICS = stringPreferencesKey("equipped_cosmetics_json")
         val FAVORITE_COSMETICS = stringPreferencesKey("favorite_cosmetics_json")
+        val FRIEND_CODE = stringPreferencesKey("friend_code")
     }
 }

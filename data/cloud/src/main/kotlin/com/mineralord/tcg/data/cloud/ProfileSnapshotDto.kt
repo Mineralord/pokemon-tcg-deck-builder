@@ -35,6 +35,8 @@ data class ProfileSnapshotDto(
     val activeDeckId: String? = null,
     val favoriteDeckIds: List<String> = emptyList(),
     val decks: List<DeckSnapshotDto> = emptyList(),
+    /** Código de amigo único del jugador (viaja con la cuenta). Ausente en snapshots antiguos. */
+    val friendCode: String = "",
 )
 
 @Serializable
@@ -63,6 +65,7 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     seeded = seeded,
     activeDeckId = activeDeckId,
     favoriteDeckIds = favoriteDeckIds.toList(),
+    friendCode = friendCode,
     decks = decks.map { d ->
         DeckSnapshotDto(
             id = d.id,
@@ -101,5 +104,6 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
     },
     activeDeckId = activeDeckId,
     favoriteDeckIds = favoriteDeckIds.toSet(),
+    friendCode = friendCode,
     lastModified = lastModified,
 )

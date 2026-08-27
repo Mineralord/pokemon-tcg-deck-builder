@@ -12,13 +12,20 @@ import com.mineralord.tcg.data.cards.DeckEntry
 import com.mineralord.tcg.data.cards.DeckValidation
 import com.mineralord.tcg.data.cards.applyFilterSort
 import com.mineralord.tcg.data.cards.dominantType
+import com.mineralord.tcg.data.profile.CurrencyKind
 import com.mineralord.tcg.data.profile.ProfileRepository
+import com.mineralord.tcg.feature.carddetail.CardDetailUi
+import com.mineralord.tcg.feature.carddetail.craftCostOf
+import com.mineralord.tcg.feature.carddetail.destroyValueOf
+import com.mineralord.tcg.feature.carddetail.playsetSize
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.CardId
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.PokemonCard
+import com.mineralord.tcg.engine.model.Rarity
 import com.mineralord.tcg.engine.model.Supertype
+import com.mineralord.tcg.engine.model.TrainerCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,9 +42,12 @@ data class EditorCardUi(
     val imageEs: String?,
     val imageLarge: String,
     val supertype: Supertype,
+    val rarity: Rarity,             // para el holo del visor a pantalla completa
     val inDeck: Int,
     val owned: Int,
     val canAdd: Boolean,
+    val maxCopies: Int,             // límite por NOMBRE de esta carta (4, o 1 en casos especiales)
+    val limitReason: String? = null, // si no se puede añadir, motivo para el aviso transitorio
 ) {
     val hasSpanish: Boolean get() = imageEs != null
 }
@@ -57,6 +67,7 @@ data class EditorUiState(
     val deckCards: List<EditorCardUi> = emptyList(),     // cartas en el mazo (inDeck>0)
     val collection: List<EditorCardUi> = emptyList(),    // colección poseída, filtrada/ordenada
     val availableExpansions: List<String> = emptyList(), // códigos (= nombres) presentes en la colección
+    val featured: List<String> = emptyList(),            // cartas destacadas (máx 3): [0]=portada
     val dirty: Boolean = false,                          // hay cambios sin guardar respecto al estado inicial
 )
 
@@ -78,6 +89,11 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<EditorUiState> = _state.asStateFlow()
 
     private var ownedCardsCache: List<Card> = emptyList()
+    private var ownedMap: Map<String, Int> = emptyMap()
+
+    /** Fichas del jugador (para Fabricar/Destruir en el visor de detalle). */
+    private val _fichas = MutableStateFlow(0)
+    val fichas: StateFlow<Int> = _fichas.asStateFlow()
 
     /** Snapshot de la baraja al entrar al editor (para descartar cambios). */
     private var original: Deck? = null
@@ -88,6 +104,41 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     /** Nº de cartas de la colección que cumplirían un filtro (para "VER N CARTAS"). */
     fun countMatching(f: CardFilter): Int = applyFilterSort(ownedCardsCache, f, CardSort()).size
 
+    // --- Visor de detalle compartido (long-press) ---
+
+    private fun toDetail(card: Card): CardDetailUi {
+        val idRaw = card.id.raw
+        val n = ownedMap[idRaw] ?: 0
+        return CardDetailUi(
+            card = card,
+            number = idRaw.substringAfterLast('-').toIntOrNull() ?: 0,
+            name = card.name.es,
+            rarity = card.rarity,
+            owned = n > 0,
+            count = n,
+            cap = playsetSize(card),
+            setCode = if (idRaw.startsWith("energy")) "energy" else idRaw.substringBeforeLast('-'),
+            imageEs = card.artwork.smallEs,
+            imageLarge = card.artwork.large(spanish = true),
+        )
+    }
+
+    /** Detalle de una carta por id (o null si no existe). */
+    fun detailFor(id: String): CardDetailUi? = repo[CardId(id)]?.let { toDetail(it) }
+
+    /** Todas las cartas como detalle (para "Cartas relacionadas"). */
+    fun allDetails(): List<CardDetailUi> = repo.all.map { toDetail(it) }
+
+    fun craft(id: String) = viewModelScope.launch {
+        val c = repo[CardId(id)] ?: return@launch
+        profileRepo.craftCard(id, craftCostOf(c), playsetSize(c))
+    }
+
+    fun destroy(id: String) = viewModelScope.launch {
+        val c = repo[CardId(id)] ?: return@launch
+        profileRepo.destroyCopies(id, 1, destroyValueOf(c), playsetSize(c))
+    }
+
     fun start(id: String) {
         if (deckId.value == id) return
         deckId.value = id
@@ -97,6 +148,8 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
             combine(profileRepo.profile, deckId, filter, sort) { profile, id2, f, s ->
                 Quad(profile, id2, f, s)
             }.collect { (profile, id2, f, s) ->
+                ownedMap = profile.owned
+                _fichas.value = profile.balances[CurrencyKind.FICHAS] ?: 0
                 val deck = profile.decks.firstOrNull { it.id == id2 }
                 if (deck == null) {
                     _state.value = EditorUiState(loading = false, exists = false, deckId = id2)
@@ -119,15 +172,29 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
 
         fun toUi(card: Card, ownedCount: Int): EditorCardUi {
             val cur = inDeck[card.id.raw] ?: 0
-            // Energía básica: sin límite. Resto: límite de 4 POR NOMBRE (contando
-            // las demás versiones ya presentes) y nunca más de las que posees.
+            // Límite por NOMBRE: 1 para ACE SPEC, 4 para el resto (energía básica exenta).
+            val isAceSpec = (card as? TrainerCard)?.kind?.isAceSpec == true
+            val maxCopies = if (isAceSpec) 1 else DeckValidation.MAX_COPIES
+            val nameTotal = deckByName[card.name.en] ?: 0
+            // Energía básica: sin límite. Resto: límite POR NOMBRE (contando las demás
+            // versiones ya presentes) y nunca más de las que posees.
+            val deckFull = deck.totalCards >= DeckValidation.DECK_SIZE
             val canAdd = if (card is BasicEnergy) {
-                deck.totalCards < DeckValidation.DECK_SIZE
+                !deckFull
             } else {
-                val nameTotal = deckByName[card.name.en] ?: 0
-                deck.totalCards < DeckValidation.DECK_SIZE &&
-                    cur < ownedCount &&
-                    nameTotal < DeckValidation.MAX_COPIES
+                !deckFull && cur < ownedCount && nameTotal < maxCopies
+            }
+            // Motivo del bloqueo (para el aviso transitorio del selector).
+            val limitReason = when {
+                canAdd -> null
+                deckFull -> "La baraja ya tiene ${DeckValidation.DECK_SIZE} cartas."
+                card is BasicEnergy -> null
+                nameTotal >= maxCopies -> if (isAceSpec)
+                    "Solo puedes incluir 1 carta ACE SPEC por baraja."
+                else
+                    "Solo puedes incluir hasta cuatro cartas con el mismo nombre."
+                cur >= ownedCount -> "No posees más copias de esta carta."
+                else -> null
             }
             return EditorCardUi(
                 id = card.id.raw,
@@ -135,9 +202,12 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
                 imageEs = card.artwork.smallEs,
                 imageLarge = card.artwork.large(spanish = true),
                 supertype = card.supertype,
+                rarity = card.rarity,
                 inDeck = cur,
                 owned = ownedCount,
                 canAdd = canAdd,
+                maxCopies = maxCopies,
+                limitReason = limitReason,
             )
         }
 
@@ -171,6 +241,7 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
             deckCards = deckCards,
             collection = collection,
             availableExpansions = expansions,
+            featured = deck.featured.map { it.raw },
             dirty = dirty,
         )
     }
@@ -196,6 +267,15 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Quita todas las cartas del mazo (botón "Quitar todas" del selector). */
     fun clearDeck() = mutate { entries -> entries.clear() }
+
+    /** Fija las cartas destacadas (máx 3, [0] = portada). Persiste la baraja. */
+    fun setFeatured(ids: List<String>) {
+        val id = state.value.deckId
+        viewModelScope.launch {
+            val deck = profileRepo.currentDeck(id) ?: return@launch
+            profileRepo.upsertDeck(deck.copy(featured = ids.take(3).map { CardId(it) }))
+        }
+    }
 
     /**
      * Autocreación INTELIGENTE: construye un mazo legal de 60 cartas con [AutoDeckBuilder]

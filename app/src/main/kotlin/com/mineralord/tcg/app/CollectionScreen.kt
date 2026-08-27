@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.mineralord.tcg.core.designsystem.fadingScrollbar
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -136,6 +137,12 @@ private data class DexCard(
     val setCode: String,
     val imageEs: String?,
     val imageLarge: String,
+)
+
+/** Adapta el modelo local de la colección al modelo del detalle COMPARTIDO (feature:carddetail). */
+private fun DexCard.toDetailUi() = com.mineralord.tcg.feature.carddetail.CardDetailUi(
+    card = card, number = number, name = name, rarity = rarity, owned = owned,
+    count = count, cap = cap, setCode = setCode, imageEs = imageEs, imageLarge = imageLarge,
 )
 
 /** Una expansión con su progreso (como las tarjetas del modo agrupado). */
@@ -493,9 +500,10 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         }
         detail?.let { card ->
             val allCards = remember(sets) { sets.flatMap { it.cards } }
-            CardDetailSheet(
-                card = card,
-                allCards = allCards,
+            val allDetails = remember(allCards) { allCards.map { it.toDetailUi() } }
+            com.mineralord.tcg.feature.carddetail.CardDetailSheet(
+                card = card.toDetailUi(),
+                allCards = allDetails,
                 isFavorite = card.card.id.raw in favorites,
                 isWished = card.card.id.raw in wishlist,
                 fichas = fichas,
@@ -503,7 +511,7 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 onToggleWish = { toggle(wishlist, card.card.id.raw) },
                 onCraft = { scope.launch { craftRepo.craftCard(card.card.id.raw, craftCostOf(card.card), playsetSize(card.card)) } },
                 onDestroy = { scope.launch { craftRepo.destroyCopies(card.card.id.raw, 1, destroyValueOf(card.card), playsetSize(card.card)) } },
-                onOpenRelated = { detail = it },
+                onOpenRelated = { rel -> detail = allCards.firstOrNull { it.card.id.raw == rel.card.id.raw } },
                 onDismiss = { detail = null },
             )
         }
@@ -662,7 +670,7 @@ private fun FlatView(sets: List<DexSet>, favorites: List<String>, wishlist: List
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().fadingScrollbar(state),
     ) {
         gridItems(cards, key = { it.card.id.raw }) { c -> GridSlot(c, onClick = { onOpen(c) }) }
     }
@@ -688,7 +696,7 @@ private fun GroupedView(
         state = state,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().fadingScrollbar(state),
     ) {
         items(shownSets, key = { it.code }) { set ->
             ExpansionCard(set, isExpanded = set.code in expanded, onToggle = { toggle(expanded, set.code) })
@@ -1241,211 +1249,6 @@ private fun NumField(value: Int?, placeholder: String, onChange: (Int?) -> Unit,
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hoja de DETALLE de carta.
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun CardDetailSheet(
-    card: DexCard,
-    allCards: List<DexCard>,
-    isFavorite: Boolean,
-    isWished: Boolean,
-    fichas: Int,
-    onToggleFavorite: () -> Unit,
-    onToggleWish: () -> Unit,
-    onCraft: () -> Unit,
-    onDestroy: () -> Unit,
-    onOpenRelated: (DexCard) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var showLangs by remember(card) { mutableStateOf(false) }
-
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFDCD8F0), Color(0xFFE9ECF4))))) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            // Toolbar superior: efectos · idiomas · ••• · favorito · ¡La quiero!
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                DropPill("▦ 0")
-                Spacer(Modifier.width(8.dp))
-                Box(Modifier.noRippleClick { showLangs = !showLangs }) { DropPill("🌐 1") }
-                Spacer(Modifier.weight(1f))
-                Txt("•••", 16.sp, Muted, FontWeight.Black)
-                Spacer(Modifier.width(14.dp))
-                Txt(if (isFavorite) "★" else "☆", 20.sp, if (isFavorite) Color(0xFFE7B10A) else Muted, FontWeight.Black, Modifier.noRippleClick(onToggleFavorite))
-                Spacer(Modifier.width(14.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.noRippleClick(onToggleWish)) {
-                    Txt(if (isWished) "♥" else "♡", 20.sp, if (isWished) Color(0xFFEC5F94) else Muted, FontWeight.Black)
-                    Txt("¡La quiero!", 9.sp, Muted, FontWeight.Bold)
-                }
-            }
-
-            // Visor HOLO interactivo A TAMAÑO MÁXIMO: la carta ocupa casi todo el ancho de la pantalla
-            // y se inclina/brilla siguiendo el DEDO (InteractiveHoloCard). Esta ES la pantalla de juego
-            // con el holo; no hay diálogo aparte. No obtenida → dorso "No la tienes".
-            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier.fillMaxWidth(0.96f).aspectRatio(0.72f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (card.owned) {
-                        InteractiveHoloCard(
-                            imageUrl = card.imageLarge, setCode = card.setCode, cardNumber = card.number,
-                            rarity = card.rarity, contentDescription = card.name,
-                            modifier = Modifier.fillMaxSize().shadow(16.dp, RoundedCornerShape(12.dp), clip = false).clip(RoundedCornerShape(12.dp)),
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().shadow(10.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
-                                .background(Brush.verticalGradient(listOf(Color(0xFF2A3550), Color(0xFF161E30)))),
-                            contentAlignment = Alignment.Center,
-                        ) { Txt("No la tienes", 13.sp, Color(0xCCFFFFFF), FontWeight.Black) }
-                    }
-                }
-            }
-
-            // Fila: copias · efectos visuales · obtener efecto visual.
-            if (card.owned) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    CountChip("▤", "${card.count}")
-                    CountChip("▣", "0")
-                    Spacer(Modifier.weight(1f))
-                    Row(
-                        Modifier.shadow(2.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50)).background(Panel)
-                            .border(1.5.dp, Accent, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Txt("✦", 14.sp, Accent, FontWeight.Black)
-                        Txt("Obtener efecto visual", 12.sp, Ink, FontWeight.Black)
-                    }
-                }
-            }
-
-            // Nombre + rareza.
-            Spacer(Modifier.height(10.dp))
-            Txt(card.name, 24.sp, Ink, FontWeight.Black, Modifier.fillMaxWidth(), align = TextAlign.Center)
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                RaritySymbol(card.rarity, height = 20.dp)
-                Spacer(Modifier.width(8.dp))
-                Txt(rarityEs(card.rarity), 13.sp, Muted, FontWeight.Bold)
-            }
-            Spacer(Modifier.height(14.dp))
-
-            // Fabricación / Destrucción (Canon Fase 5). Incluye Energías Básicas (tope 25 por tipo).
-            CraftDestroyRow(
-                card = card, fichas = fichas, onCraft = onCraft, onDestroy = onDestroy,
-            )
-            Spacer(Modifier.height(14.dp))
-
-            // Panel blanco con datos + relacionadas.
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(20.dp)).background(Panel).padding(16.dp),
-            ) {
-                DetailTable(card.card)
-                (card.card as? PokemonCard)?.let { p ->
-                    if (p.abilities.isNotEmpty() || p.attacks.isNotEmpty()) {
-                        Spacer(Modifier.height(16.dp))
-                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                            Txt("Ataques", 14.sp, Ink, FontWeight.Black)
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        AttacksSection(p)
-                    }
-                }
-                Spacer(Modifier.height(16.dp))
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                    Txt("Cartas relacionadas", 14.sp, Ink, FontWeight.Black)
-                }
-                Spacer(Modifier.height(12.dp))
-                RelatedCards(card, allCards, onOpenRelated)
-            }
-            Spacer(Modifier.height(90.dp))
-        }
-
-        // Cerrar (X) fijo abajo.
-        Box(
-            Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp).size(54.dp)
-                .shadow(4.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onDismiss),
-            contentAlignment = Alignment.Center,
-        ) { Txt("✕", 20.sp, Muted, FontWeight.Black) }
-
-        // Popup de variantes de idioma.
-        if (showLangs) LanguagePopup(ownedCount = card.count, onDismiss = { showLangs = false })
-    }
-}
-
-/**
- * Fila de Fabricación/Destrucción del visor (Canon Fase 5). Fabricar suma 1 copia gastando Fichas
- * (hasta el playset); Destruir convierte 1 excedente en Fichas conservando el playset. Muestra el
- * progreso del playset y desactiva lo que no aplica (sin Fichas / playset completo / sin excedente).
- */
-@Composable
-private fun CraftDestroyRow(card: DexCard, fichas: Int, onCraft: () -> Unit, onDestroy: () -> Unit) {
-    val playset = playsetSize(card.card)
-    val cost = craftCostOf(card.card)
-    val value = destroyValueOf(card.card)
-    val canCraft = card.count < playset && fichas >= cost
-    val canDestroy = card.count > playset
-    val isEnergy = ProfileRepository.isEnergyId(card.card.id.raw)
-    var confirmDestroy by remember(card) { mutableStateOf(false) }
-    val fichaColor = Color(0xFF7C4DFF)
-    val destroyColor = Color(0xFFE0564E)
-    val floorLabel = if (isEnergy) "Colección" else "Playset"
-
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Txt("$floorLabel ${card.count.coerceAtMost(playset)}/$playset" + if (card.count > playset) "  ·  ${card.count - playset} excedente(s)" else "", 12.sp, Muted, FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ActionPill("Fabricar", "$cost 🧩", Accent, enabled = canCraft, onClick = onCraft)
-            ActionPill("Destruir", "+$value 🧩", destroyColor, enabled = canDestroy, onClick = { confirmDestroy = true })
-        }
-    }
-
-    if (confirmDestroy) {
-        Box(Modifier.fillMaxSize().background(Color(0x66000000)).noRippleClick { confirmDestroy = false }, contentAlignment = Alignment.Center) {
-            Column(
-                Modifier.padding(28.dp).clip(RoundedCornerShape(20.dp)).background(Panel).padding(22.dp).noRippleClick { },
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Txt("¿Destruir 1 copia?", 18.sp, Ink, FontWeight.Black)
-                Spacer(Modifier.height(8.dp))
-                Txt("Recibirás $value Fichas. Conservarás " + (if (isEnergy) "$playset energías" else "tu playset ($playset)") + ". No se puede deshacer.", 13.sp, Muted, FontWeight.Medium, Modifier.fillMaxWidth(), align = TextAlign.Center)
-                Spacer(Modifier.height(18.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(
-                        Modifier.clip(RoundedCornerShape(12.dp)).border(1.5.dp, Muted, RoundedCornerShape(12.dp))
-                            .noRippleClick { confirmDestroy = false }.padding(horizontal = 20.dp, vertical = 10.dp),
-                    ) { Txt("Cancelar", 13.sp, Ink, FontWeight.Bold) }
-                    Box(
-                        Modifier.clip(RoundedCornerShape(12.dp)).background(destroyColor)
-                            .noRippleClick { confirmDestroy = false; onDestroy() }.padding(horizontal = 20.dp, vertical = 10.dp),
-                    ) { Txt("Destruir", 13.sp, Color.White, FontWeight.Black) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionPill(label: String, sub: String, accent: Color, enabled: Boolean, onClick: () -> Unit) {
-    val bg = if (enabled) accent else accent.copy(alpha = 0.28f)
-    Column(
-        Modifier.clip(RoundedCornerShape(14.dp)).background(bg)
-            .then(if (enabled) Modifier.noRippleClick(onClick) else Modifier)
-            .padding(horizontal = 22.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Txt(label, 14.sp, Color.White, FontWeight.Black)
-        Txt(sub, 11.sp, Color(0xE6FFFFFF), FontWeight.Bold)
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MODO DESTRUCCIÓN (Fase 5): herramienta propia de la colección. Reutiliza sets/filtro/buscador.
@@ -1508,12 +1311,14 @@ private fun DestroySelectAllRow(anySelected: Boolean, onAll: () -> Unit, onNone:
 
 @Composable
 private fun DestroyGrid(cards: List<DexCard>, sel: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Int>) {
+    val destroyGridState = rememberLazyGridState()
     LazyVerticalGrid(
+        state = destroyGridState,
         columns = GridCells.Fixed(3),
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 110.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().fadingScrollbar(destroyGridState),
     ) {
         gridItems(cards, key = { it.card.id.raw }) { c ->
             val extras = c.count - playsetSize(c.card)
@@ -1552,8 +1357,10 @@ private fun DestroyTile(c: DexCard, extras: Int, qty: Int, onToggle: () -> Unit)
 
 @Composable
 private fun DestroyList(cards: List<DexCard>, sel: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Int>) {
+    val destroyListState = androidx.compose.foundation.lazy.rememberLazyListState()
     androidx.compose.foundation.lazy.LazyColumn(
-        Modifier.fillMaxSize(),
+        Modifier.fillMaxSize().fadingScrollbar(destroyListState),
+        state = destroyListState,
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -1643,208 +1450,7 @@ private fun DestroyConfirmDialog(totalCards: Int, totalFichas: Int, onCancel: ()
     }
 }
 
-@Composable
-private fun DropPill(text: String) {
-    Row(
-        Modifier.shadow(2.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50)).background(Panel)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Txt(text, 13.sp, Ink, FontWeight.Black)
-        Txt("▾", 10.sp, Muted, FontWeight.Black)
-    }
-}
 
-@Composable
-private fun CountChip(glyph: String, value: String) {
-    Row(
-        Modifier.shadow(1.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50)).background(Panel)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Txt(glyph, 13.sp, Muted, FontWeight.Black)
-        Txt(value, 14.sp, Ink, FontWeight.Black)
-    }
-}
-
-/** Tabla de datos (N.º · Pokémon/stage · Tipo · PS · Debilidad · Coste de Retirada · Serie). */
-@Composable
-private fun DetailTable(card: Card) {
-    val p = card as? PokemonCard
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TableRow("N.º", "%04d".format(numberOf(card.id.raw)))
-        if (p != null) {
-            TableRow("Pokémon", stageLabel(p.stage))
-            TableEnergyRow("Tipo", p.types)
-            TableRow("PS", "${p.hp}")
-            TableEnergyRow("Debilidad", p.weaknesses.map { it.type }, suffix = p.weaknesses.firstOrNull()?.value)
-            TableEnergyRow("Coste de Retirada", p.retreatCost)
-        }
-        TableRow("Serie", seriesEs(card.set.series))
-        TableRow("Expansión", expansionEs(card.set.name.es))
-    }
-}
-
-/** Icono de energía REAL (assets de core:designsystem). Hada no tiene asset → punto de color con inicial. */
-private fun energyIconRes(t: EnergyType): Int? = when (t) {
-    EnergyType.GRASS -> com.mineralord.tcg.core.designsystem.R.drawable.energy_grass
-    EnergyType.FIRE -> com.mineralord.tcg.core.designsystem.R.drawable.energy_fire
-    EnergyType.WATER -> com.mineralord.tcg.core.designsystem.R.drawable.energy_water
-    EnergyType.LIGHTNING -> com.mineralord.tcg.core.designsystem.R.drawable.energy_lightning
-    EnergyType.PSYCHIC -> com.mineralord.tcg.core.designsystem.R.drawable.energy_psychic
-    EnergyType.FIGHTING -> com.mineralord.tcg.core.designsystem.R.drawable.energy_fighting
-    EnergyType.DARKNESS -> com.mineralord.tcg.core.designsystem.R.drawable.energy_darkness
-    EnergyType.METAL -> com.mineralord.tcg.core.designsystem.R.drawable.energy_metal
-    EnergyType.DRAGON -> com.mineralord.tcg.core.designsystem.R.drawable.energy_dragon
-    EnergyType.COLORLESS -> com.mineralord.tcg.core.designsystem.R.drawable.energy_colorless
-    EnergyType.FAIRY -> null
-}
-
-@Composable
-private fun EnergyIcon(t: EnergyType, size: Dp = 18.dp) {
-    val res = energyIconRes(t)
-    if (res != null) {
-        Image(painterResource(res), energyEs(t), Modifier.size(size))
-    } else {
-        Box(Modifier.size(size).clip(CircleShape).background(Color(0xFFE9A3D6)), contentAlignment = Alignment.Center) {
-            Txt("H", (size.value * 0.55f).sp, Color.White, FontWeight.Black)
-        }
-    }
-}
-
-/** Sección "Ataques" (y habilidades) del detalle, con iconos de energía reales, como TCG Live. */
-@Composable
-private fun AttacksSection(p: PokemonCard) {
-    if (p.abilities.isEmpty() && p.attacks.isEmpty()) return
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        p.abilities.forEach { ability -> AbilityRow(ability) }
-        p.attacks.forEach { atk -> AttackRow(atk) }
-    }
-}
-
-@Composable
-private fun AbilityRow(ability: Ability) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(BgTop).padding(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.clip(RoundedCornerShape(50)).background(Color(0xFFE04A6B)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                Txt("Habilidad", 10.sp, Color.White, FontWeight.Black)
-            }
-            Txt(ability.name.es.ifBlank { ability.name.en }, 14.sp, Ink, FontWeight.Black)
-        }
-        val text = ability.text.es.ifBlank { ability.text.en }
-        if (text.isNotBlank()) { Spacer(Modifier.height(6.dp)); Txt(text, 12.sp, Muted, FontWeight.SemiBold, align = TextAlign.Start) }
-    }
-}
-
-@Composable
-private fun AttackRow(atk: Attack) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(BgTop).padding(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Coste de energía (iconos reales); sin coste → guion.
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (atk.cost.isEmpty()) Txt("—", 14.sp, Muted, FontWeight.Black)
-                else atk.cost.forEach { EnergyIcon(it, 20.dp) }
-            }
-            Spacer(Modifier.width(10.dp))
-            Txt(atk.name.es.ifBlank { atk.name.en }, 15.sp, Ink, FontWeight.Black, Modifier.weight(1f), align = TextAlign.Start)
-            val dmg = (atk.baseDamage as? Damage.Fixed)?.value?.takeIf { it > 0 }
-            if (dmg != null) Txt("$dmg", 18.sp, Ink, FontWeight.Black)
-        }
-        val text = atk.text.es.ifBlank { atk.text.en }
-        if (text.isNotBlank()) { Spacer(Modifier.height(6.dp)); Txt(text, 12.sp, Muted, FontWeight.SemiBold, align = TextAlign.Start) }
-    }
-}
-
-@Composable
-private fun TableRow(label: String, value: String) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Txt(label, 13.sp, Muted, FontWeight.Bold, Modifier.weight(1f), align = TextAlign.Start)
-        Txt(value, 13.sp, Ink, FontWeight.Black)
-    }
-}
-
-/** Fila de tabla cuyo valor son iconos de energía reales (Tipo/Debilidad/Retirada). Vacío → guion. */
-@Composable
-private fun TableEnergyRow(label: String, types: List<EnergyType>, suffix: String? = null) {
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Txt(label, 13.sp, Muted, FontWeight.Bold, Modifier.weight(1f), align = TextAlign.Start)
-        if (types.isEmpty()) {
-            Txt("—", 13.sp, Ink, FontWeight.Black)
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                types.forEach { EnergyIcon(it, 20.dp) }
-                if (suffix != null) Txt(" $suffix", 13.sp, Ink, FontWeight.Black)
-            }
-        }
-    }
-}
-
-/** Cartas relacionadas: línea evolutiva (obtenidas a color, faltantes en gris). */
-@Composable
-private fun RelatedCards(card: DexCard, all: List<DexCard>, onOpen: (DexCard) -> Unit) {
-    val related = remember(card) { relatedFamily(card, all) }
-    if (related.isEmpty()) {
-        Txt("—", 13.sp, Muted, FontWeight.Bold, Modifier.fillMaxWidth(), align = TextAlign.Center)
-        return
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        related.take(3).forEach { r ->
-            Box(Modifier.weight(1f).aspectRatio(0.72f).clip(RoundedCornerShape(8.dp)).noRippleClick { onOpen(r) }) {
-                if (r.owned) {
-                    HoloCardImage(
-                        imageUrl = r.imageEs ?: r.imageLarge, setCode = r.setCode, cardNumber = r.number,
-                        rarity = r.rarity, contentDescription = r.name, enabled = false, modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    // Faltante: arte en gris (desaturado con capa).
-                    Box(Modifier.fillMaxSize()) {
-                        AsyncImage(
-                            model = r.imageEs ?: r.imageLarge, contentDescription = r.name,
-                            contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
-                        )
-                        Box(Modifier.fillMaxSize().background(Color(0x99B0B6C2)))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Popup de variantes de idioma (copias por idioma; sólo ING tiene el conteo real). */
-@Composable
-private fun LanguagePopup(ownedCount: Int, onDismiss: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(Color(0x22000000)).noRippleClick(onDismiss), contentAlignment = Alignment.TopCenter) {
-        Column(
-            Modifier.padding(top = 60.dp).fillMaxWidth(0.7f).shadow(8.dp, RoundedCornerShape(18.dp))
-                .clip(RoundedCornerShape(18.dp)).background(Panel).noRippleClick { }.padding(vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Txt("Vista previa", 12.sp, Muted, FontWeight.Bold)
-            Spacer(Modifier.height(6.dp))
-            val langs = listOf("ING" to ownedCount, "ES-ES" to 0, "FRA" to 0, "ALE" to 0, "ITA" to 0, "PT-BR" to 0)
-            langs.forEachIndexed { i, (lang, n) ->
-                val active = i == 0
-                Row(
-                    Modifier.fillMaxWidth(0.85f).padding(vertical = 3.dp)
-                        .clip(RoundedCornerShape(50)).background(if (active) Ink else BgTop)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Txt(lang, 14.sp, if (active) Color.White else Muted, FontWeight.Black, Modifier.weight(1f), align = TextAlign.Start)
-                    Box(Modifier.clip(RoundedCornerShape(50)).background(if (active) Color(0x33FFFFFF) else Panel).padding(horizontal = 10.dp, vertical = 2.dp)) {
-                        Txt("$n", 12.sp, if (active) Color.White else Muted, FontWeight.Black)
-                    }
-                }
-            }
-        }
-    }
-}
 
 /** Único botón flotante inferior-derecho = ORDENAR (como TCG Live). */
 @Composable
@@ -1905,55 +1511,6 @@ private fun sortCards(cards: List<DexCard>, sort: DexSort, asc: Boolean, favorit
     return if (asc) base else base.reversed()
 }
 
-private fun relatedFamily(card: DexCard, all: List<DexCard>): List<DexCard> {
-    val p = card.card as? PokemonCard ?: return emptyList()
-    val nameEn = p.name.en
-    val evo = p.evolvesFrom
-    return all.filter { d ->
-        val pc = d.card as? PokemonCard ?: return@filter false
-        pc.name.en == nameEn || pc.evolvesFrom == nameEn || (evo != null && pc.name.en == evo)
-    }.distinctBy { (it.card as? PokemonCard)?.name?.en ?: it.card.id.raw }
-        .sortedBy { stageOrder((it.card as? PokemonCard)?.stage) }
-}
-
-private fun stageOrder(stage: Stage?): Int = when (stage) {
-    Stage.Basic -> 0; Stage.Stage1 -> 1; Stage.Stage2 -> 2; else -> 3
-}
-
-private fun stageLabel(stage: Stage): String = when (stage) {
-    Stage.Basic -> "Básico"; Stage.Stage1 -> "Fase 1"; Stage.Stage2 -> "Fase 2"; Stage.BabyRestored -> "Restaurado"
-}
-
-/** Nombre de la serie en español (el dato `set.series` viene en inglés). */
-private fun seriesEs(series: String): String = when (series) {
-    "Scarlet & Violet" -> "Escarlata y Púrpura"
-    "Mega Evolution" -> "Megaevolución"
-    "Sword & Shield" -> "Espada y Escudo"
-    "Sun & Moon" -> "Sol y Luna"
-    "XY" -> "XY"
-    "Black & White" -> "Negro y Blanco"
-    else -> series
-}
-
-/**
- * Nombre OFICIAL de la expansión en español (el dato `set.name` viene en inglés).
- * Fuente: nombres de lanzamiento en España según WikiDex (wikidex.net).
- */
-private fun expansionEs(name: String): String = when (name) {
-    "151" -> "151"
-    "Scarlet & Violet" -> "Escarlata y Púrpura"
-    "Paldea Evolved" -> "Evoluciones en Paldea"
-    "Obsidian Flames" -> "Llamas Obsidianas"
-    "Paradox Rift" -> "Brecha Paradójica"
-    "Temporal Forces" -> "Fuerzas Temporales"
-    "Twilight Masquerade" -> "Mascarada Crepuscular"
-    "Shrouded Fable" -> "Fábula Sombría"
-    "Stellar Crown" -> "Corona Astral"
-    "Surging Sparks" -> "Chispas Fulgurantes"
-    "Destined Rivals" -> "Rivales Predestinados"
-    "Mega Evolution" -> "Megaevolución"
-    else -> name
-}
 
 private fun energyEs(t: EnergyType?): String = when (t) {
     EnergyType.GRASS -> "Planta"; EnergyType.FIRE -> "Fuego"; EnergyType.WATER -> "Agua"

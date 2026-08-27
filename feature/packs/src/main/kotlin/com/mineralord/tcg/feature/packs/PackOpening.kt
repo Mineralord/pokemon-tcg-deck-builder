@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.mineralord.tcg.core.designsystem.fadingScrollbar
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -480,12 +482,14 @@ private fun SummaryContent(cards: List<RevealedCard>, setLabel: String, onDismis
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("¡SOBRE ABIERTO!", color = Color(0xFF2A2438), fontWeight = FontWeight.Black, fontSize = 22.sp, modifier = Modifier.padding(top = 12.dp))
         Text(setLabel, color = Color(0x992A2438), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+        val summaryState = rememberLazyGridState()
         LazyVerticalGrid(
+            state = summaryState,
             columns = GridCells.Fixed(3),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 8.dp),
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).fadingScrollbar(summaryState),
         ) {
             itemsIndexed(cards) { _, c ->
                 Box(contentAlignment = Alignment.TopEnd) {

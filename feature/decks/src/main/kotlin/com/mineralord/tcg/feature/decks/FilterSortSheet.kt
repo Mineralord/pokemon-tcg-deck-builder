@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.mineralord.tcg.core.designsystem.fadingScrollbar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -63,8 +64,9 @@ fun FilterSortSheet(
     count: (CardFilter) -> Int,
     onApply: (CardFilter, CardSort) -> Unit,
     onDismiss: () -> Unit,
+    openOnSort: Boolean = false,
 ) {
-    var tab by remember { mutableStateOf(FsTab.FILTROS) }
+    var tab by remember { mutableStateOf(if (openOnSort) FsTab.ORDENAR else FsTab.FILTROS) }
     var f by remember { mutableStateOf(initialFilter) }
     var s by remember { mutableStateOf(initialSort) }
 
@@ -92,7 +94,8 @@ fun FilterSortSheet(
                 }
             }
 
-            Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(12.dp)) {
+            val sheetScroll = rememberScrollState()
+            Column(modifier = Modifier.weight(1f).verticalScroll(sheetScroll).fadingScrollbar(sheetScroll).padding(12.dp)) {
                 if (tab == FsTab.FILTROS) {
                     // SUPERTIPO
                     Section("CATEGORÍA") {

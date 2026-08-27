@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Una carta de una baraja, resuelta para la UI. */
-data class DeckCardUi(val name: String, val count: Int, val imageEs: String?, val imageLarge: String?, val supertype: Supertype) {
+data class DeckCardUi(val id: String, val name: String, val count: Int, val imageEs: String?, val imageLarge: String?, val supertype: Supertype) {
     val hasSpanish: Boolean get() = imageEs != null
 }
 
@@ -42,6 +42,7 @@ data class DeckUi(
     val playable: Boolean,
     val updatedAt: Long,
     val cards: List<DeckCardUi>,
+    val featured: List<String> = emptyList(),
 )
 
 data class DecksUiState(
@@ -82,6 +83,7 @@ class DecksViewModel(app: Application) : AndroidViewModel(app) {
         val cards = entries.map { e ->
             val c = repo[e.cardId]
             DeckCardUi(
+                id = e.cardId.raw,
                 name = c?.name?.es ?: e.cardId.raw,
                 count = e.count,
                 imageEs = c?.artwork?.smallEs,
@@ -104,6 +106,7 @@ class DecksViewModel(app: Application) : AndroidViewModel(app) {
             playable = if (prebuilt) PrebuiltDecks.ownsAll(this, profile.owned, repo) else validity.valid,
             updatedAt = updatedAt,
             cards = cards,
+            featured = featured.map { it.raw },
         )
     }
 

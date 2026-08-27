@@ -50,6 +50,7 @@ android {
 
 dependencies {
     implementation(project(":core:designsystem"))
+    implementation(project(":feature:carddetail"))
     implementation(project(":feature:packs"))
     implementation(project(":feature:decks"))
     implementation(project(":feature:combat"))
@@ -79,6 +80,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
 }

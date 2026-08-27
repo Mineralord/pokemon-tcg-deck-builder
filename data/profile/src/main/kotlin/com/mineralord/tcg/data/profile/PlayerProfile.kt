@@ -30,10 +30,18 @@ data class PlayerProfile(
     val decks: List<Deck> = emptyList(),
     val activeDeckId: String? = null,
     val favoriteDeckIds: Set<String> = emptySet(),
+    /** Código de amigo único del jugador (12 dígitos). Vacío hasta generarse la 1ª vez. */
+    val friendCode: String = "",
     val lastModified: Long = 0L,
 ) {
     val distinctOwned: Int get() = owned.size
     val totalOwned: Int get() = owned.values.sum()
+
+    /** Código de amigo formateado en grupos de 4: "0007 4583 9120" (o crudo si no tiene 12 dígitos). */
+    val friendCodeFormatted: String
+        get() = if (friendCode.length == 12)
+            "${friendCode.substring(0, 4)} ${friendCode.substring(4, 8)} ${friendCode.substring(8, 12)}"
+        else friendCode
 
     /** Saldo del recurso [kind] (0 si nunca se ha acreditado). */
     fun balanceOf(kind: CurrencyKind): Int = balances[kind] ?: 0

@@ -56,6 +56,7 @@ fun HomeScreen(
     onPerfil: () -> Unit,
     onJugar: () -> Unit,
     onJugarOnline: () -> Unit,
+    onAmigos: () -> Unit = {},
 ) {
     // Moneda seleccionada para mostrar su ficha informativa (qué es, para qué sirve, cómo se obtiene).
     var info by remember { mutableStateOf<Currency?>(null) }
@@ -106,7 +107,7 @@ fun HomeScreen(
         Spacer(Modifier.height(8.dp))
 
         // ---------- Navegación hexagonal inferior ----------
-        HomeNav(onCartadex = onCartadex, onTienda = onTienda, onBarajas = onBarajas, onPerfil = onPerfil, onJugarOnline = onJugarOnline)
+        HomeNav(onCartadex = onCartadex, onTienda = onTienda, onBarajas = onBarajas, onPerfil = onPerfil, onJugarOnline = onJugarOnline, onAmigos = onAmigos)
     }
 
     info?.let { CurrencyInfoDialog(currency = it, onDismiss = { info = null }) }
@@ -329,7 +330,7 @@ private fun PlayButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun HomeNav(onCartadex: () -> Unit, onTienda: () -> Unit, onBarajas: () -> Unit, onPerfil: () -> Unit, onJugarOnline: () -> Unit) {
+private fun HomeNav(onCartadex: () -> Unit, onTienda: () -> Unit, onBarajas: () -> Unit, onPerfil: () -> Unit, onJugarOnline: () -> Unit, onAmigos: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -337,7 +338,7 @@ private fun HomeNav(onCartadex: () -> Unit, onTienda: () -> Unit, onBarajas: () 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
             HexNav("CARTADEX", Color(0xFF42A5F5), onCartadex)
             HexNav("BARAJAS", Color(0xFF8D6E63), onBarajas, big = true)
-            HexNav("PASE DE\nCOMBATE", Color(0xFFFFB300), {})
+            HexNav("AMIGOS", Color(0xFFFFB300), onAmigos)
         }
         Spacer(Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {

@@ -19,6 +19,12 @@ data class Deck(
     val entries: List<DeckEntry>,
     val isCustom: Boolean = false,
     val updatedAt: Long = 0L,
+    /**
+     * Cartas destacadas (máx. 3) que decoran la "caja": la 1ª es la PORTADA (cara
+     * frontal grande) y las siguientes (hasta 2) asoman RECTAS al lado. Vacío =
+     * derivar de [headliner]/orden de cartas.
+     */
+    val featured: List<com.mineralord.tcg.engine.model.CardId> = emptyList(),
 ) {
     val totalCards: Int get() = entries.sumOf { it.count }
 

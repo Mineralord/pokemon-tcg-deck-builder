@@ -1,9 +1,11 @@
 package com.mineralord.tcg.feature.decks
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -45,7 +48,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.BarajasPalette
-import com.mineralord.tcg.core.designsystem.DeckBox
+import com.mineralord.tcg.core.designsystem.fadingScrollbar
 import com.mineralord.tcg.core.designsystem.typeColor
 
 /**
@@ -78,12 +81,19 @@ fun DeckEditorScreen(
     var infoMsg by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pickerOpen by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var openSortTab by remember { mutableStateOf(false) }
     var autoBuildOpen by remember { mutableStateOf(false) }
+    var customizeOpen by remember { mutableStateOf(false) }
+    var featuredOpen by remember { mutableStateOf(false) }
+    var viewer by remember { mutableStateOf<EditorCardUi?>(null) }
 
     fun soon(area: String) { infoMsg = area to "Esta función aún no está disponible." }
     fun attemptExit() { if (state.dirty) exitPrompt = true else onBack() }
     BackHandler {
-        if (autoBuildOpen) autoBuildOpen = false
+        if (viewer != null) viewer = null
+        else if (featuredOpen) featuredOpen = false
+        else if (customizeOpen) customizeOpen = false
+        else if (autoBuildOpen) autoBuildOpen = false
         else if (filtersOpen) filtersOpen = false
         else if (pickerOpen) pickerOpen = false
         else attemptExit()
@@ -104,17 +114,20 @@ fun DeckEditorScreen(
             onRemove = viewModel::removeCard,
             onClearAll = viewModel::clearDeck,
             onAutoBuild = { autoBuildOpen = true },
-            onSoon = { area -> infoMsg = area to "Esta función aún no está disponible." },
-            onOpenFilters = { filtersOpen = true },
+            onOpenFilters = { openSortTab = false; filtersOpen = true },
+            onOpenSort = { openSortTab = true; filtersOpen = true },
+            onInspect = { viewer = it },
             filtersActive = !viewModel.currentFilter.isEmpty,
             onDone = { pickerOpen = false },
         )
+        viewer?.let { DeckCardDetailViewer(it.id, viewModel) { viewer = null } }
         if (filtersOpen) {
             FilterSortSheet(
                 initialFilter = viewModel.currentFilter,
                 initialSort = viewModel.currentSort,
                 expansions = state.availableExpansions,
                 count = viewModel::countMatching,
+                openOnSort = openSortTab,
                 onApply = { f, s -> viewModel.setFilter(f); viewModel.setSort(s); filtersOpen = false },
                 onDismiss = { filtersOpen = false },
             )
@@ -137,6 +150,10 @@ fun DeckEditorScreen(
     }
 
     val accent = typeColor(state.type)
+    // Portada (1ª destacada) + laterales (2ª y 3ª) para la vista de la caja.
+    fun imgOf(id: String?): String? = id?.let { i -> state.deckCards.firstOrNull { it.id == i }?.imageEs }
+    val boxCover = imgOf(state.featured.getOrNull(0)) ?: state.deckCards.firstOrNull { it.imageEs != null }?.imageEs
+    val boxSides = state.featured.drop(1).mapNotNull { imgOf(it) }.take(2)
 
     Column(modifier = modifier.fillMaxSize().background(BarajasPalette.BgBottom)) {
         // Cabecera tintada con el acento de la baraja.
@@ -172,13 +189,19 @@ fun DeckEditorScreen(
             Spacer(Modifier.height(14.dp))
             // Caja 3D + "Modificar".
             Row(verticalAlignment = Alignment.Bottom) {
-                DeckBox(type = state.type, modifier = Modifier.size(84.dp, 100.dp))
+                DeckBoxPreview(
+                    type = state.type,
+                    cover = boxCover,
+                    sides = boxSides,
+                    modifier = Modifier.size(120.dp, 100.dp)
+                        .then(if (readOnly) Modifier else Modifier.clickable { customizeOpen = true }),
+                )
                 Spacer(Modifier.weight(1f))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(BarajasPalette.Surface)
-                        .clickable { soon("Modificar portada") }
+                        .clickable { if (!readOnly) customizeOpen = true }
                         .padding(horizontal = 22.dp, vertical = 9.dp),
                 ) { Text("Modificar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
             }
@@ -189,9 +212,9 @@ fun DeckEditorScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SubPanel("Energía", Modifier.weight(1f)) { soon("Energía") }
-            SubPanel("Accesorios", Modifier.weight(1f)) { soon("Accesorios") }
-            SubPanel("Cartas destacadas", Modifier.weight(1f)) { soon("Cartas destacadas") }
+            SubPanel("Energía", Modifier.weight(1f)) { if (!readOnly) customizeOpen = true }
+            SubPanel("Accesorios", Modifier.weight(1f)) { if (!readOnly) customizeOpen = true }
+            SubPanel("Cartas destacadas", Modifier.weight(1f)) { if (!readOnly) customizeOpen = true }
         }
 
         // Chip n/60 + Editar.
@@ -226,12 +249,14 @@ fun DeckEditorScreen(
         }
 
         // Rejilla del mazo (cartas actuales, solo lectura) + hueco "+".
+        val gridState = rememberLazyGridState()
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(3),
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier.weight(1f).fillMaxWidth().fadingScrollbar(gridState),
         ) {
             items(state.deckCards.size, key = { state.deckCards[it].id }) { i ->
                 val c = state.deckCards[i]
@@ -240,6 +265,7 @@ fun DeckEditorScreen(
                     imageEs = c.imageEs,
                     showBack = readOnly && c.owned <= 0,
                     count = c.inDeck,
+                    onLongClick = { viewer = c },
                     onClick = { if (!readOnly) pickerOpen = true },
                 )
             }
@@ -324,6 +350,26 @@ fun DeckEditorScreen(
         )
     }
     infoMsg?.let { (title, body) -> InfoDialog(title = title, body = body, onClose = { infoMsg = null }) }
+    viewer?.let { DeckCardDetailViewer(it.id, viewModel) { viewer = null } }
+    if (customizeOpen) {
+        // Imágenes de las destacadas actuales (según ids guardados; portada primero).
+        val featuredImgs = state.featured.mapNotNull { id -> state.deckCards.firstOrNull { it.id == id }?.imageEs }
+        CustomizeDeckSheet(
+            type = state.type,
+            featured = featuredImgs,
+            onSoon = { area -> soon(area) },
+            onEditFeatured = { featuredOpen = true },
+            onDismiss = { customizeOpen = false },
+        )
+    }
+    if (featuredOpen) {
+        FeaturedPickerSheet(
+            cards = state.deckCards,
+            initialSelected = state.featured,
+            onApply = { viewModel.setFeatured(it) },
+            onDismiss = { featuredOpen = false },
+        )
+    }
 }
 
 @Composable
@@ -357,11 +403,13 @@ private fun SubPanel(label: String, modifier: Modifier = Modifier, onClick: () -
 }
 
 /** Hueco de carta del mazo (miniatura, reverso si no se posee, o "+"). */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CardSlot(
     imageEs: String?,
     showBack: Boolean = false,
     count: Int = 0,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Box(
@@ -371,7 +419,7 @@ private fun CardSlot(
             .clip(RoundedCornerShape(8.dp))
             .background(BarajasPalette.Hollow)
             .border(1.dp, BarajasPalette.HollowBorder, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
     ) {
         if (showBack) {

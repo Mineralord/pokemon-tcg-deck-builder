@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.mineralord.tcg.core.designsystem.fadingScrollbar
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -226,12 +228,14 @@ fun CosmeticStoreScreen(
         Spacer(Modifier.height(10.dp))
 
         // Rejilla del catálogo de la categoría.
+        val catalogState = rememberLazyGridState()
         LazyVerticalGrid(
+            state = catalogState,
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().fadingScrollbar(catalogState),
         ) {
             items(Cosmetics.repo.shopByCategory(category), key = { it.id }) { cosmetic ->
                 CosmeticCard(
@@ -449,12 +453,14 @@ fun CosmeticCollectionScreen(
             }
         }
         Spacer(Modifier.height(10.dp))
+        val invState = rememberLazyGridState()
         LazyVerticalGrid(
+            state = invState,
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().fadingScrollbar(invState),
         ) {
             items(items, key = { it.id }) { cosmetic ->
                 CollectionCard(
