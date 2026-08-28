@@ -2,6 +2,36 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## ⏸️ RETOMAR AQUÍ (27 Ago 2026) — RÉPLICA UI TCG POCKET (Comunidad · Menú · Perfil)
+Rama `feature/studio-match-mode`, árbol LIMPIO. Último commit **`a3c7c53`** (feat comunidad/menu/perfil).
+**Metodología del usuario (REPETIR SIEMPRE que pida analizar una pantalla):** con el teléfono conectado por ADB,
+**tomar captura → deslizar un poco → volver a capturar → repetir hasta cubrir TODO el scroll** (pasos CORTOS
+~400px; no deslizar rápido ni saltarse tramos). Luego ampliar zonas con `System.Drawing` (nearest-neighbor) para
+descomponer el arte vectorial. **ADB:** `$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe`; device `3bf89e4f`;
+pantalla `1080×2400`. Captura binaria segura: `adb shell screencap -p /sdcard/s.png; adb pull …; adb shell rm …`
+(NUNCA `screencap -p >` en PowerShell: corrompe a UTF-16). Recortes >2000px fallan al leerse → reescalar antes.
+**HECHO esta sesión (todo build verde + validado en dispositivo):**
+- **Comunidad** (antes Amigos): `ComunidadScreen.kt` = hub con hero placeholder verde (suelo en perspectiva) +
+  4 botones arte vectorial (Galerías públicas·Compartir·Intercambio·Amigos). Tab inferior renombrado "Comunidad"
+  con icono 3 bustos (`NavComunidadIcon` en HomeScreen.kt). Botón Amigos → `FriendsScreen` experimental (Screen.FRIENDS).
+- **Menú lateral** (último tab): `MenuPanel.kt` = panel desliza desde la derecha + blur del fondo. Todos los iconos
+  vectoriales (copiar/tienda/inventario/noticias/regalos/pistas/otros/engranaje), avisos rojos, píldora "Pase normal"
+  VACÍA (por diseño), avatar placeholder. Muestra el Nombre de Usuario real.
+- **Nombre de Usuario** = nuevo `PlayerProfile.username` (DataStore + `ProfileSnapshotDto` nube + `setUsername`).
+  Editable en Perfil (`EditNameDialog` + `ProfileViewModel.setUsername`), se propaga a menú/perfil. FUTURO: notificar
+  a amigos al cambiarlo (no hay backend de amigos aún).
+- **Perfil de Jugador** rediseñado al design system TCG Pocket (reemplazó el diseño rojo viejo, que quedó como CÓDIGO
+  MUERTO en `ProfileScreen.kt`: ProfileHeader/StatsCard/PersonalizationGrid/AccessTiles ya NO se usan → limpiar algún
+  día). Nuevo: `PocketPalette` + anillo de nivel + avatar CIRCULAR (futuro: todos los avatares circulares) + píldoras
+  nombre/estado (borde arcoíris) + botón Estadísticas (abre `StatsSheet` inferior con Miembro desde/Región/Idioma/Hora
+  local/Sobre mí, reusa `AccountInfoCard`) + emblemas hexagonales + selección personal + recuento colección +
+  preferencias intercambio + lista deseadas + resumen rápido + logros (pedestales/barras) + botón iniciar sesión + X cierre.
+  Assets raster (avatar/emblemas/trofeos) = placeholder vectorial por ahora.
+- Perfil se abre tocando el círculo superior central de la Home (Nv. + avatar).
+**PENDIENTE/SIGUIENTE:** (1) popup de Estadísticas del botón "Estadísticas" — el usuario mostrará QUÉ estadísticas van
+(hoy pusimos los datos de cuenta como interino). (2) Sistema de NIVEL/XP real (hoy "Nv. 1 · 0/100" placeholder).
+(3) limpiar código muerto del Perfil viejo. (4) arte real de emblemas/trofeos/avatares circulares.
+
 ## ⏸️ RETOMAR AQUÍ (23 Ago 2026) — COSMETIC ASSET LIBRARY, siguiente sprint
 Sesión pausada con árbol de git LIMPIO (todo committeado, último = `0f20558` Kenney Emotes IMAGE). Rama
 `feature/studio-match-mode`, sin push (local). **Infra de cosméticos data-driven COMPLETA** (ver bloque
