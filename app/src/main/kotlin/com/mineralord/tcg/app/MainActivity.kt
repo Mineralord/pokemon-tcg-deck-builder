@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,7 +48,7 @@ import kotlinx.coroutines.launch
  * Las 4 páginas principales (Inicio · Cartas · Amigos · Logros) viven en el [HorizontalPager] y no
  * están aquí. "Menú" es un popup, no una página.
  */
-private enum class Screen { STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE }
+private enum class Screen { STORE, PACKS, COSMETICS, COSMETIC_COLLECTION, DECKS, DECK_SELECT, MATCHMAKING, GAME, ONLINE, PROFILE, FRIENDS }
 
 /** Nº de páginas principales navegables por deslizamiento. */
 private const val MAIN_PAGES = 4
@@ -128,9 +129,16 @@ private fun AppShell() {
         }
     }
 
+    // Desenfoque del fondo mientras el menú lateral está abierto (se anima suavemente).
+    val menuBlur by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (menuOpen) 18.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(260),
+        label = "menuBlur",
+    )
+
     Box(Modifier.fillMaxSize()) {
         // ---- Base: páginas principales con barra inferior compartida ----
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().blur(menuBlur)) {
             androidx.compose.foundation.pager.HorizontalPager(
                 state = pager,
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -158,9 +166,10 @@ private fun AppShell() {
                         onExit = { goToPage(0) },
                         modifier = Modifier.fillMaxSize(),
                     )
-                    2 -> FriendsScreen(
+                    2 -> ComunidadScreen(
                         modifier = Modifier.fillMaxSize(),
-                        onBack = { goToPage(0) },
+                        // "Amigos" abre la pantalla experimental de amigos como subpantalla.
+                        onAmigos = { push(Screen.FRIENDS) },
                     )
                     else -> PartidasScreen(
                         modifier = Modifier.fillMaxSize(),
@@ -274,6 +283,10 @@ private fun AppShell() {
                             equippedBadge = equipped(com.mineralord.tcg.data.cosmetics.CosmeticCategory.BADGE),
                         )
                     }
+                    Screen.FRIENDS -> FriendsScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        onBack = { back() },
+                    )
                 }
             }
         }
@@ -290,9 +303,15 @@ private fun AppShell() {
             )
         }
 
-        if (menuOpen) {
-            MenuPopup(onDismiss = { menuOpen = false })
-        }
+        MenuOverlay(
+            visible = menuOpen,
+            onDismiss = { menuOpen = false },
+            userId = profile.friendCode.ifBlank { "----------" },
+            playerName = profile.username.ifBlank { "Entrenador" },
+            avatarColors = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.AVATAR)
+                ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
+                ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
+        )
     }
 }
 
@@ -308,22 +327,6 @@ private fun ComingSoonPage(title: String) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(title, color = TcgColors.Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
             Text("Próximamente", color = TcgColors.Ink.copy(alpha = 0.5f), fontSize = 14.sp)
-        }
-    }
-}
-
-/** Popup del "Menú" (placeholder). El contenido real se implementará más adelante. */
-@Composable
-private fun MenuPopup(onDismiss: () -> Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .background(TcgColors.Cream, androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("Menú", color = TcgColors.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp)
-            Text("Próximamente", color = TcgColors.Ink.copy(alpha = 0.5f), fontSize = 13.sp)
         }
     }
 }

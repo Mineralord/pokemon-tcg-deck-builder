@@ -27,6 +27,7 @@ data class ProfileStats(
     val expansions: Int = 0,      // expansiones distintas poseídas
     val indexPct: Float = 0f,     // índice de colección (% de cartas distintas del catálogo)
     val friendCode: String = "",  // código de amigo único (12 dígitos)
+    val username: String = "",    // Nombre de Usuario editable (se propaga a toda la app)
     val loading: Boolean = true,
 )
 
@@ -64,12 +65,21 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
                         expansions = exps,
                         indexPct = idx,
                         friendCode = p.friendCode,
+                        username = p.username,
                         loading = false,
                     )
                 }
                 _stats.value = stats
             }
         }
+    }
+
+    /**
+     * Cambia el Nombre de Usuario. Se persiste en el perfil y, al observarse el [Flow], se
+     * propaga a toda la app (menú, perfil, combate) y viaja a la nube en la próxima sync.
+     */
+    fun setUsername(name: String) {
+        viewModelScope.launch { profileRepo.setUsername(name) }
     }
 
     fun signIn(activity: Activity, launch: (IntentSenderRequest) -> Unit) {

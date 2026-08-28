@@ -35,6 +35,8 @@ data class ProfileSnapshotDto(
     val activeDeckId: String? = null,
     val favoriteDeckIds: List<String> = emptyList(),
     val decks: List<DeckSnapshotDto> = emptyList(),
+    /** Nombre de Usuario visible (viaja con la cuenta; se propaga entre dispositivos). */
+    val username: String = "",
     /** Código de amigo único del jugador (viaja con la cuenta). Ausente en snapshots antiguos. */
     val friendCode: String = "",
     /** Monedero de sobres gratis (saldo). Viaja con la cuenta para evitar el exploit reinstalar+login. */
@@ -69,6 +71,7 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     seeded = seeded,
     activeDeckId = activeDeckId,
     favoriteDeckIds = favoriteDeckIds.toList(),
+    username = username,
     friendCode = friendCode,
     packBalance = packBalance,
     packLastCreditAt = packLastCreditAt,
@@ -110,6 +113,7 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
     },
     activeDeckId = activeDeckId,
     favoriteDeckIds = favoriteDeckIds.toSet(),
+    username = username,
     friendCode = friendCode,
     packBalance = packBalance,
     packLastCreditAt = packLastCreditAt,

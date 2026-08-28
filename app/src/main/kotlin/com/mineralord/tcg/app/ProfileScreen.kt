@@ -37,8 +37,13 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Diamond
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Login
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Hexagon
@@ -129,7 +134,10 @@ fun ProfileScreen(
     val scroll = rememberScrollState()
 
     val signedIn = authState as? AuthState.SignedIn
-    val playerName = signedIn?.name ?: "Entrenador"
+    // Nombre de Usuario editable (fuente de verdad); si aún no se ha definido, se propone el de la
+    // cuenta Google como valor inicial, y en último término "Entrenador".
+    val playerName = stats.username.ifBlank { signedIn?.name ?: "Entrenador" }
+    var editingName by remember { mutableStateOf(false) }
 
     // Código de amigo real (12 dígitos) + copiar al portapapeles con confirmación transitoria.
     val rawCode = stats.friendCode
@@ -142,64 +150,134 @@ fun ProfileScreen(
         if (copied) { kotlinx.coroutines.delay(1500); copied = false }
     }
 
-    Box(modifier.fillMaxSize().background(BarajasPalette.BgBottom)) {
+    var showStats by remember { mutableStateOf(false) }
+
+    Box(
+        modifier.fillMaxSize().background(
+            Brush.verticalGradient(
+                0f to PocketPalette.HeaderTop,
+                0.28f to PocketPalette.Body,
+                1f to PocketPalette.Body,
+            ),
+        ),
+    ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(scroll).fadingScrollbar(scroll),
         ) {
-            ProfileHeader(
-                name = playerName,
-                idText = idText,
-                stats = stats,
-                avatar = equippedAvatar,
-                frame = equippedFrame,
-                background = equippedBackground,
-                badge = equippedBadge,
-                onBack = onBack,
-                onSettings = { soon = true },
+            // ---- Cabecera: iniciar sesión (izq) + ID de amigo + lupa (der) ----
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SignInChip(signedIn = signedIn != null, onClick = { if (signedIn == null) signIn() else showStats = true })
+                Spacer(Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("ID de amigo", color = PocketPalette.Muted, fontSize = 11.sp)
+                    Text(idText, color = PocketPalette.Ink, fontWeight = FontWeight.Black, fontSize = 15.sp,
+                        modifier = Modifier.pressable {
+                            if (rawCode.length == 12) {
+                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(rawCode)); copied = true
+                            }
+                        })
+                }
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(PocketPalette.Surface).pressable { soon = true },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Outlined.Search, "Buscar amigo", tint = PocketPalette.Icon, modifier = Modifier.size(20.dp)) }
+            }
+
+            // ---- Anillo de nivel + avatar circular ----
+            Spacer(Modifier.height(4.dp))
+            LevelAvatar(
+                avatarColors = equippedAvatar.brushColors(listOf(Color(0xFFB39DDB), Color(0xFF9575CD))),
+                fraction = 0f,               // pendiente sistema de nivel real
                 onEditAvatar = { soon = true },
-                onChangeTitle = { soon = true },
-                onCopyId = {
-                    if (rawCode.length == 12) {
-                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(rawCode)); copied = true
-                    }
-                },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
+            Spacer(Modifier.height(12.dp))
+            Text("Nv. 1", color = PocketPalette.Ink, fontWeight = FontWeight.Black, fontSize = 22.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text("0 / 100", color = PocketPalette.Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.align(Alignment.CenterHorizontally))
 
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
                 Spacer(Modifier.height(14.dp))
-                StatsCard(onSoon = { soon = true })
+                NamePill(playerName, onEdit = { editingName = true })
+                Spacer(Modifier.height(10.dp))
+                StatusPill("¡Echemos una partida!", onClick = { soon = true })
 
+                Spacer(Modifier.height(18.dp))
+                StatsButton(onClick = { showStats = true }, modifier = Modifier.align(Alignment.CenterHorizontally))
+
+                Spacer(Modifier.height(20.dp))
+                // ---- Emblemas ----
+                Row(
+                    Modifier.align(Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Emblemas", color = PocketPalette.Ink, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Spacer(Modifier.width(8.dp))
+                    AlertBadge()
+                }
                 Spacer(Modifier.height(14.dp))
-                AccountInfoCard(
-                    authState = authState,
-                    syncStatus = syncStatus,
-                    onOnlineClick = { if (signedIn == null) signIn() else soon = true },
-                    onSoon = { soon = true },
-                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    EmblemHex(listOf(Color(0xFF8E7BE0), Color(0xFF5B3FB0)), onClick = { soon = true })
+                    EmblemHex(listOf(Color(0xFF3FD69C), Color(0xFF1E9B72)), onClick = { soon = true })
+                    EmblemHex(listOf(Color(0xFFB8C0CC), Color(0xFF7E8794)), onClick = { soon = true })
+                }
 
                 Spacer(Modifier.height(22.dp))
-                SectionHeader("Personalización")
+                CenterLabel("Selección personal")
                 Spacer(Modifier.height(12.dp))
-                PersonalizationGrid(onSoon = { soon = true })
+                Box(Modifier.align(Alignment.CenterHorizontally)) { CardSlot(width = 150.dp, onClick = { soon = true }) }
 
                 Spacer(Modifier.height(22.dp))
-                SectionHeader("Resumen rápido")
+                CenterLabel("Cartas en la colección")
+                Spacer(Modifier.height(12.dp))
+                CountPill(stats.totalOwned, Modifier.align(Alignment.CenterHorizontally))
+
+                Spacer(Modifier.height(22.dp))
+                CenterLabel("Mensaje de intercambio")
+                Spacer(Modifier.height(12.dp))
+                TradeDropdown("Sin preferencia", onClick = { soon = true })
+                Spacer(Modifier.height(10.dp))
+                TradeDropdown("Acepto cartas en cualquier idioma", onClick = { soon = true })
+
+                Spacer(Modifier.height(22.dp))
+                CenterLabel("Lista de deseadas")
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    repeat(3) { CardSlot(modifier = Modifier.weight(1f), onClick = { soon = true }) }
+                }
+
+                Spacer(Modifier.height(22.dp))
+                CenterLabel("Resumen rápido")
                 Spacer(Modifier.height(12.dp))
                 QuickSummary(stats)
 
-                Spacer(Modifier.height(20.dp))
-                AccessTiles(onOpenCollection = onOpenCollection, onSoon = { soon = true })
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(22.dp))
+                CenterLabel("Logros")
+                Spacer(Modifier.height(14.dp))
+                TrophyGrid(onClick = { soon = true })
+                Spacer(Modifier.height(90.dp))
             }
             Spacer(Modifier.navigationBarsPadding())
         }
+
+        // ---- X flotante de cierre (fija abajo-centro) ----
+        Box(
+            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 22.dp)
+                .size(56.dp).clip(CircleShape).background(PocketPalette.Surface).pressable(onBack),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Outlined.Close, "Cerrar", tint = PocketPalette.Icon, modifier = Modifier.size(26.dp)) }
 
         // Confirmación transitoria al copiar el código de amigo.
         androidx.compose.animation.AnimatedVisibility(
             visible = copied,
             enter = androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp).navigationBarsPadding(),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp).navigationBarsPadding(),
         ) {
             Row(
                 Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Ink.copy(alpha = 0.9f))
@@ -213,7 +291,65 @@ fun ProfileScreen(
         }
     }
 
+    if (showStats) StatsSheet(
+        authState = authState,
+        syncStatus = syncStatus,
+        onSignIn = { signIn() },
+        onRetry = { vm.retry() },
+        onSoon = { soon = true },
+        onDismiss = { showStats = false },
+    )
     if (soon) NotAvailableDialog(onClose = { soon = false })
+    if (editingName) EditNameDialog(
+        current = stats.username,
+        onDismiss = { editingName = false },
+        onSave = { vm.setUsername(it); editingName = false },
+    )
+}
+
+/** Diálogo para editar el Nombre de Usuario. Limita a 16 caracteres; el vacío no se guarda. */
+@Composable
+private fun EditNameDialog(current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(current) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.clip(RoundedCornerShape(20.dp)).background(BarajasPalette.BgBottom).padding(22.dp),
+        ) {
+            Text("Nombre de Usuario", color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Se mostrará en tu perfil, el menú y tus partidas.",
+                color = BarajasPalette.Muted, fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(16.dp))
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { if (it.length <= 16) text = it },
+                singleLine = true,
+                supportingText = { Text("${text.length}/16") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Text(
+                    "Cancelar", color = BarajasPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                    modifier = Modifier.pressable(onDismiss).padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                val enabled = text.isNotBlank()
+                Text(
+                    "Guardar",
+                    color = if (enabled) Color.White else Color(0x66FFFFFF),
+                    fontWeight = FontWeight.Black, fontSize = 14.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (enabled) BarajasPalette.Ink else BarajasPalette.Ink.copy(alpha = 0.4f))
+                        .then(if (enabled) Modifier.pressable { onSave(text.trim()) } else Modifier)
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,6 +366,7 @@ private fun ProfileHeader(
     onSettings: () -> Unit,
     onEditAvatar: () -> Unit,
     onChangeTitle: () -> Unit,
+    onEditName: () -> Unit,
     onCopyId: () -> Unit,
 ) {
     val bg = background.brushColors(listOf(Accent, AccentDark))
@@ -280,7 +417,14 @@ private fun ProfileHeader(
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp, maxLines = 1)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.pressable(onEditName),
+                    ) {
+                        Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp, maxLines = 1)
+                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Outlined.Edit, "Editar nombre", tint = Color(0xCCFFFFFF), modifier = Modifier.size(16.dp))
+                    }
                     Spacer(Modifier.height(4.dp))
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -678,4 +822,347 @@ private fun LocalActivity(): Activity? {
         ctx = ctx.baseContext
     }
     return null
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  DESIGN SYSTEM "TCG POCKET" — Perfil de Jugador (réplica UI/UX)
+//  Neumórfico claro y frío: fondo continuo, elementos flotantes con sombra suave,
+//  acento cian-teal para el anillo de nivel y las barras de progreso.
+// ═════════════════════════════════════════════════════════════════════════════
+
+private object PocketPalette {
+    val HeaderTop = Color(0xFFDCE0F0)
+    val Body = Color(0xFFECEFF6)
+    val Surface = Color(0xFFF6F8FC)
+    val Inset = Color(0xFFE3E8F1)
+    val Ink = BarajasPalette.Ink
+    val Muted = Color(0xFF8A97A8)
+    val Icon = Color(0xFF6B7A90)
+    val Teal = Color(0xFF3ACFDB)
+    val TealDeep = Color(0xFF23A7C4)
+    val Gold = Color(0xFFE8C15A)
+    val GoldDeep = Color(0xFFB98D2E)
+    val Alert1 = Color(0xFFFF4D6D)
+    val Alert2 = Color(0xFFFF8AA6)
+}
+
+/** Botón/estado de inicio de sesión (cabecera izquierda). */
+@Composable
+private fun SignInChip(signedIn: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(PocketPalette.Surface).pressable(onClick)
+            .padding(start = 10.dp, end = 14.dp, top = 7.dp, bottom = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (signedIn) {
+            Box(Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF35C48A)))
+            Spacer(Modifier.width(8.dp))
+            Text("En línea", color = PocketPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        } else {
+            Icon(Icons.Outlined.Login, null, tint = PocketPalette.TealDeep, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Iniciar sesión", color = PocketPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
+    }
+}
+
+/** Avatar circular con anillo de progreso de nivel (cian) y lápiz de edición. */
+@Composable
+private fun LevelAvatar(
+    avatarColors: List<Color>,
+    fraction: Float,
+    onEditAvatar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.size(168.dp), contentAlignment = Alignment.Center) {
+        // Anillo (pista + progreso), con hueco superior.
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 12.dp.toPx()
+            val inset = stroke / 2 + 2.dp.toPx()
+            val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
+            val start = 130f
+            val total = 280f
+            drawArc(
+                PocketPalette.Inset, start, total, false,
+                topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round),
+            )
+            drawArc(
+                Brush.sweepGradient(listOf(PocketPalette.Teal, PocketPalette.TealDeep, PocketPalette.Teal)),
+                start, total * fraction.coerceIn(0f, 1f), false,
+                topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round),
+            )
+        }
+        // Avatar circular (recorte del cosmético equipado; futuro: todos circulares).
+        Box(
+            Modifier.size(128.dp).clip(CircleShape).background(Brush.linearGradient(avatarColors)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Outlined.Person, null, tint = Color(0x55FFFFFF), modifier = Modifier.size(64.dp)) }
+        // Lápiz de edición (FAB abajo-derecha, sobre el anillo).
+        Box(
+            Modifier.align(Alignment.BottomEnd).size(38.dp).clip(CircleShape)
+                .background(PocketPalette.Surface).pressable(onEditAvatar),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Outlined.Edit, "Editar avatar", tint = PocketPalette.Icon, modifier = Modifier.size(18.dp)) }
+    }
+}
+
+/** Píldora del Nombre de Usuario (inset) con lápiz de edición. */
+@Composable
+private fun NamePill(name: String, onEdit: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(PocketPalette.Inset)
+            .pressable(onEdit).padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(Modifier.width(20.dp))
+        Text(name, color = PocketPalette.Ink, fontWeight = FontWeight.Black, fontSize = 20.sp,
+            maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Icon(Icons.Outlined.Edit, "Editar nombre", tint = PocketPalette.Icon, modifier = Modifier.size(18.dp))
+    }
+}
+
+/** Mensaje de estado con borde de gradiente arcoíris sutil. */
+@Composable
+private fun StatusPill(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(50))
+            .background(
+                Brush.sweepGradient(
+                    listOf(
+                        Color(0xFFFFB3C6), Color(0xFFFFD6A5), Color(0xFFCDE8B5),
+                        Color(0xFFA5D8E8), Color(0xFFC9B3E8), Color(0xFFFFB3C6),
+                    ),
+                ),
+            )
+            .padding(2.dp)
+            .clip(RoundedCornerShape(50))
+            .background(PocketPalette.Surface)
+            .pressable(onClick)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = PocketPalette.Icon, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+    }
+}
+
+/** Botón circular "Estadísticas" (abre la hoja inferior). */
+@Composable
+private fun StatsButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(58.dp).clip(CircleShape).background(PocketPalette.Surface).pressable(onClick),
+            contentAlignment = Alignment.Center,
+        ) { StatsGlyph() }
+        Spacer(Modifier.height(6.dp))
+        Text("Estadísticas", color = PocketPalette.Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** Glifo de Estadísticas: dos cartas/burbujas cian solapadas. */
+@Composable
+private fun StatsGlyph() {
+    Canvas(Modifier.size(30.dp)) {
+        val w = size.width; val h = size.height
+        val c = PocketPalette.Teal
+        val st = Stroke(width = w * 0.08f, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+        drawRoundRect(c, topLeft = Offset(w * 0.10f, h * 0.20f), size = Size(w * 0.50f, h * 0.44f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.10f), style = st)
+        val tail = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.55f, h * 0.30f); lineTo(w * 0.90f, h * 0.30f)
+            lineTo(w * 0.90f, h * 0.74f); lineTo(w * 0.72f, h * 0.74f)
+            lineTo(w * 0.66f, h * 0.86f); lineTo(w * 0.62f, h * 0.74f)
+            lineTo(w * 0.55f, h * 0.74f); close()
+        }
+        drawPath(tail, c, style = st)
+    }
+}
+
+/** Badge de aviso "!" (gradiente rosa-rojo). */
+@Composable
+private fun AlertBadge() {
+    Box(
+        Modifier.size(22.dp).clip(CircleShape)
+            .background(Brush.linearGradient(listOf(PocketPalette.Alert2, PocketPalette.Alert1))),
+        contentAlignment = Alignment.Center,
+    ) { Text("!", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+}
+
+/** Emblema hexagonal: bisel dorado + fondo de gema facetada (placeholder de arte). */
+@Composable
+private fun EmblemHex(gem: List<Color>, onClick: () -> Unit) {
+    Box(
+        Modifier.size(88.dp).pressable(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Bisel dorado.
+        Box(
+            Modifier.size(88.dp).clip(HexagonShape())
+                .background(Brush.verticalGradient(listOf(PocketPalette.Gold, PocketPalette.GoldDeep))),
+        )
+        // Gema interior facetada (dos triángulos de tono para simular facetas).
+        Box(Modifier.size(72.dp).clip(HexagonShape()).background(Brush.linearGradient(gem))) {
+            Canvas(Modifier.fillMaxSize()) {
+                val w = size.width; val h = size.height
+                val hi = Color(0x33FFFFFF)
+                drawPath(
+                    androidx.compose.ui.graphics.Path().apply {
+                        moveTo(w * 0.5f, 0f); lineTo(w, h * 0.28f); lineTo(w * 0.5f, h * 0.5f); close()
+                    }, hi,
+                )
+                drawPath(
+                    androidx.compose.ui.graphics.Path().apply {
+                        moveTo(0f, h * 0.28f); lineTo(w * 0.5f, h * 0.5f); lineTo(0f, h * 0.72f); close()
+                    }, Color(0x22000000),
+                )
+            }
+        }
+    }
+}
+
+/** Etiqueta de sección centrada (patrón del design system). */
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.CenterLabel(text: String) {
+    Text(
+        text, color = PocketPalette.Muted, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+}
+
+/** Slot de carta vacío con "+" (Selección personal / Lista de deseadas). */
+@Composable
+private fun CardSlot(modifier: Modifier = Modifier, width: androidx.compose.ui.unit.Dp? = null, onClick: () -> Unit) {
+    val base = if (width != null) modifier.width(width) else modifier
+    Box(
+        base.aspectRatio(0.72f).clip(RoundedCornerShape(12.dp)).background(PocketPalette.Inset)
+            .border(1.dp, PocketPalette.Muted.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+            .pressable(onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(Icons.Outlined.Add, "Añadir", tint = PocketPalette.Muted, modifier = Modifier.size(30.dp)) }
+}
+
+/** Píldora de recuento de colección. */
+@Composable
+private fun CountPill(count: Int, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(50)).background(PocketPalette.Inset)
+            .padding(horizontal = 22.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Style, null, tint = PocketPalette.Icon, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(14.dp))
+        Text("$count", color = PocketPalette.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp)
+    }
+}
+
+/** Desplegable de preferencia de intercambio. */
+@Composable
+private fun TradeDropdown(text: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(PocketPalette.Surface)
+            .pressable(onClick).padding(horizontal = 20.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, color = PocketPalette.Icon, fontWeight = FontWeight.SemiBold, fontSize = 14.sp,
+            modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Icon(Icons.Outlined.KeyboardArrowDown, null, tint = PocketPalette.Muted, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** Rejilla de Logros: pedestales con trofeo placeholder + barra de progreso teal. */
+@Composable
+private fun TrophyGrid(onClick: () -> Unit) {
+    // Progreso simulado por celda (placeholder hasta el sistema real de logros).
+    val progress = listOf(0.4f, 1f, 0.2f, 0.7f, 1f, 0.5f, 0.3f, 1f, 0.6f, 0.9f, 0.2f, 1f)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        progress.chunked(4).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { p -> TrophyCell(p, Modifier.weight(1f), onClick) }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TrophyCell(fraction: Float, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.pressable(onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(contentAlignment = Alignment.BottomCenter) {
+            // Base/pedestal.
+            Box(Modifier.padding(top = 26.dp).size(width = 46.dp, height = 16.dp)
+                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
+                .background(Brush.verticalGradient(listOf(Color(0xFFF4F7FC), Color(0xFFDBE2EC)))))
+            // Trofeo (placeholder: copa dorada simple).
+            TrophyGlyph()
+        }
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.fillMaxWidth(0.8f).height(6.dp).clip(RoundedCornerShape(50)).background(PocketPalette.Inset)) {
+            Box(Modifier.fillMaxWidth(fraction).height(6.dp).clip(RoundedCornerShape(50))
+                .background(Brush.horizontalGradient(listOf(PocketPalette.Teal, PocketPalette.TealDeep))))
+        }
+    }
+}
+
+@Composable
+private fun TrophyGlyph() {
+    Canvas(Modifier.size(38.dp)) {
+        val w = size.width; val h = size.height
+        val gold = Brush.verticalGradient(listOf(Color(0xFFF6D879), Color(0xFFCC9B33)))
+        // Copa.
+        drawRoundRect(gold, topLeft = Offset(w * 0.28f, h * 0.14f), size = Size(w * 0.44f, h * 0.40f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.08f))
+        // Asas.
+        val st = Stroke(width = w * 0.06f)
+        drawArc(Color(0xFFCC9B33), 90f, 180f, false, topLeft = Offset(w * 0.14f, h * 0.16f),
+            size = Size(w * 0.20f, h * 0.28f), style = st)
+        drawArc(Color(0xFFCC9B33), -90f, 180f, false, topLeft = Offset(w * 0.66f, h * 0.16f),
+            size = Size(w * 0.20f, h * 0.28f), style = st)
+        // Pie.
+        drawRoundRect(Color(0xFFB98D2E), topLeft = Offset(w * 0.44f, h * 0.54f), size = Size(w * 0.12f, h * 0.16f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.02f))
+    }
+}
+
+/** Hoja inferior de Estadísticas: datos de cuenta (Miembro desde, Región, Idioma, Hora local, Sobre mí). */
+@Composable
+private fun StatsSheet(
+    authState: AuthState,
+    syncStatus: SyncStatus,
+    onSignIn: () -> Unit,
+    onRetry: () -> Unit,
+    onSoon: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize().background(Color(0x40222B38))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+        )
+        androidx.compose.animation.AnimatedVisibility(
+            visible = true,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
+        ) {
+            Column(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    .background(PocketPalette.Body)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+            ) {
+                Box(Modifier.size(width = 40.dp, height = 4.dp).clip(RoundedCornerShape(50))
+                    .background(PocketPalette.Muted.copy(alpha = 0.4f)).align(Alignment.CenterHorizontally))
+                Spacer(Modifier.height(14.dp))
+                Text("Estadísticas", color = PocketPalette.Ink, fontWeight = FontWeight.Black, fontSize = 18.sp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally))
+                Spacer(Modifier.height(14.dp))
+                AccountInfoCard(
+                    authState = authState,
+                    syncStatus = syncStatus,
+                    onOnlineClick = { if (authState !is AuthState.SignedIn) onSignIn() else if (syncStatus is SyncStatus.Error) onRetry() else onSoon() },
+                    onSoon = onSoon,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+    }
 }

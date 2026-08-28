@@ -787,7 +787,7 @@ fun MainBottomNav(
     ) {
         NavItem("Inicio", active = current == 0, onClick = { onSelect(0) }) { NavHomeIcon(it) }
         NavItem("Cartas", active = current == 1, onClick = { onSelect(1) }) { NavCartasIcon(it) }
-        NavItem("Amigos", active = current == 2, onClick = { onSelect(2) }, dot = true) { NavAmigosIcon(it) }
+        NavItem("Comunidad", active = current == 2, onClick = { onSelect(2) }, dot = true) { NavComunidadIcon(it) }
         NavItem("Partidas", active = current == 3, onClick = { onSelect(3) }, dot = true) { NavPartidasIcon(it) }
         NavItem("Menú", active = false, onClick = onMenu) { NavMenuIcon(it) }
     }
@@ -852,14 +852,30 @@ private fun NavCartasIcon(tint: Color) {
 }
 
 @Composable
-private fun NavAmigosIcon(tint: Color) {
+private fun NavComunidadIcon(tint: Color) {
+    // Comunidad: clúster de 3 bustos en triángulo. Uno arriba-centro coronado por un arco
+    // (vínculo), y dos abajo unidos por un guion central (conexión entre pares).
     Canvas(Modifier.size(24.dp)) {
         val w = size.width; val h = size.height
-        drawCircle(tint, w * 0.11f, Offset(w * 0.34f, h * 0.36f))
-        drawCircle(tint, w * 0.11f, Offset(w * 0.66f, h * 0.36f))
-        val st = Stroke(width = w * 0.07f, cap = StrokeCap.Round)
-        drawArc(tint, 180f, 180f, false, topLeft = Offset(w * 0.18f, h * 0.5f), size = Size(w * 0.32f, h * 0.34f), style = st)
-        drawArc(tint, 180f, 180f, false, topLeft = Offset(w * 0.5f, h * 0.5f), size = Size(w * 0.32f, h * 0.34f), style = st)
+        fun bust(cx: Float, cy: Float, r: Float, shoulder: Float) {
+            drawCircle(tint, w * r, Offset(w * cx, h * cy))
+            drawArc(
+                tint, 180f, 180f, true,
+                topLeft = Offset(w * (cx - shoulder), h * (cy + r * 0.9f)),
+                size = Size(w * shoulder * 2f, h * shoulder * 1.5f),
+            )
+        }
+        // Arco superior (aura / vínculo) sobre el busto de arriba.
+        drawArc(
+            tint, 200f, 140f, false,
+            topLeft = Offset(w * 0.30f, h * 0.06f), size = Size(w * 0.40f, h * 0.30f),
+            style = Stroke(width = w * 0.06f, cap = StrokeCap.Round),
+        )
+        bust(0.50f, 0.30f, 0.11f, 0.15f)   // superior centro
+        bust(0.26f, 0.64f, 0.11f, 0.15f)   // inferior izquierda
+        bust(0.74f, 0.64f, 0.11f, 0.15f)   // inferior derecha
+        // Guion de conexión entre los dos bustos inferiores.
+        drawLine(tint, Offset(w * 0.44f, h * 0.80f), Offset(w * 0.56f, h * 0.80f), w * 0.07f, StrokeCap.Round)
     }
 }
 

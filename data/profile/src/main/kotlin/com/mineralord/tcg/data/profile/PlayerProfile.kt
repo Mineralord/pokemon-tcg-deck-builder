@@ -30,6 +30,12 @@ data class PlayerProfile(
     val decks: List<Deck> = emptyList(),
     val activeDeckId: String? = null,
     val favoriteDeckIds: Set<String> = emptySet(),
+    /**
+     * Nombre de Usuario visible del jugador. Editable desde Perfil; al cambiarlo se propaga a
+     * toda la app (menú, perfil, combate) y viaja con la cuenta vía snapshot de nube. Vacío hasta
+     * que el jugador lo defina la primera vez (la UI muestra "Entrenador" como marcador).
+     */
+    val username: String = "",
     /** Código de amigo único del jugador (12 dígitos). Vacío hasta generarse la 1ª vez. */
     val friendCode: String = "",
     /**

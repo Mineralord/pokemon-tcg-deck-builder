@@ -75,6 +75,7 @@ class ProfileRepository(context: Context) {
             decks = decks,
             activeDeckId = prefs[ACTIVE_DECK],
             favoriteDeckIds = favorites,
+            username = prefs[USERNAME] ?: "",
             friendCode = prefs[FRIEND_CODE] ?: "",
             packBalance = prefs[PACK_BALANCE],
             packLastCreditAt = prefs[PACK_LAST_CREDIT],
@@ -386,6 +387,19 @@ class ProfileRepository(context: Context) {
         }
     }
 
+    /**
+     * Fija el Nombre de Usuario del jugador (editado en Perfil). Recorta espacios y limita a 16
+     * caracteres. Sella [touch] para que el cambio se propague por el [Flow] a toda la app y se
+     * suba a la nube en la próxima sincronización (base para notificar a los amigos del cambio).
+     */
+    suspend fun setUsername(name: String) {
+        val clean = name.trim().take(16)
+        store.edit { prefs ->
+            prefs[USERNAME] = clean
+            prefs.touch()
+        }
+    }
+
     /** Marca una baraja como la activa (la que usará el combate). */
     suspend fun setActiveDeck(deckId: String) {
         store.edit { prefs ->
@@ -460,6 +474,8 @@ class ProfileRepository(context: Context) {
             else prefs.remove(ACTIVE_DECK)
             prefs[FAVORITES] = json.encodeToString(favoritesSerializer, profile.favoriteDeckIds)
             prefs[DECKS_SEEDED] = true
+            // El Nombre de Usuario importado solo sobrescribe si trae valor (no borrar el local).
+            if (profile.username.isNotBlank()) prefs[USERNAME] = profile.username
             // El código de amigo importado solo sobrescribe si trae valor (no borrar el local).
             if (profile.friendCode.isNotBlank()) prefs[FRIEND_CODE] = profile.friendCode
             // Restaura el monedero de sobres de la cuenta (cierra el exploit reinstalar+login):
@@ -561,5 +577,6 @@ class ProfileRepository(context: Context) {
         val EQUIPPED_COSMETICS = stringPreferencesKey("equipped_cosmetics_json")
         val FAVORITE_COSMETICS = stringPreferencesKey("favorite_cosmetics_json")
         val FRIEND_CODE = stringPreferencesKey("friend_code")
+        val USERNAME = stringPreferencesKey("username")
     }
 }
