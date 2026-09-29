@@ -63,9 +63,20 @@ class AutoDeckBuilderTest {
         // Melo (sv4-167) sólo beneficia a Fuego → NO debe salir en un mazo de Agua…
         val water = buildFor(setOf(EnergyType.WATER), 5)
         assertTrue(water.none { it.cardId.raw == "sv4-167" }, "Melo no debería estar en un mazo de Agua")
-        // …pero SÍ es elegible en un mazo de Fuego (si el motor lo selecciona en alguna semilla).
-        val fireHasMela = (0L until 40L).any { seed ->
-            buildFor(setOf(EnergyType.FIRE), seed).any { it.cardId.raw == "sv4-167" }
+        // …pero SÍ es ELEGIBLE en un mazo de Fuego. Con el catálogo completo el pool de Fuego es
+        // enorme y el RNG podría no colocarlo; con una colección REDUCIDA (Melo + Pokémon/energía
+        // de Fuego) el motor debe incluirlo, demostrando que la afinidad NO lo excluye del foco.
+        val fireOnly = buildMap {
+            put("sv4-167", 4)  // Melo (Partidario de afinidad Fuego)
+            repo.all.filterIsInstance<PokemonCard>()
+                .filter { EnergyType.FIRE in it.types && it.isBasic && it.attacks.isNotEmpty() }
+                .take(6).forEach { put(it.id.raw, 4) }
+            repo.all.filterIsInstance<BasicEnergy>()
+                .firstOrNull { it.type == EnergyType.FIRE }?.let { put(it.id.raw, 20) }
+        }
+        val fireHasMela = (0L until 20L).any { seed ->
+            AutoDeckBuilder.build(fireOnly, repo.all, setOf(EnergyType.FIRE), Random(seed))
+                .any { it.cardId.raw == "sv4-167" }
         }
         assertTrue(fireHasMela, "Melo debería poder aparecer en un mazo de Fuego")
     }

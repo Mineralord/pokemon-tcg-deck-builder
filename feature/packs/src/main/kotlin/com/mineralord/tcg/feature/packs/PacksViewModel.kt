@@ -55,6 +55,8 @@ data class PacksUiState(
     /** Progreso de colección del set (cartas distintas poseídas / total del set) — como TCG Pocket. */
     val ownedInSet: Int = 0,
     val totalInSet: Int = 0,
+    /** Progreso por código de set (owned, total) para el selector de expansiones multi-set. */
+    val perSet: Map<String, Pair<Int, Int>> = emptyMap(),
     // ---- Compra de sobres con Cristales (Fase 2 §7.4 / Fase 3 §4.6) ----
     /** Saldo actual de Cristales del jugador. */
     val cristales: Int = 0,
@@ -85,6 +87,10 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private var wallet: com.mineralord.tcg.data.gacha.PackWallet? = null
     private var owned: Map<String, Int> = emptyMap()
     private var totalInSet: Int = 0
+    /** Código del set ACTIVO en la pantalla (qué sobre se abre). Cambia con [selectSet]. */
+    private var setCode: String = DEFAULT_SET
+    /** Total de cartas por set (prefijo → nº), calculado una vez al cargar el catálogo. */
+    private var totalBySet: Map<String, Int> = emptyMap()
     private var cristales: Int = 0
     private var buyState: com.mineralord.tcg.data.gacha.DailyPackState = com.mineralord.tcg.data.gacha.DailyPackState()
 
@@ -95,18 +101,19 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val loaded = withContext(Dispatchers.Default) {
                 val r = CardRepository.load()
-                // Bolsa de rarezas: SOLO las cartas numeradas del 151 (sin energías, que van por su
-                // propio slot). Energías Básicas: todas las variantes del catálogo (una por tipo).
-                val pool151 = r.all.filter {
-                    it.id.raw.startsWith(SET_151_PREFIX) && !ProfileRepository.isEnergyId(it.id.raw)
-                }
+                // Energías Básicas: todas las variantes del catálogo (una por tipo). Van por su slot.
                 val energies = r.all.filter { ProfileRepository.isEnergyId(it.id.raw) }.map { it.id }
-                Triple(r, PackPool.from(pool151), energies)
+                r to energies
             }
             repo = loaded.first
-            pool = loaded.second
-            energyIds = loaded.third
-            totalInSet = repo.all.count { it.id.raw.startsWith(SET_151_PREFIX) }
+            energyIds = loaded.second
+            // Total de cartas por set (para el progreso del selector multi-expansión).
+            totalBySet = repo.all
+                .filterNot { ProfileRepository.isEnergyId(it.id.raw) }
+                .groupingBy { it.id.raw.substringBeforeLast('-') }
+                .eachCount()
+            // Pool de rarezas del set ACTIVO (por defecto, 151).
+            applySet(setCode)
 
             // Siembra la colección inicial con las cartas de los 3 mazos.
             val seed = StarterDecks.ALL.flatMap { it.expandedCardIds() }.map { it.raw }
@@ -139,6 +146,10 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         val nextAt = regen.nextPackAt(credited, now)
         val today = now / 86_400_000L
         val buyRemaining = buyLimiter.remaining(buyState, today)
+        // Progreso por set (owned distintos / total) para el selector de expansiones.
+        val perSet = totalBySet.mapValues { (code, total) ->
+            owned.keys.count { it.startsWith("$code-") } to total
+        }
         _state.value = _state.value.copy(
             loading = false,
             remainingToday = credited.balance,
@@ -146,8 +157,10 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             totalCards = pool.totalCards,
             ownedDistinct = owned.size,
             secondsToNext = nextAt?.let { ((it - now) / 1000).coerceAtLeast(0) },
-            ownedInSet = owned.keys.count { it.startsWith(SET_151_PREFIX) },
+            setLabel = "Escarlata y Púrpura · ${SET_NAMES[setCode] ?: setCode}",
+            ownedInSet = owned.keys.count { it.startsWith("$setCode-") },
             totalInSet = totalInSet,
+            perSet = perSet,
             cristales = cristales,
             packPrice = EconomyRules.PACK_PRICE_CRISTALES,
             buyRemaining = buyRemaining,
@@ -158,6 +171,28 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     /** Recalcula el saldo/cuenta atrás (la UI lo llama al agotarse el temporizador local). */
     fun refresh() {
         viewModelScope.launch { refreshUi() }
+    }
+
+    /**
+     * Cambia la expansión ACTIVA (qué sobre se abre) y su pool de rarezas. Lo llama la pantalla
+     * al elegir una expansión en el selector o al entrar en modo directo desde la Home. El monedero
+     * de sobres es COMPARTIDO entre expansiones (abrir cualquiera consume del mismo saldo).
+     */
+    fun selectSet(code: String) {
+        if (!this::repo.isInitialized) { setCode = code; return }  // se aplicará al terminar la carga
+        if (code == setCode) return
+        applySet(code)
+        viewModelScope.launch { refreshUi() }
+    }
+
+    /** Construye el pool de rarezas y el total del set [code] (sin energías, que van por su slot). */
+    private fun applySet(code: String) {
+        setCode = code
+        val setCards = repo.all.filter {
+            it.id.raw.startsWith("$code-") && !ProfileRepository.isEnergyId(it.id.raw)
+        }
+        pool = PackPool.from(setCards)
+        totalInSet = totalBySet[code] ?: setCards.size
     }
 
     fun openPack() {
@@ -176,7 +211,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                     wallet = attempt.wallet
                     // Sobre FIEL de 151 (10 cartas: 9 numeradas + 1 Energía Básica). Energías por su slot.
                     val opened = opener.open(
-                        RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
+                        RarityWeights.templateFor(setCode), pool, Random(System.nanoTime()), energyIds,
                     )
                     val revealed = buildReveals(opened)
                     _state.value = _state.value.copy(
@@ -216,7 +251,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             }
             profileRepo.setDaily(attempt.newState)
             val opened = opener.open(
-                RarityWeights.templateFor(SET_151_CODE), pool, Random(System.nanoTime()), energyIds,
+                RarityWeights.templateFor(setCode), pool, Random(System.nanoTime()), energyIds,
             )
             val revealed = buildReveals(opened)
             _state.value = _state.value.copy(revealed = revealed, deniedMessage = null, opening = true)
@@ -255,7 +290,13 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private companion object {
-        const val SET_151_PREFIX = "sv3pt5-"
-        const val SET_151_CODE = "sv3pt5"
+        /** Expansión activa por defecto al entrar sin selección (151). */
+        const val DEFAULT_SET = "sv3pt5"
+
+        /** Nombre corto en español por código de set (para el rótulo "Serie · Expansión"). */
+        val SET_NAMES = mapOf(
+            "sv3pt5" to "151",
+            "sv4" to "Brecha Paradójica",
+        )
     }
 }

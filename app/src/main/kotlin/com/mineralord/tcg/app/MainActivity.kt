@@ -159,8 +159,8 @@ private fun AppShell() {
                         onJugar = { afterDeckSelect = { pickingDifficulty = true }; push(Screen.DECK_SELECT) },
                         onJugarOnline = { afterDeckSelect = { push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
                         onAmigos = { goToPage(2) },
-                        // Tocar un sobre lleva DIRECTO a "Rasga el sobre" de la 151 (sin selector).
-                        onOpenPack = { packsDirectCode = "sv3pt5"; push(Screen.PACKS) },
+                        // Tocar un sobre lleva DIRECTO a "Rasga el sobre" de ESA expansión (sin selector).
+                        onOpenPack = { code -> packsDirectCode = code; push(Screen.PACKS) },
                     )
                     1 -> CollectionScreen(
                         onExit = { goToPage(0) },

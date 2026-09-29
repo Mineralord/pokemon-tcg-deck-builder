@@ -72,7 +72,7 @@ fun HomeScreen(
     onJugar: () -> Unit,
     onJugarOnline: () -> Unit,
     onAmigos: () -> Unit = {},
-    onOpenPack: () -> Unit = {},
+    onOpenPack: (String) -> Unit = {},
 ) {
     var info by remember { mutableStateOf<Currency?>(null) }
 
@@ -458,18 +458,19 @@ private fun GiftIcon() {
 //  CARRUSEL DE SOBRES
 // ===========================================================================
 
-/** Una expansión mostrable en el escaparate de la Home (por ahora solo la 151). */
-private data class HomeExpansion(val artUrl: String)
+/** Una expansión mostrable en el escaparate de la Home ([code] = prefijo de set para abrir su sobre). */
+private data class HomeExpansion(val code: String, val artUrl: String)
 
 private object HomeExpansions {
     val ALL: List<HomeExpansion> = listOf(
-        HomeExpansion(com.mineralord.tcg.feature.packs.PACK_IMAGE_151),
+        HomeExpansion("sv3pt5", com.mineralord.tcg.feature.packs.PACK_IMAGE_151),
+        HomeExpansion("sv4", com.mineralord.tcg.feature.packs.PACK_IMAGE_PARADOX),
         // Al agregar futuras expansiones, añádelas aquí y el escaparate las rotará.
     )
 }
 
 @Composable
-private fun PackCarousel(showcase: List<HomeExpansion>, onOpen: () -> Unit) {
+private fun PackCarousel(showcase: List<HomeExpansion>, onOpen: (String) -> Unit) {
     // Proporciones calcadas de la referencia: panel verde ~150dp con los sobres
     // (~196dp de alto) sobresaliendo por arriba y por abajo.
     Box(
@@ -497,7 +498,7 @@ private fun PackCarousel(showcase: List<HomeExpansion>, onOpen: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             showcase.forEach { exp ->
-                BoosterArt(exp, Modifier.weight(1f), onOpen)
+                BoosterArt(exp, Modifier.weight(1f)) { onOpen(exp.code) }
             }
         }
         // Píldora ">" con icono de sobre (arriba-derecha).
@@ -507,7 +508,7 @@ private fun PackCarousel(showcase: List<HomeExpansion>, onOpen: () -> Unit) {
                 .padding(top = 10.dp, end = 8.dp)
                 .clip(RoundedCornerShape(50))
                 .background(Color.White)
-                .clickable(onClick = onOpen)
+                .clickable { onOpen(showcase.firstOrNull()?.code ?: "sv3pt5") }
                 .padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -542,7 +543,7 @@ private fun BoosterArt(exp: HomeExpansion, modifier: Modifier, onOpen: () -> Uni
     ) {
         coil.compose.AsyncImage(
             model = exp.artUrl,
-            contentDescription = "Sobre de la expansión 151",
+            contentDescription = "Sobre de expansión",
             modifier = Modifier.fillMaxSize(),
             contentScale = androidx.compose.ui.layout.ContentScale.Fit,
         )

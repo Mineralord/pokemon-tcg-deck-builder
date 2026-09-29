@@ -109,9 +109,14 @@ object RarityWeights {
         },
     )
 
-    /** Plantilla de sobre por código de set (por ahora 151 fiel; el resto usa el estándar). */
+    /**
+     * Plantilla de sobre por código de set. Las expansiones MODERNAS de S&V comparten la misma
+     * estructura fiel de 10 cartas (4C · 3I · 1 Reverse · 1 Rara+ · 1 Energía Básica); Brecha
+     * Paradójica (sv4) usa las mismas rarezas que 151, así que reutiliza esa plantilla. El resto
+     * cae al sobre estándar.
+     */
     fun templateFor(setCode: String): PackTemplate = when (setCode) {
-        "sv3pt5" -> SET_151_PACK
+        "sv3pt5", "sv4" -> SET_151_PACK
         else -> STANDARD_PACK
     }
 }

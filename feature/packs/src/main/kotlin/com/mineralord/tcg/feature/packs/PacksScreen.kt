@@ -104,6 +104,8 @@ fun PacksScreen(
     var step by remember { mutableStateOf(if (directExpansion != null) PackStep.PACK else PackStep.EXPANSION) }
     val series = remember { PACK_CATALOG.first() }
     var expansion by remember { mutableStateOf(directExpansion) }
+    // En modo directo (desde la Home) fija el set activo del ViewModel para abrir ESE sobre.
+    LaunchedEffect(directExpansion) { directExpansion?.let { viewModel.selectSet(it.code) } }
 
     Box(
         modifier = modifier
@@ -128,9 +130,8 @@ fun PacksScreen(
             when (s) {
                 PackStep.EXPANSION -> ExpansionSelectStage(
                     series = series,
-                    ownedInSet = state.ownedInSet,
-                    totalInSet = state.totalInSet,
-                    onSelect = { expansion = it; step = PackStep.PACK },
+                    progressFor = { code -> state.perSet[code] ?: (0 to 0) },
+                    onSelect = { expansion = it; viewModel.selectSet(it.code); step = PackStep.PACK },
                 )
                 PackStep.PACK -> PackStage(
                     expansion = expansion ?: PACK_CATALOG.first().expansions.first(),
@@ -580,8 +581,8 @@ fun PackOpeningSimulator(
                 when (st) {
                     PackStep.EXPANSION -> ExpansionSelectStage(
                         series = series,
-                        ownedInSet = s.owned.size,
-                        totalInSet = s.totalInSet,
+                        // El Lab simula sólo el pool de 151 (colección efímera); muestra su progreso.
+                        progressFor = { s.owned.size to s.totalInSet },
                         onSelect = { expansion = it; step = PackStep.PACK },
                     )
                     PackStep.PACK -> PackStage(

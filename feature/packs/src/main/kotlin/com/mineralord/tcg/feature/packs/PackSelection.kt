@@ -60,7 +60,11 @@ data class SeriesUi(
 const val SV_SERIES_LOGO =
     "https://images.wikidexcdn.net/mwuploads/wikidex/thumb/c/c6/latest/20230209170758/Logo_Escarlata_y_P%C3%BArpura_%28TCG%29.png/500px-Logo_Escarlata_y_P%C3%BArpura_%28TCG%29.png"
 
-/** Catálogo raíz (extensible). Hoy: 1 serie · 1 expansión. */
+/** Arte real del sobre de «Brecha Paradójica» (sv4) — booster sellado (TCGplayer CDN). */
+const val PACK_IMAGE_PARADOX =
+    "https://tcgplayer-cdn.tcgplayer.com/product/512822_in_1000x1000.jpg"
+
+/** Catálogo raíz (extensible). Hoy: 1 serie · 2 expansiones (151 · Brecha Paradójica). */
 val PACK_CATALOG: List<SeriesUi> = listOf(
     SeriesUi(
         id = "sv",
@@ -76,6 +80,13 @@ val PACK_CATALOG: List<SeriesUi> = listOf(
                 packArtUrl = PACK_IMAGE_151,
                 accent = Color(0xFF7E57C2),
             ),
+            ExpansionUi(
+                code = "sv4",
+                name = "Brecha Paradójica",
+                logoRes = R.drawable.set_sv4_logo,
+                packArtUrl = PACK_IMAGE_PARADOX,
+                accent = Color(0xFF4DB6AC),
+            ),
         ),
     ),
 )
@@ -88,8 +99,8 @@ val PACK_CATALOG: List<SeriesUi> = listOf(
 @Composable
 fun ExpansionSelectStage(
     series: SeriesUi,
-    ownedInSet: Int,
-    totalInSet: Int,
+    /** Progreso (poseídas, total) por código de expansión. Cada tarjeta muestra el suyo. */
+    progressFor: (String) -> Pair<Int, Int>,
     onSelect: (ExpansionUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -114,7 +125,8 @@ fun ExpansionSelectStage(
         Text("Elige una expansión", color = Color(0xFF1B2A3A), fontWeight = FontWeight.Black, fontSize = 20.sp)
         Spacer(Modifier.height(16.dp))
         series.expansions.forEach { e ->
-            PocketExpansionCard(e, ownedInSet, totalInSet, onClick = { onSelect(e) })
+            val (owned, total) = progressFor(e.code)
+            PocketExpansionCard(e, owned, total, onClick = { onSelect(e) })
             Spacer(Modifier.height(18.dp))
         }
         Spacer(Modifier.weight(1f))
