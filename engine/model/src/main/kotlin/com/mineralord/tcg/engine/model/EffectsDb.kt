@@ -24,6 +24,7 @@ object EffectsDb {
         buildMap {
             registerAcademiaDecks()
             registerSet151()
+            registerParadoxRift()
         },
     )
 }
