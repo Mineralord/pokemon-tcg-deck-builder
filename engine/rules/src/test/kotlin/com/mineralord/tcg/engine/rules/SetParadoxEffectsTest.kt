@@ -105,4 +105,33 @@ class SetParadoxEffectsTest {
         val allHeads = GameEngine(FixedRng(true)).apply(duel(attacker, foe), GameIntent.Attack("Triple Spin"))
         assertEquals(30, firstDamage(allHeads))
     }
+
+    @Test
+    fun `Searing Flame deja Quemado al Activo rival`() {
+        val a = attack("Searing Flame", EffectsDb.atkKey("sv4-20", "Searing Flame"))
+        val attacker = PokemonInPlay(mon("fire", 90, EnergyType.FIRE, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Searing Flame"))
+        assertEquals(true, r.state.opponent.active?.statuses?.contains(com.mineralord.tcg.engine.model.Status.BURNED))
+    }
+
+    @Test
+    fun `Heat Tackle hace 30 de retroceso al atacante`() {
+        val a = attack("Heat Tackle", EffectsDb.atkKey("sv4-21", "Heat Tackle"))
+        val attacker = PokemonInPlay(mon("charc", 120, EnergyType.FIRE, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Heat Tackle"))
+        assertEquals(30, r.state.player.active?.damage)
+    }
+
+    @Test
+    fun `Scorching Bazooka hace +40 por cada Energia Fuego unida (base 40 + 2 = 120)`() {
+        val a = attack("Scorching Bazooka", EffectsDb.atkKey("sv4-27", "Scorching Bazooka"))
+        val fire2 = listOf(energy("f1", EnergyType.FIRE), energy("f2", EnergyType.FIRE))
+        val attacker = PokemonInPlay(mon("bazo", 150, EnergyType.FIRE, a), attachedEnergy = fire2)
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.WATER, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Scorching Bazooka"))
+        // El bono por Energía se aplica como daño adicional; comprobamos el TOTAL sobre el defensor.
+        assertEquals(120, r.state.opponent.active?.damage)
+    }
 }

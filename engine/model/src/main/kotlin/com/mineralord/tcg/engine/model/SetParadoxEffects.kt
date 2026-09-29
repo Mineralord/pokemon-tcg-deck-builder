@@ -65,4 +65,94 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
         attackDamage = listOf(DamageTerm(20)),
         ops = listOf(EffectOp.ExtraDamage(Amount.PerCount(Counter.BENCH_COUNT, Target.OPP_BENCH, 20))),
     ))
+
+    // =========================== Fase 2: daño + rider simple ===========================
+    // Ataques cuyo daño ya funciona (fijo) y añaden un efecto sencillo del DSL existente.
+
+    // ---- Condición Especial al Activo rival (daño + estado, sin moneda) ----
+    put(atkKey("sv4-12", "Brain Shake"), Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.CONFUSED)))))
+    put(atkKey("sv4-20", "Searing Flame"), Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.BURNED)))))
+    put(atkKey("sv4-36", "Hypno Splash"), Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.ASLEEP)))))
+    put(atkKey("sv4-41", "Water Pulse"), Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.ASLEEP)))))
+    val venomousHit = Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.POISONED))))
+    put(atkKey("sv4-116", "Venomous Hit"), venomousHit)
+    put(atkKey("sv4-117", "Venomous Hit"), venomousHit)
+    put(atkKey("sv4-204", "Venomous Hit"), venomousHit)
+    // Condición Especial que se aplica el PROPIO atacante.
+    put(atkKey("sv4-105", "Boiled Press"), Effect(ops = listOf(EffectOp.ApplyStatus(Target.SELF, listOf(Status.BURNED)))))
+    put(atkKey("sv4-151", "Teetering Steps"), Effect(ops = listOf(EffectOp.ApplyStatus(Target.SELF, listOf(Status.CONFUSED)))))
+    // Burning Turbulence: 90 de retroceso a sí mismo + Activo rival Quemado.
+    val burningTurbulence = Effect(ops = listOf(
+        EffectOp.Recoil(Amount.Fixed(90)),
+        EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.BURNED)),
+    ))
+    put(atkKey("sv4-107", "Burning Turbulence"), burningTurbulence)
+    put(atkKey("sv4-203", "Burning Turbulence"), burningTurbulence)
+
+    // ---- Condición Especial por MONEDA ("si cara, … queda …") ----
+    val coinParalyze = Effect(ops = listOf(EffectOp.CoinFlipStatus(Target.OPP_ACTIVE, listOf(Status.PARALYZED))))
+    put(atkKey("sv4-31", "Bubble Beam"), coinParalyze)
+    put(atkKey("sv4-67", "Volt Wave"), coinParalyze)
+    put(atkKey("sv4-149", "Body Slam"), coinParalyze)
+    put(atkKey("sv4-212", "Body Slam"), coinParalyze)
+    val coinPoison = Effect(ops = listOf(EffectOp.CoinFlipStatus(Target.OPP_ACTIVE, listOf(Status.POISONED))))
+    put(atkKey("sv4-91", "Toxic"), coinPoison)
+    put(atkKey("sv4-92", "Toxic Sting"), coinPoison)
+    put(atkKey("sv4-110", "Supersonic"), Effect(ops = listOf(EffectOp.CoinFlipStatus(Target.OPP_ACTIVE, listOf(Status.CONFUSED)))))
+
+    // ---- Robar cartas ----
+    val draw2 = Effect(ops = listOf(EffectOp.DrawCards(2)))
+    put(atkKey("sv4-138", "Punch and Draw"), draw2)
+    put(atkKey("sv4-146", "Collect"), draw2)
+    put(atkKey("sv4-155", "Nom-Nom-Nom Incisors"), draw2)
+    put(atkKey("sv4-233", "Nom-Nom-Nom Incisors"), draw2)
+    val draw1 = Effect(ops = listOf(EffectOp.DrawCards(1)))
+    put(atkKey("sv4-145", "Filch"), draw1)
+    put(atkKey("sv4-211", "Filch"), draw1)
+
+    // ---- Daño de RETROCESO ("también se hace N a sí mismo") ----
+    put(atkKey("sv4-21", "Heat Tackle"), Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(30)))))
+    put(atkKey("sv4-63", "Thunder"), Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(50)))))
+    put(atkKey("sv4-103", "Rocky Tackle"), Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(30)))))
+    val wildCharge = Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(20))))
+    put(atkKey("sv4-62", "Wild Charge"), wildCharge)
+    put(atkKey("sv4-195", "Wild Charge"), wildCharge)
+    put(atkKey("sv4-77", "Reckless Charge"), Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(20)))))
+    put(atkKey("sv4-131", "Reckless Charge"), Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(10)))))
+    val doubleEdged = Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(30))))
+    put(atkKey("sv4-135", "Double-Edged Slash"), doubleEdged)
+    put(atkKey("sv4-230", "Double-Edged Slash"), doubleEdged)
+
+    // ---- Descartar Energía del PROPIO atacante (coste/efecto del ataque) ----
+    val discard1 = Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 1)))
+    put(atkKey("sv4-95", "Power Blast"), discard1)
+    put(atkKey("sv4-143", "Powered Ball"), discard1)
+    put(atkKey("sv4-118", "Dark Edge"), discard1)
+    put(atkKey("sv4-205", "Dark Edge"), discard1)
+    val extremeCurrent = Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 1)))
+    put(atkKey("sv4-68", "Extreme Current"), extremeCurrent)
+    put(atkKey("sv4-222", "Extreme Current"), extremeCurrent)
+    put(atkKey("sv4-247", "Extreme Current"), extremeCurrent)
+    put(atkKey("sv4-57", "Wrathful Blade"), Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 2))))
+    put(atkKey("sv4-73", "Luster Purge"), Effect(ops = listOf(EffectOp.DiscardEnergy(Target.SELF, 3))))
+
+    // ---- Daño "+X por cada Energía [tipo] unida a este Pokémon" ----
+    val scorchingBazooka = Effect(
+        attackDamage = listOf(DamageTerm(40)),
+        ops = listOf(EffectOp.ExtraDamage(Amount.PerCount(Counter.ENERGY_ATTACHED, Target.SELF, 40, EnergyType.FIRE))),
+    )
+    put(atkKey("sv4-27", "Scorching Bazooka"), scorchingBazooka)
+    put(atkKey("sv4-218", "Scorching Bazooka"), scorchingBazooka)
+    val hydroPump = Effect(
+        attackDamage = listOf(DamageTerm(60)),
+        ops = listOf(EffectOp.ExtraDamage(Amount.PerCount(Counter.ENERGY_ATTACHED, Target.SELF, 20, EnergyType.WATER))),
+    )
+    put(atkKey("sv4-54", "Hydro Pump"), hydroPump)
+    put(atkKey("sv4-192", "Hydro Pump"), hydroPump)
+
+    // ---- "Lanza 1 moneda. Si cara, +20 de daño" (bono crudo por cara) ----
+    val quickHit = Effect(attackDamage = listOf(DamageTerm(10)), ops = listOf(EffectOp.CoinFlipDamage(1, 20)))
+    put(atkKey("sv4-8", "Quick Blow"), quickHit)
+    put(atkKey("sv4-79", "Quick Attack"), quickHit)
+    put(atkKey("sv4-101", "Stone Edge"), Effect(attackDamage = listOf(DamageTerm(20)), ops = listOf(EffectOp.CoinFlipDamage(1, 20))))
 }
