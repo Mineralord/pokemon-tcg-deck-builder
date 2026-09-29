@@ -2,6 +2,37 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## 🃏 AÑADIR EXPANSIÓN + EFECTOS (29 Sep 2026) — pipeline reutilizable, aprende y crece
+**Objetivo del dueño:** cada expansión nueva = MÁS cartas jugables; conforme se añaden, aplicar los efectos
+correctamente reutilizando lo aprendido de 151. Rama `feature/studio-match-mode`. Hecho: **Brecha Paradójica (sv4)**
+completa (266 cartas ES) + sobres + efectos Fase 1/2. Commits `eb6366a`(IA mazos random)·`f6160a7`(sobres sv4)·
+`5100a25`(efectos F1 daño puro)·`b0ce699`(efectos F2 riders).
+**1) DATASET (igual que 151, TODO en español):** `python tools/scripts/fetch_set.py <code> <archivo.json>`
+(añadir el code a `SET_MAP` del script). Fuentes: BASE inglés de **pokemontcg.io** (`set.id:<code>`) + bloque **`es`**
+de **TCGdex** (`/v2/es/...`). El mapper (`CardMapper`) muestra siempre `name.es`, así que "todo español" = bloque `es`
+completo. Tras generar: actualizar el conteo total en `CardRepositoryTest` (hoy **785**). Los JSON YA están en `index.json`
+(muchos son STUBS de 3 cartas hasta completarlos con el fetcher).
+**2) SOBRES multi-set (ya generalizado):** `PacksViewModel.selectSet(code)` reconstruye pool/progreso; catálogo en
+`feature:packs/PackSelection.kt` (`PACK_CATALOG`, +logo en `res/drawable` del módulo packs + `packArtUrl`);
+`RarityWeights.templateFor(code)` (sets S&V modernos comparten `SET_151_PACK`). Home escaparate rota por `HomeExpansion(code,art)`.
+Añadir expansión al sobre = 1 entrada en `PACK_CATALOG` + code en `templateFor` + copiar logo al módulo packs.
+**3) EFECTOS — aislado por set, aprendiendo del DSL de 151:** archivo `engine:model/SetXxxEffects.kt` con
+`registerXxx()` + 1 línea en `EffectsDb`. NUNCA tocar `Set151Effects.kt`. **Clave:** el daño FIJO puro YA funciona sin
+autorar (motor toma `Attack.baseDamage`); autorar solo cuando la carta hace algo MÁS o el daño es Variable (si no da 0).
+**Cheatsheet DSL (todo en `Effects.kt`, ver `Set151Effects.kt` para ejemplos):**
+- Daño monedas "N caras × D": `ops=[CoinFlipDamage(N,D)]` (base Variable→0).
+- Bono "X+ si <cond>": `attackDamage=[DamageTerm(base), DamageTerm(bono, DamageCondition.Xxx)]` (condiciones existentes:
+  IfDefenderType/Evolved/HasDamage, IfMorePrizesThanOpponent, IfSupporterPlayedThisTurn, perDefenderCounter=N…).
+- +X por Energía [tipo] unida: `ExtraDamage(Amount.PerCount(Counter.ENERGY_ATTACHED, Target.SELF, X, EnergyType.FIRE))`.
+- Condición Especial: `ApplyStatus(Target.OPP_ACTIVE,[Status.BURNED])` / por moneda `CoinFlipStatus(...)`.
+- Robo `DrawCards(n)` · Retroceso `Recoil(Amount.Fixed(n))` · Descartar energía propia `DiscardEnergy(Target.SELF,n)`.
+**Mecánicas SIN DSL aún (degradan a 0/no-op, NO autorar):** bono "si te noquearon el turno pasado", buscar en descarte por
+nombre, tool/energy-attached-check condicional, coin+status combinados raros. → siguiente tier requiere ampliar el motor.
+**Impacto:** los ataques autorados hacen que sus Pokémon sean elegibles por `AiDeckFactory` → el rival PvE empieza a usarlos.
+**Tests:** `SetParadoxEffectsTest` (engine:rules) demuestra daño real con `FixedRng`/estado/retroceso/escalado. Repetir por set.
+**➡️ SIGUIENTE:** seguir autorando sv4 (quedan ~178 "OTHER": buscar/switch/prevención/heal/KO condicional…) y, cuando el
+dueño quiera, ampliar el DSL para las mecánicas nuevas de Paradox (Ancient/Future, per-energy-en-todos-tus-Pokémon).
+
 ## ⏸️ RETOMAR AQUÍ (27 Ago 2026) — RÉPLICA UI TCG POCKET (Comunidad · Menú · Perfil)
 Rama `feature/studio-match-mode`, árbol LIMPIO. Último commit **`a3c7c53`** (feat comunidad/menu/perfil).
 **Metodología del usuario (REPETIR SIEMPRE que pida analizar una pantalla):** con el teléfono conectado por ADB,
