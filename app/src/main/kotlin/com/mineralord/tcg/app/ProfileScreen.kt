@@ -32,37 +32,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Diamond
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Login
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.Hexagon
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.MilitaryTech
-import androidx.compose.material.icons.outlined.Museum
-import androidx.compose.material.icons.outlined.Paid
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Stars
 import androidx.compose.material.icons.outlined.Style
-import androidx.compose.material.icons.outlined.Toll
-import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,7 +84,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val Accent = Color(0xFFC0303A)          // acento cabecera (rojo TCG)
-private val AccentDark = Color(0xFF7C1622)
 private val ChipBlue = Color(0xFF3FA9F5)
 private val ChipGold = Color(0xFFF3B33B)
 private val ChipViolet = Color(0xFF9B6FE0)
@@ -353,182 +338,6 @@ private fun EditNameDialog(current: String, onDismiss: () -> Unit, onSave: (Stri
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cabecera.
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun ProfileHeader(
-    name: String,
-    idText: String,
-    stats: ProfileStats,
-    avatar: Cosmetic?, frame: Cosmetic?, background: Cosmetic?, badge: Cosmetic?,
-    onBack: () -> Unit,
-    onSettings: () -> Unit,
-    onEditAvatar: () -> Unit,
-    onChangeTitle: () -> Unit,
-    onEditName: () -> Unit,
-    onCopyId: () -> Unit,
-) {
-    val bg = background.brushColors(listOf(Accent, AccentDark))
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-            .background(Brush.verticalGradient(bg)),
-    ) {
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
-            // Fila superior: atrás · monedas · ajustes.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircleIconButton(Icons.AutoMirrored.Filled.ArrowBack, onBack)
-                Spacer(Modifier.width(10.dp))
-                CurrencyChip(Icons.Outlined.Diamond, stats.cristales, ChipBlue)
-                Spacer(Modifier.width(8.dp))
-                CurrencyChip(Icons.Outlined.Paid, stats.monedas, ChipGold)
-                Spacer(Modifier.width(8.dp))
-                CurrencyChip(Icons.Outlined.Toll, stats.fichas, ChipViolet)
-                Spacer(Modifier.weight(1f))
-                CircleIconButton(Icons.Outlined.Settings, onSettings, bg = Color.White, tint = Accent)
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar hexagonal + marco + lápiz.
-                Box(contentAlignment = Alignment.BottomEnd) {
-                    val avatarColors = avatar.brushColors(listOf(Color(0xFFE9EDF2), Color(0xFFB9C2CC)))
-                    val frameColors = frame.brushColors(listOf(ChipGold, Color(0xFFB07A18)))
-                    Box(
-                        Modifier.size(96.dp).clip(HexagonShape())
-                            .background(Brush.verticalGradient(avatarColors))
-                            .border(4.dp, Brush.verticalGradient(frameColors), HexagonShape()),
-                    )
-                    Box(
-                        Modifier.size(30.dp).clip(CircleShape).background(Color.White)
-                            .pressable(onEditAvatar),
-                        contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Outlined.Edit, "Editar avatar", tint = Accent, modifier = Modifier.size(16.dp)) }
-                    if (badge != null) {
-                        Box(
-                            Modifier.align(Alignment.TopStart).size(26.dp).clip(CircleShape)
-                                .background(Brush.verticalGradient(badge.brushColors(listOf(ChipGold, Color(0xFFB07A18)))))
-                                .border(2.dp, Color(0x66FFFFFF), CircleShape),
-                        )
-                    }
-                }
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.pressable(onEditName),
-                    ) {
-                        Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp, maxLines = 1)
-                        Spacer(Modifier.width(8.dp))
-                        Icon(Icons.Outlined.Edit, "Editar nombre", tint = Color(0xCCFFFFFF), modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.pressable(onCopyId),
-                    ) {
-                        Text("ID: #$idText", color = Color(0xCCFFFFFF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Outlined.ContentCopy, "Copiar ID", tint = Color(0xCCFFFFFF), modifier = Modifier.size(13.dp))
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.WorkspacePremium, null, tint = ChipGold, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("Entrenador", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("Perfil nuevo", color = Color(0xAAFFFFFF), fontSize = 11.sp)
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        Modifier.clip(RoundedCornerShape(50)).border(1.5.dp, Color(0x88FFFFFF), RoundedCornerShape(50))
-                            .pressable(onChangeTitle).padding(horizontal = 14.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Outlined.Edit, null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Cambiar título", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                }
-            }
-            Spacer(Modifier.height(10.dp))
-        }
-    }
-}
-
-@Composable
-private fun CircleIconButton(icon: ImageVector, onClick: () -> Unit, bg: Color = Color(0x33FFFFFF), tint: Color = Color.White) {
-    Box(
-        Modifier.size(40.dp).clip(CircleShape).background(bg).pressable(onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp)) }
-}
-
-@Composable
-private fun CurrencyChip(icon: ImageVector, value: Int, color: Color) {
-    Row(
-        Modifier.clip(RoundedCornerShape(50)).background(Color(0x33000000)).padding(start = 4.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(24.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Color.White, modifier = Modifier.size(15.dp))
-        }
-        Spacer(Modifier.width(6.dp))
-        Text("$value", color = Color.White, fontWeight = FontWeight.Black, fontSize = 13.sp)
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tarjeta de estadísticas.
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun StatsCard(onSoon: () -> Unit) {
-    Card {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Nivel + XP.
-            Column(Modifier.weight(1.2f)) {
-                Text("NIVEL", color = BarajasPalette.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Bolt, null, tint = ChipBlue, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("1", color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 24.sp)
-                }
-                Spacer(Modifier.height(6.dp))
-                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)).background(BarajasPalette.Hollow)) {
-                    Box(Modifier.fillMaxWidth(0.05f).height(6.dp).clip(RoundedCornerShape(50)).background(ChipBlue))
-                }
-                Spacer(Modifier.height(4.dp))
-                Text("0 / 100 XP", color = BarajasPalette.Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(Modifier.width(12.dp))
-            StatCol(Icons.Outlined.EmojiEvents, ChipGold, "VICTORIAS", "0")
-            StatCol(Icons.Outlined.Style, ChipBlue, "CARTAS", "0")
-            StatCol(Icons.Outlined.MilitaryTech, Color(0xFF35C48A), "LOGROS", "0")
-        }
-    }
-}
-
-@Composable
-private fun androidx.compose.foundation.layout.RowScope.StatCol(icon: ImageVector, tint: Color, label: String, value: String) {
-    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.height(4.dp))
-        Text(label, color = BarajasPalette.Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-        Spacer(Modifier.height(2.dp))
-        Text(value, color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Info de cuenta.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -600,56 +409,6 @@ private fun InfoRow(icon: ImageVector, label: String, value: String, onClick: ((
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Personalización.
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun PersonalizationGrid(onSoon: () -> Unit) {
-    val items = listOf(
-        PersoItem(Icons.Outlined.Person, "Avatar", "Elige tu avatar", ChipViolet),
-        PersoItem(Icons.Outlined.Hexagon, "Marco", "Cambia tu marco", ChipBlue),
-        PersoItem(Icons.Outlined.Image, "Fondo", "Cambia tu fondo", Color(0xFF35C48A)),
-        PersoItem(Icons.Outlined.WorkspacePremium, "Título", "Tu distintivo", ChipGold),
-        PersoItem(Icons.Outlined.Stars, "Insignias", "Edita tus insignias", Color(0xFFEC5F94)),
-        PersoItem(Icons.Outlined.Lock, "Privacidad", "Info pública", BarajasPalette.NavIcon),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { item -> PersonalizationCard(item, Modifier.weight(1f), onSoon) }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-private data class PersoItem(val icon: ImageVector, val title: String, val subtitle: String, val accent: Color)
-
-@Composable
-private fun PersonalizationCard(item: PersoItem, modifier: Modifier, onClick: () -> Unit) {
-    Box(
-        modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(BarajasPalette.Surface)
-            .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(18.dp))
-            .pressable(onClick)
-            .padding(14.dp),
-    ) {
-        Icon(Icons.Outlined.ChevronRight, null, tint = BarajasPalette.Muted,
-            modifier = Modifier.align(Alignment.TopEnd).size(18.dp))
-        Column {
-            Box(
-                Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(item.accent.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(item.icon, null, tint = item.accent, modifier = Modifier.size(22.dp)) }
-            Spacer(Modifier.height(10.dp))
-            Text(item.title, color = BarajasPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(item.subtitle, color = BarajasPalette.Muted, fontSize = 11.sp, maxLines = 1)
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Resumen rápido (datos reales).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -716,41 +475,6 @@ private fun ProgressRing(fraction: Float, modifier: Modifier = Modifier) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Accesos.
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun AccessTiles(onOpenCollection: () -> Unit, onSoon: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AccessTile(Icons.Outlined.Style, "Colección", "Explora tus cartas",
-            listOf(Color(0xFF2E9E6B), Color(0xFF1E7A50)), onOpenCollection)
-        AccessTile(Icons.Outlined.Museum, "Museo", "Muestra tus favoritas",
-            listOf(Color(0xFF7E4FD0), Color(0xFF5B2FA0)), onSoon)
-        AccessTile(Icons.Outlined.MenuBook, "Legado", "Tu historia en el juego",
-            listOf(Color(0xFFD08A3A), Color(0xFFA85F1E)), onSoon)
-    }
-}
-
-@Composable
-private fun AccessTile(icon: ImageVector, title: String, subtitle: String, gradient: List<Color>, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(76.dp).clip(RoundedCornerShape(18.dp))
-            .background(Brush.horizontalGradient(gradient)).pressable(onClick).padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
-            Text(subtitle, color = Color(0xDDFFFFFF), fontSize = 12.sp)
-        }
-        Icon(icon, null, tint = Color(0x55FFFFFF), modifier = Modifier.size(40.dp))
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.size(34.dp).clip(CircleShape).background(Color(0x33FFFFFF)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.ChevronRight, null, tint = Color.White, modifier = Modifier.size(22.dp))
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Comunes.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -760,15 +484,6 @@ private fun Card(content: @Composable () -> Unit) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(BarajasPalette.Surface)
             .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(20.dp)),
     ) { content() }
-}
-
-@Composable
-private fun SectionHeader(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(10.dp).clip(HexagonShape()).background(Accent))
-        Spacer(Modifier.width(8.dp))
-        Text(text, color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 17.sp)
-    }
 }
 
 @Composable
