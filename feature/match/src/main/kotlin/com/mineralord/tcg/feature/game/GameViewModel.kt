@@ -3,6 +3,7 @@ package com.mineralord.tcg.feature.game
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mineralord.tcg.data.cards.AiDeckFactory
 import com.mineralord.tcg.data.cards.CardRepository
 import com.mineralord.tcg.data.cards.StarterDecks
 import com.mineralord.tcg.data.cards.toDeck
@@ -248,18 +249,25 @@ class GameViewModel(app: Application) : AndroidViewModel(app), GameController {
         }
     }
 
-    /** Baraja del jugador (activa del perfil) y un mazo inicial rival distinto. */
+    /**
+     * Baraja del jugador (activa del perfil) y un mazo rival GENERADO AL AZAR con lógica.
+     * Para que ninguna partida PvE se repita, la IA no usa un mazo fijo: [AiDeckFactory]
+     * arma una baraja legal de 60 con cualquier carta de efectos completos (mismo motor
+     * que el editor). Semilla por tiempo → cada combate, un rival distinto.
+     */
     private suspend fun buildDecks(): Pair<List<Card>, List<Card>> {
         val profile = profileRepo.profile.first()
         val playerDeck = profile.decks.firstOrNull { it.id == profile.activeDeckId }
             ?: profile.decks.firstOrNull()
             ?: StarterDecks.ALL.first().toDeck()
-        val oppStarter = StarterDecks.ALL.firstOrNull { it.id != playerDeck.id }
-            ?: StarterDecks.ALL.first()
+        val oppEntries = AiDeckFactory.buildRandomDeck(
+            all = core.repo.all,
+            rng = kotlin.random.Random(System.nanoTime()),
+        )
         // Cada copia física recibe un id de INSTANCIA único, para que copias de la
         // misma carta impresa sean independientes en juego (energía/evolución/descarte).
         val playerCards = uniquify(playerDeck.expandedCardIds().mapNotNull { core.repo[it] })
-        val oppCards = uniquify(oppStarter.toDeck().expandedCardIds().mapNotNull { core.repo[it] })
+        val oppCards = uniquify(AiDeckFactory.expand(oppEntries).mapNotNull { core.repo[it] })
         return playerCards to oppCards
     }
 
