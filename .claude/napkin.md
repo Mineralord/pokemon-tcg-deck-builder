@@ -30,8 +30,25 @@ autorar (motor toma `Attack.baseDamage`); autorar solo cuando la carta hace algo
 nombre, tool/energy-attached-check condicional, coin+status combinados raros. → siguiente tier requiere ampliar el motor.
 **Impacto:** los ataques autorados hacen que sus Pokémon sean elegibles por `AiDeckFactory` → el rival PvE empieza a usarlos.
 **Tests:** `SetParadoxEffectsTest` (engine:rules) demuestra daño real con `FixedRng`/estado/retroceso/escalado. Repetir por set.
-**➡️ SIGUIENTE:** seguir autorando sv4 (quedan ~178 "OTHER": buscar/switch/prevención/heal/KO condicional…) y, cuando el
-dueño quiera, ampliar el DSL para las mecánicas nuevas de Paradox (Ancient/Future, per-energy-en-todos-tus-Pokémon).
+**PROGRESO sv4 (29 Sep, commits `5100a25`·`b0ce699`·`8af841b`):** **98 claves de ataque autoradas** en 3 fases con el DSL
+EXISTENTE (sin tocar el motor): F1 daño puro (monedas+X condicional), F2 riders (estados/robo/recoil/descarte energía/
++daño por energía unida), F3 ops (curación, banca elegida, switch, control no-atacar/retirarse, prize extra, descartar
+top mazo rival). 12 tests verdes en `SetParadoxEffectsTest`.
+**🔴 FIX combate (commit `646ccb1`):** al terminar PvE/PvP no se podía iniciar otro sin cerrar la app. Causa: `viewModel
+<GameViewModel>()` scopeado al Activity → misma instancia reusada (init corre una vez, tablero pegado al estado final).
+Fix: `MatchScope` en `MainActivity` da a cada partida un `ViewModelStore` PROPIO (limpiado onDispose) + `matchNonce`/`key()`
+por partida (renueva también el controller PvP). Nonce sube al NAVEGAR (`onMatched`/`afterDeckSelect`), no post-composición.
+**➡️ RETOMAR AQUÍ — FASE 4 de efectos sv4 (mañana):** quedan ~140 ataques + habilidades + entrenadores que NO encajan en
+el DSL actual → hay que **AMPLIAR EL MOTOR** (nuevos `EffectOp`/`DamageCondition`), no solo autorar. Mecánicas pendientes:
+(1) adjuntar Energía desde mano/descarte ELIGIENDO Pokémon (Clinging Spore, Dual Turbo, Flare/Snow Bringer…);
+(2) buscar en mazo Energía/Pokémon a mano o banca (Call for Family, Drawup Power, Fast Carrier);
+(3) mirar/revelar top N del mazo (Whirltide, Supplemental Swallow-Up, Mountain Scrounging);
+(4) condicionales "si tiene X Energía [tipo] unida" (Alloy Aswing/Alloyed Hammer), "si <carta> en descarte" (Glittering Eyes);
+(5) distribuir contadores (Hollow Hands), daño por cartas en mano rival (Powerful Cross);
+(6) mecánicas propias de Paradox: **Ancient/Future** (bonos por marca), per-energy-en-TODOS-tus-Pokémon (Photon Kinesis).
+Método: por cada mecánica nueva → añadir op/condición al DSL (`Effects.kt`) + interpretarla (`EffectInterpreter`/`GameEngine`)
++ registrar cartas en `SetParadoxEffects.kt` + test en `SetParadoxEffectsTest`. Pasar por `revision-critica` antes de tocar el motor.
+Inventario reproducible: script Python que clasificó los buckets (ver historial de la sesión) — regenerar con el clasificador por regex.
 
 ## ⏸️ RETOMAR AQUÍ (27 Ago 2026) — RÉPLICA UI TCG POCKET (Comunidad · Menú · Perfil)
 Rama `feature/studio-match-mode`, árbol LIMPIO. Último commit **`a3c7c53`** (feat comunidad/menu/perfil).
