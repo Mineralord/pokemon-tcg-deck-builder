@@ -125,6 +125,26 @@ class SetParadoxEffectsTest {
     }
 
     @Test
+    fun `Alloyed Hammer hace +120 si tiene Energia Metalica unida`() {
+        val a = attack("Alloyed Hammer", EffectsDb.atkKey("sv4-85", "Alloyed Hammer"))
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.PSYCHIC, a))
+        val sinMetal = PokemonInPlay(mon("m1", 150, EnergyType.METAL, a))
+        val conMetal = PokemonInPlay(mon("m2", 150, EnergyType.METAL, a), attachedEnergy = listOf(energy("me", EnergyType.METAL)))
+        assertEquals(60, firstDamage(GameEngine(SeededRng(1)).apply(duel(sinMetal, foe), GameIntent.Attack("Alloyed Hammer"))))
+        assertEquals(180, firstDamage(GameEngine(SeededRng(1)).apply(duel(conMetal, foe), GameIntent.Attack("Alloyed Hammer"))))
+    }
+
+    @Test
+    fun `Unhinged Scissors hace +160 si el atacante tiene Condicion Especial`() {
+        val a = attack("Unhinged Scissors", EffectsDb.atkKey("sv4-105", "Unhinged Scissors"))
+        val foe = PokemonInPlay(mon("foe", 400, EnergyType.PSYCHIC, a))
+        val sano = PokemonInPlay(mon("s1", 150, EnergyType.WATER, a))
+        val envenenado = PokemonInPlay(mon("s2", 150, EnergyType.WATER, a), statuses = setOf(com.mineralord.tcg.engine.model.Status.POISONED))
+        assertEquals(30, firstDamage(GameEngine(SeededRng(1)).apply(duel(sano, foe), GameIntent.Attack("Unhinged Scissors"))))
+        assertEquals(190, firstDamage(GameEngine(SeededRng(1)).apply(duel(envenenado, foe), GameIntent.Attack("Unhinged Scissors"))))
+    }
+
+    @Test
     fun `Leech Seed cura 10 al atacante`() {
         val a = attack("Leech Seed", EffectsDb.atkKey("sv4-4", "Leech Seed"))
         val attacker = PokemonInPlay(mon("seed", 90, EnergyType.GRASS, a), damage = 30)

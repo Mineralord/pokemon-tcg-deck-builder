@@ -437,6 +437,10 @@ class GameEngine(
                     com.mineralord.tcg.engine.model.DamageCondition.IfSupporterPlayedThisTurn -> state.supporterPlayedThisTurn
                     is com.mineralord.tcg.engine.model.DamageCondition.IfPlayedTrainerThisTurn ->
                         state.trainerNamesPlayedThisTurn.any { it.contains(cond.name, true) }
+                    is com.mineralord.tcg.engine.model.DamageCondition.IfSelfHasEnergyType ->
+                        hasEnergyOfType(attacker, cond.type)
+                    com.mineralord.tcg.engine.model.DamageCondition.IfSelfAffectedBySpecialCondition ->
+                        attacker.statuses.isNotEmpty()
                 }
             }.sumOf { it.amount + it.perDefenderCounter * (defender.damage / 10) }
         } else {

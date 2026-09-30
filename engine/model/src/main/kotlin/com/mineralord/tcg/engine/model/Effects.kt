@@ -582,6 +582,12 @@ sealed interface DamageCondition {
      * contiene [name] (Rhydon — Taladro Carismático ["Giovanni"], Tangela — Enredo
      * Sutil ["Erika"]). */
     data class IfPlayedTrainerThisTurn(val name: String) : DamageCondition
+    /** Suma solo si el Pokémon ATACANTE tiene unida al menos 1 Energía que aporte [type]
+     * (Brechas Paradójicas — Alloy Aswing/Alloyed Hammer: "si este Pokémon tiene Energía Metálica"). */
+    data class IfSelfHasEnergyType(val type: EnergyType) : DamageCondition
+    /** Suma solo si el Pokémon ATACANTE está afectado por alguna Condición Especial
+     * (Brechas Paradójicas — Unhinged Scissors: "si este Pokémon está afectado por una Condición Especial"). */
+    data object IfSelfAffectedBySpecialCondition : DamageCondition
 }
 
 /**

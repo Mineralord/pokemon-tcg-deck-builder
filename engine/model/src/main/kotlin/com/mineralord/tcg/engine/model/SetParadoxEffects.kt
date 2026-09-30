@@ -251,4 +251,16 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
 
     // ---- Descartar la carta superior del mazo rival ----
     put(atkKey("sv4-100", "Knocking Hammer"), Effect(ops = listOf(EffectOp.DiscardTopDeck(1, own = false))))
+
+    // =========================== Fase 4: condiciones de daño nuevas ===========================
+
+    // "Si este Pokémon tiene Energía Metálica unida, +X" (condición IfSelfHasEnergyType).
+    put(atkKey("sv4-84", "Alloy Aswing"), Effect(attackDamage = listOf(
+        DamageTerm(20), DamageTerm(40, DamageCondition.IfSelfHasEnergyType(EnergyType.METAL)))))
+    put(atkKey("sv4-85", "Alloyed Hammer"), Effect(attackDamage = listOf(
+        DamageTerm(60), DamageTerm(120, DamageCondition.IfSelfHasEnergyType(EnergyType.METAL)))))
+
+    // "Si este Pokémon está afectado por una Condición Especial, +160" (Unhinged Scissors).
+    put(atkKey("sv4-105", "Unhinged Scissors"), Effect(attackDamage = listOf(
+        DamageTerm(30), DamageTerm(160, DamageCondition.IfSelfAffectedBySpecialCondition))))
 }
