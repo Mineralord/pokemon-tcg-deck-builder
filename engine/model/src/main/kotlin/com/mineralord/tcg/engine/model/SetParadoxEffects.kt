@@ -263,4 +263,13 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     // "Si este Pokémon está afectado por una Condición Especial, +160" (Unhinged Scissors).
     put(atkKey("sv4-105", "Unhinged Scissors"), Effect(attackDamage = listOf(
         DamageTerm(30), DamageTerm(160, DamageCondition.IfSelfAffectedBySpecialCondition))))
+
+    // ---- Daño de SALPICADURA a toda una Banca (crudo, sin Debilidad) ----
+    // Liquid Lashing (50): +30 a CADA Pokémon de la Banca rival.
+    put(atkKey("sv4-42", "Liquid Lashing"), Effect(ops = listOf(
+        EffectOp.Damage(Target.OPP_BENCH, Amount.Fixed(30)))))
+    // Earthquake (130): +30 a CADA Pokémon de TU Banca (contragolpe).
+    val earthquake = Effect(ops = listOf(EffectOp.Damage(Target.OWN_BENCH, Amount.Fixed(30))))
+    put(atkKey("sv4-125", "Earthquake"), earthquake)
+    put(atkKey("sv4-208", "Earthquake"), earthquake)
 }
