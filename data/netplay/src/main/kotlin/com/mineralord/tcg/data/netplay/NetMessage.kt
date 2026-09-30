@@ -79,6 +79,7 @@ sealed interface FxCueDto {
     @Serializable data class Prize(val side: String, val count: Int) : FxCueDto
     @Serializable data class Coin(val side: String?, val heads: Boolean) : FxCueDto
     @Serializable data class StadiumPlaced(val side: String, val card: String) : FxCueDto
+    @Serializable data class Cry(val side: String, val card: String) : FxCueDto
 }
 
 /**

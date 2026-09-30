@@ -154,6 +154,7 @@ object CardMapper {
             resistances = dto.resistencias.map { TypeModifier(energyType(it.type), it.value) },
             retreatCost = dto.costoRetirada.map { energyType(it) },
             rulesText = dto.reglas.map { LocalizedText(it, it) },
+            nationalDex = dto.numeroPokedex.firstOrNull(),
         )
     }
 

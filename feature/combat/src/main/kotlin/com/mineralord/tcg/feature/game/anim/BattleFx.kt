@@ -57,6 +57,12 @@ sealed interface FxCue {
 
     /** [side] ha jugado un Estadio [card]: viaja de la mano al slot de Estadio y se asienta con peso. */
     data class StadiumPlaced(override val side: Side, val card: CardId) : FxCue
+
+    /**
+     * [side] ha puesto en juego (o evolucionado a) el Pokémon [card]: dispara su GRITO oficial.
+     * La UI resuelve la carta → nº de Pokédex nacional → reproduce el .ogg (streaming + caché).
+     */
+    data class Cry(override val side: Side, val card: CardId) : FxCue
 }
 
 

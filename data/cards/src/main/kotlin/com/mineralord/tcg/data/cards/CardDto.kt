@@ -51,6 +51,8 @@ data class CardDto(
     val resistencias: List<TypeModDto> = emptyList(),
     val costoRetirada: List<String> = emptyList(),
     val numeroCarta: String? = null,
+    /** Número(s) de Pokédex NACIONAL de la especie (para gritos, ordenación, etc.). */
+    val numeroPokedex: List<Int> = emptyList(),
     val rareza: String? = null,
     val marcaRegulacion: String? = null,
     val reglas: List<String> = emptyList(),

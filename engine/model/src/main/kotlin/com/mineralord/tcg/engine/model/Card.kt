@@ -154,6 +154,8 @@ data class PokemonCard(
     val rulesText: List<LocalizedText>,
     /** Rasgo Antiguo (era XY). null en la inmensa mayoría de cartas. Inmune a bloqueos. */
     val ancientTrait: AncientTrait? = null,
+    /** Nº de Pokédex NACIONAL de la especie (para el grito oficial). null = no aplica. */
+    val nationalDex: Int? = null,
 ) : Card {
     override val supertype get() = Supertype.POKEMON
     val isBasic: Boolean get() = stage is Stage.Basic

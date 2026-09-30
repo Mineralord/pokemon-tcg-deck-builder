@@ -233,6 +233,18 @@ fun CombatScreen(
     var disableVfx by rememberSaveable { mutableStateOf(false) }
     var cardVfxEnabled by rememberSaveable { mutableStateOf(true) }
 
+    // GRITO del Pokémon al ponerlo en juego / evolucionar (streaming + caché por nº de Pokédex).
+    // El volumen sigue al deslizador de "Efectos de sonido"; se libera al salir del combate.
+    val cryContext = androidx.compose.ui.platform.LocalContext.current
+    val cryPlayer = remember { CryPlayer(cryContext) }
+    LaunchedEffect(sfxVol) { cryPlayer.setVolume(sfxVol) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { cryPlayer.release() } }
+    LaunchedEffect(Unit) {
+        vm.fx.collect { cue ->
+            if (cue is FxCue.Cry) (vm.card(cue.card) as? PokemonCard)?.nationalDex?.let { cryPlayer.play(it) }
+        }
+    }
+
     // Al jugar un Estadio (cualquiera de los dos lados): dispara la colocación AAA.
     LaunchedEffect(Unit) {
         vm.fx.collect { cue ->

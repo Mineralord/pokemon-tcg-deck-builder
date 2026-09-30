@@ -44,6 +44,9 @@ fun GameEvent.toFxCue(): FxCue? = when (this) {
     is GameEvent.PrizeTaken -> FxCue.Prize(side, count)
     is GameEvent.CoinFlipped -> FxCue.Coin(side, heads)
     is GameEvent.StadiumPlayed -> FxCue.StadiumPlaced(side, card)
+    // Poner un Pokémon en juego o evolucionar dispara su grito (delay 0 → no corta el ritmo).
+    is GameEvent.PokemonPlayed -> FxCue.Cry(side, card)
+    is GameEvent.Evolved -> FxCue.Cry(side, to)
     else -> null
 }
 

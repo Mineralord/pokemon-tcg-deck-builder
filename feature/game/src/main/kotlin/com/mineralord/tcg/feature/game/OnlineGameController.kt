@@ -524,6 +524,7 @@ class OnlineGameController(
         is FxCue.Prize -> FxCueDto.Prize(side.other().name, count)
         is FxCue.Coin -> FxCueDto.Coin(side?.other()?.name, heads)
         is FxCue.StadiumPlaced -> FxCueDto.StadiumPlaced(side.other().name, card.raw)
+        is FxCue.Cry -> FxCueDto.Cry(side.other().name, card.raw)
     }
 
     /** Reconstruye un [FxCue] desde su DTO recibido por red (ya en la perspectiva del invitado). */
@@ -536,6 +537,7 @@ class OnlineGameController(
         is FxCueDto.Prize -> FxCue.Prize(Side.valueOf(side), count)
         is FxCueDto.Coin -> FxCue.Coin(side?.let { Side.valueOf(it) }, heads)
         is FxCueDto.StadiumPlaced -> FxCue.StadiumPlaced(Side.valueOf(side), CardId(card))
+        is FxCueDto.Cry -> FxCue.Cry(Side.valueOf(side), CardId(card))
     }
 
     /** GUEST: recibe una foto del estado y la pinta (rehidratada en su perspectiva). */
