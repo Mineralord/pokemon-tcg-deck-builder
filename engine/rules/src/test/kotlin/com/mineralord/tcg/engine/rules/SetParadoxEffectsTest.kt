@@ -125,6 +125,36 @@ class SetParadoxEffectsTest {
     }
 
     @Test
+    fun `Leech Seed cura 10 al atacante`() {
+        val a = attack("Leech Seed", EffectsDb.atkKey("sv4-4", "Leech Seed"))
+        val attacker = PokemonInPlay(mon("seed", 90, EnergyType.GRASS, a), damage = 30)
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Leech Seed"))
+        assertEquals(20, r.state.player.active?.damage)
+    }
+
+    @Test
+    fun `Crushing Blow descarta 1 Energia del Activo rival`() {
+        val a = attack("Crushing Blow", EffectsDb.atkKey("sv4-85", "Crushing Blow"))
+        val attacker = PokemonInPlay(mon("crush", 120, EnergyType.METAL, a))
+        val foe = PokemonInPlay(
+            mon("foe", 200, EnergyType.WATER, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.WATER), energy("e2", EnergyType.WATER)),
+        )
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Crushing Blow"))
+        assertEquals(1, r.state.opponent.active?.attachedEnergy?.size)
+    }
+
+    @Test
+    fun `Boundless Power impide atacar al propio Pokemon el proximo turno`() {
+        val a = attack("Boundless Power", EffectsDb.atkKey("sv4-83", "Boundless Power"))
+        val attacker = PokemonInPlay(mon("bound", 120, EnergyType.FIGHTING, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.PSYCHIC, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Boundless Power"))
+        assertEquals(true, r.state.player.active?.cannotAttackOnTurn != null)
+    }
+
+    @Test
     fun `Scorching Bazooka hace +40 por cada Energia Fuego unida (base 40 + 2 = 120)`() {
         val a = attack("Scorching Bazooka", EffectsDb.atkKey("sv4-27", "Scorching Bazooka"))
         val fire2 = listOf(energy("f1", EnergyType.FIRE), energy("f2", EnergyType.FIRE))

@@ -155,4 +155,100 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     put(atkKey("sv4-8", "Quick Blow"), quickHit)
     put(atkKey("sv4-79", "Quick Attack"), quickHit)
     put(atkKey("sv4-101", "Stone Edge"), Effect(attackDamage = listOf(DamageTerm(20)), ops = listOf(EffectOp.CoinFlipDamage(1, 20))))
+
+    // =========================== Fase 3: ops del DSL (curación, banca, control) ===========================
+
+    // ---- Curación al PROPIO atacante ----
+    put(atkKey("sv4-4", "Leech Seed"), Effect(ops = listOf(EffectOp.Heal(Target.SELF, Amount.Fixed(10)))))
+    put(atkKey("sv4-16", "Absorb"), Effect(ops = listOf(EffectOp.Heal(Target.SELF, Amount.Fixed(20)))))
+    val mushroomDrain = Effect(ops = listOf(EffectOp.Heal(Target.SELF, Amount.Fixed(30))))
+    put(atkKey("sv4-17", "Mushroom Drain"), mushroomDrain)
+    put(atkKey("sv4-185", "Mushroom Drain"), mushroomDrain)
+    // Trop Kick: cura 30 y se recupera de TODAS las Condiciones Especiales.
+    val tropKick = Effect(ops = listOf(
+        EffectOp.Heal(Target.SELF, Amount.Fixed(30)),
+        EffectOp.RemoveStatus(Target.SELF),
+    ))
+    put(atkKey("sv4-46", "Trop Kick"), tropKick)
+    put(atkKey("sv4-220", "Trop Kick"), tropKick)
+    // Buoyant Healing: cura 120 a 1 de tus Pokémon de Banca (elegido).
+    put(atkKey("sv4-39", "Buoyant Healing"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt("Elige un Pokémon de tu Banca para curar 120", "Choose a Benched Pokémon to heal 120")),
+        EffectOp.Heal(Target.CHOSEN, Amount.Fixed(120)),
+    )))
+
+    // ---- Descartar Energía del Activo RIVAL ----
+    put(atkKey("sv4-85", "Crushing Blow"), Effect(ops = listOf(EffectOp.DiscardEnergy(Target.OPP_ACTIVE, 1))))
+
+    // ---- Cambiarse por un Pokémon de la Banca propia ----
+    // Swing and Skedaddle: descarta 1 Energía propia y se cambia por 1 de tu Banca.
+    val swingSkedaddle = Effect(ops = listOf(
+        EffectOp.DiscardEnergy(Target.SELF, 1),
+        EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt("Elige un Pokémon de tu Banca para pasar al Activo", "Choose a Benched Pokémon to switch to the Active Spot")),
+        EffectOp.SwapActiveWithChosen,
+    ))
+    put(atkKey("sv4-50", "Swing and Skedaddle"), swingSkedaddle)
+    put(atkKey("sv4-221", "Swing and Skedaddle"), swingSkedaddle)
+    put(atkKey("sv4-246", "Swing and Skedaddle"), swingSkedaddle)
+    // Teleportation Burst: PUEDES cambiarte por 1 de tu Banca (opcional).
+    put(atkKey("sv4-40", "Teleportation Burst"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt("Puedes cambiar este Pokémon por 1 de tu Banca", "You may switch this Pokémon with 1 of your Benched Pokémon"), optional = true),
+        EffectOp.SwapActiveWithChosen,
+    )))
+
+    // ---- Daño adicional a 1 Pokémon de Banca elegido (no aplica Debilidad/Resistencia) ----
+    put(atkKey("sv4-3", "Frost Bullet"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt("Elige un Pokémon de la Banca rival (20 de daño)", "Choose a Benched Pokémon (20 damage)"), optional = true),
+        EffectOp.Damage(Target.CHOSEN, Amount.Fixed(20)),
+    )))
+    put(atkKey("sv4-65", "Electrobullet"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt("Elige un Pokémon de la Banca rival (30 de daño)", "Choose a Benched Pokémon (30 damage)"), optional = true),
+        EffectOp.Damage(Target.CHOSEN, Amount.Fixed(30)),
+    )))
+    put(atkKey("sv4-66", "Raging Thunder"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt("Elige un Pokémon de TU Banca (40 de daño)", "Choose 1 of your Benched Pokémon (40 damage)"), optional = true),
+        EffectOp.Damage(Target.CHOSEN, Amount.Fixed(40)),
+    )))
+
+    // ---- Daño a 1 Pokémon rival cualquiera (sin daño al Activo, o tras descartar) ----
+    put(atkKey("sv4-59", "Crackling Shot"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OPP_ALL, 1, prompt("Elige 1 Pokémon del rival (30 de daño)", "Choose 1 of your opponent's Pokémon (30 damage)")),
+        EffectOp.Damage(Target.CHOSEN, Amount.Fixed(30)),
+    )))
+    // Sonic Dive: descarta 2 Energía propia y hace 120 a 1 Pokémon rival elegido.
+    val sonicDive = Effect(ops = listOf(
+        EffectOp.DiscardEnergy(Target.SELF, 2),
+        EffectOp.ChooseTarget(Target.OPP_ALL, 1, prompt("Elige 1 Pokémon del rival (120 de daño)", "Choose 1 of your opponent's Pokémon (120 damage)")),
+        EffectOp.Damage(Target.CHOSEN, Amount.Fixed(120)),
+    ))
+    put(atkKey("sv4-38", "Sonic Dive"), sonicDive)
+    put(atkKey("sv4-219", "Sonic Dive"), sonicDive)
+    put(atkKey("sv4-245", "Sonic Dive"), sonicDive)
+    put(atkKey("sv4-260", "Sonic Dive"), sonicDive)
+
+    // ---- +Daño por Energía unida al Activo RIVAL ----
+    put(atkKey("sv4-80", "Psychic"), Effect(
+        attackDamage = listOf(DamageTerm(10)),
+        ops = listOf(EffectOp.ExtraDamage(Amount.PerCount(Counter.ENERGY_ATTACHED, Target.OPP_ACTIVE, 10))),
+    ))
+    // Energy Crush (50×): 50 por cada Energía unida a TODOS los Pokémon del rival.
+    val energyCrush = Effect(ops = listOf(
+        EffectOp.ExtraDamage(Amount.PerCount(Counter.ENERGY_ATTACHED, Target.OPP_ALL, 50)),
+    ))
+    put(atkKey("sv4-98", "Energy Crush"), energyCrush)
+
+    // ---- Control: "no puede atacar / retirarse el próximo turno" ----
+    put(atkKey("sv4-83", "Boundless Power"), Effect(ops = listOf(EffectOp.NoAttackNextTurn)))
+    put(atkKey("sv4-89", "Laser Blade"), Effect(ops = listOf(EffectOp.NoAttackNextTurn)))
+    put(atkKey("sv4-78", "Shadow Bind"), Effect(ops = listOf(EffectOp.DefenderCannotRetreatNextTurn)))
+
+    // ---- "Si cruz, este ataque no hace nada" (una moneda gatea todo el ataque) ----
+    put(atkKey("sv4-10", "Surprise Attack"), Effect(coinFlipOrNothing = true))
+    put(atkKey("sv4-69", "Whimsy Tackle"), Effect(coinFlipOrNothing = true))
+
+    // ---- Prima: 1 Premio más si este ataque noquea ----
+    put(atkKey("sv4-70", "Amp You Very Much"), Effect(extraPrizeIfKo = true))
+
+    // ---- Descartar la carta superior del mazo rival ----
+    put(atkKey("sv4-100", "Knocking Hammer"), Effect(ops = listOf(EffectOp.DiscardTopDeck(1, own = false))))
 }
