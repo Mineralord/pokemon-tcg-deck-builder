@@ -19,11 +19,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -106,6 +112,10 @@ private fun AppShell() {
     var packsDirectCode by remember { mutableStateOf<String?>(null) }
     // Selector de dificultad PvE.
     var pickingDifficulty by remember { mutableStateOf(false) }
+    // Nonce que IDENTIFICA la partida actual: sube cada vez que se ENTRA a un combate
+    // (PvE/PvP). Fuerza un subárbol nuevo por partida → GameViewModel/controller frescos,
+    // evitando que la partida anterior (ya terminada) quede pegada al reabrir el combate.
+    var matchNonce by remember { mutableStateOf(0) }
     // Continuación tras elegir baraja (PvE o PvP).
     var afterDeckSelect by remember { mutableStateOf<(() -> Unit)?>(null) }
     // Popup "Menú" (placeholder por ahora).
@@ -157,7 +167,7 @@ private fun AppShell() {
                         onBarajas = { push(Screen.DECKS) },
                         onPerfil = { push(Screen.PROFILE) },
                         onJugar = { afterDeckSelect = { pickingDifficulty = true }; push(Screen.DECK_SELECT) },
-                        onJugarOnline = { afterDeckSelect = { push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
+                        onJugarOnline = { afterDeckSelect = { matchNonce++; push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
                         onAmigos = { goToPage(2) },
                         // Tocar un sobre lleva DIRECTO a "Rasga el sobre" de ESA expansión (sin selector).
                         onOpenPack = { code -> packsDirectCode = code; push(Screen.PACKS) },
@@ -174,7 +184,7 @@ private fun AppShell() {
                     else -> PartidasScreen(
                         modifier = Modifier.fillMaxSize(),
                         // Versus → hub PvP (elige baraja → online). Individual → PvE (baraja → dificultad).
-                        onVersus = { afterDeckSelect = { push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
+                        onVersus = { afterDeckSelect = { matchNonce++; push(Screen.ONLINE) }; push(Screen.DECK_SELECT) },
                         onIndividual = { afterDeckSelect = { pickingDifficulty = true }; push(Screen.DECK_SELECT) },
                         onBarajas = { push(Screen.DECKS) },
                     )
@@ -195,26 +205,30 @@ private fun AppShell() {
                     Screen.MATCHMAKING -> MatchmakingScreen(
                         deckName = "Mega-Charizard X ex",
                         onCancel = { back() },
-                        onMatched = { replace(Screen.GAME) },
+                        onMatched = { matchNonce++; replace(Screen.GAME) },
                         modifier = Modifier.fillMaxSize(),
                     )
-                    Screen.GAME -> com.mineralord.tcg.feature.game.combat.CombatScreen(
-                        onExit = { back() },
-                        vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
-                        modifier = Modifier.fillMaxSize(),
-                        matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
-                        sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
-                        victoryEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.VICTORIA),
-                        defeatEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.DERROTA),
-                        winCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_CRISTALES,
-                        winMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_MONEDAS,
-                        lossCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_CRISTALES,
-                        lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_MONEDAS,
-                    )
-                    Screen.ONLINE -> OnlineGameScreen(
-                        onExit = { back() },
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    Screen.GAME -> MatchScope(matchNonce) {
+                        com.mineralord.tcg.feature.game.combat.CombatScreen(
+                            onExit = { back() },
+                            vm = androidx.lifecycle.viewmodel.compose.viewModel<com.mineralord.tcg.feature.game.GameViewModel>(),
+                            modifier = Modifier.fillMaxSize(),
+                            matThemeId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.TAPETE),
+                            sleeveId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.FUNDA),
+                            victoryEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.VICTORIA),
+                            defeatEffectId = profile.equippedIn(com.mineralord.tcg.data.cosmetics.CosmeticCategory.DERROTA),
+                            winCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_CRISTALES,
+                            winMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_WIN_MONEDAS,
+                            lossCristales = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_CRISTALES,
+                            lossMonedas = com.mineralord.tcg.data.profile.EconomyRules.PVE_LOSS_MONEDAS,
+                        )
+                    }
+                    Screen.ONLINE -> MatchScope(matchNonce) {
+                        OnlineGameScreen(
+                            onExit = { back() },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                     Screen.STORE -> SubScreen(title = "Tienda", onHome = { back() }) {
                         StoreHubScreen(
                             balances = profile.balances,
@@ -312,6 +326,24 @@ private fun AppShell() {
                 ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
                 ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
         )
+    }
+}
+
+/**
+ * Aísla el ciclo de vida de UNA partida (PvE/PvP). Da a su contenido un [ViewModelStore]
+ * PROPIO (no el del Activity), scopeado a esta composición: al salir del combate se limpia,
+ * así el [GameViewModel] (cuyo `init` arma el tablero) se recrea de cero en la siguiente
+ * partida en vez de quedar pegado al estado final de la anterior. El [key] por [nonce]
+ * garantiza un subárbol nuevo por partida (también renueva el `remember` del controller PvP).
+ */
+@Composable
+private fun MatchScope(nonce: Int, content: @Composable () -> Unit) {
+    key(nonce) {
+        val owner = remember {
+            object : ViewModelStoreOwner { override val viewModelStore = ViewModelStore() }
+        }
+        DisposableEffect(Unit) { onDispose { owner.viewModelStore.clear() } }
+        CompositionLocalProvider(LocalViewModelStoreOwner provides owner) { content() }
     }
 }
 
