@@ -355,7 +355,8 @@ private fun CosmeticDetailDialog(
             }
             Spacer(Modifier.height(18.dp))
             when {
-                equipped -> ActionButton("Equipado", enabled = false, accent = Color(0xFF66BB6A), onClick = {})
+                // Equipado: tocar QUITA el cosmético (vuelve al aspecto por defecto).
+                equipped -> ActionButton("Quitar", enabled = true, accent = Color(0xFF66BB6A), onClick = onEquip)
                 owned -> ActionButton("Equipar", enabled = true, accent = cosmetic.rarity.color, onClick = onEquip)
                 else -> ActionButton(
                     "Comprar · ${cosmetic.priceMonedas} 🪙",
@@ -533,7 +534,7 @@ private fun CollectionCard(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            when { equipped -> "✓ En uso"; owned -> "Tocar para equipar"; else -> "${cosmetic.priceMonedas} 🪙 en la tienda" },
+            when { equipped -> "✓ En uso · tocar para quitar"; owned -> "Tocar para equipar"; else -> "${cosmetic.priceMonedas} 🪙 en la tienda" },
             color = if (owned) Color(0x99FFFFFF) else MonedasGold, fontSize = 11.sp,
         )
     }

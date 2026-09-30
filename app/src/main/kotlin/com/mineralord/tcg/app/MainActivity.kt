@@ -260,14 +260,22 @@ private fun AppShell() {
                         CosmeticStoreScreen(
                             profile = profile,
                             onBuy = { c -> scope.launch { profileRepo.buyCosmetic(c) } },
-                            onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                            // Toggle: si ya está equipado, lo quita (vuelve al aspecto por defecto).
+                            onEquip = { c -> scope.launch {
+                                if (profile.equippedIn(c.category) == c.id) profileRepo.unequipCosmetic(c.category)
+                                else profileRepo.equipCosmetic(c.category, c.id)
+                            } },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
                     Screen.COSMETIC_COLLECTION -> SubScreen(title = "Colección de cosméticos", onHome = { back() }) {
                         CosmeticCollectionScreen(
                             profile = profile,
-                            onEquip = { c -> scope.launch { profileRepo.equipCosmetic(c.category, c.id) } },
+                            // Toggle: tocar el equipado lo quita (vuelve al aspecto por defecto).
+                            onEquip = { c -> scope.launch {
+                                if (profile.equippedIn(c.category) == c.id) profileRepo.unequipCosmetic(c.category)
+                                else profileRepo.equipCosmetic(c.category, c.id)
+                            } },
                             onToggleFavorite = { c -> scope.launch { profileRepo.toggleCosmeticFavorite(c.id) } },
                             modifier = Modifier.fillMaxSize(),
                         )

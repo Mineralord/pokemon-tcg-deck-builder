@@ -216,6 +216,21 @@ class ProfileRepository(context: Context) {
         }
     }
 
+    /**
+     * Desequipa la categoría (vuelve al aspecto POR DEFECTO). El default no es un cosmético
+     * "poseído", así que no se puede re-equipar con [equipCosmetic]; quitar la entrada del mapa
+     * hace que [PlayerProfile.equippedIn] devuelva null → la UI/combate usan el tema predeterminado.
+     */
+    suspend fun unequipCosmetic(category: CosmeticCategory) {
+        store.edit { prefs ->
+            val equipped = HashMap(decodeEquipped(prefs[EQUIPPED_COSMETICS]).mapKeys { it.key.name })
+            if (equipped.remove(category.name) != null) {
+                prefs[EQUIPPED_COSMETICS] = json.encodeToString(stringMapSerializer, equipped)
+                prefs.touch()
+            }
+        }
+    }
+
     /** Alterna el estado de favorito de un cosmético (Fase 3 §20: colección con favoritos). */
     suspend fun toggleCosmeticFavorite(cosmeticId: String) {
         store.edit { prefs ->
