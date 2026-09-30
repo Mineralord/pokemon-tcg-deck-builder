@@ -38,14 +38,32 @@ top mazo rival). 12 tests verdes en `SetParadoxEffectsTest`.
 <GameViewModel>()` scopeado al Activity → misma instancia reusada (init corre una vez, tablero pegado al estado final).
 Fix: `MatchScope` en `MainActivity` da a cada partida un `ViewModelStore` PROPIO (limpiado onDispose) + `matchNonce`/`key()`
 por partida (renueva también el controller PvP). Nonce sube al NAVEGAR (`onMatched`/`afterDeckSelect`), no post-composición.
-**➡️ RETOMAR AQUÍ — FASE 4 de efectos sv4 (mañana):** quedan ~140 ataques + habilidades + entrenadores que NO encajan en
-el DSL actual → hay que **AMPLIAR EL MOTOR** (nuevos `EffectOp`/`DamageCondition`), no solo autorar. Mecánicas pendientes:
-(1) adjuntar Energía desde mano/descarte ELIGIENDO Pokémon (Clinging Spore, Dual Turbo, Flare/Snow Bringer…);
-(2) buscar en mazo Energía/Pokémon a mano o banca (Call for Family, Drawup Power, Fast Carrier);
-(3) mirar/revelar top N del mazo (Whirltide, Supplemental Swallow-Up, Mountain Scrounging);
-(4) condicionales "si tiene X Energía [tipo] unida" (Alloy Aswing/Alloyed Hammer), "si <carta> en descarte" (Glittering Eyes);
-(5) distribuir contadores (Hollow Hands), daño por cartas en mano rival (Powerful Cross);
-(6) mecánicas propias de Paradox: **Ancient/Future** (bonos por marca), per-energy-en-TODOS-tus-Pokémon (Photon Kinesis).
+**HECHO 30 Sep (varias features + Fase 4 parcial, todo commiteado, tests verdes):**
+- **🔊 GRITOS de Pokémon (commit `8f9c914`):** cada Pokémon suena su grito oficial al ponerlo en juego/evolucionar (PvE+PvP).
+  Fuente **PokeAPI/cries** (raw GitHub, por nº Pokédex nacional). STREAMING + CACHÉ en disco (`cacheDir/cries/{dex}.ogg`) →
+  0 MB al APK, offline tras 1ª vez. `CryPlayer` (feature:combat, MediaPlayer). `PokemonCard.nationalDex` (mapeado de
+  `numeroPokedex`). `FxCue.Cry` (+`FxCueDto.Cry` para el invitado PvP). Volumen ligado al slider "Efectos de sonido".
+- **🔴 FIX crash combate (commit `5b7db57`):** el `MatchScope` (store por-partida) debía aportar la Application; ahora implementa
+  `HasDefaultViewModelProviderFactory` (AndroidViewModelFactory + APPLICATION_KEY). Sin esto, crash al iniciar combate.
+- **🔴 FIX cosméticos (commit `5bf9650`):** no se podía volver al tapete/aspecto POR DEFECTO. `ProfileRepository.unequipCosmetic`
+  + `onEquip` como TOGGLE (tocar el equipado lo quita) + botón "Quitar". Aplica a todas las categorías.
+- **🃏 SOBRE sv4 en ESPAÑOL (commit `078c777`):** reemplazado el booster inglés por el oficial español **Bramaluna** (Wikidex),
+  con fondo blanco recortado a TRANSPARENTE (flood-fill esquinas, Pillow). Drawable `feature:packs/res/drawable/pack_paradox.webp`
+  (512×938). `ExpansionUi.packArt` ahora es `Any` (URL o drawable Int); `TearablePack(art: Any)`; `PACK_ART_PARADOX` (res id).
+- **Fase 4 EFECTOS (commits `a170137`·`fc3882c`·`b3816f4`) → 110 claves sv4 autoradas:**
+  · 4a (motor, 2 líneas): `DamageCondition.IfSelfHasEnergyType(type)` + `IfSelfAffectedBySpecialCondition` (Alloy Aswing/Hammer, Unhinged Scissors).
+  · 4b (reuso): daño salpicadura a banca `Damage(OPP_BENCH/OWN_BENCH)` (Liquid Lashing, Earthquake).
+  · 4c (reuso): búsquedas `SearchDeck`→BENCH/HAND, `SearchEnergyAttachSelf` (Call for Family ×4, Drawup Power, Fiery Fighting Spirit).
+  **CLAVE aprendida:** casi todas las mecánicas de Paradox YA tenían op en el motor (heredado de 151) → solo CABLEAR, no reinventar.
+**➡️ RETOMAR AQUÍ — seguir Fase 4 de efectos sv4 (siguiente sesión):** quedan ~130 ataques + HABILIDADES (aún 0 autoradas) +
+ENTRENADORES sv4. Mecánicas pendientes (algunas con op existente = solo cablear; otras requieren AMPLIAR MOTOR):
+(1) **adjuntar Energía desde mano/descarte ELIGIENDO Pokémon** (Clinging Spore, Dual Turbo, Flare/Snow Bringer, Transfer Charge) — revisar ops de attach existentes;
+(2) **Fast Carrier** ("hasta 3 Básicos a mano" + cláusula "solo 1er turno si vas 1º" → `firstTurnOnly`?);
+(3) mirar/revelar top N del mazo (Whirltide, Supplemental Swallow-Up, Mountain Scrounging) — `SearchDeck(fromTop=N)` puede servir;
+(4) "si <carta> en descarte, +X" (Glittering Eyes ["Tulip"]) → nueva `DamageCondition.IfCardInDiscard(name)`;
+(5) distribuir contadores (Hollow Hands) → `PlaceCounters` existe; daño por cartas en mano rival (Powerful Cross) → nueva condición/op;
+(6) mecánicas propias de Paradox: **Ancient/Future** (bonos por marca), per-energy-en-TODOS-tus-Pokémon (Photon Kinesis);
+(7) **HABILIDADES** de Pokémon sv4 (ninguna autorada aún) y **ENTRENADORES** sv4.
 Método: por cada mecánica nueva → añadir op/condición al DSL (`Effects.kt`) + interpretarla (`EffectInterpreter`/`GameEngine`)
 + registrar cartas en `SetParadoxEffects.kt` + test en `SetParadoxEffectsTest`. Pasar por `revision-critica` antes de tocar el motor.
 Inventario reproducible: script Python que clasificó los buckets (ver historial de la sesión) — regenerar con el clasificador por regex.
