@@ -45,7 +45,7 @@ const val PACK_IMAGE_151 =
  */
 @Composable
 fun TearablePack(
-    artUrl: String,
+    art: Any,
     tear: Float,
     modifier: Modifier = Modifier,
     seamFraction: Float = 0.16f,
@@ -53,7 +53,7 @@ fun TearablePack(
     Box(modifier) {
         // Cuerpo del sobre (región POR DEBAJO de la costura): estático.
         AsyncImage(
-            model = artUrl,
+            model = art,
             contentDescription = "Sobre",
             contentScale = ContentScale.Fit,
             modifier = Modifier
@@ -65,7 +65,7 @@ fun TearablePack(
         )
         // Tira AÚN CERRADA (por encima de la costura, a la DERECHA del frente): sigue pegada.
         AsyncImage(
-            model = artUrl,
+            model = art,
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier
@@ -79,7 +79,7 @@ fun TearablePack(
         )
         // Tira YA RASGADA (por encima de la costura, a la IZQUIERDA del frente): se despega.
         AsyncImage(
-            model = artUrl,
+            model = art,
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier

@@ -318,7 +318,7 @@ private fun PackStage(
                 // Interior del sobre asomando por la abertura (profundidad exterior→interior).
                 PackInterior(tear = tear.value, modifier = Modifier.fillMaxSize())
                 // Sobre TROCEADO: la tira superior se despega con el rasgado (arte real partido).
-                TearablePack(artUrl = expansion.packArtUrl, tear = tear.value, modifier = Modifier.fillMaxSize())
+                TearablePack(art = expansion.packArt, tear = tear.value, modifier = Modifier.fillMaxSize())
                 // Costura de luz irregular que avanza con el dedo (encima del arte).
                 TornTopOverlay(progress = tear.value, modifier = Modifier.fillMaxSize())
 

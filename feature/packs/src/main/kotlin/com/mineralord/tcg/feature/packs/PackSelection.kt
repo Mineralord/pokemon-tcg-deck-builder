@@ -43,7 +43,8 @@ data class ExpansionUi(
     val code: String,          // prefijo de set ("sv3pt5")
     val name: String,          // nombre corto ("151")
     val logoRes: Int?,         // logo empaquetado (null = solo texto)
-    val packArtUrl: String,    // arte real del sobre
+    /** Arte del sobre: URL (String) o drawable local (Int). Coil acepta ambos como `model`. */
+    val packArt: Any,
     val accent: Color,         // color de acento de la expansión
 )
 
@@ -60,9 +61,9 @@ data class SeriesUi(
 const val SV_SERIES_LOGO =
     "https://images.wikidexcdn.net/mwuploads/wikidex/thumb/c/c6/latest/20230209170758/Logo_Escarlata_y_P%C3%BArpura_%28TCG%29.png/500px-Logo_Escarlata_y_P%C3%BArpura_%28TCG%29.png"
 
-/** Arte real del sobre de «Brecha Paradójica» (sv4) — booster sellado (TCGplayer CDN). */
-const val PACK_IMAGE_PARADOX =
-    "https://tcgplayer-cdn.tcgplayer.com/product/512822_in_1000x1000.jpg"
+/** Arte del sobre de «Brecha Paradójica» (sv4): versión oficial en ESPAÑOL (Bramaluna), empaquetada
+ *  como drawable con fondo transparente. Es un Int de recurso (Coil lo acepta como `model`). */
+val PACK_ART_PARADOX: Int = R.drawable.pack_paradox
 
 /** Catálogo raíz (extensible). Hoy: 1 serie · 2 expansiones (151 · Brecha Paradójica). */
 val PACK_CATALOG: List<SeriesUi> = listOf(
@@ -77,14 +78,14 @@ val PACK_CATALOG: List<SeriesUi> = listOf(
                 code = "sv3pt5",
                 name = "151",
                 logoRes = R.drawable.set151_logo,
-                packArtUrl = PACK_IMAGE_151,
+                packArt = PACK_IMAGE_151,
                 accent = Color(0xFF7E57C2),
             ),
             ExpansionUi(
                 code = "sv4",
                 name = "Brecha Paradójica",
                 logoRes = R.drawable.set_sv4_logo,
-                packArtUrl = PACK_IMAGE_PARADOX,
+                packArt = PACK_ART_PARADOX,
                 accent = Color(0xFF4DB6AC),
             ),
         ),

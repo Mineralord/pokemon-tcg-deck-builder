@@ -459,12 +459,12 @@ private fun GiftIcon() {
 // ===========================================================================
 
 /** Una expansión mostrable en el escaparate de la Home ([code] = prefijo de set para abrir su sobre). */
-private data class HomeExpansion(val code: String, val artUrl: String)
+private data class HomeExpansion(val code: String, val art: Any)
 
 private object HomeExpansions {
     val ALL: List<HomeExpansion> = listOf(
         HomeExpansion("sv3pt5", com.mineralord.tcg.feature.packs.PACK_IMAGE_151),
-        HomeExpansion("sv4", com.mineralord.tcg.feature.packs.PACK_IMAGE_PARADOX),
+        HomeExpansion("sv4", com.mineralord.tcg.feature.packs.PACK_ART_PARADOX),
         // Al agregar futuras expansiones, añádelas aquí y el escaparate las rotará.
     )
 }
@@ -542,7 +542,7 @@ private fun BoosterArt(exp: HomeExpansion, modifier: Modifier, onOpen: () -> Uni
         contentAlignment = Alignment.Center,
     ) {
         coil.compose.AsyncImage(
-            model = exp.artUrl,
+            model = exp.art,
             contentDescription = "Sobre de expansión",
             modifier = Modifier.fillMaxSize(),
             contentScale = androidx.compose.ui.layout.ContentScale.Fit,
