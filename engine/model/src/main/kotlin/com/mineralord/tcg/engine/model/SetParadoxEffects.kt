@@ -272,4 +272,22 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     val earthquake = Effect(ops = listOf(EffectOp.Damage(Target.OWN_BENCH, Amount.Fixed(30))))
     put(atkKey("sv4-125", "Earthquake"), earthquake)
     put(atkKey("sv4-208", "Earthquake"), earthquake)
+
+    // =========================== Fase 4c: búsquedas en el mazo (ops existentes) ===========================
+
+    // Call for Family: busca 1 Básico y ponlo en tu Banca.
+    val callForFamily = Effect(ops = listOf(
+        EffectOp.SearchDeck(CardFilter(supertype = Supertype.POKEMON, isBasic = true), Zone.BENCH, 1)))
+    put(atkKey("sv4-4", "Call for Family"), callForFamily)
+    put(atkKey("sv4-20", "Call for Family"), callForFamily)
+    put(atkKey("sv4-41", "Call for Family"), callForFamily)
+    put(atkKey("sv4-87", "Call for Family"), callForFamily)
+
+    // Drawup Power: busca 1 Energía y llévala a tu mano.
+    put(atkKey("sv4-35", "Drawup Power"), Effect(ops = listOf(
+        EffectOp.SearchDeck(CardFilter(supertype = Supertype.ENERGY), Zone.HAND, 1))))
+
+    // Fiery Fighting Spirit: busca 1 Energía Fuego Básica y únela a este Pokémon.
+    put(atkKey("sv4-26", "Fiery Fighting Spirit"), Effect(ops = listOf(
+        EffectOp.SearchEnergyAttachSelf(EnergyType.FIRE, 1))))
 }
