@@ -27,8 +27,12 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -338,9 +342,20 @@ private fun AppShell() {
  */
 @Composable
 private fun MatchScope(nonce: Int, content: @Composable () -> Unit) {
+    // La Application es necesaria para construir GameViewModel (AndroidViewModel): el owner
+    // propio DEBE aportarla vía factory + extras, igual que hace el Activity por defecto.
+    val app = LocalContext.current.applicationContext as android.app.Application
     key(nonce) {
         val owner = remember {
-            object : ViewModelStoreOwner { override val viewModelStore = ViewModelStore() }
+            object : ViewModelStoreOwner, HasDefaultViewModelProviderFactory {
+                override val viewModelStore = ViewModelStore()
+                override val defaultViewModelProviderFactory: ViewModelProvider.Factory =
+                    ViewModelProvider.AndroidViewModelFactory.getInstance(app)
+                override val defaultViewModelCreationExtras: CreationExtras
+                    get() = MutableCreationExtras().apply {
+                        set(ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY, app)
+                    }
+            }
         }
         DisposableEffect(Unit) { onDispose { owner.viewModelStore.clear() } }
         CompositionLocalProvider(LocalViewModelStoreOwner provides owner) { content() }
