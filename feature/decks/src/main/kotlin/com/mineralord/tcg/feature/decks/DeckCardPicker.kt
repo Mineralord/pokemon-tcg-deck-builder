@@ -49,7 +49,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.BarajasPalette
 import com.mineralord.tcg.core.designsystem.fadingScrollbar
-import com.mineralord.tcg.feature.carddetail.CardDetailDialogSheet
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.mineralord.tcg.feature.carddetail.CardDetailCarousel
 
 /**
  * #8 — Selector de cartas para añadir al mazo. Panel superior con el mazo actual
@@ -247,22 +249,25 @@ internal fun DeckCardDetailViewer(initialId: String, viewModel: DeckEditorViewMo
     val favorites = remember { mutableStateListOf<String>() }
     val wishlist = remember { mutableStateListOf<String>() }
     val allDetails = remember { viewModel.allDetails() }
-    var currentId by remember { mutableStateOf(initialId) }
-    val card = viewModel.detailFor(currentId)
-    if (card == null) { onDismiss(); return }
-    CardDetailDialogSheet(
-        card = card,
-        allCards = allDetails,
-        isFavorite = currentId in favorites,
-        isWished = currentId in wishlist,
-        fichas = fichas,
-        onToggleFavorite = { if (currentId in favorites) favorites.remove(currentId) else favorites.add(currentId) },
-        onToggleWish = { if (currentId in wishlist) wishlist.remove(currentId) else wishlist.add(currentId) },
-        onCraft = { viewModel.craft(currentId) },
-        onDestroy = { viewModel.destroy(currentId) },
-        onOpenRelated = { currentId = it.card.id.raw },
-        onDismiss = onDismiss,
-    )
+    if (allDetails.isEmpty()) { onDismiss(); return }
+    val startIndex = remember(allDetails) {
+        allDetails.indexOfFirst { it.card.id.raw == initialId }.coerceAtLeast(0)
+    }
+    // Carrusel 3D curvo (mismo visor que la colección), siguiendo el orden del editor.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        CardDetailCarousel(
+            cards = allDetails,
+            startIndex = startIndex,
+            isFavorite = { it.card.id.raw in favorites },
+            isWished = { it.card.id.raw in wishlist },
+            fichas = fichas,
+            onToggleFavorite = { c -> val id = c.card.id.raw; if (id in favorites) favorites.remove(id) else favorites.add(id) },
+            onToggleWish = { c -> val id = c.card.id.raw; if (id in wishlist) wishlist.remove(id) else wishlist.add(id) },
+            onCraft = { c -> viewModel.craft(c.card.id.raw) },
+            onDestroy = { c -> viewModel.destroy(c.card.id.raw) },
+            onDismiss = onDismiss,
+        )
+    }
 }
 
 @Composable

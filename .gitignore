@@ -39,3 +39,4 @@ entregables/
 
 # Fotogramas de referencia de vídeo (regenerables con ffmpeg)
 .vidref/
+.screencap/

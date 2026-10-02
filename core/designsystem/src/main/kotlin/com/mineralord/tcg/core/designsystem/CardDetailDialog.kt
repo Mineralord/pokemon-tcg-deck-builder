@@ -79,8 +79,18 @@ fun CardDetailDialog(
     // Superposición opcional SOBRE la carta (p. ej. el badge PS+tipo de TCG Live). Se dibuja
     // encima del arte, dentro del mismo Box (usa align()).
     overlay: (@Composable BoxScope.() -> Unit)? = null,
+    // Nº de Pokédex NACIONAL: si se indica, suena el GRITO oficial al abrir el visor (colección,
+    // editor, etc.). Null (por defecto) = sin grito — así el COMBATE no suena aquí (grita al atacar).
+    cryDex: Int? = null,
 ) {
     val context = LocalContext.current
+
+    // Grito al abrir el visor (si hay dex). Streaming + caché; silencioso si falla.
+    if (cryDex != null) {
+        val cryPlayer = remember { CryPlayer(context) }
+        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { cryPlayer.release() } }
+        androidx.compose.runtime.LaunchedEffect(cryDex) { cryPlayer.play(cryDex) }
+    }
     // Descarga bajo demanda + caché (no infla el APK): front+máscara(+etch) reales de CUALQUIER
     // set vía el export dinámico de malie (fallback al manifiesto del 151 si la red falla).
     val bundled by produceState<HoloBitmaps?>(null, cardNumber, rarity, setCode) {

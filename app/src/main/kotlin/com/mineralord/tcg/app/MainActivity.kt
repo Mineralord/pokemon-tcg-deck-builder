@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mineralord.tcg.core.designsystem.TcgColors
+import com.mineralord.tcg.core.designsystem.blockPassThroughTouches
 import com.mineralord.tcg.core.designsystem.TcgTheme
 import com.mineralord.tcg.core.designsystem.motion.AnimationTheme
 import com.mineralord.tcg.core.designsystem.motion.MotionScreen
@@ -130,6 +131,26 @@ private fun AppShell() {
     val profile by profileRepo.profile.collectAsState(initial = PlayerProfile())
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
+    // Música de ambientación de Kanto (FRLG) en el menú. Se silencia en combates y en la
+    // apertura de sobres; el banner superior izquierdo muestra el tema que suena.
+    val music = rememberMenuMusic()
+    val battleMusic = rememberBattleMusic()
+    val evolutionMusic = rememberEvolutionMusic()
+    val menuTitle by music.title.collectAsState(initial = null)
+    val battleTitle by battleMusic.title.collectAsState(initial = null)
+    val evolutionTitle by evolutionMusic.title.collectAsState(initial = null)
+    // El banner muestra el tema que suene: combate y evolución tienen prioridad sobre el de menú.
+    val musicTitle = battleTitle ?: evolutionTitle ?: menuTitle
+    androidx.compose.runtime.LaunchedEffect(overlay.lastOrNull()) {
+        val topScreen = overlay.lastOrNull()
+        val inCombat = topScreen == Screen.GAME || topScreen == Screen.ONLINE
+        val inPacks = topScreen == Screen.PACKS
+        // Menú: todo salvo combate y sobres. Combate: solo en la partida. Evolución: en la apertura de sobres.
+        music.setScreenAllows(!inCombat && !inPacks)
+        battleMusic.setScreenAllows(inCombat)
+        evolutionMusic.setScreenAllows(inPacks)
+    }
+
     androidx.compose.runtime.LaunchedEffect(Unit) { profileRepo.seedBalancesOnce() }
 
     fun goToPage(i: Int) { scope.launch { pager.animateScrollToPage(i) } }
@@ -202,9 +223,14 @@ private fun AppShell() {
         }
 
         // ---- Overlays (subpantallas a pantalla completa) ----
+        // La capa de overlays BLOQUEA los toques hacia la base (pager): al abrir una subpantalla,
+        // solo esa es tocable, nunca los elementos de la pantalla anterior que quedan debajo.
         val top = overlay.lastOrNull()
         if (top != null) {
-            MotionScreen(targetState = top, modifier = Modifier.fillMaxSize()) { target ->
+            MotionScreen(
+                targetState = top,
+                modifier = Modifier.fillMaxSize().blockPassThroughTouches(),
+            ) { target ->
                 when (target) {
                     Screen.MATCHMAKING -> MatchmakingScreen(
                         deckName = "Mega-Charizard X ex",
@@ -338,6 +364,9 @@ private fun AppShell() {
                 ?.let { com.mineralord.tcg.data.cosmetics.Cosmetics.repo[it] }
                 ?.colors?.map { androidx.compose.ui.graphics.Color(it) },
         )
+
+        // Banner del tema que suena (arriba a la izquierda), por encima de todo.
+        MenuMusicBanner(title = musicTitle, modifier = Modifier.align(Alignment.TopStart))
     }
 }
 

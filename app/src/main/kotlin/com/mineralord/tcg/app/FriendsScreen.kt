@@ -1,10 +1,15 @@
 package com.mineralord.tcg.app
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,72 +19,587 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Group
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mineralord.tcg.core.designsystem.BarajasPalette
 
-private val Accent = Color(0xFFC0303A)
-private val AccentDark = Color(0xFF7C1622)
+// Acentos de acción del hub (coherentes con el resto de la app).
+private val AcceptGreen = Color(0xFF19D08B)
+private val RejectRed = Color(0xFFF24139)
+private val DarkPill = Color(0xFF415268)
+
+/** Estado de última conexión que muestra cada tarjeta. */
+private enum class LastSeen(val label: String) {
+    RECENT("Hace 16 h"),
+    WEEK_PLUS("Hace más de 7 d"),
+    NOT_SHARED("No compartida"),
+}
+
+/** Un usuario del hub (amigo o solicitud). Datos MOCK locales por ahora. */
+private data class FriendUi(
+    val name: String,
+    val level: Int,
+    val lastSeen: LastSeen,
+    val badges: List<Color>,
+    val sharesSelection: Boolean = true,
+    val avatar: List<Color>,
+    // Campos del PERFIL (valores de ejemplo por defecto; se poblarán desde el backend luego).
+    val friendCode: String = "4897-4115-8907-2209",
+    val statusMessage: String = "¡Quiero completar el índice de cartas!",
+    val collectionCount: Int = 11_505,
+    val tradeMessage: String = "Acepto cartas en cualquier idioma",
+    val hashtag: String = "#LegendariosSingulares",
+)
+
+private enum class FriendsTab(val label: String) {
+    AMIGOS("Amigos"),
+    ENVIADAS("Solicitudes\nenviadas"),
+    RECIBIDAS("Solicitudes\nrecibidas"),
+}
+
+// Paletas de avatar (degradados originales, sin personajes con derechos).
+private val avatarPalettes = listOf(
+    listOf(Color(0xFFFF8A8A), Color(0xFFB83B5E)),
+    listOf(Color(0xFF8AD1FF), Color(0xFF3A6EA5)),
+    listOf(Color(0xFFBFe08A), Color(0xFF4C9A4A)),
+    listOf(Color(0xFFD7A8FF), Color(0xFF7A3FB8)),
+    listOf(Color(0xFFFFD28A), Color(0xFFB8842F)),
+)
+private val badgePalette = listOf(
+    Color(0xFFE8503A), Color(0xFF3AA6E8), Color(0xFF4CAF50),
+    Color(0xFF9B59B6), Color(0xFFF2C500), Color(0xFF95A5A6),
+)
+private fun badges(n: Int, seed: Int) = List(n) { badgePalette[(seed + it) % badgePalette.size] }
+
+// Todas las tarjetas llevan los MISMOS campos (3 insignias) para mostrar idéntica información
+// en las tres pestañas; lo único que cambia es la zona de acción.
+private val MOCK_FRIENDS = listOf(
+    FriendUi("Wisfer", 60, LastSeen.RECENT, badges(3, 0), true, avatarPalettes[0]),
+    FriendUi("Luna", 48, LastSeen.WEEK_PLUS, badges(3, 2), true, avatarPalettes[1]),
+    FriendUi("Mirai", 40, LastSeen.WEEK_PLUS, badges(3, 1), true, avatarPalettes[2]),
+    FriendUi("Oak Jr.", 45, LastSeen.WEEK_PLUS, badges(3, 3), true, avatarPalettes[3]),
+    FriendUi("night", 27, LastSeen.NOT_SHARED, badges(3, 4), true, avatarPalettes[4]),
+    FriendUi("okoge", 42, LastSeen.NOT_SHARED, badges(3, 5), false, avatarPalettes[0]),
+    FriendUi("katsuvvn!", 45, LastSeen.NOT_SHARED, badges(3, 5), true, avatarPalettes[2]),
+)
+private val MOCK_SENT = listOf(
+    FriendUi("Rival99", 59, LastSeen.NOT_SHARED, badges(3, 1), true, avatarPalettes[3]),
+)
+private val MOCK_RECEIVED = listOf(
+    FriendUi("Solidbeppe", 59, LastSeen.WEEK_PLUS, badges(3, 0), true, avatarPalettes[4]),
+    FriendUi("Sakaki", 51, LastSeen.WEEK_PLUS, badges(3, 2), true, avatarPalettes[1]),
+    FriendUi("Silver", 41, LastSeen.WEEK_PLUS, badges(3, 4), true, avatarPalettes[3]),
+    FriendUi("Tsuki", 7, LastSeen.NOT_SHARED, badges(3, 1), true, avatarPalettes[0]),
+    FriendUi("Aoki", 33, LastSeen.NOT_SHARED, badges(3, 3), true, avatarPalettes[2]),
+)
 
 /**
- * Hub de Amigos (placeholder). Cabecera roja coherente con Perfil + cuerpo neumórfico
- * claro (design system de barajas, ahora tema claro de toda la app). El hub completo
- * (agregar por código, lista con estados, solicitudes, jugar con amigos) llega a continuación.
+ * Hub de Amigos. Réplica de la UX del hub de referencia con nuestro design system claro:
+ * cabecera "Amigos" + divisor arcoíris · sub-barra fija (contador n/99 + añadir) · tres pestañas
+ * (Amigos / Solicitudes enviadas / Solicitudes recibidas) con tarjetas de usuario cuya zona de
+ * acción cambia por pestaña · barra inferior con cerrar y "Borrar todas" en las de solicitudes.
+ * Datos MOCK locales (sin red todavía): la lógica se conectará después.
  */
 @Composable
 fun FriendsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
 ) {
-    Column(modifier.fillMaxSize().background(BarajasPalette.BgBottom)) {
-        Box(
-            Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-                .background(Brush.verticalGradient(listOf(Accent, AccentDark))),
-        ) {
-            Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 14.dp)) {
-                Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(Color(0x33FFFFFF)).clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = Color.White, modifier = Modifier.size(20.dp)) }
-                Spacer(Modifier.height(14.dp))
-                Text("Amigos", color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp)
-                Text("Juega, intercambia y comparte con tus amigos.", color = Color(0xCCFFFFFF), fontSize = 13.sp)
-                Spacer(Modifier.height(8.dp))
+    var tab by remember { mutableStateOf(FriendsTab.AMIGOS) }
+    // Perfil abierto (al tocar una tarjeta de amigo). Null = hub con sus pestañas.
+    var profile by remember { mutableStateOf<FriendUi?>(null) }
+    val list = when (tab) {
+        FriendsTab.AMIGOS -> MOCK_FRIENDS
+        FriendsTab.ENVIADAS -> MOCK_SENT
+        FriendsTab.RECIBIDAS -> MOCK_RECEIVED
+    }
+
+    profile?.let { p ->
+        FriendProfileScreen(user = p, modifier = modifier, onBack = { profile = null })
+        return
+    }
+
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
+    ) {
+        Header(showFavorites = tab == FriendsTab.AMIGOS)
+        RainbowDivider()
+        CounterBar(friendCount = MOCK_FRIENDS.size)
+
+        Box(Modifier.fillMaxSize().weight(1f)) {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                items(list) { user ->
+                    // En TODAS las pestañas, tocar la tarjeta abre el perfil del amigo.
+                    FriendCard(user, tab, onOpen = { profile = user })
+                }
             }
         }
 
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+        BottomTabs(current = tab, onSelect = { tab = it })
+        BottomActions(showClearAll = tab != FriendsTab.AMIGOS, onClose = onBack)
+    }
+}
+
+// ───────────────────────────── cabecera / barras ─────────────────────────────
+
+@Composable
+private fun Header(showFavorites: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Amigos", color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 24.sp)
+        Spacer(Modifier.weight(1f))
+        if (showFavorites) {
+            Row(
+                Modifier.shadow(3.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50))
+                    .background(BarajasPalette.Surface).padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Box(
-                    Modifier.size(72.dp).clip(CircleShape).background(Accent.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Outlined.Group, null, tint = Accent, modifier = Modifier.size(38.dp)) }
-                Spacer(Modifier.height(16.dp))
-                Text("Hub de amigos en construcción", color = BarajasPalette.Ink, fontWeight = FontWeight.Black,
-                    fontSize = 17.sp, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(6.dp))
-                Text("Pronto podrás agregar amigos con tu código, ver quién está en línea y jugar juntos.",
-                    color = BarajasPalette.Muted, fontSize = 13.sp, textAlign = TextAlign.Center)
+                Text("★", color = Color(0xFFE7B10A), fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Text("Favoritos", color = BarajasPalette.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
+    }
+}
+
+@Composable
+private fun RainbowDivider() {
+    Box(
+        Modifier.fillMaxWidth().height(3.dp)
+            .background(Brush.horizontalGradient(BarajasPalette.DividerGradient)),
+    )
+}
+
+@Composable
+private fun CounterBar(friendCount: Int) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+            .shadow(4.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp))
+            .background(BarajasPalette.Surface).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Amigos", color = BarajasPalette.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(10.dp))
+        Text("$friendCount/99", color = BarajasPalette.Muted, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.weight(1f))
+        // Añadir amigo (persona con +).
+        Box(
+            Modifier.size(34.dp).clip(CircleShape).border(1.5.dp, BarajasPalette.Muted, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) { Text("+", color = BarajasPalette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black) }
+    }
+}
+
+// ───────────────────────────── tarjeta de usuario ─────────────────────────────
+
+@Composable
+private fun FriendCard(user: FriendUi, tab: FriendsTab, onOpen: (() -> Unit)? = null) {
+    Box(
+        // Todas las tarjetas llevan los mismos elementos → misma altura natural (sin inflar).
+        Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp))
+            .background(BarajasPalette.Surface)
+            .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier)
+            .padding(14.dp),
+    ) {
+        // Lupa (ver perfil) arriba a la derecha.
+        Text(
+            "⌕", color = BarajasPalette.Muted, fontSize = 16.sp, fontWeight = FontWeight.Black,
+            modifier = Modifier.align(Alignment.TopEnd),
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Avatar(user)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Nv. ${user.level}", color = BarajasPalette.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    user.name, color = BarajasPalette.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Última conexión: ${user.lastSeen.label}",
+                    color = BarajasPalette.Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                )
+                if (user.badges.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        user.badges.forEach { c ->
+                            Box(Modifier.size(18.dp).clip(RoundedCornerShape(5.dp)).background(c.copy(alpha = 0.85f)))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            CardActions(user, tab)
+        }
+    }
+}
+
+@Composable
+private fun Avatar(user: FriendUi) {
+    Box(
+        Modifier.size(52.dp).clip(CircleShape).background(Brush.verticalGradient(user.avatar)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            user.name.firstOrNull()?.uppercase() ?: "?",
+            color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black,
+        )
+    }
+}
+
+/** Zona de acción a la derecha de la tarjeta — cambia según la pestaña. */
+@Composable
+private fun CardActions(user: FriendUi, tab: FriendsTab) {
+    when (tab) {
+        FriendsTab.AMIGOS -> {
+            val enabled = user.sharesSelection
+            Row(
+                Modifier.clip(RoundedCornerShape(50))
+                    .border(1.5.dp, if (enabled) BarajasPalette.HairlineBorder else BarajasPalette.HairlineBorder.copy(alpha = 0.5f), RoundedCornerShape(50))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                val tint = if (enabled) BarajasPalette.Ink else BarajasPalette.Muted.copy(alpha = 0.5f)
+                Text("⌕", color = tint, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                Text("Selección personal", color = tint, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        FriendsTab.ENVIADAS -> {
+            Box(
+                Modifier.clip(RoundedCornerShape(50)).background(DarkPill)
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+            ) { Text("Cancelar solicitud", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+        }
+        FriendsTab.RECIBIDAS -> {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconCircle("✕", RejectRed)
+                IconCircle("✓", AcceptGreen)
+            }
+        }
+    }
+}
+
+@Composable
+private fun IconCircle(glyph: String, color: Color) {
+    Box(
+        Modifier.size(38.dp).clip(CircleShape).border(2.dp, color, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) { Text(glyph, color = color, fontSize = 18.sp, fontWeight = FontWeight.Black) }
+}
+
+// ───────────────────────────── barra inferior ─────────────────────────────
+
+@Composable
+private fun BottomTabs(current: FriendsTab, onSelect: (FriendsTab) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(BarajasPalette.Surface).padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FriendsTab.entries.forEach { t ->
+            val active = t == current
+            Column(
+                Modifier.weight(1f).clickable { onSelect(t) }.padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    t.label,
+                    color = if (active) BarajasPalette.Ink else BarajasPalette.Muted,
+                    fontSize = 12.sp,
+                    fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    lineHeight = 14.sp,
+                )
+                Spacer(Modifier.height(4.dp))
+                Box(
+                    Modifier.width(26.dp).height(3.dp).clip(RoundedCornerShape(50))
+                        .background(if (active) BarajasPalette.NavIcon else Color.Transparent),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BottomActions(showClearAll: Boolean, onClose: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().background(BarajasPalette.Surface)
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier.size(52.dp).shadow(3.dp, CircleShape).clip(CircleShape)
+                .background(BarajasPalette.Surface).clickable(onClick = onClose),
+            contentAlignment = Alignment.Center,
+        ) { Text("✕", color = BarajasPalette.Muted, fontSize = 20.sp, fontWeight = FontWeight.Black) }
+
+        if (showClearAll) {
+            Row(
+                Modifier.align(Alignment.CenterEnd),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("✕", color = RejectRed, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                Text("Borrar todas", color = RejectRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+// ═════════════════════════════ PERFIL DE AMIGO ═════════════════════════════
+
+/**
+ * Vista de PERFIL de un amigo (se abre al tocar su tarjeta en la pestaña Amigos). Réplica de la
+ * UX de referencia con nuestro design system: ID+código, avatar, nivel/nombre, lema, Estadísticas,
+ * estado de amistad, Emblemas, Selección personal, Cartas en la colección, Mensaje de intercambio,
+ * Lista de deseadas y Logros. Placeholders ABSTRACTOS originales (sin arte de terceros). Mock local.
+ */
+@Composable
+private fun FriendProfileScreen(user: FriendUi, modifier: Modifier = Modifier, onBack: () -> Unit) {
+    Column(
+        modifier.fillMaxSize()
+            .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+        ) {
+            Spacer(Modifier.statusBarsPadding().height(8.dp))
+            // Cabecera: ID de amigo + código + guardar.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("ID de amigo", color = BarajasPalette.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(user.friendCode, color = BarajasPalette.Ink, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                }
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(BarajasPalette.Surface),
+                    contentAlignment = Alignment.Center,
+                ) { Text("🔖", fontSize = 15.sp) }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            // Avatar grande con aro.
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.size(116.dp).clip(CircleShape)
+                        .border(4.dp, Brush.sweepGradient(BarajasPalette.DividerGradient), CircleShape)
+                        .padding(5.dp).clip(CircleShape).background(Brush.verticalGradient(user.avatar)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        user.name.firstOrNull()?.uppercase() ?: "?",
+                        color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Black,
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("Nv. ${user.level}", color = BarajasPalette.Ink, fontSize = 20.sp, fontWeight = FontWeight.Black,
+                modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(user.name, color = BarajasPalette.Muted, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+
+            Spacer(Modifier.height(12.dp))
+            // Píldora de lema/estado.
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Surface)
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                ) { Text(user.statusMessage, color = BarajasPalette.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            // Estadísticas + estado de amistad.
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape).background(BarajasPalette.Surface),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("📊", fontSize = 20.sp) }
+                    Spacer(Modifier.height(4.dp))
+                    Text("Estadísticas", color = BarajasPalette.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Surface)
+                        .border(1.5.dp, AcceptGreen, RoundedCornerShape(50))
+                        .padding(horizontal = 22.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("✓", color = AcceptGreen, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                    Text("Amigo", color = AcceptGreen, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                }
+            }
+
+            SectionTitle("Emblemas")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)) {
+                listOf(0, 2, 4).forEach { i -> Hexagon(badgePalette[i % badgePalette.size], Modifier.size(70.dp)) }
+            }
+
+            SectionTitle("Selección personal")
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                PlaceholderCard(user.avatar, Modifier.width(150.dp).height(210.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
+                repeat(3) { PlaceholderCard(avatarPalettes[it], Modifier.width(60.dp).height(84.dp)) }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(user.hashtag, color = BarajasPalette.NavIcon, fontSize = 12.sp, fontWeight = FontWeight.Black,
+                modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Spacer(Modifier.height(10.dp))
+            PillButton("🖼  Ver galería")
+
+            SectionTitle("Cartas en la colección")
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Surface)
+                        .padding(horizontal = 22.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("🃏", fontSize = 14.sp)
+                    Text("%,d".format(user.collectionCount), color = BarajasPalette.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                }
+            }
+
+            SectionTitle("Mensaje de intercambio")
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Surface)
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                ) { Text(user.tradeMessage, color = BarajasPalette.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+            }
+
+            SectionTitle("Lista de deseadas")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
+                repeat(3) { PlaceholderCard(avatarPalettes[(it + 1) % avatarPalettes.size], Modifier.width(78.dp).height(108.dp)) }
+            }
+            Spacer(Modifier.height(10.dp))
+            PillButton("♡  Ver lista de deseadas")
+
+            SectionTitle("Logros")
+            val trophyColors = badgePalette + badgePalette.reversed()
+            trophyColors.chunked(4).forEach { rowColors ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    rowColors.forEach { c -> Trophy(c) }
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+
+        // Barra inferior: cerrar.
+        Box(
+            Modifier.fillMaxWidth().background(BarajasPalette.Surface).padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(52.dp).shadow(3.dp, CircleShape).clip(CircleShape)
+                    .background(BarajasPalette.Surface).clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) { Text("✕", color = BarajasPalette.Muted, fontSize = 20.sp, fontWeight = FontWeight.Black) }
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Spacer(Modifier.height(18.dp))
+    Text(text, color = BarajasPalette.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black,
+        modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    Spacer(Modifier.height(12.dp))
+}
+
+@Composable
+private fun PillButton(text: String) {
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.clip(RoundedCornerShape(50)).background(BarajasPalette.Surface)
+                .border(1.5.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(50))
+                .padding(horizontal = 24.dp, vertical = 11.dp),
+        ) { Text(text, color = BarajasPalette.Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+    }
+}
+
+/** Tarjeta-placeholder abstracta (degradado + brillo diagonal), sin arte de terceros. */
+@Composable
+private fun PlaceholderCard(colors: List<Color>, modifier: Modifier) {
+    Box(
+        modifier.shadow(6.dp, RoundedCornerShape(10.dp)).clip(RoundedCornerShape(10.dp))
+            .background(Brush.verticalGradient(colors))
+            .border(2.dp, Color(0x55FFFFFF), RoundedCornerShape(10.dp)),
+    ) {
+        Box(
+            Modifier.fillMaxWidth().height(1.dp),
+        )
+        Box(
+            Modifier.padding(10.dp).clip(RoundedCornerShape(6.dp))
+                .background(Color(0x33FFFFFF)).fillMaxWidth().height(1.dp),
+        )
+    }
+}
+
+/** Emblema hexagonal original relleno de degradado. */
+@Composable
+private fun Hexagon(color: Color, modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width; val h = size.height
+        val path = Path().apply {
+            moveTo(w * 0.5f, 0f)
+            lineTo(w, h * 0.25f)
+            lineTo(w, h * 0.75f)
+            lineTo(w * 0.5f, h)
+            lineTo(0f, h * 0.75f)
+            lineTo(0f, h * 0.25f)
+            close()
+        }
+        drawPath(path, Brush.verticalGradient(listOf(color, color.copy(alpha = 0.6f))))
+        drawPath(path, Color(0x66FFFFFF), style = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.06f))
+    }
+}
+
+/** Trofeo-placeholder: medalla circular sobre pedestal, abstracta. */
+@Composable
+private fun Trophy(color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.size(42.dp).clip(CircleShape)
+                .background(Brush.verticalGradient(listOf(color, color.copy(alpha = 0.55f))))
+                .border(2.dp, Color(0x55FFFFFF), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) { Text("★", color = Color(0xCCFFFFFF), fontSize = 16.sp, fontWeight = FontWeight.Black) }
+        Spacer(Modifier.height(3.dp))
+        Box(Modifier.width(22.dp).height(6.dp).clip(RoundedCornerShape(3.dp)).background(BarajasPalette.HollowBorder))
     }
 }

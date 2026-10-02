@@ -71,7 +71,7 @@ fun GameIntentDto.toIntent(): GameIntent = when (this) {
  */
 @Serializable
 sealed interface FxCueDto {
-    @Serializable data class Attack(val side: String, val attackName: String) : FxCueDto
+    @Serializable data class Attack(val side: String, val attackName: String, val attacker: String? = null) : FxCueDto
     @Serializable data class AbilityUse(val side: String, val pokemon: String, val manual: Boolean) : FxCueDto
     @Serializable data class Damage(val side: String, val amount: Int, val weakness: Boolean, val resistance: Boolean) : FxCueDto
     @Serializable data class Heal(val side: String, val amount: Int) : FxCueDto

@@ -1,9 +1,25 @@
 package com.mineralord.tcg.feature.carddetail
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.util.lerp
+import com.mineralord.tcg.core.designsystem.BarajasPalette
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,12 +39,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -49,6 +68,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.HoloCardImage
 import com.mineralord.tcg.core.designsystem.InteractiveHoloCard
+import com.mineralord.tcg.core.designsystem.blockPassThroughTouches
 import com.mineralord.tcg.data.profile.CraftingRules
 import com.mineralord.tcg.data.profile.ProfileRepository
 import com.mineralord.tcg.engine.model.Ability
@@ -137,111 +157,255 @@ fun CardDetailSheet(
 ) {
     var showLangs by remember(card) { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFDCD8F0), Color(0xFFE9ECF4))))) {
+    // Grito oficial del Pokémon al abrir su visor (colección, editor de barajas, etc.). Streaming
+    // + caché; silencioso si falla. En COMBATE el grito suena al atacar (otro reproductor).
+    val cryCtx = LocalContext.current
+    val cryPlayer = remember { com.mineralord.tcg.core.designsystem.CryPlayer(cryCtx) }
+    DisposableEffect(Unit) { onDispose { cryPlayer.release() } }
+    LaunchedEffect(card.card.id.raw) {
+        (card.card as? PokemonCard)?.nationalDex?.let { cryPlayer.play(it) }
+    }
+
+    Box(
+        Modifier.fillMaxSize()
+            // Barrera de toques: este visor es una capa superior; no deja pasar toques a lo de debajo.
+            .blockPassThroughTouches()
+            .background(Brush.verticalGradient(listOf(Color(0xFFDCD8F0), Color(0xFFE9ECF4)))),
+    ) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                DropPill("▦ 0")
-                Spacer(Modifier.width(8.dp))
-                Box(Modifier.noRippleClick { showLangs = !showLangs }) { DropPill("🌐 1") }
-                Spacer(Modifier.weight(1f))
-                Txt("•••", 16.sp, Muted, FontWeight.Black)
-                Spacer(Modifier.width(14.dp))
-                Txt(if (isFavorite) "★" else "☆", 20.sp, if (isFavorite) Color(0xFFE7B10A) else Muted, FontWeight.Black, Modifier.noRippleClick(onToggleFavorite))
-                Spacer(Modifier.width(14.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.noRippleClick(onToggleWish)) {
-                    Txt(if (isWished) "♥" else "♡", 20.sp, if (isWished) Color(0xFFEC5F94) else Muted, FontWeight.Black)
-                    Txt("¡La quiero!", 9.sp, Muted, FontWeight.Bold)
-                }
-            }
-
+            CardTopBar(isFavorite, isWished, onToggleFavorite, onToggleWish, onToggleLangs = { showLangs = !showLangs })
             Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Box(
-                    Modifier.fillMaxWidth(0.96f).aspectRatio(0.72f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (card.owned) {
-                        InteractiveHoloCard(
-                            imageUrl = card.imageLarge, setCode = card.setCode, cardNumber = card.number,
-                            rarity = card.rarity, contentDescription = card.name,
-                            modifier = Modifier.fillMaxSize().shadow(16.dp, RoundedCornerShape(12.dp), clip = false).clip(RoundedCornerShape(12.dp)),
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxSize().shadow(10.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
-                                .background(Brush.verticalGradient(listOf(Color(0xFF2A3550), Color(0xFF161E30)))),
-                            contentAlignment = Alignment.Center,
-                        ) { Txt("No la tienes", 13.sp, Color(0xCCFFFFFF), FontWeight.Black) }
-                    }
-                }
+                CardVisual(card, Modifier.fillMaxWidth(0.96f).aspectRatio(0.72f))
             }
+            CardInfoSection(card, allCards, fichas, onCraft, onDestroy, onOpenRelated)
+            Spacer(Modifier.height(90.dp))
+        }
 
-            if (card.owned) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    CountChip("▤", "${card.count}")
-                    CountChip("▣", "0")
-                    Spacer(Modifier.weight(1f))
-                    Row(
-                        Modifier.shadow(2.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50)).background(Panel)
-                            .border(1.5.dp, Accent, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Txt("✦", 14.sp, Accent, FontWeight.Black)
-                        Txt("Obtener efecto visual", 12.sp, Ink, FontWeight.Black)
-                    }
-                }
-            }
+        CloseButton(onDismiss, Modifier.align(Alignment.BottomCenter))
 
-            Spacer(Modifier.height(10.dp))
-            Txt(card.name, 24.sp, Ink, FontWeight.Black, Modifier.fillMaxWidth(), align = TextAlign.Center)
-            Spacer(Modifier.height(4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                RaritySymbol(card.rarity, height = 20.dp)
-                Spacer(Modifier.width(8.dp))
-                Txt(rarityEs(card.rarity), 13.sp, Muted, FontWeight.Bold)
-            }
-            Spacer(Modifier.height(14.dp))
+        if (showLangs) LanguagePopup(ownedCount = card.count, onDismiss = { showLangs = false })
+    }
+}
 
-            CraftDestroyRow(card = card, fichas = fichas, onCraft = onCraft, onDestroy = onDestroy)
-            Spacer(Modifier.height(14.dp))
+// ─────────────────────────── piezas reutilizables del visor ───────────────────────────
 
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(20.dp)).background(Panel).padding(16.dp),
+/** Barra superior FIJA del visor: idiomas, ★ favorito y ♥ "¡La quiero!". */
+@Composable
+private fun CardTopBar(
+    isFavorite: Boolean, isWished: Boolean,
+    onToggleFavorite: () -> Unit, onToggleWish: () -> Unit, onToggleLangs: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DropPill("▦ 0")
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.noRippleClick(onToggleLangs)) { DropPill("🌐 1") }
+        Spacer(Modifier.weight(1f))
+        Txt("•••", 16.sp, Muted, FontWeight.Black)
+        Spacer(Modifier.width(14.dp))
+        Txt(if (isFavorite) "★" else "☆", 20.sp, if (isFavorite) Color(0xFFE7B10A) else Muted, FontWeight.Black, Modifier.noRippleClick(onToggleFavorite))
+        Spacer(Modifier.width(14.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.noRippleClick(onToggleWish)) {
+            Txt(if (isWished) "♥" else "♡", 20.sp, if (isWished) Color(0xFFEC5F94) else Muted, FontWeight.Black)
+            Txt("¡La quiero!", 9.sp, Muted, FontWeight.Bold)
+        }
+    }
+}
+
+/** La CARTA (holo interactiva si es tuya; placeholder "No la tienes" si no). */
+@Composable
+private fun CardVisual(card: CardDetailUi, modifier: Modifier = Modifier) {
+    Box(modifier, contentAlignment = Alignment.Center) {
+        if (card.owned) {
+            InteractiveHoloCard(
+                imageUrl = card.imageLarge, setCode = card.setCode, cardNumber = card.number,
+                rarity = card.rarity, contentDescription = card.name,
+                modifier = Modifier.fillMaxSize().shadow(16.dp, RoundedCornerShape(12.dp), clip = false).clip(RoundedCornerShape(12.dp)),
+            )
+        } else {
+            Box(
+                Modifier.fillMaxSize().shadow(10.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp))
+                    .background(Brush.verticalGradient(listOf(Color(0xFF2A3550), Color(0xFF161E30)))),
+                contentAlignment = Alignment.Center,
+            ) { Txt("No la tienes", 13.sp, Color(0xCCFFFFFF), FontWeight.Black) }
+        }
+    }
+}
+
+/** Info de la carta: contadores, nombre, rareza, Fabricar/Destruir y panel de datos/ataques/relacionadas. */
+@Composable
+private fun CardInfoSection(
+    card: CardDetailUi, allCards: List<CardDetailUi>, fichas: Int,
+    onCraft: () -> Unit, onDestroy: () -> Unit, onOpenRelated: (CardDetailUi) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        if (card.owned) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                DetailTable(card.card)
-                (card.card as? PokemonCard)?.let { p ->
-                    if (p.abilities.isNotEmpty() || p.attacks.isNotEmpty()) {
-                        Spacer(Modifier.height(16.dp))
-                        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                            Txt("Ataques", 14.sp, Ink, FontWeight.Black)
-                        }
-                        Spacer(Modifier.height(12.dp))
-                        AttacksSection(p)
+                CountChip("▤", "${card.count}")
+                CountChip("▣", "0")
+                Spacer(Modifier.weight(1f))
+                Row(
+                    Modifier.shadow(2.dp, RoundedCornerShape(50)).clip(RoundedCornerShape(50)).background(Panel)
+                        .border(1.5.dp, Accent, RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Txt("✦", 14.sp, Accent, FontWeight.Black)
+                    Txt("Obtener efecto visual", 12.sp, Ink, FontWeight.Black)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        Txt(card.name, 24.sp, Ink, FontWeight.Black, Modifier.fillMaxWidth(), align = TextAlign.Center)
+        Spacer(Modifier.height(4.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            RaritySymbol(card.rarity, height = 20.dp)
+            Spacer(Modifier.width(8.dp))
+            Txt(rarityEs(card.rarity), 13.sp, Muted, FontWeight.Bold)
+        }
+        Spacer(Modifier.height(14.dp))
+
+        CraftDestroyRow(card = card, fichas = fichas, onCraft = onCraft, onDestroy = onDestroy)
+        Spacer(Modifier.height(14.dp))
+
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(20.dp)).background(Panel).padding(16.dp),
+        ) {
+            DetailTable(card.card)
+            (card.card as? PokemonCard)?.let { p ->
+                if (p.abilities.isNotEmpty() || p.attacks.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                        Txt("Ataques", 14.sp, Ink, FontWeight.Black)
                     }
+                    Spacer(Modifier.height(12.dp))
+                    AttacksSection(p)
                 }
-                Spacer(Modifier.height(16.dp))
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
-                    Txt("Cartas relacionadas", 14.sp, Ink, FontWeight.Black)
+            }
+            Spacer(Modifier.height(16.dp))
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).background(BgTop).padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                Txt("Cartas relacionadas", 14.sp, Ink, FontWeight.Black)
+            }
+            Spacer(Modifier.height(12.dp))
+            RelatedCards(card, allCards, onOpenRelated)
+        }
+    }
+}
+
+/** Botón circular de cerrar (abajo centrado). */
+@Composable
+private fun CloseButton(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier.padding(bottom = 20.dp).size(54.dp)
+            .shadow(4.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onDismiss),
+        contentAlignment = Alignment.Center,
+    ) { Txt("✕", 20.sp, Muted, FontWeight.Black) }
+}
+
+/**
+ * Visor de cartas con **carrusel 3D curvo AAA**: un [HorizontalPager] donde cada página es una
+ * [CardDetailSheet]. La transformación por página simula un CILINDRO visto DESDE DENTRO (cóncavo,
+ * horizontal): la carta central mira al frente y las laterales giran en Y envolviendo al
+ * espectador, con perspectiva real (cameraDistance), caída de escala/opacidad y solapamiento en
+ * arco. Deslizar salta de carta a carta por el orden de [cards].
+ */
+@Composable
+fun CardDetailCarousel(
+    cards: List<CardDetailUi>,
+    startIndex: Int,
+    isFavorite: (CardDetailUi) -> Boolean,
+    isWished: (CardDetailUi) -> Boolean,
+    fichas: Int,
+    onToggleFavorite: (CardDetailUi) -> Unit,
+    onToggleWish: (CardDetailUi) -> Unit,
+    onCraft: (CardDetailUi) -> Unit,
+    onDestroy: (CardDetailUi) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (cards.isEmpty()) return
+    val pagerState = rememberPagerState(initialPage = startIndex.coerceIn(0, cards.lastIndex)) { cards.size }
+    val scope = rememberCoroutineScope()
+    val currentPage = pagerState.currentPage.coerceIn(0, cards.lastIndex)
+    val current = cards[currentPage]
+    var showLangs by remember { mutableStateOf(false) }
+
+    // Grito de la carta ACTUAL (al asentarse en una nueva).
+    val cryCtx = LocalContext.current
+    val cryPlayer = remember { com.mineralord.tcg.core.designsystem.CryPlayer(cryCtx) }
+    DisposableEffect(Unit) { onDispose { cryPlayer.release() } }
+    LaunchedEffect(current.card.id.raw) {
+        (current.card as? PokemonCard)?.nationalDex?.let { cryPlayer.play(it) }
+    }
+
+    Box(
+        Modifier.fillMaxSize().blockPassThroughTouches()
+            // Fondo del design system (gris azulado de toda la app).
+            .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
+    ) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            // BARRA SUPERIOR FIJA (★/♥ de la carta actual): no entra en el carrusel.
+            CardTopBar(
+                isFavorite = isFavorite(current), isWished = isWished(current),
+                onToggleFavorite = { onToggleFavorite(current) },
+                onToggleWish = { onToggleWish(current) },
+                onToggleLangs = { showLangs = !showLangs },
+            )
+
+            // CARRUSEL 3D: SOLO la carta gira como cilindro; las vecinas asoman a los lados.
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth(),
+                beyondViewportPageCount = 1,
+                pageSpacing = 12.dp,
+            ) { page ->
+                Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                    CardVisual(
+                        cards[page],
+                        Modifier.fillMaxWidth(0.82f).aspectRatio(0.72f).graphicsLayer {
+                            val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                            val o = offset.coerceIn(-1.5f, 1.5f)
+                            val absO = abs(o).coerceIn(0f, 1f)
+                            cameraDistance = 12f * density
+                            rotationY = o * 50f                    // cilindro cóncavo (desde dentro)
+                            val sc = lerp(1f, 0.74f, absO)
+                            scaleX = sc; scaleY = sc
+                            translationX = o * size.width * 0.10f
+                            transformOrigin = TransformOrigin(0.5f, 0.5f)
+                        },
+                    )
                 }
-                Spacer(Modifier.height(12.dp))
-                RelatedCards(card, allCards, onOpenRelated)
+            }
+
+            // INFO: desaparece y aparece la de la nueva carta (crossfade), sin efecto 3D.
+            AnimatedContent(
+                targetState = currentPage,
+                transitionSpec = {
+                    (fadeIn(tween(200)) togetherWith fadeOut(tween(160))).using(SizeTransform(clip = false) { _, _ -> snap() })
+                },
+                label = "cardInfo",
+            ) { p ->
+                CardInfoSection(
+                    cards[p], cards, fichas,
+                    onCraft = { onCraft(cards[p]) },
+                    onDestroy = { onDestroy(cards[p]) },
+                    onOpenRelated = { rel ->
+                        val idx = cards.indexOfFirst { it.card.id.raw == rel.card.id.raw }
+                        if (idx >= 0) scope.launch { pagerState.animateScrollToPage(idx) }
+                    },
+                )
             }
             Spacer(Modifier.height(90.dp))
         }
 
-        Box(
-            Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp).size(54.dp)
-                .shadow(4.dp, CircleShape).clip(CircleShape).background(Panel).noRippleClick(onDismiss),
-            contentAlignment = Alignment.Center,
-        ) { Txt("✕", 20.sp, Muted, FontWeight.Black) }
+        CloseButton(onDismiss, Modifier.align(Alignment.BottomCenter))
 
-        if (showLangs) LanguagePopup(ownedCount = card.count, onDismiss = { showLangs = false })
+        if (showLangs) LanguagePopup(ownedCount = current.count, onDismiss = { showLangs = false })
     }
 }
 

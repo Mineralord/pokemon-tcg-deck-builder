@@ -25,9 +25,14 @@ sealed interface FxCue {
 
     /**
      * Embate del atacante de [side] (se mueve hacia el rival). [attackName] alimenta el rótulo
-     * cinematográfico de anuncio de ataque (dirección derivada del lado).
+     * cinematográfico de anuncio de ataque (dirección derivada del lado). [attacker] identifica
+     * al Pokémon que ataca para disparar su GRITO oficial al lanzar el ataque.
      */
-    data class Attack(override val side: Side, val attackName: String = "") : FxCue
+    data class Attack(
+        override val side: Side,
+        val attackName: String = "",
+        val attacker: CardId? = null,
+    ) : FxCue
 
     /**
      * Un Pokémon de [side] activó una Habilidad: rótulo de anuncio + aura sobre [pokemon]

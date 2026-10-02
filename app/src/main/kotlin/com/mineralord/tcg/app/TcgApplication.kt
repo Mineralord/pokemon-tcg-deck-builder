@@ -1,6 +1,9 @@
 package com.mineralord.tcg.app
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.disk.DiskCache
 import com.mineralord.tcg.data.cloud.CloudSyncRepository
 import com.mineralord.tcg.data.cloud.DriveSyncClient
 import com.mineralord.tcg.data.cloud.GoogleAuthManager
@@ -24,9 +27,25 @@ import kotlinx.coroutines.flow.collect
  * DataStore (el delegate es singleton por proceso), así que la auto-subida ve
  * los cambios hechos por cualquier pantalla.
  */
-class TcgApplication : Application(), MatchFactoryProvider {
+class TcgApplication : Application(), MatchFactoryProvider, ImageLoaderFactory {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /**
+     * Caché de imágenes de carta (Coil) GRANDE y PERSISTENTE: guarda "la carta tal cual" en
+     * `filesDir/card_images` (no `cacheDir`, que el sistema puede purgar), hasta ~1 GB. Ignora
+     * los cache-headers del servidor para cachear SIEMPRE. Así la colección funciona offline.
+     */
+    override fun newImageLoader(): ImageLoader =
+        ImageLoader.Builder(this)
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(java.io.File(filesDir, "card_images"))
+                    .maxSizeBytes(1024L * 1024 * 1024)
+                    .build()
+            }
+            .respectCacheHeaders(false)
+            .build()
 
     lateinit var cloudSync: CloudSyncRepository
         private set

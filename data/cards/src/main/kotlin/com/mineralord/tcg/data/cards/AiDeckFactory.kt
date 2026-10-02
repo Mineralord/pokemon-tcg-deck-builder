@@ -32,6 +32,17 @@ object AiDeckFactory {
     private const val VIRTUAL_COPIES = 4
     private const val VIRTUAL_ENERGY = 30
 
+    /**
+     * EXPANSIÓN PERMITIDA para la IA: de momento SOLO el set 151 (código `sv3pt5`), porque es el
+     * único con sus efectos completamente implementados y probados. Brecha Paradójica (`sv4`) se
+     * sumará aquí cuando TODOS sus efectos (ataques, habilidades y entrenadores) estén listos.
+     * La Energía Básica se permite siempre (no pertenece a un set jugable concreto).
+     */
+    private const val ALLOWED_SET_PREFIX = "sv3pt5-"
+
+    private fun inAllowedSet(card: Card): Boolean =
+        card is BasicEnergy || card.id.raw.startsWith(ALLOWED_SET_PREFIX)
+
     /** Probabilidad (%) de que el mazo generado sea de DOS tipos en vez de uno. */
     private const val DUAL_TYPE_PERCENT = 40
 
@@ -45,7 +56,8 @@ object AiDeckFactory {
         registry: EffectRegistry = EffectsDb.registry,
         rng: Random = Random.Default,
     ): List<DeckEntry> {
-        val playable = all.filter { isPlayable(it, registry) }
+        // Solo cartas jugables (efectos completos) Y del set permitido (151 por ahora).
+        val playable = all.filter { isPlayable(it, registry) && inAllowedSet(it) }
         if (playable.none { it is PokemonCard }) return StarterDecks.PIKACHU.entries
 
         // Colección virtual: la IA dispone de todo lo jugable, para que AutoDeckBuilder

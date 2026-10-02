@@ -35,7 +35,8 @@ fun Side.other(): Side = if (this == Side.PLAYER) Side.OPPONENT else Side.PLAYER
  * se animan igual en PvE y PvP.
  */
 fun GameEvent.toFxCue(): FxCue? = when (this) {
-    is GameEvent.Attacked -> FxCue.Attack(side, attackName)
+    // El atacante lanza su GRITO al usar el ataque.
+    is GameEvent.Attacked -> FxCue.Attack(side, attackName, attacker)
     is GameEvent.AbilityUsed -> FxCue.AbilityUse(side, pokemon, manual)
     // El daño lo recibe el rival del atacante.
     is GameEvent.DamageDealt -> FxCue.Damage(side.other(), amount, weaknessApplied, resistanceApplied)
@@ -44,9 +45,6 @@ fun GameEvent.toFxCue(): FxCue? = when (this) {
     is GameEvent.PrizeTaken -> FxCue.Prize(side, count)
     is GameEvent.CoinFlipped -> FxCue.Coin(side, heads)
     is GameEvent.StadiumPlayed -> FxCue.StadiumPlaced(side, card)
-    // Poner un Pokémon en juego o evolucionar dispara su grito (delay 0 → no corta el ritmo).
-    is GameEvent.PokemonPlayed -> FxCue.Cry(side, card)
-    is GameEvent.Evolved -> FxCue.Cry(side, to)
     else -> null
 }
 

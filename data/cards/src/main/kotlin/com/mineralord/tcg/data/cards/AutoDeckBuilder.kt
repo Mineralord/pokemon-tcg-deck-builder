@@ -118,7 +118,24 @@ object AutoDeckBuilder {
             for ((card, n) in buildLine(top, ownedByNameEn, ownedCount, rng)) addCapped(card, n)
         }
 
-        // Acompañantes DEL FOCO primero (Básicos de apoyo con ataque o habilidad).
+        // Segunda(s) LÍNEA(S) DE EVOLUCIÓN del foco: fuerza un tablero con varios evolucionados
+        // (no un solo atacante grande). Se añaden líneas completas por ratio antes que básicos sueltos.
+        val evoCompanions = ownedPokemon
+            .filter { !it.isBasic && onFocus(it) && it.attacks.isNotEmpty() }
+            .filter { (evolutionRoot(it, ownedByNameEn)?.name?.en ?: it.name.en) !in usedRoots }
+            .distinctBy { evolutionRoot(it, ownedByNameEn)?.name?.en ?: it.name.en }
+            .sortedByDescending { attackerScore(it) }
+        for (top in evoCompanions) {
+            if (pokemonCount() >= pokemonTarget) break
+            val root = evolutionRoot(top, ownedByNameEn)?.name?.en ?: top.name.en
+            if (root in usedRoots) continue
+            val line = buildLine(top, ownedByNameEn, ownedCount, rng)
+            if (line.isEmpty()) continue
+            for ((card, n) in line) addCapped(card, n)
+            usedRoots += root
+        }
+
+        // Acompañantes DEL FOCO (Básicos de apoyo con ataque o habilidad).
         val focusCompanions = ownedPokemon
             .filter { it.isBasic && it.name.en !in usedRoots && onFocus(it) }
             .filter { it.attacks.isNotEmpty() || it.abilities.isNotEmpty() }
@@ -159,15 +176,31 @@ object AutoDeckBuilder {
         }
 
         // ---------- 3) ENTRENADORES (excluyendo afinidad fuera del foco) ----------
+        // Ratios competitivos (guía profesional): 8-12 partidarios de robo/búsqueda, 10-15 objetos,
+        // 4-6 herramientas, 2-4 estadios. Reservamos primero el "toolbox" (herramientas + 1 estadio)
+        // para que SIEMPRE entren, y luego llenamos con partidarios/objetos (staples con prioridad).
         val ownedTrainers = ownedCards.map { it.first }.filterIsInstance<TrainerCard>()
             .distinctBy { it.name.en }
             .filter { affinityAllowed(it, focusTypes) }
+
+        // 3a) TOOLBOX — garantiza variedad de equipo que antes nunca entraba.
+        //     Hasta ~2 estadios (1 nombre) y ~4-6 copias de herramientas (2-3 nombres distintos).
+        ownedTrainers.filter { it.kind is TrainerKind.Stadium }
+            .sortedBy { it.name.es.lowercase() }
+            .firstOrNull()?.let { addCapped(it, 2) }
+
+        var toolCopies = 0
+        for (t in ownedTrainers.filter { it.kind is TrainerKind.Tool }.sortedBy { it.name.es.lowercase() }) {
+            if (toolCopies >= 6 || total() >= DECK_SIZE) break
+            toolCopies += addCapped(t, 2)
+        }
+
+        // 3b) Resto: partidarios y objetos (staples primero por nombre canónico).
+        val mainTrainers = ownedTrainers
+            .filter { it.kind !is TrainerKind.Stadium && it.kind !is TrainerKind.Tool }
             .sortedWith(compareBy({ stapleRank(it) }, { trainerKindRank(it) }, { it.name.es.lowercase() }))
-        for (t in ownedTrainers) {
+        for (t in mainTrainers) {
             if (total() >= DECK_SIZE) break
-            if (stapleRank(t) == Int.MAX_VALUE && t.kind is TrainerKind.Stadium &&
-                stadiumCount(counts, byId) >= 2
-            ) continue
             val want = if (stapleRank(t) < STAPLE_PRIORITY.size) 4 else 2
             addCapped(t, want)
         }
@@ -242,8 +275,10 @@ object AutoDeckBuilder {
     }
 
     private fun attackerScore(p: PokemonCard): Int {
-        val stageBonus = when (p.stage) { Stage.Stage2 -> 40; Stage.Stage1 -> 20; else -> 0 }
-        val exBonus = if (p.mechanic.prizesWhenKO >= 2) 50 else 0
+        // Peso FUERTE de la etapa evolutiva: la IA prefiere líneas de evolución como eje del mazo
+        // (no amontonar básicos/ex sueltos). Las evolucionadas marcan el techo de daño/HP.
+        val stageBonus = when (p.stage) { Stage.Stage2 -> 90; Stage.Stage1 -> 45; else -> 0 }
+        val exBonus = if (p.mechanic.prizesWhenKO >= 2) 30 else 0
         val dmg = p.attacks.maxOfOrNull { (it.baseDamage as? Damage.Fixed)?.value ?: (it.convertedCost * 20) } ?: 0
         return p.hp + stageBonus + exBonus + dmg
     }

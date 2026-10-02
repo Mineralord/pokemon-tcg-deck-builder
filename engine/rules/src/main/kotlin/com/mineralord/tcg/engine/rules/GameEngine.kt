@@ -76,6 +76,14 @@ class GameEngine(
 ) {
 
     /**
+     * ¿La Habilidad [ability] es de "una vez por turno"? La IA solo activa estas de forma
+     * autónoma: al usarse se marcan y dejan de ser legales, así nunca se repiten en bucle
+     * (preserva la invariante de que el turno de la IA siempre progresa).
+     */
+    fun abilityIsOncePerTurn(ability: com.mineralord.tcg.engine.model.Ability): Boolean =
+        ability.effect?.let { effects[it]?.oncePerTurn } == true
+
+    /**
      * Regla de movimiento entre zonas que el intérprete consulta antes de mover cartas (ver
      * [com.mineralord.tcg.engine.effects.RuleHook]). Genérica: aquí se resuelven las habilidades
      * pasivas en juego que restringen un movimiento. Hoy solo Sandshrew — Pantalla de Arena

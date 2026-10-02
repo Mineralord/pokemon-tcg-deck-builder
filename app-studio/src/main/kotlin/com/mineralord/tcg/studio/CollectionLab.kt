@@ -1316,6 +1316,7 @@ private fun CardDetailSheet(
             imageUrl = card.imageLarge, contentDescription = card.name, onDismiss = { immersive = false },
             rarity = card.rarity, cardNumber = card.number, setCode = card.setCode,
             copiesOwned = card.count, copiesCap = card.cap,
+            cryDex = (card.card as? com.mineralord.tcg.engine.model.PokemonCard)?.nationalDex,
         )
     }
 }

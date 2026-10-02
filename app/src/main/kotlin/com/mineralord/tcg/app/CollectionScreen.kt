@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import coil.compose.AsyncImage
+import com.mineralord.tcg.core.designsystem.blockPassThroughTouches
 import com.mineralord.tcg.core.designsystem.HoloCardImage
 import com.mineralord.tcg.core.designsystem.InteractiveHoloCard
 import com.mineralord.tcg.data.cards.CardRepository
@@ -338,6 +339,7 @@ private fun rememberDexSets(): List<DexSet>? {
 fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
     val sets = rememberDexSets()
     var grouped by remember { mutableStateOf(false) }           // interruptor rejilla ↔ agrupado
+    var wideGrid by remember { mutableStateOf(false) }          // columnas: OFF = 3 (def.), ON = 5
     var showAll by remember { mutableStateOf(true) }            // "Mostrar todo" (huecos vacíos en vista agrupada)
     var sort by remember { mutableStateOf(DexSort.NUMBER) }
     var sortAsc by remember { mutableStateOf(true) }
@@ -428,6 +430,7 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 RainbowRule()
                 Toolbar(
                     totalOwned = totalOwned, grouped = grouped, counterVisible = !scrolling,
+                    wideGrid = wideGrid, onToggleColumns = { wideGrid = it },
                     onToggle = { grouped = it }, onSearch = { showSearch = true },
                 )
                 // "Mostrar todo" solo en la vista agrupada; se oculta/muestra según la dirección del scroll.
@@ -442,7 +445,7 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                     if (grouped) {
                         GroupedView(sets, favorites, wishlist, filter, showAll, sort, sortAsc, groupedState, onOpen = { detail = it })
                     } else {
-                        FlatView(sets, favorites, wishlist, filter, sort, sortAsc, flatState, onOpen = { detail = it })
+                        FlatView(sets, favorites, wishlist, filter, sort, sortAsc, flatState, columns = if (wideGrid) 5 else 3, onOpen = { detail = it })
                     }
                     // Botón flotante inferior-derecho = ORDENAR (como TCG Live). Sus opciones cambian con la vista.
                     OrdenarButton(
@@ -499,19 +502,29 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
             )
         }
         detail?.let { card ->
-            val allCards = remember(sets) { sets.flatMap { it.cards } }
-            val allDetails = remember(allCards) { allCards.map { it.toDetailUi() } }
-            com.mineralord.tcg.feature.carddetail.CardDetailSheet(
-                card = card.toDetailUi(),
-                allCards = allDetails,
-                isFavorite = card.card.id.raw in favorites,
-                isWished = card.card.id.raw in wishlist,
+            // Carrusel SIGUIENDO EL ORDEN VISIBLE (obtenidas, filtradas y ordenadas como la rejilla).
+            // Si la carta tocada no está en esa lista (p. ej. hueco no obtenido), cae al catálogo completo.
+            val visible = remember(sets, sort, sortAsc, favorites.size, wishlist.size, filter) {
+                val base = sets.flatMap { it.cards }.filter { it.owned }
+                sortCards(applyFilter(base, filter, favorites, wishlist), sort, sortAsc, favorites)
+            }
+            val visibleDetails = remember(visible) { visible.map { it.toDetailUi() } }
+            val visibleIdx = visibleDetails.indexOfFirst { it.card.id.raw == card.card.id.raw }
+            val allDetails = remember(sets) { sets.flatMap { it.cards }.map { it.toDetailUi() } }
+            val useVisible = visibleIdx >= 0
+            val cardsList = if (useVisible) visibleDetails else allDetails
+            val startIndex = if (useVisible) visibleIdx
+                else allDetails.indexOfFirst { it.card.id.raw == card.card.id.raw }.coerceAtLeast(0)
+            com.mineralord.tcg.feature.carddetail.CardDetailCarousel(
+                cards = cardsList,
+                startIndex = startIndex,
+                isFavorite = { it.card.id.raw in favorites },
+                isWished = { it.card.id.raw in wishlist },
                 fichas = fichas,
-                onToggleFavorite = { toggle(favorites, card.card.id.raw) },
-                onToggleWish = { toggle(wishlist, card.card.id.raw) },
-                onCraft = { scope.launch { craftRepo.craftCard(card.card.id.raw, craftCostOf(card.card), playsetSize(card.card)) } },
-                onDestroy = { scope.launch { craftRepo.destroyCopies(card.card.id.raw, 1, destroyValueOf(card.card), playsetSize(card.card)) } },
-                onOpenRelated = { rel -> detail = allCards.firstOrNull { it.card.id.raw == rel.card.id.raw } },
+                onToggleFavorite = { toggle(favorites, it.card.id.raw) },
+                onToggleWish = { toggle(wishlist, it.card.id.raw) },
+                onCraft = { c -> scope.launch { craftRepo.craftCard(c.card.id.raw, craftCostOf(c.card), playsetSize(c.card)) } },
+                onDestroy = { c -> scope.launch { craftRepo.destroyCopies(c.card.id.raw, 1, destroyValueOf(c.card), playsetSize(c.card)) } },
                 onDismiss = { detail = null },
             )
         }
@@ -555,6 +568,7 @@ private fun RainbowRule() {
 @Composable
 private fun Toolbar(
     totalOwned: Int, grouped: Boolean, counterVisible: Boolean,
+    wideGrid: Boolean, onToggleColumns: (Boolean) -> Unit,
     onToggle: (Boolean) -> Unit, onSearch: () -> Unit,
 ) {
     Row(
@@ -569,6 +583,13 @@ private fun Toolbar(
                 Box(Modifier.size(16.dp).clip(RoundedCornerShape(3.dp)).border(1.5.dp, Muted, RoundedCornerShape(3.dp)))
                 Txt("$totalOwned", 16.sp, Ink, FontWeight.Black)
             }
+        }
+        Spacer(Modifier.width(12.dp))
+        // Interruptor de columnas junto al contador: OFF = 3 (por defecto), ON = 5.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ColumnsIcon(columns = if (wideGrid) 5 else 3, Modifier.size(18.dp))
+            Txt(if (wideGrid) "5" else "3", 13.sp, Ink, FontWeight.Black)
+            GreenSwitch(on = wideGrid, onChange = onToggleColumns)
         }
         Spacer(Modifier.weight(1f))
         // Icono "álbum de cartas con pokébola" (extraído del original de TCG Live) — junto al interruptor.
@@ -635,6 +656,25 @@ private fun AlbumPokeballIcon(modifier: Modifier, tint: Color = Ink) {
     }
 }
 
+/** Icono de rejilla que dibuja [columns] columnas (indica el modo del interruptor de columnas). */
+@Composable
+private fun ColumnsIcon(columns: Int, modifier: Modifier, tint: Color = Ink) {
+    Canvas(modifier) {
+        val gap = size.width * 0.14f
+        val colW = (size.width - gap * (columns - 1)) / columns
+        var x = 0f
+        repeat(columns) {
+            drawRoundRect(
+                color = tint,
+                topLeft = Offset(x, 0f),
+                size = androidx.compose.ui.geometry.Size(colW, size.height),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(colW * 0.25f, colW * 0.25f),
+            )
+            x += colW + gap
+        }
+    }
+}
+
 /** Interruptor verde estilo TCG Live. */
 @Composable
 private fun GreenSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
@@ -657,7 +697,7 @@ private fun GreenSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun FlatView(sets: List<DexSet>, favorites: List<String>, wishlist: List<String>, filter: DexFilter, sort: DexSort, asc: Boolean, state: LazyGridState, onOpen: (DexCard) -> Unit) {
+private fun FlatView(sets: List<DexSet>, favorites: List<String>, wishlist: List<String>, filter: DexFilter, sort: DexSort, asc: Boolean, state: LazyGridState, columns: Int, onOpen: (DexCard) -> Unit) {
     // Modo rejilla continua (interruptor en BLANCO): como TCG Pocket, SIN huecos vacíos —
     // solo se muestran las cartas realmente obtenidas (y que pasen el filtro de Buscar).
     val cards = remember(sets, sort, asc, favorites.size, wishlist.size, filter) {
@@ -666,7 +706,7 @@ private fun FlatView(sets: List<DexSet>, favorites: List<String>, wishlist: List
     }
     LazyVerticalGrid(
         state = state,
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Fixed(columns),
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -855,7 +895,11 @@ private fun SearchSheet(
     var showExpSel by remember { mutableStateOf(false) }
     var saveName by remember { mutableStateOf("") }
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(BgTop, BgBottom)))) {
+    Box(
+        Modifier.fillMaxSize()
+            .blockPassThroughTouches()
+            .background(Brush.verticalGradient(listOf(BgTop, BgBottom))),
+    ) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                 .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 120.dp),

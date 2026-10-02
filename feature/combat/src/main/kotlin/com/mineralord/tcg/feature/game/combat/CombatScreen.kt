@@ -241,7 +241,10 @@ fun CombatScreen(
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { cryPlayer.release() } }
     LaunchedEffect(Unit) {
         vm.fx.collect { cue ->
-            if (cue is FxCue.Cry) (vm.card(cue.card) as? PokemonCard)?.nationalDex?.let { cryPlayer.play(it) }
+            // El grito oficial suena cuando el Pokémon USA un ataque (no al jugarlo/evolucionar).
+            if (cue is FxCue.Attack) cue.attacker?.let { id ->
+                (vm.card(id) as? PokemonCard)?.nationalDex?.let { cryPlayer.play(it) }
+            }
         }
     }
 

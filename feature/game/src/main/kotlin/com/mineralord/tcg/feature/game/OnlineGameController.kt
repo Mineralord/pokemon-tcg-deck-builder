@@ -516,7 +516,7 @@ class OnlineGameController(
      * (host = PLAYER; el invitado se ve a sí mismo como PLAYER). La moneda neutral (side null) no voltea.
      */
     private fun FxCue.toGuestDto(): FxCueDto = when (this) {
-        is FxCue.Attack -> FxCueDto.Attack(side.other().name, attackName)
+        is FxCue.Attack -> FxCueDto.Attack(side.other().name, attackName, attacker?.raw)
         is FxCue.AbilityUse -> FxCueDto.AbilityUse(side.other().name, pokemon.raw, manual)
         is FxCue.Damage -> FxCueDto.Damage(side.other().name, amount, weakness, resistance)
         is FxCue.Heal -> FxCueDto.Heal(side.other().name, amount)
@@ -529,7 +529,7 @@ class OnlineGameController(
 
     /** Reconstruye un [FxCue] desde su DTO recibido por red (ya en la perspectiva del invitado). */
     private fun FxCueDto.toCue(): FxCue = when (this) {
-        is FxCueDto.Attack -> FxCue.Attack(Side.valueOf(side), attackName)
+        is FxCueDto.Attack -> FxCue.Attack(Side.valueOf(side), attackName, attacker?.let { CardId(it) })
         is FxCueDto.AbilityUse -> FxCue.AbilityUse(Side.valueOf(side), CardId(pokemon), manual)
         is FxCueDto.Damage -> FxCue.Damage(Side.valueOf(side), amount, weakness, resistance)
         is FxCueDto.Heal -> FxCue.Heal(Side.valueOf(side), amount)
