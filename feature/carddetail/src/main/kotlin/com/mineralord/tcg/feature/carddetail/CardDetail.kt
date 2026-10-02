@@ -2,6 +2,7 @@ package com.mineralord.tcg.feature.carddetail
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -11,11 +12,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.lerp
 import com.mineralord.tcg.core.designsystem.BarajasPalette
 import kotlinx.coroutines.launch
@@ -331,6 +334,10 @@ fun CardDetailCarousel(
     if (cards.isEmpty()) return
     val pagerState = rememberPagerState(initialPage = startIndex.coerceIn(0, cards.lastIndex)) { cards.size }
     val scope = rememberCoroutineScope()
+    // Spec de salto CRUJIENTE y uniforme (fotogramas constantes → sensación fluida a 120 Hz), en
+    // vez del muelle elástico por defecto del pager.
+    val jumpSpec = remember { tween<Float>(durationMillis = 260, easing = FastOutSlowInEasing) }
+    fun jumpTo(index: Int) { scope.launch { pagerState.animateScrollToPage(index, animationSpec = jumpSpec) } }
     val currentPage = pagerState.currentPage.coerceIn(0, cards.lastIndex)
     val current = cards[currentPage]
     var showLangs by remember { mutableStateOf(false) }
@@ -348,7 +355,24 @@ fun CardDetailCarousel(
             // Fondo del design system (gris azulado de toda la app).
             .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
     ) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                // Saltar entre cartas desde CUALQUIER parte del visor (barra, info, márgenes). Sobre
+                // la CARTA no entra aquí: el pager (hijo) reclama el arrastre horizontal primero.
+                .pointerInput(cards.size) {
+                    var dx = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { dx = 0f },
+                        onHorizontalDrag = { _, amount -> dx += amount },
+                        onDragEnd = {
+                            val threshold = 48.dp.toPx()
+                            val cur = pagerState.currentPage
+                            if (dx <= -threshold && cur < cards.lastIndex) jumpTo(cur + 1)
+                            else if (dx >= threshold && cur > 0) jumpTo(cur - 1)
+                        },
+                    )
+                },
+        ) {
             // BARRA SUPERIOR FIJA (★/♥ de la carta actual): no entra en el carrusel.
             CardTopBar(
                 isFavorite = isFavorite(current), isWished = isWished(current),
@@ -396,7 +420,7 @@ fun CardDetailCarousel(
                     onDestroy = { onDestroy(cards[p]) },
                     onOpenRelated = { rel ->
                         val idx = cards.indexOfFirst { it.card.id.raw == rel.card.id.raw }
-                        if (idx >= 0) scope.launch { pagerState.animateScrollToPage(idx) }
+                        if (idx >= 0) jumpTo(idx)
                     },
                 )
             }
