@@ -135,20 +135,20 @@ private fun AppShell() {
     // apertura de sobres; el banner superior izquierdo muestra el tema que suena.
     val music = rememberMenuMusic()
     val battleMusic = rememberBattleMusic()
-    val evolutionMusic = rememberEvolutionMusic()
+    val packMusic = rememberPackOpeningMusic()
     val menuTitle by music.title.collectAsState(initial = null)
     val battleTitle by battleMusic.title.collectAsState(initial = null)
-    val evolutionTitle by evolutionMusic.title.collectAsState(initial = null)
-    // El banner muestra el tema que suene: combate y evolución tienen prioridad sobre el de menú.
-    val musicTitle = battleTitle ?: evolutionTitle ?: menuTitle
+    val packTitle by packMusic.title.collectAsState(initial = null)
+    // El banner muestra el tema que suene: combate y apertura de sobres tienen prioridad sobre el de menú.
+    val musicTitle = battleTitle ?: packTitle ?: menuTitle
     androidx.compose.runtime.LaunchedEffect(overlay.lastOrNull()) {
         val topScreen = overlay.lastOrNull()
         val inCombat = topScreen == Screen.GAME || topScreen == Screen.ONLINE
         val inPacks = topScreen == Screen.PACKS
-        // Menú: todo salvo combate y sobres. Combate: solo en la partida. Evolución: en la apertura de sobres.
+        // Menú: todo salvo combate y sobres. Combate: solo en la partida. Apertura de sobres: en PACKS.
         music.setScreenAllows(!inCombat && !inPacks)
         battleMusic.setScreenAllows(inCombat)
-        evolutionMusic.setScreenAllows(inPacks)
+        packMusic.setScreenAllows(inPacks)
     }
 
     androidx.compose.runtime.LaunchedEffect(Unit) { profileRepo.seedBalancesOnce() }

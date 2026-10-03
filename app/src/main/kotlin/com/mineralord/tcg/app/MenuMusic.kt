@@ -47,7 +47,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.random.Random
 
 /**
  * Un tema de la banda sonora. [album] es el identificador del álbum abierto en el Internet
@@ -162,8 +161,8 @@ private val BATTLE_PLAYLIST = listOf(
     Track("¡Combate! (Mew)", HOENN, "Disc 3 (Emerald)/17 - Battle! (Mew).mp3"),
 )
 
-/** Temas de **EVOLUCIÓN** (Kanto + Hoenn). Suenan durante la apertura de sobres. */
-private val EVOLUTION_PLAYLIST = listOf(
+/** Música de **APERTURA DE SOBRES**: el jingle de evolución (Kanto + Hoenn) suena al rasgar sobres. */
+private val PACK_OPENING_PLAYLIST = listOf(
     Track("Evolución (Kanto)", KANTO, "Disc 1/33 - Evolution.mp3"),
     Track("Evolución (Hoenn)", HOENN, "Disc 2/12 - Evolution.mp3"),
 )
@@ -256,6 +255,9 @@ class MenuMusicController internal constructor(context: Context, private val tra
     private var generation = 0
     private var released = false
 
+    /** Bolsa barajada: cola de índices pendientes. Garantiza oír TODA la playlist antes de repetir. */
+    private val bag = ArrayDeque<Int>()
+
     private var screenAllows = false
     private var foreground = true
 
@@ -282,14 +284,19 @@ class MenuMusicController internal constructor(context: Context, private val tra
         runCatching { player?.takeIf { it.isPlaying }?.pause() }
     }
 
-    /** Elige el siguiente índice al azar, SESGADO hacia los ya cacheados (offline fluido + menos descargas). */
+    /**
+     * Siguiente índice tomado de una **bolsa barajada**: suena toda la playlist en orden aleatorio
+     * antes de repetir cualquier tema. Al vaciarse se rebaraja (evitando empezar por el último oído,
+     * para que no suene dos veces seguidas en la frontera entre barajadas).
+     */
     private fun nextIndex(): Int {
         if (tracks.size == 1) return 0
-        val cached = tracks.indices.filter { it != lastIndex && MusicCache.isCached(appContext, tracks[it]) }
-        if (cached.isNotEmpty() && Random.nextInt(100) < 65) return cached.random()
-        var i: Int
-        do { i = Random.nextInt(tracks.size) } while (i == lastIndex)
-        return i
+        if (bag.isEmpty()) {
+            val order = tracks.indices.shuffled().toMutableList()
+            if (order.first() == lastIndex) { order[0] = order[1].also { order[1] = order[0] } }
+            bag.addAll(order)
+        }
+        return bag.removeFirst()
     }
 
     private fun startNext() {
@@ -310,6 +317,15 @@ class MenuMusicController internal constructor(context: Context, private val tra
                 if (!shouldPlay()) return@withContext // apply() reintentará al volver al menú (ya cacheado)
                 playFile(file, track.title)
             }
+        }
+        prefetchNext(gen)
+    }
+
+    /** Descarga por adelantado el siguiente tema de la bolsa, para que el cambio sea fluido offline. */
+    private fun prefetchNext(gen: Int) {
+        val next = bag.firstOrNull() ?: return
+        io.launch {
+            if (!released && gen == generation) MusicCache.ensure(appContext, tracks[next])
         }
     }
 
@@ -365,9 +381,9 @@ fun rememberMenuMusic(): MenuMusicController = rememberMusic(MENU_PLAYLIST)
 @Composable
 fun rememberBattleMusic(): MenuMusicController = rememberMusic(BATTLE_PLAYLIST)
 
-/** Crea el reproductor de música de EVOLUCIÓN (para la apertura de sobres). */
+/** Crea el reproductor de música de APERTURA DE SOBRES (jingle de evolución Kanto + Hoenn). */
 @Composable
-fun rememberEvolutionMusic(): MenuMusicController = rememberMusic(EVOLUTION_PLAYLIST)
+fun rememberPackOpeningMusic(): MenuMusicController = rememberMusic(PACK_OPENING_PLAYLIST)
 
 /** Crea un controlador ligado a la composición y al ciclo de vida; lo libera al salir. */
 @Composable

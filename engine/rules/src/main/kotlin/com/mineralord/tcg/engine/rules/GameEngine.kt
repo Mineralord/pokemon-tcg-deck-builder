@@ -84,6 +84,14 @@ class GameEngine(
         ability.effect?.let { effects[it]?.oncePerTurn } == true
 
     /**
+     * Operaciones del efecto [effectId] (catálogo cerrado), o lista vacía si no está registrado.
+     * Lo usa la IA para CLASIFICAR Entrenadores (robo/búsqueda/gust/curación) y secuenciarlos como
+     * un jugador experto, sin acoplarse a ids concretos.
+     */
+    fun effectOps(effectId: com.mineralord.tcg.engine.model.EffectId): List<com.mineralord.tcg.engine.model.EffectOp> =
+        effects[effectId]?.ops ?: emptyList()
+
+    /**
      * Regla de movimiento entre zonas que el intérprete consulta antes de mover cartas (ver
      * [com.mineralord.tcg.engine.effects.RuleHook]). Genérica: aquí se resuelven las habilidades
      * pasivas en juego que restringen un movimiento. Hoy solo Sandshrew — Pantalla de Arena
