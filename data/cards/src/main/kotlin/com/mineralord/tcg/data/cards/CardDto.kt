@@ -41,6 +41,8 @@ data class CardDto(
     val id: String,
     val nombre: String,
     val supertipo: String,
+    /** Subtipos de la carta (p. ej. "Pasado"/"Futuro" de los Pokémon Paradoja). Vacío = ninguno. */
+    val subtipos: List<String> = emptyList(),
     val fase: String? = null,
     val evolucionaDe: String? = null,
     val ps: String? = null,

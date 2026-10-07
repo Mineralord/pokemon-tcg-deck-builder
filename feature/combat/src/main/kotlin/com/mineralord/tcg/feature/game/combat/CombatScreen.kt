@@ -567,16 +567,10 @@ fun CombatScreen(
             )
         }
 
-        // Visor a DETALLE (giroscopio + holo + pinch): conserva su propio scrim/gyro; se
-        // envuelve con un fundido Motion para que aparezca/desaparezca con suavidad.
-        var lastInspect by remember { mutableStateOf(inspect) }
-        if (inspect != null) lastInspect = inspect
-        MotionContainer(
-            visible = inspect != null,
-            enter = MotionTransitions.overlayEnter(),
-            exit = MotionTransitions.overlayExit(),
-        ) {
-            lastInspect?.let { card ->
+        // Visor a DETALLE (holo + pinch): el propio [CardDetailDialog] anima su entrada/salida como
+        // popup "de arriba a abajo" (salida rápida) y difiere el cierre hasta terminar la animación,
+        // por lo que basta mostrarlo mientras haya carta inspeccionada.
+        inspect?.let { card ->
                 val activePip = state.player.active
                 // El Pokémon inspeccionado, si es MÍO (Activo o Banca): así también ofrecemos las
                 // Habilidades manuales usables desde la Banca (Dodrio, Starmie, Mew ex, Persian, Snorlax…),
@@ -604,6 +598,8 @@ fun CombatScreen(
                     imageUrl = card.artwork.large(true),
                     contentDescription = card.name.es,
                     onDismiss = { inspect = null },
+                    // Velo LIGERO (como el visor de la Colección): se ve el tablero detrás.
+                    scrimColor = Color(0x40000000),
                     rarity = card.rarity,
                     cardNumber = card.id.printed.raw.substringAfterLast('-').toIntOrNull(),
                     // Sin esto el visor asumía set 151 → las cartas de otros sets no resolvían foil.
@@ -660,8 +656,10 @@ fun CombatScreen(
                         // de estadísticas estilo TCG Live.
                         {
                             Column(
-                                Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                                    .background(Color(0xF20B0F18)),
+                                Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                                    .background(Color(0xFFE3EEF4))
+                                    .verticalScroll(rememberScrollState()),
                             ) { PokemonDetailSheet(inspectedPip) }
                         }
                     } else if (stadiumUsable) {
@@ -677,7 +675,6 @@ fun CombatScreen(
                     },
                 )
             }
-        }
 
         // Capa de ANIMACIÓN (fantasmas de arrastre + vuelo entre zonas + estallido de ataque).
         AnimationLayer(
@@ -1434,12 +1431,37 @@ private fun FieldCard(
             pip.attachedTools.forEach { ToolPeek(it) }
             HpPill(pip.remainingHp, pip.card.hp, Modifier.align(Alignment.TopEnd).padding(2.dp))
             if (pip.attachedEnergy.isNotEmpty()) {
-                EnergyBadge(pip.attachedEnergy.size, Modifier.align(Alignment.BottomEnd).padding(2.dp))
+                AttachedEnergyRow(pip, Modifier.align(Alignment.BottomEnd).padding(3.dp))
             }
             if (pip.statuses.isNotEmpty()) {
                 StatusRow(pip.statuses, Modifier.align(Alignment.BottomStart).padding(2.dp))
             }
         }
+    }
+}
+
+/**
+ * Energías unidas al Pokémon en el tablero, como en Pokémon TCG Live: una fila de pequeñas ESFERAS
+ * de tipo (agrupadas por tipo, con ×n si hay varias del mismo), sobre una píldora oscura en la
+ * esquina inferior-derecha. Sustituye al antiguo contador numérico (que no mostraba el TIPO).
+ */
+@Composable
+private fun BoxScope.AttachedEnergyRow(pip: PokemonInPlay, modifier: Modifier = Modifier) {
+    // Una SOLA fila de esferas individuales (una por energía), agrupadas por tipo y ordenadas de
+    // MAYOR a menor número de ese tipo. Las Especiales van al final como esferas incoloras.
+    val basics = pip.attachedEnergy.filterIsInstance<BasicEnergy>()
+        .groupingBy { it.type }.eachCount().toList().sortedByDescending { it.second }
+    val specials = pip.attachedEnergy.size - basics.sumOf { it.second }
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xB3121821))
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        basics.forEach { (type, n) -> repeat(n) { EnergySphere(type = type, size = 14.dp) } }
+        repeat(specials) { EnergySphere(type = null, size = 14.dp) }
     }
 }
 
@@ -1689,7 +1711,9 @@ private fun ActiveActions(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(Color(0xF20B0F18))
+            // Recuadro ÚNICO con el gris azulado del design system (BgBottom): stats + ataques juntos.
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .background(Color(0xFFE3EEF4))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -1750,7 +1774,8 @@ private fun BenchAbilityActions(
     Column(
         Modifier
             .fillMaxWidth()
-            .background(Color(0xF20B0F18))
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .background(Color(0xFFE3EEF4))
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),

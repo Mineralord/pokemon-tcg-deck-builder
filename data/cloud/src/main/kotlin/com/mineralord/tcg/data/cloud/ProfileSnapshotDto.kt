@@ -54,6 +54,7 @@ data class DeckSnapshotDto(
     val entries: List<EntrySnapshotDto> = emptyList(),
     val isCustom: Boolean = false,
     val updatedAt: Long = 0L,
+    val featured: List<String> = emptyList(),
 )
 
 @Serializable
@@ -84,6 +85,7 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
             entries = d.entries.map { EntrySnapshotDto(it.cardId.raw, it.count) },
             isCustom = d.isCustom,
             updatedAt = d.updatedAt,
+            featured = d.featured.map { it.raw },
         )
     },
 )
@@ -109,6 +111,7 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
             entries = d.entries.map { DeckEntry(CardId(it.cardId), it.count) },
             isCustom = d.isCustom,
             updatedAt = d.updatedAt,
+            featured = d.featured.map { CardId(it) },
         )
     },
     activeDeckId = activeDeckId,

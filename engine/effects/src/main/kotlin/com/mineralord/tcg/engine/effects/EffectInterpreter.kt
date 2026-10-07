@@ -737,14 +737,20 @@ class EffectInterpreter {
                 }
             }
             is EffectOp.OpponentDiscardsHand -> {
-                // El rival descarta [count] cartas desde el frente de su mano.
+                // El rival descarta [count] cartas desde el frente de su mano. Con moneda, solo si cara.
+                val coinEvents = mutableListOf<GameEvent>()
+                val proceed = if (op.coinFlip) {
+                    val h = flip()
+                    coinEvents += GameEvent.CoinFlipped(src.actingSide, h)
+                    h
+                } else true
                 val foeSide = src.actingSide.other()
                 val foe = state.sideState(foeSide)
-                val discarded = foe.hand.take(op.count)
-                if (discarded.isEmpty()) EffectResult(state, emptyList())
+                val discarded = if (proceed) foe.hand.take(op.count) else emptyList()
+                if (discarded.isEmpty()) EffectResult(state, coinEvents)
                 else {
                     val updated = foe.copy(hand = foe.hand.drop(discarded.size), discard = foe.discard + discarded)
-                    EffectResult(withPlayer(state, updated, foeSide), listOf(GameEvent.CardsDiscarded(foeSide, discarded.size)))
+                    EffectResult(withPlayer(state, updated, foeSide), coinEvents + GameEvent.CardsDiscarded(foeSide, discarded.size))
                 }
             }
             is EffectOp.PreventDamageNextTurn -> {
@@ -1028,10 +1034,195 @@ class EffectInterpreter {
                 if (id == null) EffectResult(state, emptyList())
                 else EffectResult(
                     updatePokemon(state, id) {
-                        it.copy(damageReductionOnTurn = state.turn + 1, damageReductionAmount = op.amount)
+                        it.copy(
+                            damageReductionOnTurn = state.turn + 1,
+                            damageReductionAmount = op.amount,
+                            damageReductionOnlyFromEvolution = op.onlyFromEvolution,
+                        )
                     },
                     emptyList(),
                 )
+            }
+            is EffectOp.DiscardTargetTools -> {
+                // Descarta todas las Herramientas unidas a [target] a la pila de su dueño.
+                val tgt = targets(op.target, src, state, chosenIds).firstOrNull()
+                if (tgt == null || tgt.attachedTools.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    val ownerSide = if (state.player.allInPlay.any { it.card.id == tgt.card.id }) Side.PLAYER else Side.OPPONENT
+                    val owner = state.sideState(ownerSide)
+                    val cleared = updatePokemon(state, tgt.card.id) { it.copy(attachedTools = emptyList()) }
+                    val next = withPlayer(cleared, cleared.sideState(ownerSide).copy(discard = owner.discard + tgt.attachedTools), ownerSide)
+                    EffectResult(next, listOf(GameEvent.CardsDiscarded(ownerSide, tgt.attachedTools.size)))
+                }
+            }
+            is EffectOp.BounceSelfEnergyToHand -> {
+                // Devuelve [count] Energía(s) del atacante a su mano.
+                val id = src.sourceId
+                val self = state.sideState(src.actingSide).allInPlay.firstOrNull { it.card.id == id }
+                if (id == null || self == null || self.attachedEnergy.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    val moved = self.attachedEnergy.take(op.count)
+                    val cleared = updatePokemon(state, id) { it.copy(attachedEnergy = it.attachedEnergy.drop(op.count)) }
+                    val me = cleared.sideState(src.actingSide)
+                    val next = withPlayer(cleared, me.copy(hand = me.hand + moved), src.actingSide)
+                    EffectResult(next, emptyList())
+                }
+            }
+            is EffectOp.DeEvolveAllOpponent -> {
+                // Involuciona (un paso) cada Pokémon de Evolución del rival.
+                val foeSide = src.actingSide.other()
+                var working = state
+                val events = mutableListOf<GameEvent>()
+                for (mon in state.sideState(foeSide).allInPlay) {
+                    val below = mon.evolutionStack.lastOrNull() ?: continue
+                    val topCard = mon.card
+                    working = updatePokemon(working, mon.card.id) {
+                        PokemonInPlay(
+                            card = below,
+                            damage = it.damage,
+                            attachedEnergy = it.attachedEnergy,
+                            attachedTools = it.attachedTools,
+                            evolutionStack = it.evolutionStack.dropLast(1),
+                            turnsInPlay = 0,
+                            sourceCard = it.sourceCard,
+                            immuneToSpecialConditions = it.immuneToSpecialConditions,
+                            cannotRetreat = it.cannotRetreat,
+                        )
+                    }
+                    working = withPlayer(working, working.sideState(foeSide).copy(hand = working.sideState(foeSide).hand + topCard), foeSide)
+                    events += GameEvent.DeEvolved(foeSide, topCard.id, below.id)
+                }
+                EffectResult(working, events)
+            }
+            is EffectOp.ScheduleCountersOnAttackerNextTurn -> {
+                val id = src.sourceId
+                if (id == null) EffectResult(state, emptyList())
+                else EffectResult(
+                    updatePokemon(state, id) {
+                        it.copy(counterAttackerOnTurn = state.turn + 1, counterAttackerAmount = op.amount)
+                    },
+                    emptyList(),
+                )
+            }
+            is EffectOp.PreventAttackEffectsNextTurn -> {
+                val id = src.sourceId
+                if (id == null) EffectResult(state, emptyList())
+                else EffectResult(
+                    updatePokemon(state, id) { it.copy(preventEffectsOnTurn = state.turn + 1) },
+                    emptyList(),
+                )
+            }
+            is EffectOp.DefenderCannotAttackNextTurnIfEvolved -> {
+                val defender = targets(Target.OPP_ACTIVE, src, state, chosenIds).firstOrNull()
+                if (defender == null || defender.card.isBasic) EffectResult(state, emptyList())
+                else EffectResult(
+                    updatePokemon(state, defender.card.id) { it.copy(cannotAttackOnTurn = state.turn + 1) },
+                    emptyList(),
+                )
+            }
+            is EffectOp.MoveChosenDamageToOppActive -> {
+                // Mueve todos los contadores de daño del elegido (OWN_BENCH) al Activo rival.
+                val chosen = targets(Target.CHOSEN, src, state, chosenIds).firstOrNull()
+                val oppActive = state.sideState(src.actingSide.other()).active
+                if (chosen == null || oppActive == null || chosen.damage <= 0) EffectResult(state, emptyList())
+                else {
+                    val moved = chosen.damage
+                    var working = updatePokemon(state, chosen.card.id) { it.copy(damage = 0) }
+                    val res = damageTargets(
+                        targets(Target.OPP_ACTIVE, src, working, chosenIds), moved, src.actingSide, working,
+                    )
+                    EffectResult(res.state, res.events)
+                }
+            }
+            is EffectOp.DamageToLeaveHp -> {
+                // Pone contadores en el objetivo hasta dejarle [hp] PS (nunca cura).
+                val tgt = targets(op.target, src, state, chosenIds).firstOrNull()
+                val maxHp = (tgt?.card as? PokemonCard)?.hp
+                if (tgt == null || maxHp == null) EffectResult(state, emptyList())
+                else {
+                    val delta = (maxHp - op.hp - tgt.damage).coerceAtLeast(0)
+                    if (delta == 0) EffectResult(state, emptyList())
+                    else damageTargets(listOf(tgt), delta, src.actingSide, state)
+                }
+            }
+            is EffectOp.DiscardSelfEnergyForDamage -> {
+                // Descarta hasta [maxCount] Energías del atacante; [perCard] de daño crudo al Activo rival por cada una.
+                val id = src.sourceId
+                val self = state.sideState(src.actingSide).allInPlay.firstOrNull { it.card.id == id }
+                if (id == null || self == null || self.attachedEnergy.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    val discarded = self.attachedEnergy.take(op.maxCount)
+                    val cleared = updatePokemon(state, id) { it.copy(attachedEnergy = it.attachedEnergy.drop(discarded.size)) }
+                    val me = cleared.sideState(src.actingSide)
+                    var working = withPlayer(cleared, me.copy(discard = me.discard + discarded), src.actingSide)
+                    val events = mutableListOf<GameEvent>(GameEvent.CardsDiscarded(src.actingSide, discarded.size))
+                    val res = damageTargets(targets(Target.OPP_ACTIVE, src, working, chosenIds), discarded.size * op.perCard, src.actingSide, working)
+                    working = res.state; events += res.events
+                    EffectResult(working, events)
+                }
+            }
+            is EffectOp.AttachEnergyFromHand -> {
+                // Une [count] Energía Básica [tipo] de tu mano al Pokémon objetivo (determinista).
+                val ps = state.sideState(src.actingSide)
+                val targetMon = targets(op.target, src, state, chosenIds).firstOrNull()
+                val picked = ps.hand
+                    .filter { it is BasicEnergy && (op.energyType == null || it.type == op.energyType) }
+                    .take(op.count)
+                    .filterIsInstance<EnergyCard>()
+                if (targetMon == null || picked.isEmpty()) EffectResult(state, emptyList())
+                else {
+                    val working = updatePokemon(state, targetMon.card.id) {
+                        it.copy(attachedEnergy = it.attachedEnergy + picked)
+                    }
+                    val me = working.sideState(src.actingSide)
+                    val next = withPlayer(working, me.copy(hand = me.hand - picked.toSet()), src.actingSide)
+                    val events = picked.map { GameEvent.EnergyAttached(src.actingSide, it.id, targetMon.card.id) }
+                    EffectResult(next, events)
+                }
+            }
+            is EffectOp.BounceChosenToHandDiscardingAttached -> {
+                // Escenario del Profesor Turo: el Pokémon elegido (de los tuyos) vuelve a tu mano con su
+                // pila de evolución; las Energías/Herramientas unidas van al descarte.
+                val chosen = targets(Target.CHOSEN, src, state, chosenIds).firstOrNull()
+                val ps = state.sideState(src.actingSide)
+                if (chosen == null) EffectResult(state, emptyList())
+                else {
+                    val wasActive = ps.active?.card?.id == chosen.card.id
+                    val toHand: List<Card> = chosen.sourceCard?.let { listOf(it) } ?: (chosen.evolutionStack + chosen.card)
+                    val toDiscard: List<Card> = chosen.attachedEnergy + chosen.attachedTools
+                    var updated = ps.copy(
+                        hand = ps.hand + toHand,
+                        discard = ps.discard + toDiscard,
+                        active = if (wasActive) null else ps.active,
+                        bench = ps.bench.filterNot { it.card.id == chosen.card.id },
+                    )
+                    var next = withPlayer(state, updated, src.actingSide)
+                    if (wasActive && updated.bench.isNotEmpty()) {
+                        next = next.copy(pendingPromotion = next.pendingPromotion + src.actingSide)
+                    }
+                    EffectResult(next, if (toDiscard.isEmpty()) emptyList() else listOf(GameEvent.CardsDiscarded(src.actingSide, toDiscard.size)))
+                }
+            }
+            is EffectOp.ScoopSelfToHand -> {
+                // Devuelve a la mano el atacante con todas sus cartas; promoción pendiente si era Activo.
+                val id = src.sourceId
+                val ps = state.sideState(src.actingSide)
+                val self = ps.allInPlay.firstOrNull { it.card.id == id }
+                if (id == null || self == null) EffectResult(state, emptyList())
+                else {
+                    val wasActive = ps.active?.card?.id == id
+                    val toHand = self.cardsWhenLeavingPlay()
+                    var updated = ps.copy(
+                        hand = ps.hand + toHand,
+                        active = if (wasActive) null else ps.active,
+                        bench = ps.bench.filterNot { it.card.id == id },
+                    )
+                    var next = withPlayer(state, updated, src.actingSide)
+                    if (wasActive && updated.bench.isNotEmpty()) {
+                        next = next.copy(pendingPromotion = next.pendingPromotion + src.actingSide)
+                    }
+                    EffectResult(next, emptyList())
+                }
             }
             is EffectOp.SelfAttackBonusNextTurn -> {
                 // Marca al Pokémon origen: sus ataques harán [amount] más el próximo turno propio
@@ -1517,6 +1708,13 @@ class EffectInterpreter {
                 }
                 Counter.DAMAGE_COUNTERS -> refs.sumOf { it.damage / 10 }
                 Counter.HEADS -> 0  // requiere lanzamientos: lo cubrirá rules con Rng
+                Counter.OWN_HAND_SIZE -> state.sideState(src.actingSide).hand.size
+                Counter.OPP_HAND_SIZE -> state.sideState(src.actingSide.other()).hand.size
+                Counter.OPP_RETREAT_COST -> state.sideState(src.actingSide.other()).active?.card?.retreatCost?.size ?: 0
+                Counter.OPP_DISCARD_ENERGY ->
+                    state.sideState(src.actingSide.other()).discard.count { it.supertype == Supertype.ENERGY }
+                Counter.OWN_PRIZES_TAKEN ->
+                    (6 - state.sideState(src.actingSide).prizes.size).coerceAtLeast(0)
             }
             count * amount.mult
         }
@@ -1529,7 +1727,8 @@ class EffectInterpreter {
                 (filter.type == null || (c is PokemonCard && filter.type in c.types) || (c is BasicEnergy && c.type == filter.type)) &&
                 (filter.nameContains == null || c.name.es.contains(filter.nameContains!!, true) || c.name.en.contains(filter.nameContains!!, true)) &&
                 (filter.nameExcludes == null || !(c.name.es.contains(filter.nameExcludes!!, true) || c.name.en.contains(filter.nameExcludes!!, true))) &&
-                (filter.trainerKind == null || (c is TrainerCard && trainerCategoryOf(c.kind) == filter.trainerKind))
+                (filter.trainerKind == null || (c is TrainerCard && trainerCategoryOf(c.kind) == filter.trainerKind)) &&
+                (filter.subtype == null || (c is PokemonCard && filter.subtype in c.subtypes))
         }.map { it.id }
 
     private fun trainerCategoryOf(kind: TrainerKind): TrainerCategory = when (kind) {

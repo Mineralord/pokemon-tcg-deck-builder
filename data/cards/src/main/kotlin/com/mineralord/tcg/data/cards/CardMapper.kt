@@ -155,6 +155,7 @@ object CardMapper {
             retreatCost = dto.costoRetirada.map { energyType(it) },
             rulesText = dto.reglas.map { LocalizedText(it, it) },
             nationalDex = dto.numeroPokedex.firstOrNull(),
+            subtypes = dto.subtipos,
         )
     }
 

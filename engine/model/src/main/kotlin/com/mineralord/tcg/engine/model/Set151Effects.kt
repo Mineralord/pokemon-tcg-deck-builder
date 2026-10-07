@@ -94,8 +94,7 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     put(atkKey("sv3pt5-60", "Bubble"),
         Effect(ops = listOf(EffectOp.CoinFlipStatus(Target.OPP_ACTIVE, listOf(Status.PARALYZED)))))
 
-    put(atkKey("sv3pt5-62", "Bubble Beam"),
-        Effect(ops = listOf(EffectOp.CoinFlipStatus(Target.OPP_ACTIVE, listOf(Status.PARALYZED)))))
+    put(atkKey("sv3pt5-62", "Bubble Beam"), COIN_PARALYZE)
 
 
     // -- Daño extra por moneda: "Si sale cara, este ataque hace X puntos de daño más" --
@@ -140,14 +139,12 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
 
 
     // -- Retroceso (auto-daño) --
-    put(atkKey("sv3pt5-26", "Thunder"),
-        Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(50)))))
+    put(atkKey("sv3pt5-26", "Thunder"), recoil(50))
 
     put(atkKey("sv3pt5-81", "Big Explosion"),
         Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(60)))))
 
-    put(atkKey("sv3pt5-84", "Reckless Charge"),
-        Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(10)))))
+    put(atkKey("sv3pt5-84", "Reckless Charge"), recoil(10))
 
     put(atkKey("sv3pt5-143", "Thudding Press"),
         Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(30)))))
@@ -658,8 +655,7 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         Effect(ops = listOf(EffectOp.SearchDeck(CardFilter(nameContains = "Clefairy"), Zone.BENCH, 3))))
 
     // Ponyta — Coleccionar: roba 1 carta.
-    put(atkKey("sv3pt5-77", "Collect"),
-        Effect(ops = listOf(EffectOp.DrawCards(1))))
+    put(atkKey("sv3pt5-77", "Collect"), draw(1))
 
     // -- Daño por N monedas fijas (base "X×" = Variable, todo el daño lo pone la op) --
     // Jigglypuff — Pisotonazo: 2 monedas, 20 por cara.
@@ -667,8 +663,7 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         Effect(ops = listOf(EffectOp.CoinFlipDamage(2, 20))))
 
     // Goldeen — Triple Impacto: 3 monedas, 10 por cara.
-    put(atkKey("sv3pt5-118", "Triple Strike"),
-        Effect(ops = listOf(EffectOp.CoinFlipDamage(3, 10))))
+    put(atkKey("sv3pt5-118", "Triple Strike"), TRIPLE_COIN_10)
 
     // Cubone — Doble Redoble: 2 monedas, 10 por cara.
     put(atkKey("sv3pt5-104", "Hit Twice"),
@@ -802,7 +797,7 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
     // Butterfree — Remolino (Whirlwind): 60; mueve el Activo rival a su Banca (el rival elige el nuevo).
     put(atkKey("sv3pt5-12", "Whirlwind"), Effect(ops = listOf(EffectOp.GustDefenderChooseNewActive)))
     // Rhyhorn — Oprimir (Push Down): 20; mueve el Activo rival a su Banca (el rival elige el nuevo).
-    put(atkKey("sv3pt5-111", "Push Down"), Effect(ops = listOf(EffectOp.GustDefenderChooseNewActive)))
+    put(atkKey("sv3pt5-111", "Push Down"), GUST_DEFENDER)
 
     // ------------------- SET 151 (sv3pt5) — Fase 23: recargo de Coste de Retirada / de ataque al Defensor -------------------
 
@@ -1186,8 +1181,7 @@ internal fun MutableMap<EffectId, Effect>.registerSet151() {
         Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.CONFUSED, Status.POISONED)))))
 
     // Marowak — Poder Ilimitado (120): durante tu próximo turno, este Pokémon no puede atacar.
-    put(atkKey("sv3pt5-105", "Boundless Power"),
-        Effect(ops = listOf(EffectOp.NoAttackNextTurn)))
+    put(atkKey("sv3pt5-105", "Boundless Power"), NO_ATTACK_NEXT_TURN)
 
     // Dragonair — Cuchillada Acuática (90, y arte alt 181): este Pokémon no puede atacar el próximo turno.
     put(atkKey("sv3pt5-148", "Aqua Slash"),

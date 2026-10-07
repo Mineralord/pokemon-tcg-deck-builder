@@ -46,3 +46,40 @@ internal val switch = Effect(
         EffectOp.SwapActiveWithChosen,
     ),
 )
+
+/*
+ * ===================== CATÁLOGO DE COMPORTAMIENTOS DE ATAQUE COMPARTIDOS =====================
+ *
+ * POLÍTICA (aplica a TODOS los sets, presentes y futuros): un [Effect] codifica SOLO el
+ * COMPORTAMIENTO de un ataque (sus `ops`, riders y daño condicional), NUNCA su coste de Energía
+ * ni su daño base (esos viven en los datos de la carta: `Attack.cost` / `Attack.baseDamage`).
+ *
+ * Por tanto, dos impresiones del MISMO ataque (mismo nombre y mismo rider) en sets distintos
+ * comparten EXACTAMENTE el mismo [Effect] aunque difieran en coste o daño. Antes de autorar un
+ * ataque en un archivo de set, busca aquí: si su comportamiento ya existe, REUTILIZA el `val`
+ * (o el helper) en vez de reconstruir el [Effect]. Así no hay código duplicado entre sets.
+ *
+ * Los helpers [recoil]/[draw]/… centralizan families paramétricas (mismo rider, distinto número).
+ */
+
+/** "Lanza 1 moneda. Si cara, el Activo rival queda Paralizado." (Bubble Beam, Body Slam, Volt Wave…). */
+internal val COIN_PARALYZE = Effect(ops = listOf(EffectOp.CoinFlipStatus(Target.OPP_ACTIVE, listOf(Status.PARALYZED))))
+
+/** "Lanza 3 monedas. Este ataque hace 10 por cada cara." (Triple Strike, Triple Spin, Fury Headbutt…). */
+internal val TRIPLE_COIN_10 = Effect(ops = listOf(EffectOp.CoinFlipDamage(3, 10)))
+
+/** "Mueve el Activo rival a la Banca (el rival elige el nuevo Activo)." (Push Down, Oprimir…). */
+internal val GUST_DEFENDER = Effect(ops = listOf(EffectOp.GustDefenderChooseNewActive))
+
+/** "Durante tu próximo turno, este Pokémon no puede atacar." (Boundless Power, Laser Blade…). */
+internal val NO_ATTACK_NEXT_TURN = Effect(ops = listOf(EffectOp.NoAttackNextTurn))
+
+/** Daño de RETROCESO fijo al propio atacante (Thunder=50, Reckless Charge=10/20, Heat Tackle=30…). */
+internal fun recoil(amount: Int) = Effect(ops = listOf(EffectOp.Recoil(Amount.Fixed(amount))))
+
+/** "Roba [n] cartas." (Collect, Punch and Draw, Nom-Nom-Nom Incisors…). */
+internal fun draw(n: Int) = Effect(ops = listOf(EffectOp.DrawCards(n)))
+
+/** "El Activo rival queda afectado por [status]" sin moneda (Searing Flame=Quemado, etc.). */
+internal fun statusOppActive(vararg status: Status) =
+    Effect(ops = listOf(EffectOp.ApplyStatus(Target.OPP_ACTIVE, status.toList())))

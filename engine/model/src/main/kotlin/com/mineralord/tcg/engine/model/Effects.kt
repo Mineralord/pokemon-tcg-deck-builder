@@ -19,7 +19,19 @@ enum class Target {
 }
 
 /** Contadores escalables para daño/curación "por cada …". */
-enum class Counter { BENCH_COUNT, ENERGY_ATTACHED, DAMAGE_COUNTERS, HEADS }
+enum class Counter {
+    BENCH_COUNT, ENERGY_ATTACHED, DAMAGE_COUNTERS, HEADS,
+    /** Nº de cartas en TU mano (Hand Fling sv4-146: 20× por carta en tu mano). */
+    OWN_HAND_SIZE,
+    /** Nº de cartas en la mano del RIVAL (Powerful Cross sv4-49: 20× por carta en la mano rival). */
+    OPP_HAND_SIZE,
+    /** Coste de Retirada impreso del Activo rival, en {C} (Gravitational Tackle sv4-99: 20× por {C}). */
+    OPP_RETREAT_COST,
+    /** Nº de cartas de Energía en el descarte del RIVAL (Satellite Beam sv4-12: 30× por Energía). */
+    OPP_DISCARD_ENERGY,
+    /** Nº de cartas de Premio que TÚ has tomado ya (Peerless Edge sv4-135: 70× por Premio tomado). */
+    OWN_PRIZES_TAKEN,
+}
 
 /** Cantidad fija o derivada de un conteo del estado de juego. */
 sealed interface Amount {
@@ -53,6 +65,11 @@ data class CardFilter(
      * 1 Partidario; Magneton — Imán de Chatarra recupera Objetos). Implica Entrenador.
      */
     val trainerKind: TrainerCategory? = null,
+    /**
+     * Si no es null, solo casa Pokémon con este subtipo ("Pasado"/"Futuro" de los Paradoja) —
+     * Radar Tecno busca Pokémon Futuro, Vitalidad del Profesor Sada engancha a Pokémon Pasado.
+     */
+    val subtype: String? = null,
 )
 
 /** Categoría de Entrenador para filtrar (Partidario/Objeto/Estadio/Herramienta). */
@@ -93,6 +110,19 @@ data class PassiveModifier(
      * "si este Pokémon tiene alguna Energía Especial unida, obtiene 100 PS más").
      */
     val requiresSpecialEnergy: Boolean = false,
+    /**
+     * Si no es null, el pasivo (de una Herramienta) solo aplica cuando el Pokémon PORTADOR tiene
+     * este subtipo (Cápsula de Energía Propulsora del Futuro → "Futuro"; del Pasado → "Pasado").
+     */
+    val requiresHolderSubtype: String? = null,
+    /**
+     * Si es true, el pasivo solo aplica cuando a su dueño le quedan MÁS cartas de Premio que al
+     * rival (Chaleco Desafiante / Defiance Vest: −40 de daño si vas por detrás en Premios). */
+    val requiresMorePrizesRemaining: Boolean = false,
+    /**
+     * Si es true, el pasivo solo aplica cuando el Pokémon portador NO tiene caja de regla
+     * (Capa Lujosa / Luxurious Cape: +100 PS si no es ex/V/etc.). */
+    val requiresNoRuleBox: Boolean = false,
     /**
      * Solo para [ModKind.BLOCK_ABILITY]: alcance del bloqueo de Habilidades.
      * - [blockBothSides] true (por defecto): afecta a los Pokémon de AMBOS lados en juego
@@ -353,7 +383,7 @@ sealed interface EffectOp {
      * a este Pokémon (después de aplicar Debilidad y Resistencia)" (Geodude — Endurecimiento 30,
      * Shellder — Presión Caparazón 30, Cloyster — Carga Protectora 80). Fija
      * [PokemonInPlay.damageReductionOnTurn] = turno actual + 1 y [damageReductionAmount] = [amount]. */
-    data class ReduceDamageNextTurn(val amount: Int) : EffectOp
+    data class ReduceDamageNextTurn(val amount: Int, val onlyFromEvolution: Boolean = false) : EffectOp
 
     /**
      * "Durante tu PRÓXIMO turno, los ataques de este Pokémon hacen [amount] puntos de daño
@@ -417,8 +447,9 @@ sealed interface EffectOp {
      * Emite [GameEvent.CardsDiscarded] con el lado afectado. */
     data class DiscardTopDeck(val count: Int, val own: Boolean) : EffectOp
 
-    /** El rival descarta [count] cartas de su mano (al azar, desde el frente). */
-    data class OpponentDiscardsHand(val count: Int) : EffectOp
+    /** El rival descarta [count] cartas de su mano (al azar, desde el frente). Si [coinFlip] es true,
+     *  solo ocurre si sale cara (Sneaky Snacking sv4-48). */
+    data class OpponentDiscardsHand(val count: Int, val coinFlip: Boolean = false) : EffectOp
 
     /**
      * Marca a [target] para evitar TODO el daño de ataques durante el próximo turno
@@ -549,6 +580,78 @@ sealed interface EffectOp {
      * el Activo vacío → promoción pendiente). Si no hay Pokémon elegido (Banca rival vacía → la
      * [ChooseTarget] se saltó), el ataque NO hace nada (tampoco baraja al atacante). */
     data object ByeByeFlightBounce : EffectOp
+
+    /**
+     * Descarta TODAS las Herramientas Pokémon unidas a [target] (a la pila de su dueño) — Crushing
+     * Short sv4-66: "antes de hacer daño, descarta todas las Herramientas del Activo rival". No-op
+     * si no hay Herramientas. */
+    data class DiscardTargetTools(val target: Target) : EffectOp
+
+    /**
+     * Devuelve [count] Energía(s) unida(s) a ESTE Pokémon (el atacante) a la mano de su dueño
+     * (Rolling Fireball sv4-24: "pon una Energía unida a este Pokémon en tu mano"). Toma las
+     * primeras disponibles. No-op si no hay Energía unida. */
+    data class BounceSelfEnergyToHand(val count: Int) : EffectOp
+
+    /**
+     * Involuciona (un paso) TODOS los Pokémon de Evolución del RIVAL: la carta de fase más alta de
+     * cada uno vuelve a la mano del rival (Devolution sv4-177). Reutiliza la mecánica de
+     * [DeEvolveDefender] aplicada a cada Pokémon rival evolucionado. */
+    data object DeEvolveAllOpponent : EffectOp
+
+    /**
+     * Programa que, durante el próximo turno del rival, si ESTE Pokémon (el atacante) resulta dañado
+     * por un ataque, se pongan [amount] puntos de daño en el Atacante (Scorching Heater sv4-19).
+     * Fija [PokemonInPlay.counterAttackerOnTurn] = turno + 1. */
+    data class ScheduleCountersOnAttackerNextTurn(val amount: Int) : EffectOp
+
+    /**
+     * Marca a ESTE Pokémon (el atacante) para EVITAR todos los EFECTOS (no el daño) de los ataques
+     * rivales durante el próximo turno del rival (Light Pulse sv4-140). Fija
+     * [PokemonInPlay.preventEffectsOnTurn] = turno + 1. */
+    data object PreventAttackEffectsNextTurn : EffectOp
+
+    /**
+     * Si el Activo rival es un Pokémon de EVOLUCIÓN, no puede atacar durante su próximo turno
+     * (Refrigerated Stream sv4-56). Si es Básico, no hace nada. */
+    data object DefenderCannotAttackNextTurnIfEvolved : EffectOp
+
+    /**
+     * Mueve TODOS los contadores de daño del Pokémon elegido por una [ChooseTarget] previa (sobre
+     * [Target.OWN_BENCH]) al Activo rival (Dishonest Swap sv4-115). El Pokémon elegido queda a 0 de
+     * daño y el Activo rival recibe ese daño (crudo). No-op si no hay elegido o no tenía daño. */
+    data object MoveChosenDamageToOppActive : EffectOp
+
+    /**
+     * Pone contadores de daño en el objetivo (elegido por una [ChooseTarget] previa) hasta dejarlo
+     * con [hp] PS restantes (Icicle Sole sv4-46: "hasta que le queden 30 PS"). Nunca cura: si ya
+     * tiene [hp] PS o menos, no hace nada. Daño crudo. */
+    data class DamageToLeaveHp(val target: Target, val hp: Int) : EffectOp
+
+    /**
+     * Descarta hasta [maxCount] Energías del Pokémon atacante (SELF) y hace [perCard] de daño crudo
+     * al Activo rival por cada Energía descartada así (Magma Purge sv4-93: hasta 4, 60 c/u). */
+    data class DiscardSelfEnergyForDamage(val maxCount: Int, val perCard: Int) : EffectOp
+
+    /**
+     * Devuelve a tu mano el Pokémon atacante (SELF) con todas sus cartas (pila de evolución, Energías
+     * y Herramientas) — Shadowy Wind sv4-156: "puedes poner este Pokémon y todas sus cartas unidas en
+     * tu mano". Si era el Activo y queda Banca, marca la promoción pendiente. */
+    data object ScoopSelfToHand : EffectOp
+
+    /**
+     * Une [count] Energía(s) Básica(s) de tipo [energyType] (null = cualquiera) de TU MANO al Pokémon
+     * [target] (Clinging Spore sv4-15, Swelling Power sv4-93). Determinista: toma las primeras de la
+     * mano que casen (cualquier copia básica equivale). Para "1 de tus Pokémon" se precede de una
+     * [ChooseTarget] y se usa [Target.CHOSEN]. No-op si no hay Energía válida en la mano. */
+    data class AttachEnergyFromHand(val energyType: EnergyType?, val target: Target, val count: Int = 1) : EffectOp
+
+    /**
+     * Devuelve a tu mano el Pokémon propio elegido por una [ChooseTarget] previa (sobre
+     * [Target.OWN_ALL]), DESCARTANDO todas las cartas unidas (Energías/Herramientas) — Escenario del
+     * Profesor Turo sv4-171. La carta (y su pila de evolución) va a la mano; lo unido, al descarte.
+     * Si era el Activo y queda Banca, marca la promoción pendiente. No-op si no hay elegido. */
+    data object BounceChosenToHandDiscardingAttached : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */
@@ -588,6 +691,20 @@ sealed interface DamageCondition {
     /** Suma solo si el Pokémon ATACANTE está afectado por alguna Condición Especial
      * (Brechas Paradójicas — Unhinged Scissors: "si este Pokémon está afectado por una Condición Especial"). */
     data object IfSelfAffectedBySpecialCondition : DamageCondition
+    /** Suma solo si tu baraja tiene [n] cartas o menos (Crunch-Time Rush sv4-138: +150 si ≤3). */
+    data class IfDeckCountAtMost(val n: Int) : DamageCondition
+    /** Suma solo si en TU descarte hay una carta cuyo nombre (ES o EN) contiene [name]
+     * (Glittering Eyes sv4-81: +70 si "Tulip" está en tu descarte). */
+    data class IfCardInOwnDiscardNamed(val name: String) : DamageCondition
+    /** Suma solo si alguno de TUS Pokémon fue Noqueado durante el último turno del rival
+     * (Megafire of Envy sv4-29, Vengeful Shock sv4-68: +90). */
+    data object IfOwnKoLastOppTurn : DamageCondition
+    /** Suma solo si el Pokémon ATACANTE tiene una Herramienta Pokémon unida
+     * (Enhanced Blade sv4-113: +60 si tiene Herramienta). */
+    data object IfSelfHasTool : DamageCondition
+    /** Suma solo si hay un Estadio en juego (Calamity Storm sv4-124: +120 si descartas un Estadio;
+     * el ataque descarta además el Estadio mediante [EffectOp.DiscardStadium]). */
+    data object IfStadiumInPlay : DamageCondition
 }
 
 /**
@@ -627,6 +744,11 @@ data class Effect(
      * Noqueado durante el último turno del rival (Melo). El motor lo comprueba
      * contra [GameState.koedLastOppTurn] en `playTrainer`/`legalIntents`. */
     val requiresOwnKoLastTurn: Boolean = false,
+    /**
+     * Si es true, la carta solo puede jugarse cuando te quedan MÁS cartas de Premio que a tu
+     * rival (Counter Catcher sv4-160, Defiance Vest, Mochila Contadora…). Lo comprueban
+     * [GameEngine.playTrainer] y [GameEngine.legalIntents]. */
+    val requiresMorePrizesRemaining: Boolean = false,
     /**
      * Si es true, el daño de este ataque NO se ve afectado por la Debilidad del
      * Pokémon Defensor (Staryu — Meteoros sv3pt5-120). */
@@ -775,6 +897,31 @@ data class Effect(
      * (turno 1 = 1.er jugador, turno 2 = 2.º jugador). Lo comprueban [GameEngine.useAbility] y
      * [GameEngine.legalIntents]. */
     val firstTurnOnly: Boolean = false,
+    /**
+     * "Si este Pokémon tiene [noDamageIfSelfCountersAtLeast] contadores de daño o más, este ataque
+     * no hace nada" (Arrogant Impact sv4-109: ≥4 contadores). 0 = no aplica. Lo comprueba
+     * [GameEngine.attack] (anula daño Y efecto, como [noEffectUnlessSelfConfused]). */
+    val noDamageIfSelfCountersAtLeast: Int = 0,
+    /**
+     * Si es true, tras usarse este ataque, su PROPIO nombre queda bloqueado para el próximo turno
+     * del atacante (Heat Ray, Bandit's Fist, Slashing Strike: "durante tu próximo turno, este
+     * Pokémon no puede usar \<este ataque\>"). Fija [PokemonInPlay.lockedAttackName]/`lockedAttackOnTurn`. */
+    val locksSelfAttackNextTurn: Boolean = false,
+    /**
+     * Si no es null, tras usarse este ataque, el ataque llamado [buffsAttackNamed] de este Pokémon
+     * hará [buffsAttackAmount] puntos más durante su próximo turno (Spinning Needles buffa su propio
+     * ataque; Swords Dance buffa "Slicing Blade"). Fija [PokemonInPlay.buffedAttackName]/`…OnTurn`/`…Amount`. */
+    val buffsAttackNamed: String? = null,
+    val buffsAttackAmount: Int = 0,
+    /**
+     * Si es true, tras infligir daño, este Pokémon se cura una cantidad igual al daño que
+     * acaba de hacer al Activo rival (Leech Life sv4-111). Lo aplica [GameEngine.attack]. */
+    val healSelfEqualToDamageDealt: Boolean = false,
+    /**
+     * "Si este Pokémon NO evolucionó durante este turno, este ataque no hace nada" (Sudden Shout
+     * sv4-150: solo si evolucionó de Loudred este turno). Se detecta con `attacker.turnsInPlay != 0`.
+     * Si es true y el atacante lleva ≥1 turno en juego, [GameEngine.attack] anula daño y efecto. */
+    val onlyIfEvolvedThisTurn: Boolean = false,
 )
 
 /**

@@ -68,8 +68,8 @@ fun PokemonDetailSheet(pip: PokemonInPlay, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .background(Color(0xFFF4F1EA))
+            // Transparente: el recuadro contenedor (gris azulado del design system) aporta el fondo,
+            // así las estadísticas y los ataques comparten un ÚNICO recuadro.
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

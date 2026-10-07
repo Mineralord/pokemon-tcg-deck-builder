@@ -117,6 +117,26 @@ class TrainerAbilityTest {
     }
 
     @Test
+    fun `Tanque del Futuro da +20 de dano solo a un Pokemon Futuro`() {
+        val booster = trainer("sv4-164", TrainerKind.Tool())
+        fun hitter(id: String, subtypes: List<String>) = PokemonCard(
+            id = CardId(id), name = LocalizedText(id, id), set = set(),
+            rarity = Rarity.COMMON, regulationMark = "H", artwork = art(),
+            stage = Stage.Basic, mechanic = PokemonMechanic.Normal, hp = 120,
+            types = listOf(EnergyType.PSYCHIC), evolvesFrom = null, abilities = emptyList(),
+            attacks = listOf(Attack(LocalizedText("Golpe", "Hit"), emptyList(), 0, DamageModel.Fixed(20), null)),
+            weaknesses = emptyList(), resistances = emptyList(), retreatCost = emptyList(),
+            rulesText = emptyList(), subtypes = subtypes,
+        )
+        // Pokémon Futuro con la Cápsula: 20 base + 20 de la Herramienta = 40.
+        val future = baseState(active = PokemonInPlay(hitter("fut", listOf("Futuro")), attachedTools = listOf(booster)))
+        assertEquals(40, engine.apply(future, GameIntent.Attack("Golpe")).state.opponent.active?.damage)
+        // Pokémon normal con la misma Cápsula: la condición no se cumple → solo 20.
+        val normal = baseState(active = PokemonInPlay(hitter("nor", emptyList()), attachedTools = listOf(booster)))
+        assertEquals(20, engine.apply(normal, GameIntent.Attack("Golpe")).state.opponent.active?.damage)
+    }
+
+    @Test
     fun `Super Ball deja una busqueda y ResolveDecision la completa`() {
         val superBall = trainer("sv2-183", TrainerKind.Item())     // SearchDeck(POKEMON -> HAND, 1)
         val deckPoke = mon("deckMon")

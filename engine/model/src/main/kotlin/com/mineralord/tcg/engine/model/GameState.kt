@@ -75,6 +75,24 @@ data class PokemonInPlay(
     val damageReductionOnTurn: Int? = null,
     val damageReductionAmount: Int = 0,
     /**
+     * Si es true, la reducción de daño de [damageReductionOnTurn]/[damageReductionAmount] solo
+     * aplica a ataques de Pokémon de EVOLUCIÓN (Crag Bash sv4-7: "100 menos de ataques de Pokémon
+     * de Evolución"). Lo comprueba [GameEngine.attack] mirando si el atacante es Básico. */
+    val damageReductionOnlyFromEvolution: Boolean = false,
+    /**
+     * Si no es null, número de turno durante el cual, si este Pokémon resulta dañado por un ataque
+     * (incluso si queda Fuera de Combate), se ponen [counterAttackerAmount] puntos de daño en el
+     * ATACANTE (Scorching Heater sv4-19: 6 contadores = 60). Se fija a [GameState.turn] + 1; lo
+     * dispara [GameEngine] en applyDefenderRetaliation. Auto-expira. */
+    val counterAttackerOnTurn: Int? = null,
+    val counterAttackerAmount: Int = 0,
+    /**
+     * Si no es null, número de turno durante el cual se EVITAN todos los EFECTOS (no el daño) de
+     * los ataques rivales infligidos a este Pokémon (Light Pulse sv4-140: "evita todos los efectos
+     * de los ataques… El daño no es un efecto"). Se fija a [GameState.turn] + 1; lo comprueba
+     * [GameEngine.attack] descartando los ops dirigidos al defensor. Auto-expira. */
+    val preventEffectsOnTurn: Int? = null,
+    /**
      * Si no es null, número de turno durante el cual los ataques de ESTE Pokémon hacen
      * [attackBonusAmount] puntos MÁS de daño al Activo rival (Golem ex — Giro Dinámico,
      * Hitmonchan — Puño Exaltado: "durante tu próximo turno, los ataques de este Pokémon
@@ -84,6 +102,22 @@ data class PokemonInPlay(
      */
     val attackBonusOnTurn: Int? = null,
     val attackBonusAmount: Int = 0,
+    /**
+     * Si no es null, nombre del ataque de ESTE Pokémon que NO puede usarse durante el turno
+     * [lockedAttackOnTurn] (Heat Ray, Bandit's Fist, Slashing Strike: "durante tu próximo turno,
+     * este Pokémon no puede usar \<ataque\>"). A diferencia de [cannotAttackOnTurn], bloquea SOLO
+     * ese ataque. Se fija a [GameState.turn] + 2 (tu próximo turno); lo comprueba [GameEngine.attack]
+     * y [GameEngine.legalIntents]. Auto-expira. */
+    val lockedAttackName: String? = null,
+    val lockedAttackOnTurn: Int? = null,
+    /**
+     * Si no es null, nombre del ataque que, durante el turno [buffedAttackOnTurn], hace
+     * [buffedAttackAmount] puntos MÁS (antes de Debilidad/Resistencia) — Spinning Needles
+     * (buffa su propio ataque), Swords Dance (buffa "Slicing Blade"). Se fija a [GameState.turn] + 2
+     * (tu próximo turno); lo suma [GameEngine.attack] cuando el ataque usado coincide. Auto-expira. */
+    val buffedAttackName: String? = null,
+    val buffedAttackOnTurn: Int? = null,
+    val buffedAttackAmount: Int = 0,
     /**
      * Si no es null, número de turno durante el cual el Coste de Retirada de este Pokémon
      * es [retreatCostBumpAmount] MÁS (Grimer — Presión Pegajosa, Muk — Prisión Viscosa:

@@ -55,6 +55,9 @@ class SetParadoxEffectsTest {
     private fun attack(name: String, effect: EffectId) =
         Attack(LocalizedText(name, name), emptyList(), 0, DamageModel.Variable, effect)
 
+    private fun attackFixed(name: String, dmg: Int, effect: EffectId) =
+        Attack(LocalizedText(name, name), emptyList(), 0, DamageModel.Fixed(dmg), effect)
+
     private fun duel(mine: PokemonInPlay, foe: PokemonInPlay): GameState {
         val player = PlayerState(
             side = Side.PLAYER, active = mine,
@@ -172,6 +175,75 @@ class SetParadoxEffectsTest {
         val foe = PokemonInPlay(mon("foe", 200, EnergyType.PSYCHIC, a))
         val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Boundless Power"))
         assertEquals(true, r.state.player.active?.cannotAttackOnTurn != null)
+    }
+
+    @Test
+    fun `Energized Attack hace 40 por cada Energia unida (2 = 80)`() {
+        val a = attack("Energized Attack", EffectsDb.atkKey("sv4-144", "Energized Attack"))
+        val e2 = listOf(energy("x1", EnergyType.LIGHTNING), energy("x2", EnergyType.LIGHTNING))
+        val attacker = PokemonInPlay(mon("tool", 120, EnergyType.LIGHTNING, a), attachedEnergy = e2)
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.WATER, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Energized Attack"))
+        assertEquals(80, r.state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Earthen Spike impide atacar al propio Pokemon el proximo turno`() {
+        val a = attack("Earthen Spike", EffectsDb.atkKey("sv4-108", "Earthen Spike"))
+        val attacker = PokemonInPlay(mon("great", 180, EnergyType.FIGHTING, a))
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.LIGHTNING, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Earthen Spike"))
+        assertEquals(true, r.state.player.active?.cannotAttackOnTurn != null)
+    }
+
+    @Test
+    fun `Frenzied Gouging noquea al Activo rival y se hace 200 de retroceso`() {
+        val a = attack("Frenzied Gouging", EffectsDb.atkKey("sv4-124", "Frenzied Gouging"))
+        val attacker = PokemonInPlay(mon("roar", 220, EnergyType.DRAGON, a))
+        val foe = PokemonInPlay(mon("foe", 70, EnergyType.PSYCHIC, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Frenzied Gouging"))
+        assertEquals(200, r.state.player.active?.damage)
+    }
+
+    @Test
+    fun `Arrogant Impact no hace nada si el atacante tiene 4+ contadores de dano`() {
+        val a = attack("Arrogant Impact", EffectsDb.atkKey("sv4-109", "Arrogant Impact"))
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.LIGHTNING, a))
+        val sano = PokemonInPlay(mon("s1", 220, EnergyType.FIGHTING, a), damage = 30)      // 3 contadores
+        val herido = PokemonInPlay(mon("s2", 220, EnergyType.FIGHTING, a), damage = 40)    // 4 contadores
+        // Con 3 contadores: hace su daño fijo (220). Con 4+: no hace nada (0).
+        assertEquals(0, GameEngine(SeededRng(1)).apply(duel(herido, foe), GameIntent.Attack("Arrogant Impact")).state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Vengeful Shock hace 30 y deja Paralizado al Activo rival (sin KO previo)`() {
+        val a = attack("Vengeful Shock", EffectsDb.atkKey("sv4-68", "Vengeful Shock"))
+        val attacker = PokemonInPlay(mon("volt", 120, EnergyType.LIGHTNING, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.PSYCHIC, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Vengeful Shock"))
+        assertEquals(30, r.state.opponent.active?.damage)
+        assertEquals(true, r.state.opponent.active?.statuses?.contains(com.mineralord.tcg.engine.model.Status.PARALYZED))
+    }
+
+    @Test
+    fun `Magma Purge descarta Energia propia y hace 60 por cada una (2 = 120)`() {
+        val a = attack("Magma Purge", EffectsDb.atkKey("sv4-93", "Magma Purge"))
+        val e2 = listOf(energy("f1", EnergyType.FIRE), energy("f2", EnergyType.FIRE))
+        val attacker = PokemonInPlay(mon("purge", 150, EnergyType.FIRE, a), attachedEnergy = e2)
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.GRASS, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Magma Purge"))
+        assertEquals(120, r.state.opponent.active?.damage)
+        assertEquals(0, r.state.player.active?.attachedEnergy?.size)   // descartó las 2
+    }
+
+    @Test
+    fun `Leech Life cura al atacante lo mismo que el dano infligido`() {
+        val a = attackFixed("Leech Life", 30, EffectsDb.atkKey("sv4-111", "Leech Life"))
+        val attacker = PokemonInPlay(mon("leech", 90, EnergyType.GRASS, a), damage = 50)
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a))
+        val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Leech Life"))
+        assertEquals(30, r.state.opponent.active?.damage)   // daño infligido
+        assertEquals(20, r.state.player.active?.damage)     // 50 - 30 curados
     }
 
     @Test

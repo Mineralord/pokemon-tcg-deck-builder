@@ -156,10 +156,16 @@ data class PokemonCard(
     val ancientTrait: AncientTrait? = null,
     /** Nº de Pokédex NACIONAL de la especie (para el grito oficial). null = no aplica. */
     val nationalDex: Int? = null,
+    /** Subtipos de la carta (p. ej. "Pasado"/"Futuro" de los Pokémon Paradoja). Vacío = ninguno. */
+    val subtypes: List<String> = emptyList(),
 ) : Card {
     override val supertype get() = Supertype.POKEMON
     val isBasic: Boolean get() = stage is Stage.Basic
     val prizeValue: Int get() = mechanic.prizesWhenKO
+    /** Pokémon Paradoja del PASADO (Ancient) — marcado por subtipo en los datos. */
+    val isPast: Boolean get() = "Pasado" in subtypes
+    /** Pokémon Paradoja del FUTURO (Future) — marcado por subtipo en los datos. */
+    val isFuture: Boolean get() = "Futuro" in subtypes
 
     /**
      * Habilidades EFECTIVAS teniendo en cuenta un posible bloqueo de Habilidades en

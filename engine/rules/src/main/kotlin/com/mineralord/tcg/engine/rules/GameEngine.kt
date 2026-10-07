@@ -380,6 +380,11 @@ class GameEngine(
         if (attacker.cannotAttackOnTurn == state.turn) {
             return EngineResult.reject(state, "${attacker.card.name.es} no puede atacar este turno")
         }
+        // Restricción "no puede usar ESTE ataque este turno" (Heat Ray, Bandit's Fist, Slashing Strike).
+        if (attacker.lockedAttackOnTurn == state.turn &&
+            (attacker.lockedAttackName == atk.name.es || attacker.lockedAttackName == atk.name.en)) {
+            return EngineResult.reject(state, "${attacker.card.name.es} no puede usar ${atk.name.es} este turno")
+        }
         if (overrideAttack == null &&
             !canPayAttack(atk, attacker, state, state.activeSide)) {
             return EngineResult.reject(state, "Energía insuficiente para ${atk.name.es}")
@@ -457,6 +462,15 @@ class GameEngine(
                         hasEnergyOfType(attacker, cond.type)
                     com.mineralord.tcg.engine.model.DamageCondition.IfSelfAffectedBySpecialCondition ->
                         attacker.statuses.isNotEmpty()
+                    is com.mineralord.tcg.engine.model.DamageCondition.IfDeckCountAtMost -> me.deck.size <= cond.n
+                    is com.mineralord.tcg.engine.model.DamageCondition.IfCardInOwnDiscardNamed ->
+                        me.discard.any { it.name.es.contains(cond.name, true) || it.name.en.contains(cond.name, true) }
+                    com.mineralord.tcg.engine.model.DamageCondition.IfOwnKoLastOppTurn ->
+                        state.activeSide in state.koedLastOppTurn
+                    com.mineralord.tcg.engine.model.DamageCondition.IfSelfHasTool ->
+                        attacker.attachedTools.isNotEmpty()
+                    com.mineralord.tcg.engine.model.DamageCondition.IfStadiumInPlay ->
+                        state.stadium != null
                 }
             }.sumOf { it.amount + it.perDefenderCounter * (defender.damage / 10) }
         } else {
@@ -477,11 +491,19 @@ class GameEngine(
         val attackFizzles =
             (atkEffect?.noEffectUnlessSelfConfused == true && Status.CONFUSED !in attacker.statuses) ||
             (atkEffect?.noEffectIfEvolvedThisTurn == true && attacker.turnsInPlay == 0) ||
+            (atkEffect?.onlyIfEvolvedThisTurn == true && attacker.turnsInPlay != 0) ||
+            ((atkEffect?.noDamageIfSelfCountersAtLeast ?: 0) > 0 &&
+                attacker.damage / 10 >= atkEffect!!.noDamageIfSelfCountersAtLeast) ||
             (atkEffect?.coinFlipOrNothing == true && !coinGateHeads)
         val dmgBase = if (attackFizzles) 0 else base
         // Bonus "próximo turno este Pokémon +X" (Golem ex Giro Dinámico, Hitmonchan Puño
         // Exaltado): se suma al daño base ANTES de Debilidad/Resistencia. Solo si hay daño.
         val selfBonus = if (dmgBase > 0 && attacker.attackBonusOnTurn == state.turn) attacker.attackBonusAmount else 0
+        // Bonus "próximo turno el ataque X de este Pokémon hace +N" (Spinning Needles buffa su propio
+        // ataque; Swords Dance buffa "Slicing Blade"). Se suma ANTES de Debilidad/Resistencia.
+        val namedAttackBonus = if (dmgBase > 0 && attacker.buffedAttackOnTurn == state.turn &&
+            (attacker.buffedAttackName == atk.name.es || attacker.buffedAttackName == atk.name.en)
+        ) attacker.buffedAttackAmount else 0
         // Buff de aliado en Banca (Cubone — Ovación Ósea: tus Marowak +30 mientras Cubone
         // esté en tu Banca). Se suma ANTES de Debilidad/Resistencia. Respeta el bloqueo.
         val allyBoost = if (dmgBase > 0) me.bench.sumOf { ally ->
@@ -489,6 +511,10 @@ class GameEngine(
                 .filter { it.boostAlliedAttackerNamed != null && nameMatches(attacker, it.boostAlliedAttackerNamed!!) }
                 .sumOf { it.boostAlliedAttackerAmount }
         } else 0
+        // Daño extra de una Herramienta del atacante (Cápsula de Energía Propulsora del Futuro:
+        // los ataques del Pokémon Futuro hacen +20, antes de Debilidad/Resistencia).
+        val toolBonus = if (dmgBase > 0) activeToolMods(state, state.activeSide, attacker)
+            .filter { it.mod == ModKind.EXTRA_DAMAGE }.sumOf { it.amount } else 0
         // "El daño no se ve afectado por Debilidad/Resistencia" (Staryu, Golem ex).
         val ignoresDefEffects = atkEffect?.ignoresDefenderEffects == true
         // Override de Debilidad: Porygon (tipo, persistente en el Defensor) y Kabutops (multiplicador
@@ -497,7 +523,7 @@ class GameEngine(
             abilityEffects(state, state.activeSide, pip).firstNotNullOfOrNull { it.overridesDefenderWeaknessMultiplier }
         }
         val dmg = Damage.calculate(
-            dmgBase + selfBonus + allyBoost, attacker.card.types, defender,
+            dmgBase + selfBonus + namedAttackBonus + allyBoost + toolBonus, attacker.card.types, defender,
             ignoreWeakness = atkEffect?.ignoresWeakness == true,
             ignoreResistance = atkEffect?.ignoresResistance == true,
             weaknessTypeOverride = defender.weaknessOverrideType,
@@ -507,7 +533,9 @@ class GameEngine(
         // Debilidad/Resistencia (como manda la regla de "reduce el daño en X").
         // Staryu — Meteoros ignora TODOS los efectos del Activo rival (prevención,
         // reducción, Herramientas) → salta esas restas.
-        val selfReduction = if (defender.damageReductionOnTurn == state.turn) defender.damageReductionAmount else 0
+        val selfReduction = if (defender.damageReductionOnTurn == state.turn &&
+            (!defender.damageReductionOnlyFromEvolution || !attacker.card.isBasic)
+        ) defender.damageReductionAmount else 0
         // Prevención de daño: total (preventDamageOnTurn) o condicional a atacante Básico
         // (preventBasicDamageOnTurn, Nidoqueen — Prensa Real). Ambas se saltan si el ataque
         // ignora los efectos del Defensor (Staryu — Meteoros).
@@ -523,7 +551,7 @@ class GameEngine(
             (defender.preventBasicDamageOnTurn == state.turn && attacker.card.isBasic)
         val finalAmount = if (dmg.finalAmount > 0 && (ignoresDefEffects || !damagePrevented)) {
             if (ignoresDefEffects) dmg.finalAmount
-            else (dmg.finalAmount - toolDamageReduction(defender) - selfReduction).coerceAtLeast(0)
+            else (dmg.finalAmount - toolDamageReduction(state, foeSide, defender) - selfReduction).coerceAtLeast(0)
         } else 0
         var newFoe = foe
         if (finalAmount > 0) {
@@ -545,7 +573,8 @@ class GameEngine(
         // Kakuna — Manto de Capullo: el DEFENSOR es inmune a los EFECTOS del ataque (no al daño). Se
         // descartan los ops dirigidos al defensor. No aplica si el ataque ignora los efectos del Defensor.
         val defenderImmuneToEffects = !ignoresDefEffects &&
-            abilityEffects(state, foeSide, defender).any { it.immuneToAttackEffects }
+            (abilityEffects(state, foeSide, defender).any { it.immuneToAttackEffects } ||
+                defender.preventEffectsOnTurn == state.turn)
         val runEffect = effect?.let { e ->
             var ops = e.ops
             // Kakuna — Manto de Capullo: el DEFENSOR es inmune a los EFECTOS del ataque (no al daño).
@@ -568,6 +597,46 @@ class GameEngine(
             working = res.state
             events += res.events
             pending = res.pending
+        }
+
+        // Leech Life (sv4-111): el atacante se cura una cantidad igual al daño infligido al Activo rival.
+        if (atkEffect?.healSelfEqualToDamageDealt == true && finalAmount > 0) {
+            val ps = working.sideState(state.activeSide)
+            val healed = ps.copy(
+                active = ps.active?.let {
+                    if (it.card.id == attacker.card.id) it.copy(damage = (it.damage - finalAmount).coerceAtLeast(0)) else it
+                },
+                bench = ps.bench.map {
+                    if (it.card.id == attacker.card.id) it.copy(damage = (it.damage - finalAmount).coerceAtLeast(0)) else it
+                },
+            )
+            working = withPlayer(working, healed, state.activeSide)
+        }
+
+        // Auto-restricción/auto-buff por NOMBRE de ataque para el próximo turno propio (turn+2):
+        // Heat Ray/Bandit's Fist/Slashing Strike bloquean su propio ataque; Spinning Needles/Swords
+        // Dance buffan un ataque. Se fija sobre el atacante (si sigue en juego).
+        if (!attackFizzles && (atkEffect?.locksSelfAttackNextTurn == true || atkEffect?.buffsAttackNamed != null)) {
+            fun tag(pip: PokemonInPlay): PokemonInPlay {
+                var p = pip
+                if (atkEffect.locksSelfAttackNextTurn) {
+                    p = p.copy(lockedAttackName = atk.name.es, lockedAttackOnTurn = state.turn + 2)
+                }
+                atkEffect.buffsAttackNamed?.let { name ->
+                    p = p.copy(
+                        buffedAttackName = name,
+                        buffedAttackOnTurn = state.turn + 2,
+                        buffedAttackAmount = atkEffect.buffsAttackAmount,
+                    )
+                }
+                return p
+            }
+            val ps = working.sideState(state.activeSide)
+            val tagged = ps.copy(
+                active = ps.active?.let { if (it.card.id == attacker.card.id) tag(it) else it },
+                bench = ps.bench.map { if (it.card.id == attacker.card.id) tag(it) else it },
+            )
+            working = withPlayer(working, tagged, state.activeSide)
         }
 
         // Contragolpe del Defensor: habilidades que reaccionan a que este Activo sea dañado/
@@ -614,6 +683,11 @@ class GameEngine(
             ?: return EngineResult.reject(state, "Esta carta aún no tiene efecto implementado")
         if (effect.requiresOwnKoLastTurn && state.activeSide !in state.koedLastOppTurn) {
             return EngineResult.reject(state, "Solo puedes jugar ${card.name.es} si te noquearon el turno pasado")
+        }
+        if (effect.requiresMorePrizesRemaining &&
+            state.sideState(state.activeSide).prizes.size <= state.sideState(state.activeSide.other()).prizes.size
+        ) {
+            return EngineResult.reject(state, "Solo puedes jugar ${card.name.es} si te quedan más Premios que a tu rival")
         }
 
         // La carta va al descarte al jugarse.
@@ -927,6 +1001,20 @@ class GameEngine(
     private fun toolMods(pip: PokemonInPlay): List<PassiveModifier> =
         pip.attachedTools.flatMap { effects[it.effect]?.passives.orEmpty() }
 
+    /** ¿Se cumple la condición de un pasivo de Herramienta (subtipo del portador, premios, caja de regla)? */
+    private fun toolPassiveActive(state: GameState, side: Side, pip: PokemonInPlay, mod: PassiveModifier): Boolean {
+        mod.requiresHolderSubtype?.let { if (it !in pip.card.subtypes) return false }
+        if (mod.requiresMorePrizesRemaining &&
+            state.sideState(side).prizes.size <= state.sideState(side.other()).prizes.size
+        ) return false
+        if (mod.requiresNoRuleBox && pip.card.mechanic != com.mineralord.tcg.engine.model.PokemonMechanic.Normal) return false
+        return true
+    }
+
+    /** Pasivos de Herramienta ACTIVOS (condición cumplida) de [pip] del lado [side]. */
+    private fun activeToolMods(state: GameState, side: Side, pip: PokemonInPlay): List<PassiveModifier> =
+        toolMods(pip).filter { toolPassiveActive(state, side, pip, it) }
+
     /**
      * HP máximo efectivo = HP impreso + EXTRA_HP de sus Herramientas + EXTRA_HP de sus
      * Habilidades cuya condición se cumple (Wigglytuff ex — Cuerpo Expansivo: +100 si
@@ -934,7 +1022,7 @@ class GameEngine(
      * Habilidades (van por [abilityPassives]).
      */
     private fun effectiveMaxHp(state: GameState, side: Side, pip: PokemonInPlay): Int {
-        val toolHp = toolMods(pip).filter { it.mod == ModKind.EXTRA_HP }.sumOf { it.amount }
+        val toolHp = activeToolMods(state, side, pip).filter { it.mod == ModKind.EXTRA_HP }.sumOf { it.amount }
         val abilityHp = abilityPassives(state, side, pip)
             .filter { it.mod == ModKind.EXTRA_HP && passiveEnergyConditionMet(pip, it) }
             .sumOf { it.amount }
@@ -953,8 +1041,8 @@ class GameEngine(
     }
 
     /** Reducción de daño de ataques aportada por las Herramientas del defensor. */
-    private fun toolDamageReduction(pip: PokemonInPlay): Int =
-        toolMods(pip).filter { it.mod == ModKind.REDUCE_DAMAGE }.sumOf { it.amount }
+    private fun toolDamageReduction(state: GameState, side: Side, pip: PokemonInPlay): Int =
+        activeToolMods(state, side, pip).filter { it.mod == ModKind.REDUCE_DAMAGE }.sumOf { it.amount }
 
     // --- Pasivos de HABILIDADES (Fase 7 del set 151: Flotación / Travesía / Tentáculos) ---
 
@@ -1003,6 +1091,8 @@ class GameEngine(
         EffectOp.DefenderCannotAttackNextTurn -> true
         is EffectOp.BumpDefenderRetreatCostNextTurn -> true
         is EffectOp.BumpDefenderAttackCostNextTurn -> true
+        is EffectOp.DiscardTargetTools -> op.target == Target.OPP_ACTIVE
+        EffectOp.DefenderCannotAttackNextTurnIfEvolved -> true
         else -> false
     }
 
@@ -1111,6 +1201,9 @@ class GameEngine(
                 (it.requiresEnergyType == null || hasEnergyOfType(active, it.requiresEnergyType!!))
         }
         if (selfFree) return 0
+        // Herramienta que elimina el Coste de Retirada del portador (Cápsula de Energía Propulsora
+        // del Futuro: el Pokémon Futuro no tiene Coste de Retirada).
+        if (activeToolMods(state, side, active).any { it.mod == ModKind.NO_RETREAT }) return 0
         // Travesía Propulsión: cualquier Pokémon propio en juego con pasivo OWN_ALL.
         val allFree = player.allInPlay.any { pip ->
             abilityPassives(state, side, pip).any { it.mod == ModKind.RETREAT_COST && it.appliesTo == Target.OWN_ALL }
@@ -1160,6 +1253,22 @@ class GameEngine(
                     attackerSide,
                 )
                 events += GameEvent.DamageDealt(defenderSide, attacker.card.id, receivedDamage, false, false)
+            }
+        }
+
+        // Contadores de daño programados sobre el Atacante (Scorching Heater sv4-19): si este Pokémon
+        // resulta dañado durante el turno marcado, el Atacante recibe [counterAttackerAmount] de daño.
+        if (active.counterAttackerOnTurn == state.turn && active.counterAttackerAmount > 0) {
+            val attackerSide = defenderSide.other()
+            val attackerState = working.sideState(attackerSide)
+            val attacker = attackerState.active
+            if (attacker != null) {
+                working = withPlayer(
+                    working,
+                    attackerState.copy(active = attacker.copy(damage = attacker.damage + active.counterAttackerAmount)),
+                    attackerSide,
+                )
+                events += GameEvent.DamageDealt(defenderSide, attacker.card.id, active.counterAttackerAmount, false, false)
             }
         }
 
@@ -1616,7 +1725,9 @@ class GameEngine(
         // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
         // o si el Activo está restringido este turno por Jet Wing y similares).
         if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn) {
-            active?.card?.attacks?.filter { canPayAttack(it, active, state, state.activeSide) }
+            active?.card?.attacks
+                ?.filter { it.name.es != active.lockedAttackName || active.lockedAttackOnTurn != state.turn }
+                ?.filter { canPayAttack(it, active, state, state.activeSide) }
                 ?.forEach { intents += GameIntent.Attack(it.name.es) }
         }
         // Ataques usables desde la Banca (Alakazam ex — Mano Dimensional): golpean al Activo rival.
@@ -1645,7 +1756,9 @@ class GameEngine(
             val playable = (kind is TrainerKind.Item) ||
                 (kind is TrainerKind.Supporter && !state.supporterPlayedThisTurn)
             val conditionOk = effect != null &&
-                (!effect.requiresOwnKoLastTurn || state.activeSide in state.koedLastOppTurn)
+                (!effect.requiresOwnKoLastTurn || state.activeSide in state.koedLastOppTurn) &&
+                (!effect.requiresMorePrizesRemaining ||
+                    state.sideState(state.activeSide).prizes.size > state.sideState(state.activeSide.other()).prizes.size)
             if (playable && conditionOk) {
                 intents += GameIntent.PlayTrainer(trainer.id)
             }

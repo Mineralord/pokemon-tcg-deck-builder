@@ -2181,6 +2181,9 @@
    "id": "sv4-28",
    "nombre": "Iron Moth",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, Future",
    "evolucionaDe": null,
    "ps": "130",
@@ -4415,6 +4418,9 @@
    "id": "sv4-56",
    "nombre": "Iron Bundle",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, Future",
    "evolucionaDe": null,
    "ps": "100",
@@ -5529,6 +5535,9 @@
    "id": "sv4-70",
    "nombre": "Iron Hands ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "230",
@@ -6858,6 +6867,9 @@
    "id": "sv4-86",
    "nombre": "Scream Tail",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, Ancient",
    "evolucionaDe": null,
    "ps": "90",
@@ -7112,6 +7124,9 @@
    "id": "sv4-89",
    "nombre": "Iron Valiant ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "220",
@@ -8591,6 +8606,9 @@
    "id": "sv4-107",
    "nombre": "Slither Wing",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, Ancient",
    "evolucionaDe": null,
    "ps": "140",
@@ -8677,6 +8695,9 @@
    "id": "sv4-108",
    "nombre": "Sandy Shocks ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "220",
@@ -9940,6 +9961,9 @@
    "id": "sv4-123",
    "nombre": "Brute Bonnet",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, Ancient",
    "evolucionaDe": null,
    "ps": "120",
@@ -10025,6 +10049,9 @@
    "id": "sv4-124",
    "nombre": "Roaring Moon ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "230",
@@ -12863,6 +12890,9 @@
    "id": "sv4-158",
    "nombre": "Iron Jugulis",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, Future",
    "evolucionaDe": null,
    "ps": "130",
@@ -14470,6 +14500,9 @@
    "id": "sv4-187",
    "nombre": "Iron Moth",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, Future",
    "evolucionaDe": null,
    "ps": "130",
@@ -15741,6 +15774,9 @@
    "id": "sv4-203",
    "nombre": "Slither Wing",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, Ancient",
    "evolucionaDe": null,
    "ps": "140",
@@ -16088,6 +16124,9 @@
    "id": "sv4-207",
    "nombre": "Brute Bonnet",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, Ancient",
    "evolucionaDe": null,
    "ps": "120",
@@ -16871,6 +16910,9 @@
    "id": "sv4-216",
    "nombre": "Iron Jugulis",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, Future",
    "evolucionaDe": null,
    "ps": "130",
@@ -17487,6 +17529,9 @@
    "id": "sv4-223",
    "nombre": "Iron Hands ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "230",
@@ -17670,6 +17715,9 @@
    "id": "sv4-225",
    "nombre": "Iron Valiant ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "220",
@@ -17936,6 +17984,9 @@
    "id": "sv4-228",
    "nombre": "Sandy Shocks ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "220",
@@ -18022,6 +18073,9 @@
    "id": "sv4-229",
    "nombre": "Roaring Moon ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "230",
@@ -19280,6 +19334,9 @@
    "id": "sv4-248",
    "nombre": "Iron Hands ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "230",
@@ -19373,6 +19430,9 @@
    "id": "sv4-249",
    "nombre": "Iron Valiant ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "220",
@@ -19459,6 +19519,9 @@
    "id": "sv4-250",
    "nombre": "Sandy Shocks ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "220",
@@ -19545,6 +19608,9 @@
    "id": "sv4-251",
    "nombre": "Roaring Moon ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "230",
@@ -20170,6 +20236,9 @@
    "id": "sv4-261",
    "nombre": "Iron Valiant ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Futuro"
+   ],
    "fase": "Basic, ex, Future",
    "evolucionaDe": null,
    "ps": "220",
@@ -20256,6 +20325,9 @@
    "id": "sv4-262",
    "nombre": "Roaring Moon ex",
    "supertipo": "Pokémon",
+   "subtipos": [
+    "Pasado"
+   ],
    "fase": "Basic, ex, Ancient",
    "evolucionaDe": null,
    "ps": "230",

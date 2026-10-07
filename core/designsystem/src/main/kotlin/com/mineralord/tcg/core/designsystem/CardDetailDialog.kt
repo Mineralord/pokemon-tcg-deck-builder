@@ -1,8 +1,21 @@
 package com.mineralord.tcg.core.designsystem
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,6 +95,9 @@ fun CardDetailDialog(
     // Nº de Pokédex NACIONAL: si se indica, suena el GRITO oficial al abrir el visor (colección,
     // editor, etc.). Null (por defecto) = sin grito — así el COMBATE no suena aquí (grita al atacar).
     cryDex: Int? = null,
+    // Velo de fondo. Por defecto casi opaco (visor a pantalla completa de la Cartadex/Studio); el
+    // COMBATE pasa un velo LIGERO para que se vea el tablero detrás (como el visor de la Colección).
+    scrimColor: Color = Color(0xE6000000),
 ) {
     val context = LocalContext.current
 
@@ -100,12 +116,37 @@ fun CardDetailDialog(
     val rarityFinish = remember(rarity) { resolveFinish(rarity) }
     val finish = bundled?.finish ?: rarityFinish
 
+    // Popup animado "de arriba a abajo": entra deslizando desde el borde superior y sale RÁPIDO
+    // hacia arriba. El cierre real (onDismiss) se difiere hasta que termina la animación de salida,
+    // para que el deslizamiento no se corte (patrón de transición con MutableTransitionState).
+    val visible = remember { MutableTransitionState(false) }
+    LaunchedEffect(Unit) { visible.targetState = true }
+    LaunchedEffect(visible.currentState, visible.targetState) {
+        if (!visible.currentState && !visible.targetState) onDismiss()
+    }
+    val requestClose: () -> Unit = { visible.targetState = false }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestClose,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        // Desactiva la animación de VENTANA del Dialog (escala desde una esquina) y su oscurecido
+        // propio: así la ÚNICA animación es nuestro deslizamiento vertical y el velo es sólo [scrimColor].
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.apply {
+                setDimAmount(0f)
+                setWindowAnimations(0)
+            }
+        }
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
+      AnimatedVisibility(
+          visibleState = visible,
+          // Entra deslizando desde ABAJO; sale RÁPIDO hacia abajo (sheet de abajo-arriba).
+          enter = slideInVertically(tween(230, easing = FastOutSlowInEasing)) { it } + fadeIn(tween(190)),
+          exit = slideOutVertically(tween(150, easing = FastOutLinearInEasing)) { it } + fadeOut(tween(130)),
+      ) {
         // Inclinación por DEDO (como Pokémon TCG Live/Pocket): arrastrar el dedo por la carta la
         // inclina hacia el puntero y el holo lo sigue; al soltar, vuelve elástica al reposo. Sin
         // giroscopio. Normalizada a [-1, 1] en cada eje; alimenta tiltParallax y holoOverlay.
@@ -117,10 +158,10 @@ fun CardDetailDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xE6000000))
+                .background(scrimColor)
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap = { onDismiss() },
+                        onTap = { requestClose() },
                         onDoubleTap = { scale = 1f; offset = Offset.Zero },
                     )
                 },
@@ -256,5 +297,6 @@ fun CardDetailDialog(
                 }
             }
         }
+      }
     }
 }

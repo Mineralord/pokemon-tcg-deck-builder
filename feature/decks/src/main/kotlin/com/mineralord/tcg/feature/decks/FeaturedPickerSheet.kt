@@ -1,5 +1,6 @@
 package com.mineralord.tcg.feature.decks
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
@@ -66,6 +67,10 @@ internal fun FeaturedPickerSheet(
         if (!state.targetState && !state.currentState) { onApply(selected.toList()); onDismiss() }
     }
     fun close() { state.targetState = false }
+
+    // El botón Atrás cierra con la MISMA vía animada que la X/velo, de modo que
+    // [onApply] se dispara y la selección se guarda (si no, se perdería al descartar en seco).
+    BackHandler(enabled = state.targetState) { close() }
 
     fun toggle(id: String) {
         if (id in selected) selected.remove(id)
