@@ -460,6 +460,12 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     // Dual Turbo (20): une hasta 2 Energía Fuego Básica del descarte a tu Banca.
     put(atkKey("sv4-22", "Dual Turbo"), Effect(ops = listOf(
         EffectOp.AttachEnergyFromDiscard(2, EnergyType.FIRE, Target.OWN_BENCH))))
+    // Supplemental Swallow-Up (Dondozo sv4-55): mira las 5 primeras cartas del mazo y une cualquier
+    // Energía Básica que encuentres a "este Pokémon"; el resto se baraja de vuelta. Se reutiliza
+    // RevealAttachEnergy (includeActive = true): el destino es tus Pokémon en juego (incluye el
+    // Activo atacante). Pequeña holgura frente al literal "a este Pokémon" (permite también la Banca).
+    put(atkKey("sv4-55", "Supplemental Swallow-Up"), Effect(ops = listOf(
+        EffectOp.RevealAttachEnergy(lookAt = 5, maxAttach = 5, energyType = null, benchType = null, includeActive = true))))
 
     // ---- Búsquedas en el mazo ----
     // Charge Energy (ataque): busca hasta 2 Energía Básica → mano.
@@ -515,6 +521,14 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     // Enhanced Blade (20+): +60 si este Pokémon tiene una Herramienta unida.
     put(atkKey("sv4-113", "Enhanced Blade"), Effect(attackDamage = listOf(
         DamageTerm(20), DamageTerm(60, DamageCondition.IfSelfHasTool))))
+    // Whip Expert (50+): +70 si uniste una Herramienta a este Pokémon desde tu mano este turno.
+    val whipExpert = Effect(attackDamage = listOf(
+        DamageTerm(50), DamageTerm(70, DamageCondition.IfAttachedToolThisTurn)))
+    put(atkKey("sv4-97", "Whip Expert"), whipExpert)
+    put(atkKey("sv4-200", "Whip Expert"), whipExpert)
+    // Lively Tackle (Miltank sv4-147, 60+): +90 si este Pokémon fue curado este turno.
+    put(atkKey("sv4-147", "Lively Tackle"), Effect(attackDamage = listOf(
+        DamageTerm(60), DamageTerm(90, DamageCondition.IfSelfHealedThisTurn))))
 
     // Vengeful Shock (30+): +90 si tus Pokémon fueron Noqueados el último turno del rival; además
     // el Activo rival queda Paralizado (el estado se aplica SIEMPRE, el bono es condicional).

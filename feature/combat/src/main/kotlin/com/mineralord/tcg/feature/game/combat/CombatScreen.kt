@@ -125,7 +125,9 @@ import com.mineralord.tcg.core.designsystem.tilt.resolveFinish
 import com.mineralord.tcg.core.animation.AnimationRequest
 import com.mineralord.tcg.core.animationcompose.AnimationRenderState
 import com.mineralord.tcg.core.animationcompose.AnimationStage
+import com.mineralord.tcg.core.animationcompose.AbilityGlowVisuals
 import com.mineralord.tcg.core.animationcompose.CoordinateRegistry
+import com.mineralord.tcg.core.animationcompose.PersistentGlow
 import com.mineralord.tcg.core.animationcompose.SlotId
 import com.mineralord.tcg.core.animationcompose.handSlotId
 import com.mineralord.tcg.core.animationcompose.rememberCanonicalAnimationDirector
@@ -134,6 +136,7 @@ import com.mineralord.tcg.core.animationcompose.trackBounds
 import com.mineralord.tcg.feature.game.board.BoardGeometry
 import com.mineralord.tcg.feature.game.board.HandCat
 import com.mineralord.tcg.feature.game.board.HandFan
+import com.mineralord.tcg.feature.game.board.HandGlow
 import com.mineralord.tcg.feature.game.board.HandFilterBar
 import com.mineralord.tcg.feature.game.board.handCatOf
 import com.mineralord.tcg.feature.game.board.sortedHandCards
@@ -1018,6 +1021,13 @@ private fun MatchLayer(
     }
 
     // ---------- JUGADOR ----------
+    // Intents legales AHORA (autoridad única del motor), para pintar los glows de jugabilidad:
+    // azul = carta usable / Activo que puede atacar; amarillo = carta de evolución jugable. Solo
+    // en TU turno, en juego y sin decisión pendiente (si no, nada brilla).
+    val legalNow = if (!inSetup && myTurn && state.interaction == null) vm.legalIntents() else emptyList()
+    val activeCanAttack = me.active != null && legalNow.any {
+        it is GameIntent.Attack && (it.attacker == null || it.attacker == me.active!!.card.id)
+    }
     Box(
         Modifier.place(BoardGeometry.MeActive, boardW, boardH)
             .onGloballyPositioned { c ->
@@ -1042,6 +1052,8 @@ private fun MatchLayer(
                 }
             },
         )
+        // Glow azul "listo para atacar": el Activo tiene energía suficiente para algún ataque legal.
+        if (activeCanAttack) PersistentGlow(AbilityGlowVisuals.Playable, Modifier.matchParentSize(), edgeOnly = true)
     }
     me.bench.forEachIndexed { i, pip ->
         BoardGeometry.MeBenchSlots.getOrNull(i)?.let { slot ->
@@ -1117,6 +1129,22 @@ private fun MatchLayer(
             cardW = handCardW,
             cardH = handCardH,
             selectedId = bi.pendingPlay?.id,
+            // Glow de jugabilidad por carta, derivado de los intents legales del motor:
+            // amarillo = esta carta hace evolucionar algo; azul = usable ahora (Energía/Objeto/
+            // Herramienta/Apoyo no gastado/Básico a Banca/acción de Estadio).
+            glowOf = { card ->
+                when {
+                    legalNow.any { it is GameIntent.Evolve && it.evolution == card.id } -> HandGlow.EVOLVE
+                    legalNow.any {
+                        (it is GameIntent.AttachEnergy && it.energy == card.id) ||
+                            (it is GameIntent.PlayTrainer && it.card == card.id) ||
+                            (it is GameIntent.AttachTool && it.tool == card.id) ||
+                            (it is GameIntent.PlayBasicToBench && it.card == card.id) ||
+                            (it is GameIntent.UseStadium && it.energy == card.id)
+                    } -> HandGlow.PLAYABLE
+                    else -> null
+                }
+            },
             onSelect = { card ->
                 when {
                     // En preparación, tocar un Básico lo coloca (Activo/Banca).
@@ -1602,18 +1630,39 @@ private fun PileStack(count: Int, modifier: Modifier = Modifier, faceDown: Boole
 /** Dorsos de la mano rival (hasta 7 visibles). */
 @Composable
 private fun OppHandBacks(count: Int) {
-    Row(
-        Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(count.coerceAtMost(7)) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Row(
+            Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy((-6).dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(count.coerceAtMost(7)) {
+                Box(
+                    Modifier
+                        .fillMaxHeight(0.9f)
+                        .aspectRatio(CombatTheme.CardAspect)
+                        .clip(RoundedCornerShape(4.dp)),
+                ) { CardBack(Modifier.fillMaxSize()) }
+            }
+        }
+        // Contador de cartas en la mano rival, anclado a un lado del abanico.
+        if (count > 0) {
             Box(
                 Modifier
-                    .fillMaxHeight(0.9f)
-                    .aspectRatio(CombatTheme.CardAspect)
-                    .clip(RoundedCornerShape(4.dp)),
-            ) { CardBack(Modifier.fillMaxSize()) }
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 6.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(CombatTheme.Surface.copy(alpha = 0.9f))
+                    .border(1.dp, CombatTheme.Gold.copy(alpha = 0.7f), RoundedCornerShape(9.dp))
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    "$count",
+                    color = CombatTheme.Gold,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp,
+                )
+            }
         }
     }
 }

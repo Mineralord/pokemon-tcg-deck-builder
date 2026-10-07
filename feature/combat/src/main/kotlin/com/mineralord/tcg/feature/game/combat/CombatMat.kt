@@ -159,9 +159,14 @@ fun CombatMat(
             quadraticBezierTo(w / 2f, botCtrl, 0f, botEdge)
             close()
         }
+        // Relleno del lente TEÑIDO por el tipo del Activo (ya no gris), con crossfade al cambiar.
+        val (curTop, curBot) = lensFillColors(curProfile)
+        val (oldTop, oldBot) = lensFillColors(oldProfile)
+        val lensTop = androidx.compose.ui.graphics.lerp(oldTop, curTop, blendV)
+        val lensBot = androidx.compose.ui.graphics.lerp(oldBot, curBot, blendV)
         drawPath(
             lens,
-            Brush.verticalGradient(listOf(Color(0xFF3A414E), Color(0xFF2C323D)), startY = topEdge, endY = botEdge),
+            Brush.verticalGradient(listOf(lensTop, lensBot), startY = topEdge, endY = botEdge),
         )
         // Veta de rombos MUY tenue recortada a la lente (casi imperceptible, no un panal marcado)
         // + las ondas de agua reactivas al toque, recortadas a la forma de la lente.

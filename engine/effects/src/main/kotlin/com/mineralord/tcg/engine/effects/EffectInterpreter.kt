@@ -1305,6 +1305,9 @@ class EffectInterpreter {
             working = updatePokemon(working, r.card.id) {
                 it.copy(damage = (it.damage - amount).coerceAtLeast(0))
             }
+            // Curación REAL (tenía daño): marca el Pokémon como "curado este turno" para ataques
+            // condicionales (Lively Tackle sv4-147). Curar un Pokémon sin daño no cuenta.
+            if (r.damage > 0) working = working.copy(healedThisTurn = working.healedThisTurn + r.card.id)
             events += GameEvent.Healed(by, r.card.id, amount)
         }
         return EffectResult(working, events)

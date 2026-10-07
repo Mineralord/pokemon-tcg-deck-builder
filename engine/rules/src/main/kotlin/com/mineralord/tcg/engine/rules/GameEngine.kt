@@ -302,6 +302,11 @@ class GameEngine(
             replaceInPlay(ps, targetId, target.copy(attachedTools = target.attachedTools + card)),
             targetSide,
         )
+        // Si la Herramienta se unió a un Pokémon PROPIO, se anota para ataques "+X si uniste
+        // una Herramienta a este Pokémon este turno" (Whip Expert). No aplica a objetivos rivales.
+        if (targetSide == state.activeSide) {
+            working = working.copy(toolsAttachedThisTurn = working.toolsAttachedThisTurn + targetId)
+        }
         return EngineResult(working, listOf(GameEvent.ToolAttached(state.activeSide, toolId, targetId)))
     }
 
@@ -469,6 +474,10 @@ class GameEngine(
                         state.activeSide in state.koedLastOppTurn
                     com.mineralord.tcg.engine.model.DamageCondition.IfSelfHasTool ->
                         attacker.attachedTools.isNotEmpty()
+                    com.mineralord.tcg.engine.model.DamageCondition.IfAttachedToolThisTurn ->
+                        attacker.card.id in state.toolsAttachedThisTurn
+                    com.mineralord.tcg.engine.model.DamageCondition.IfSelfHealedThisTurn ->
+                        attacker.card.id in state.healedThisTurn
                     com.mineralord.tcg.engine.model.DamageCondition.IfStadiumInPlay ->
                         state.stadium != null
                 }
@@ -1521,6 +1530,8 @@ class GameEngine(
             stadiumUsedThisTurn = false,
             trainerNamesPlayedThisTurn = emptySet(),
             abilitiesUsedThisTurn = emptySet(),
+            toolsAttachedThisTurn = emptySet(),
+            healedThisTurn = emptySet(),
             // El lado que ACABA su turno reinicia su ventana de "KO en turno rival":
             // durante el turno entrante volverá a poblarse si le noquean algo.
             koedLastOppTurn = working.koedLastOppTurn - state.activeSide,

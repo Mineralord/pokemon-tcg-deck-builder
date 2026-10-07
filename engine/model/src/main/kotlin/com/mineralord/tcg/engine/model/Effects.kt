@@ -702,6 +702,12 @@ sealed interface DamageCondition {
     /** Suma solo si el Pokémon ATACANTE tiene una Herramienta Pokémon unida
      * (Enhanced Blade sv4-113: +60 si tiene Herramienta). */
     data object IfSelfHasTool : DamageCondition
+    /** Suma solo si uniste una Herramienta Pokémon DESDE LA MANO a este Pokémon ESTE turno
+     * (Whip Expert sv4-97/200: +70). */
+    data object IfAttachedToolThisTurn : DamageCondition
+    /** Suma solo si este Pokémon (el ATACANTE) fue curado ESTE turno
+     * (Lively Tackle sv4-147: +90). */
+    data object IfSelfHealedThisTurn : DamageCondition
     /** Suma solo si hay un Estadio en juego (Calamity Storm sv4-124: +120 si descartas un Estadio;
      * el ataque descarta además el Estadio mediante [EffectOp.DiscardStadium]). */
     data object IfStadiumInPlay : DamageCondition

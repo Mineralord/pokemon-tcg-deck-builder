@@ -11,6 +11,7 @@ import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.LocalizedText
+import com.mineralord.tcg.engine.model.PendingDecision
 import com.mineralord.tcg.engine.model.Phase
 import com.mineralord.tcg.engine.model.PlayerState
 import com.mineralord.tcg.engine.model.PokemonCard
@@ -22,6 +23,7 @@ import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.Stage
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Cobertura de la Fase 1 (daño puro) de **Brecha Paradójica** (`sv4`): daño por monedas
@@ -97,6 +99,56 @@ class SetParadoxEffectsTest {
 
         assertEquals(40, firstDamage(GameEngine(SeededRng(1)).apply(duel(attacker, fight), GameIntent.Attack("Ice Shard"))))
         assertEquals(10, firstDamage(GameEngine(SeededRng(1)).apply(duel(attacker, water), GameIntent.Attack("Ice Shard"))))
+    }
+
+    @Test
+    fun `Whip Expert hace +70 si uniste una Herramienta a este Pokemon este turno`() {
+        val a = attack("Whip Expert", EffectsDb.atkKey("sv4-97", "Whip Expert"))
+        val attacker = PokemonInPlay(mon("mienshao", 120, EnergyType.FIGHTING, a))
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.PSYCHIC, a))
+
+        // Sin Herramienta unida este turno → solo el daño base (50).
+        val base = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Whip Expert"))
+        assertEquals(50, firstDamage(base))
+
+        // Con el atacante marcado como "recibió Herramienta este turno" → 50 + 70 = 120.
+        val withTool = duel(attacker, foe).copy(toolsAttachedThisTurn = setOf(CardId("mienshao")))
+        assertEquals(120, firstDamage(GameEngine(SeededRng(1)).apply(withTool, GameIntent.Attack("Whip Expert"))))
+    }
+
+    @Test
+    fun `Lively Tackle hace +90 si este Pokemon fue curado este turno`() {
+        val a = attack("Lively Tackle", EffectsDb.atkKey("sv4-147", "Lively Tackle"))
+        val attacker = PokemonInPlay(mon("miltank", 120, EnergyType.COLORLESS, a))
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.FIGHTING, a))
+
+        // Sin curación este turno → solo el daño base (60).
+        val base = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Lively Tackle"))
+        assertEquals(60, firstDamage(base))
+
+        // Con el atacante marcado como "curado este turno" → 60 + 90 = 150.
+        val healed = duel(attacker, foe).copy(healedThisTurn = setOf(CardId("miltank")))
+        assertEquals(150, firstDamage(GameEngine(SeededRng(1)).apply(healed, GameIntent.Attack("Lively Tackle"))))
+    }
+
+    @Test
+    fun `Supplemental Swallow-Up revela el top 5 y une Energia Basica a este Pokemon`() {
+        val a = attack("Supplemental Swallow-Up", EffectsDb.atkKey("sv4-55", "Supplemental Swallow-Up"))
+        val dondozo = PokemonInPlay(mon("dondozo", 150, EnergyType.WATER, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.FIRE, a))
+
+        // El mazo propio son 5 Energías Básicas (d1..d5): revela las 5 y pausa con la decisión de arrastre.
+        val paused = GameEngine(SeededRng(1)).apply(duel(dondozo, foe), GameIntent.Attack("Supplemental Swallow-Up"))
+        val d = paused.state.interaction!!.decision as PendingDecision.AttachFromRevealed
+        assertEquals(5, d.revealed.size)
+        assertEquals(5, d.energyCandidates.size)
+        assertTrue(d.benchCandidates.contains(CardId("dondozo")))  // el Activo atacante es destino válido
+
+        // Une la 1ª Energía revelada a Dondozo; el resto del mazo se baraja de vuelta.
+        val res = GameEngine(SeededRng(1)).apply(
+            paused.state, GameIntent.ResolveDecision(listOf(CardId("d1"), CardId("dondozo"))))
+        assertTrue(res.state.player.active!!.attachedEnergy.any { it.id == CardId("d1") })
+        assertEquals(4, res.state.player.deck.size)
     }
 
     @Test

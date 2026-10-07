@@ -50,21 +50,25 @@ fun DrawScope.drawAbilityGlow(
     breath: Float,
     env: Float,
     shimmerPhase: Float,
+    // Si es false, NO pinta el bloom radial interior: solo el halo de los BORDES (rim-glow).
+    drawBloom: Boolean = true,
 ) {
     val accent = Color.hsv(v.hue.coerceIn(0f, 360f), v.saturation.coerceIn(0f, 1f), 1f)
 
     // Bloom radial por debajo (centro desplazado hacia abajo para leer como "underglow").
-    val bloomCenter = Offset(left + w / 2f, top + h / 2f + h * 0.14f)
-    val bloomR = (v.bloomRadius * w * (0.9f + 0.12f * breath)).coerceAtLeast(1f)
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(accent.copy(alpha = 0.55f * intensity), accent.copy(alpha = 0f)),
-            center = bloomCenter,
+    if (drawBloom) {
+        val bloomCenter = Offset(left + w / 2f, top + h / 2f + h * 0.14f)
+        val bloomR = (v.bloomRadius * w * (0.9f + 0.12f * breath)).coerceAtLeast(1f)
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(accent.copy(alpha = 0.55f * intensity), accent.copy(alpha = 0f)),
+                center = bloomCenter,
+                radius = bloomR,
+            ),
             radius = bloomR,
-        ),
-        radius = bloomR,
-        center = bloomCenter,
-    )
+            center = bloomCenter,
+        )
+    }
 
     // Rim-glow de los bordes: varias pasadas concéntricas para un halo suave.
     val rimW = (v.edgeWidth * w).coerceAtLeast(2f)
@@ -124,8 +128,17 @@ fun AbilityGlowNodeRenderer(node: AbilityGlowRenderNode) {
  * disponible) sobre la carta. `manual=false` → rojo pasiva; `manual=true` → dorado con shimmer.
  */
 @Composable
-fun PersistentAbilityGlow(manual: Boolean, modifier: Modifier = Modifier) {
-    val v = AbilityGlowVisuals.forManual(manual)
+fun PersistentAbilityGlow(manual: Boolean, modifier: Modifier = Modifier) =
+    PersistentGlow(AbilityGlowVisuals.forManual(manual), modifier)
+
+/**
+ * Indicador PERSISTENTE genérico: dibuja el aura canónica ([drawAbilityGlow]) en bucle continuo
+ * (respiración infinita) para CUALQUIER [GlowVisual]. Lo comparten el marcador de Habilidad
+ * (rojo/dorado) y los indicadores de jugabilidad de la mano/Activo (azul [AbilityGlowVisuals.Playable]
+ * / amarillo [AbilityGlowVisuals.Evolve]).
+ */
+@Composable
+fun PersistentGlow(visual: GlowVisual, modifier: Modifier = Modifier, edgeOnly: Boolean = false) {
     val infinite = rememberInfiniteTransition(label = "persistentGlow")
     val phase by infinite.animateFloat(
         initialValue = 0f, targetValue = 1f,
@@ -133,8 +146,8 @@ fun PersistentAbilityGlow(manual: Boolean, modifier: Modifier = Modifier) {
         label = "persistentGlowPhase",
     )
     Canvas(modifier.fillMaxSize()) {
-        val breath = 0.55f + 0.45f * sin(2f * PI.toFloat() * v.breathCycles * phase)
+        val breath = 0.55f + 0.45f * sin(2f * PI.toFloat() * visual.breathCycles * phase)
         val intensity = 0.6f + 0.4f * breath   // persistente: sin envolvente (env = 1)
-        drawAbilityGlow(v, 0f, 0f, size.width, size.height, intensity, breath, 1f, (phase * 3f) % 1f)
+        drawAbilityGlow(visual, 0f, 0f, size.width, size.height, intensity, breath, 1f, (phase * 3f) % 1f, drawBloom = !edgeOnly)
     }
 }

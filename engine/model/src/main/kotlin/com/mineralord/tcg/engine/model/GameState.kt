@@ -229,6 +229,16 @@ data class GameState(
     /** Habilidades 1/turno ya usadas este turno (por id de Pokémon). */
     val abilitiesUsedThisTurn: Set<CardId> = emptySet(),
     /**
+     * Pokémon PROPIOS (por id) a los que se les unió una Herramienta DESDE LA MANO este turno.
+     * Habilita ataques "+X daño si uniste una Herramienta a este Pokémon este turno"
+     * (Brechas Paradójicas — Whip Expert sv4-97/200). Se resetea en fin de turno. */
+    val toolsAttachedThisTurn: Set<CardId> = emptySet(),
+    /**
+     * Pokémon (por id) a los que se les CURÓ daño este turno (curación real: tenían daño).
+     * Habilita ataques "+X daño si este Pokémon fue curado este turno"
+     * (Brechas Paradójicas — Lively Tackle sv4-147). Se resetea en fin de turno. */
+    val healedThisTurn: Set<CardId> = emptySet(),
+    /**
      * Lados que tuvieron algún Pokémon Noqueado DURANTE el último turno del rival
      * (no en el propio, p.ej. por recoil). Habilita cartas condicionales como
      * Melo ("solo si te noquearon el turno pasado"). Se limpia para un lado

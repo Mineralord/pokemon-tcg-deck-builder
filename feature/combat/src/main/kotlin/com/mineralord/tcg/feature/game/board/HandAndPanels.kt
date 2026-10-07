@@ -48,6 +48,8 @@ import com.mineralord.tcg.core.designsystem.motion.motionAppear
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mineralord.tcg.core.animationcompose.AbilityGlowVisuals
+import com.mineralord.tcg.core.animationcompose.PersistentGlow
 import com.mineralord.tcg.core.designsystem.HoloCardImage
 import com.mineralord.tcg.engine.model.BasicEnergy
 import com.mineralord.tcg.engine.model.Card
@@ -61,6 +63,15 @@ import com.mineralord.tcg.engine.model.TrainerCard
  * agrupar la mano: primero Pokémon, luego Entrenadores, al final Energías.
  */
 enum class HandCat { POKEMON, TRAINER, ENERGY }
+
+/**
+ * Indicador de jugabilidad de una carta de la mano (glow pulsante estilo TCG Live):
+ * - PLAYABLE (azul): se puede usar AHORA (Objeto/Herramienta, Apoyo si no se gastó uno, Energía
+ *   si no se adjuntó la del turno, Básico a la Banca).
+ * - EVOLVE (amarillo): esta carta de evolución puede hacer evolucionar un Pokémon en juego.
+ * La autoridad es el motor (legalIntents); la UI solo pinta el color.
+ */
+enum class HandGlow { PLAYABLE, EVOLVE }
 
 fun handCatOf(card: Card): HandCat = when (card) {
     is PokemonCard -> HandCat.POKEMON
@@ -226,6 +237,8 @@ fun HandFan(
     // izquierda). [focusNonce] cambia en cada toque para re-desplazar aunque la categoría repita.
     focusCategory: HandCat? = null,
     focusNonce: Int = 0,
+    // Glow de jugabilidad por carta (azul = usable ahora, amarillo = evolución). null = sin glow.
+    glowOf: (Card) -> HandGlow? = { null },
 ) {
     // El gesto de arrastre vive en un `pointerInput(card.id)` que captura sus lambdas
     // UNA sola vez (la clave no cambia). Sin esto, `onCardDragEnd` quedaba congelado en
@@ -348,6 +361,15 @@ fun HandFan(
                     contentDescription = card.name.es,
                     modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(7.dp)),
                 )
+                // Glow de jugabilidad PERSISTENTE (misma aura que el tablero): azul = usable ahora,
+                // amarillo = evolución. Solo cuando la carta NO está atenuada por el filtro de tipo.
+                if (matches) {
+                    when (glowOf(card)) {
+                        HandGlow.PLAYABLE -> PersistentGlow(AbilityGlowVisuals.Playable, Modifier.fillMaxSize(), edgeOnly = true)
+                        HandGlow.EVOLVE -> PersistentGlow(AbilityGlowVisuals.Evolve, Modifier.fillMaxSize(), edgeOnly = true)
+                        null -> {}
+                    }
+                }
                 // Contador de copias: píldora blanca con el número, centrada sobre el
                 // borde superior de la carta (solo cuando hay 2+ copias), como TCG Live.
                 if (stack.count > 1) {
