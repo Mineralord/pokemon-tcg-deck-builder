@@ -8,6 +8,40 @@ service cloud.firestore {
     match /matches/{document=**} {
       allow read, write: if request.auth != null;
     }
+
+    // ───────── Amigos (multidispositivo) ─────────
+    // Directorio público: cualquier autenticado puede LEER (buscar por ID / ver nombres),
+    // pero solo el dueño escribe su propio registro.
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+
+      // Amigos confirmados: el dueño los lee; crear/borrar lo puede hacer el dueño o el otro
+      // jugador sobre SU propia entrada (amistad/eliminación mutua).
+      match /friends/{fid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create, delete: if request.auth != null &&
+          (request.auth.uid == uid || request.auth.uid == fid);
+      }
+
+      // Buzón de solicitudes recibidas: lo lee el dueño; crear solo DESDE el emisor
+      // (id == su uid); borrar lo hace el dueño (rechaza) o el emisor (cancela).
+      match /incomingRequests/{fid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == fid;
+        allow delete: if request.auth != null &&
+          (request.auth.uid == uid || request.auth.uid == fid);
+      }
+
+      // Solicitudes enviadas: las lee/crea el dueño; borrar lo hace el dueño o el
+      // destinatario (al aceptar/rechazar limpia la saliente del emisor).
+      match /outgoingRequests/{tid} {
+        allow read, create: if request.auth != null && request.auth.uid == uid;
+        allow delete: if request.auth != null &&
+          (request.auth.uid == uid || request.auth.uid == tid);
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

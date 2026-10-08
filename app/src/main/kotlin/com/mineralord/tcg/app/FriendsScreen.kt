@@ -41,7 +41,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mineralord.tcg.core.designsystem.BarajasPalette
+import com.mineralord.tcg.data.netfirestore.FriendEntry
+import com.mineralord.tcg.data.netfirestore.FriendRequest
+import kotlin.math.absoluteValue
+import kotlinx.coroutines.delay
 
 // Acentos de acción del hub (coherentes con el resto de la app).
 private val AcceptGreen = Color(0xFF19D08B)
@@ -55,7 +70,7 @@ private enum class LastSeen(val label: String) {
     NOT_SHARED("No compartida"),
 }
 
-/** Un usuario del hub (amigo o solicitud). Datos MOCK locales por ahora. */
+/** Un usuario del hub (amigo o solicitud). [uid] identifica al jugador en el backend real. */
 private data class FriendUi(
     val name: String,
     val level: Int,
@@ -63,6 +78,7 @@ private data class FriendUi(
     val badges: List<Color>,
     val sharesSelection: Boolean = true,
     val avatar: List<Color>,
+    val uid: String = "",
     // Campos del PERFIL (valores de ejemplo por defecto; se poblarán desde el backend luego).
     val friendCode: String = "4897-4115-8907-2209",
     val statusMessage: String = "¡Quiero completar el índice de cartas!",
@@ -91,27 +107,23 @@ private val badgePalette = listOf(
 )
 private fun badges(n: Int, seed: Int) = List(n) { badgePalette[(seed + it) % badgePalette.size] }
 
-// Todas las tarjetas llevan los MISMOS campos (3 insignias) para mostrar idéntica información
-// en las tres pestañas; lo único que cambia es la zona de acción.
-private val MOCK_FRIENDS = listOf(
-    FriendUi("Wisfer", 60, LastSeen.RECENT, badges(3, 0), true, avatarPalettes[0]),
-    FriendUi("Luna", 48, LastSeen.WEEK_PLUS, badges(3, 2), true, avatarPalettes[1]),
-    FriendUi("Mirai", 40, LastSeen.WEEK_PLUS, badges(3, 1), true, avatarPalettes[2]),
-    FriendUi("Oak Jr.", 45, LastSeen.WEEK_PLUS, badges(3, 3), true, avatarPalettes[3]),
-    FriendUi("night", 27, LastSeen.NOT_SHARED, badges(3, 4), true, avatarPalettes[4]),
-    FriendUi("okoge", 42, LastSeen.NOT_SHARED, badges(3, 5), false, avatarPalettes[0]),
-    FriendUi("katsuvvn!", 45, LastSeen.NOT_SHARED, badges(3, 5), true, avatarPalettes[2]),
-)
-private val MOCK_SENT = listOf(
-    FriendUi("Rival99", 59, LastSeen.NOT_SHARED, badges(3, 1), true, avatarPalettes[3]),
-)
-private val MOCK_RECEIVED = listOf(
-    FriendUi("Solidbeppe", 59, LastSeen.WEEK_PLUS, badges(3, 0), true, avatarPalettes[4]),
-    FriendUi("Sakaki", 51, LastSeen.WEEK_PLUS, badges(3, 2), true, avatarPalettes[1]),
-    FriendUi("Silver", 41, LastSeen.WEEK_PLUS, badges(3, 4), true, avatarPalettes[3]),
-    FriendUi("Tsuki", 7, LastSeen.NOT_SHARED, badges(3, 1), true, avatarPalettes[0]),
-    FriendUi("Aoki", 33, LastSeen.NOT_SHARED, badges(3, 3), true, avatarPalettes[2]),
-)
+// Avatar/insignias deterministas a partir del ID de amigo (placeholder visual estable, sin backend
+// de cosméticos social todavía). El nombre y el ID son datos REALES del backend.
+private fun uiFromReal(uid: String, username: String, friendCode: String): FriendUi {
+    val seed = friendCode.hashCode().absoluteValue
+    return FriendUi(
+        name = username.ifBlank { "Entrenador" },
+        level = 0,
+        lastSeen = LastSeen.NOT_SHARED,
+        badges = badges(3, seed),
+        avatar = avatarPalettes[seed % avatarPalettes.size],
+        uid = uid,
+        friendCode = formatFriendCode(friendCode),
+    )
+}
+
+private fun FriendEntry.toUi() = uiFromReal(uid, username, friendCode)
+private fun FriendRequest.toUi() = uiFromReal(uid, username, friendCode)
 
 /**
  * Hub de Amigos. Réplica de la UX del hub de referencia con nuestro design system claro:
@@ -124,14 +136,31 @@ private val MOCK_RECEIVED = listOf(
 fun FriendsScreen(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
+    vm: FriendsViewModel = viewModel(),
 ) {
     var tab by remember { mutableStateOf(FriendsTab.AMIGOS) }
     // Perfil abierto (al tocar una tarjeta de amigo). Null = hub con sus pestañas.
     var profile by remember { mutableStateOf<FriendUi?>(null) }
+    // Panel "Añadir amigo" (solo por ID de amigo; sin QR).
+    var addOpen by remember { mutableStateOf(false) }
+
+    // Datos REALES en vivo (Firestore) + identidad propia.
+    val friends by vm.friends.collectAsStateWithLifecycle()
+    val incoming by vm.incoming.collectAsStateWithLifecycle()
+    val outgoing by vm.outgoing.collectAsStateWithLifecycle()
+    val myName by vm.myName.collectAsStateWithLifecycle()
+    val myCode by vm.myCode.collectAsStateWithLifecycle()
+    val message by vm.message.collectAsStateWithLifecycle()
+
     val list = when (tab) {
-        FriendsTab.AMIGOS -> MOCK_FRIENDS
-        FriendsTab.ENVIADAS -> MOCK_SENT
-        FriendsTab.RECIBIDAS -> MOCK_RECEIVED
+        FriendsTab.AMIGOS -> friends.map { it.toUi() }
+        FriendsTab.ENVIADAS -> outgoing.map { it.toUi() }
+        FriendsTab.RECIBIDAS -> incoming.map { it.toUi() }
+    }
+    val emptyText = when (tab) {
+        FriendsTab.AMIGOS -> "Aún no tienes amigos.\nToca + para añadir por ID de amigo."
+        FriendsTab.ENVIADAS -> "No tienes solicitudes enviadas."
+        FriendsTab.RECIBIDAS -> "No tienes solicitudes recibidas."
     }
 
     profile?.let { p ->
@@ -139,30 +168,61 @@ fun FriendsScreen(
         return
     }
 
-    Column(
-        modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
-    ) {
-        Header(showFavorites = tab == FriendsTab.AMIGOS)
-        RainbowDivider()
-        CounterBar(friendCount = MOCK_FRIENDS.size)
+    Box(modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom))),
+        ) {
+            Header(showFavorites = tab == FriendsTab.AMIGOS)
+            RainbowDivider()
+            CounterBar(friendCount = friends.size, onAdd = { addOpen = true })
 
-        Box(Modifier.fillMaxSize().weight(1f)) {
-            LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(list) { user ->
-                    // En TODAS las pestañas, tocar la tarjeta abre el perfil del amigo.
-                    FriendCard(user, tab, onOpen = { profile = user })
+            Box(Modifier.fillMaxSize().weight(1f)) {
+                if (list.isEmpty()) {
+                    Text(
+                        emptyText,
+                        color = BarajasPalette.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(list) { user ->
+                            FriendCard(
+                                user, tab,
+                                onOpen = { profile = user },
+                                onAccept = { vm.accept(user.uid) },
+                                onReject = { vm.reject(user.uid) },
+                                onCancel = { vm.cancel(user.uid) },
+                                onRemove = { vm.remove(user.uid) },
+                            )
+                        }
+                    }
                 }
             }
+
+            BottomTabs(current = tab, onSelect = { tab = it })
+            BottomActions(
+                showClearAll = tab != FriendsTab.AMIGOS && list.isNotEmpty(),
+                onClose = onBack,
+                onClearAll = { if (tab == FriendsTab.ENVIADAS) vm.clearAllOutgoing() else vm.clearAllIncoming() },
+            )
         }
 
-        BottomTabs(current = tab, onSelect = { tab = it })
-        BottomActions(showClearAll = tab != FriendsTab.AMIGOS, onClose = onBack)
+        if (addOpen) {
+            AddFriendSheet(
+                myName = myName.ifBlank { "Entrenador" },
+                rawCode = myCode,
+                message = message,
+                onSend = { vm.send(it) },
+                onClose = { vm.clearMessage(); addOpen = false },
+            )
+        }
     }
 }
 
@@ -199,7 +259,7 @@ private fun RainbowDivider() {
 }
 
 @Composable
-private fun CounterBar(friendCount: Int) {
+private fun CounterBar(friendCount: Int, onAdd: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
             .shadow(4.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp))
@@ -210,18 +270,167 @@ private fun CounterBar(friendCount: Int) {
         Spacer(Modifier.width(10.dp))
         Text("$friendCount/99", color = BarajasPalette.Muted, fontSize = 14.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.weight(1f))
-        // Añadir amigo (persona con +).
+        // Añadir amigo (persona con +): abre el panel de añadir por ID de amigo.
         Box(
-            Modifier.size(34.dp).clip(CircleShape).border(1.5.dp, BarajasPalette.Muted, CircleShape),
+            Modifier.size(34.dp).clip(CircleShape).border(1.5.dp, BarajasPalette.Muted, CircleShape)
+                .clickable(onClick = onAdd),
             contentAlignment = Alignment.Center,
         ) { Text("+", color = BarajasPalette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black) }
+    }
+}
+
+/** Formatea un código de amigo de 12 dígitos como "XXXX-XXXX-XXXX"; si no, un placeholder. */
+private fun formatFriendCode(raw: String): String =
+    if (raw.length == 12) "${raw.substring(0, 4)}-${raw.substring(4, 8)}-${raw.substring(8, 12)}"
+    else "————-————-————"
+
+/**
+ * Panel "Añadir amigo" (solo por ID de amigo; SIN QR). Muestra tu avatar, tu nombre y tu ID (copiable)
+ * y un campo para buscar/añadir a otro jugador por su ID de amigo. Datos MOCK: "enviar solicitud"
+ * valida el formato y confirma visualmente (la lógica de red se conectará después).
+ */
+@Composable
+private fun AddFriendSheet(
+    myName: String,
+    rawCode: String,
+    message: String?,
+    onSend: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) { if (copied) { delay(1500); copied = false } }
+    var query by remember { mutableStateOf("") }
+
+    val codeText = formatFriendCode(rawCode)
+    val noRipple = remember { MutableInteractionSource() }
+
+    // Scrim que cierra al tocar fuera.
+    Box(
+        Modifier.fillMaxSize().background(Color(0x99000000))
+            .clickable(interactionSource = noRipple, indication = null, onClick = onClose),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        // Tarjeta inferior; consume toques para no cerrar al interactuar dentro.
+        Column(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(BarajasPalette.Surface)
+                .clickable(interactionSource = noRipple, indication = null, onClick = {})
+                .padding(20.dp)
+                .imePadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Avatar circular con la inicial.
+            Box(
+                Modifier.size(64.dp).clip(CircleShape)
+                    .background(Brush.verticalGradient(avatarPalettes[0])),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    myName.take(1).uppercase(),
+                    color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(myName, color = BarajasPalette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(14.dp))
+
+            // Tu ID de amigo (copiable).
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    .background(BarajasPalette.BgTop).padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("ID de amigo", color = BarajasPalette.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(12.dp))
+                Text(codeText, color = BarajasPalette.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.weight(1f))
+                Box(
+                    Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(BarajasPalette.Surface)
+                        .clickable(enabled = rawCode.length == 12) {
+                            clipboard.setText(AnnotatedString(rawCode)); copied = true
+                        },
+                    contentAlignment = Alignment.Center,
+                ) { Text("⧉", color = BarajasPalette.Ink, fontSize = 15.sp) }
+            }
+            if (copied) {
+                Spacer(Modifier.height(6.dp))
+                Text("¡Copiado!", color = AcceptGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Text("Añadir amigo", color = BarajasPalette.Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(10.dp))
+
+            // Campo: buscar por ID de amigo.
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    .border(1.5.dp, BarajasPalette.Muted.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("⌕", color = BarajasPalette.Muted, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.width(10.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text("Buscar ID de amigo", color = BarajasPalette.Muted, fontSize = 14.sp)
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { s -> query = s.filter { it.isDigit() || it == '-' || it == ' ' }.take(17) },
+                        singleLine = true,
+                        textStyle = TextStyle(color = BarajasPalette.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        cursorBrush = Brush.verticalGradient(listOf(BarajasPalette.Ink, BarajasPalette.Ink)),
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+
+            // Botón enviar solicitud (valida 12 dígitos; mock por ahora).
+            val digits = query.filter { it.isDigit() }
+            val enabled = digits.length == 12
+            Box(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    .background(if (enabled) AcceptGreen else BarajasPalette.Muted.copy(alpha = 0.35f))
+                    .clickable(enabled = enabled) { onSend(digits); query = "" }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Enviar solicitud", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            }
+            // Mensaje REAL del backend (éxito / "No se encontró ese ID" / "Ya es tu amigo"…).
+            message?.let {
+                val ok = it.contains("enviada", ignoreCase = true)
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = if (ok) AcceptGreen else RejectRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(10.dp))
+            // Cerrar.
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(BarajasPalette.BgTop)
+                    .clickable(onClick = onClose),
+                contentAlignment = Alignment.Center,
+            ) { Text("✕", color = BarajasPalette.Ink, fontSize = 18.sp, fontWeight = FontWeight.Black) }
+            Spacer(Modifier.height(6.dp))
+        }
     }
 }
 
 // ───────────────────────────── tarjeta de usuario ─────────────────────────────
 
 @Composable
-private fun FriendCard(user: FriendUi, tab: FriendsTab, onOpen: (() -> Unit)? = null) {
+private fun FriendCard(
+    user: FriendUi,
+    tab: FriendsTab,
+    onOpen: (() -> Unit)? = null,
+    onAccept: () -> Unit = {},
+    onReject: () -> Unit = {},
+    onCancel: () -> Unit = {},
+    onRemove: () -> Unit = {},
+) {
     Box(
         // Todas las tarjetas llevan los mismos elementos → misma altura natural (sin inflar).
         Modifier.fillMaxWidth().shadow(3.dp, RoundedCornerShape(18.dp)).clip(RoundedCornerShape(18.dp))
@@ -238,7 +447,10 @@ private fun FriendCard(user: FriendUi, tab: FriendsTab, onOpen: (() -> Unit)? = 
             Avatar(user)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Nv. ${user.level}", color = BarajasPalette.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (user.level > 0) "Nv. ${user.level}" else "ID ${user.friendCode}",
+                    color = BarajasPalette.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                )
                 Text(
                     user.name, color = BarajasPalette.Ink, fontSize = 16.sp, fontWeight = FontWeight.Black,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -258,7 +470,7 @@ private fun FriendCard(user: FriendUi, tab: FriendsTab, onOpen: (() -> Unit)? = 
                 }
             }
             Spacer(Modifier.width(8.dp))
-            CardActions(user, tab)
+            CardActions(tab, onAccept = onAccept, onReject = onReject, onCancel = onCancel, onRemove = onRemove)
         }
     }
 }
@@ -276,43 +488,49 @@ private fun Avatar(user: FriendUi) {
     }
 }
 
-/** Zona de acción a la derecha de la tarjeta — cambia según la pestaña. */
+/** Zona de acción a la derecha de la tarjeta — cambia según la pestaña (acciones REALES). */
 @Composable
-private fun CardActions(user: FriendUi, tab: FriendsTab) {
+private fun CardActions(
+    tab: FriendsTab,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    onCancel: () -> Unit,
+    onRemove: () -> Unit,
+) {
     when (tab) {
         FriendsTab.AMIGOS -> {
-            val enabled = user.sharesSelection
             Row(
                 Modifier.clip(RoundedCornerShape(50))
-                    .border(1.5.dp, if (enabled) BarajasPalette.HairlineBorder else BarajasPalette.HairlineBorder.copy(alpha = 0.5f), RoundedCornerShape(50))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .border(1.5.dp, RejectRed.copy(alpha = 0.7f), RoundedCornerShape(50))
+                    .clickable(onClick = onRemove)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                val tint = if (enabled) BarajasPalette.Ink else BarajasPalette.Muted.copy(alpha = 0.5f)
-                Text("⌕", color = tint, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                Text("Selección personal", color = tint, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("✕", color = RejectRed, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                Text("Eliminar", color = RejectRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
         FriendsTab.ENVIADAS -> {
             Box(
                 Modifier.clip(RoundedCornerShape(50)).background(DarkPill)
+                    .clickable(onClick = onCancel)
                     .padding(horizontal = 14.dp, vertical = 9.dp),
             ) { Text("Cancelar solicitud", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
         }
         FriendsTab.RECIBIDAS -> {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconCircle("✕", RejectRed)
-                IconCircle("✓", AcceptGreen)
+                IconCircle("✕", RejectRed, onReject)
+                IconCircle("✓", AcceptGreen, onAccept)
             }
         }
     }
 }
 
 @Composable
-private fun IconCircle(glyph: String, color: Color) {
+private fun IconCircle(glyph: String, color: Color, onClick: () -> Unit) {
     Box(
-        Modifier.size(38.dp).clip(CircleShape).border(2.dp, color, CircleShape),
+        Modifier.size(38.dp).clip(CircleShape).border(2.dp, color, CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) { Text(glyph, color = color, fontSize = 18.sp, fontWeight = FontWeight.Black) }
 }
@@ -350,7 +568,7 @@ private fun BottomTabs(current: FriendsTab, onSelect: (FriendsTab) -> Unit) {
 }
 
 @Composable
-private fun BottomActions(showClearAll: Boolean, onClose: () -> Unit) {
+private fun BottomActions(showClearAll: Boolean, onClose: () -> Unit, onClearAll: () -> Unit = {}) {
     Box(
         Modifier.fillMaxWidth().background(BarajasPalette.Surface)
             .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -364,7 +582,8 @@ private fun BottomActions(showClearAll: Boolean, onClose: () -> Unit) {
 
         if (showClearAll) {
             Row(
-                Modifier.align(Alignment.CenterEnd),
+                Modifier.align(Alignment.CenterEnd).clip(RoundedCornerShape(50))
+                    .clickable(onClick = onClearAll).padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
