@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mineralord.tcg.data.netfirestore.FirestoreFriendsRepository
 import com.mineralord.tcg.data.netfirestore.FriendEntry
 import com.mineralord.tcg.data.netfirestore.FriendRequest
+import com.mineralord.tcg.data.netfirestore.MatchInvite
 import com.mineralord.tcg.data.profile.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +35,10 @@ class FriendsViewModel(app: Application) : AndroidViewModel(app) {
     val outgoing: StateFlow<List<FriendRequest>> =
         repo.outgoing().catch { emit(emptyList()) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /** Invitaciones a combate entrantes (en vivo). La UI muestra banner + notificación. */
+    val matchInvites: StateFlow<List<MatchInvite>> =
+        repo.matchInvites().catch { emit(emptyList()) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _myCode = MutableStateFlow("")
     val myCode: StateFlow<String> = _myCode.asStateFlow()
@@ -45,14 +50,13 @@ class FriendsViewModel(app: Application) : AndroidViewModel(app) {
     val message: StateFlow<String?> = _message.asStateFlow()
 
     init {
+        // La publicación en el directorio (publishSelf) se hace de forma GLOBAL en AppShell, así el
+        // nombre se refleja estés donde estés. Aquí solo leemos la identidad para mostrarla en el Hub.
         viewModelScope.launch {
             profileRepo.ensureFriendCode()
             profileRepo.profile.collect { p ->
                 _myCode.value = p.friendCode
                 _myName.value = p.username
-                if (p.friendCode.isNotBlank()) {
-                    runCatching { repo.publishSelf(p.friendCode, p.username) }
-                }
             }
         }
     }
@@ -78,6 +82,18 @@ class FriendsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearAllOutgoing() = viewModelScope.launch {
         outgoing.value.forEach { runCatching { repo.cancelOutgoing(it.uid) } }
+    }
+
+    /** Invita a [uid] a tu sala [roomCode] (le llega notificación + banner). */
+    fun inviteToMatch(uid: String, roomCode: String) = viewModelScope.launch {
+        runCatching { repo.inviteToMatch(uid, roomCode) }
+            .onSuccess { _message.value = "Invitación enviada" }
+            .onFailure { _message.value = "No se pudo invitar" }
+    }
+
+    /** Descarta la invitación a combate de [fromUid] (al aceptar, rechazar o entrar a la sala). */
+    fun clearMatchInvite(fromUid: String) = viewModelScope.launch {
+        runCatching { repo.clearMatchInvite(fromUid) }
     }
 
     fun clearMessage() { _message.value = null }

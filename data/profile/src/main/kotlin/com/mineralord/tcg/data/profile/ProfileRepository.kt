@@ -61,12 +61,20 @@ class ProfileRepository(context: Context) {
         val favoriteCosmetics = runCatching {
             json.decodeFromString(favoritesSerializer, prefs[FAVORITE_COSMETICS] ?: "[]")
         }.getOrDefault(emptySet())
+        val favoriteCards = runCatching {
+            json.decodeFromString(favoritesSerializer, prefs[FAVORITE_CARDS] ?: "[]")
+        }.getOrDefault(emptySet())
+        val wishlistCards = runCatching {
+            json.decodeFromString(favoritesSerializer, prefs[WISHLIST_CARDS] ?: "[]")
+        }.getOrDefault(emptySet())
         PlayerProfile(
             owned = owned,
             balances = balances,
             ownedCosmetics = ownedCosmetics,
             equippedCosmetics = equippedCosmetics,
             favoriteCosmetics = favoriteCosmetics,
+            favoriteCards = favoriteCards,
+            wishlistCards = wishlistCards,
             daily = DailyPackState(
                 dayId = prefs[DAILY_DAY] ?: 0L,
                 openedToday = prefs[DAILY_OPENED] ?: 0,
@@ -239,6 +247,30 @@ class ProfileRepository(context: Context) {
             }.getOrDefault(emptySet())
             val next = if (cosmeticId in current) current - cosmeticId else current + cosmeticId
             prefs[FAVORITE_COSMETICS] = json.encodeToString(favoritesSerializer, next)
+            prefs.touch()
+        }
+    }
+
+    /** Alterna el FAVORITO (★) de una carta. Persiste entre sesiones. */
+    suspend fun toggleFavoriteCard(cardId: String) {
+        store.edit { prefs ->
+            val current = runCatching {
+                json.decodeFromString(favoritesSerializer, prefs[FAVORITE_CARDS] ?: "[]")
+            }.getOrDefault(emptySet())
+            val next = if (cardId in current) current - cardId else current + cardId
+            prefs[FAVORITE_CARDS] = json.encodeToString(favoritesSerializer, next)
+            prefs.touch()
+        }
+    }
+
+    /** Alterna la DESEADA (♥ "¡La quiero!") de una carta. Persiste entre sesiones. */
+    suspend fun toggleWishlistCard(cardId: String) {
+        store.edit { prefs ->
+            val current = runCatching {
+                json.decodeFromString(favoritesSerializer, prefs[WISHLIST_CARDS] ?: "[]")
+            }.getOrDefault(emptySet())
+            val next = if (cardId in current) current - cardId else current + cardId
+            prefs[WISHLIST_CARDS] = json.encodeToString(favoritesSerializer, next)
             prefs.touch()
         }
     }
@@ -481,6 +513,8 @@ class ProfileRepository(context: Context) {
             prefs[EQUIPPED_COSMETICS] =
                 json.encodeToString(stringMapSerializer, profile.equippedCosmetics.mapKeys { it.key.name })
             prefs[FAVORITE_COSMETICS] = json.encodeToString(favoritesSerializer, profile.favoriteCosmetics)
+            prefs[FAVORITE_CARDS] = json.encodeToString(favoritesSerializer, profile.favoriteCards)
+            prefs[WISHLIST_CARDS] = json.encodeToString(favoritesSerializer, profile.wishlistCards)
             prefs[DAILY_DAY] = profile.daily.dayId
             prefs[DAILY_OPENED] = profile.daily.openedToday
             prefs[SEEDED] = profile.seeded
@@ -591,6 +625,8 @@ class ProfileRepository(context: Context) {
         val OWNED_COSMETICS = stringPreferencesKey("owned_cosmetics_json")
         val EQUIPPED_COSMETICS = stringPreferencesKey("equipped_cosmetics_json")
         val FAVORITE_COSMETICS = stringPreferencesKey("favorite_cosmetics_json")
+        val FAVORITE_CARDS = stringPreferencesKey("favorite_cards_json")
+        val WISHLIST_CARDS = stringPreferencesKey("wishlist_cards_json")
         val FRIEND_CODE = stringPreferencesKey("friend_code")
         val USERNAME = stringPreferencesKey("username")
     }

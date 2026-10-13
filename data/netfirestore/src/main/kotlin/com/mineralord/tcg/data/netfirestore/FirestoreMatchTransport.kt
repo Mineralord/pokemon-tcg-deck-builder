@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.mineralord.tcg.data.netplay.MatchRole
@@ -134,6 +135,27 @@ class FirestoreMatchTransportFactory private constructor(
             incomingCol = matchDoc.collection(G2H),
         )
         return code to transport
+    }
+
+    override suspend fun host(code: String, playerName: String): MatchTransport {
+        ensureSignedIn()
+        val normalized = code.trim().uppercase()
+        val matchDoc = db.collection(MATCHES).document(normalized)
+        // MERGE: conserva el estado del lobby (miembros/lobbyStatus) creado antes en la sala de amigos.
+        matchDoc.set(
+            mapOf(
+                "status" to "waiting",
+                "hostName" to playerName,
+                "createdAt" to FieldValue.serverTimestamp(),
+            ),
+            SetOptions.merge(),
+        ).await()
+        return FirestoreMatchTransport(
+            role = MatchRole.HOST,
+            matchDoc = matchDoc,
+            outgoingCol = matchDoc.collection(H2G),
+            incomingCol = matchDoc.collection(G2H),
+        )
     }
 
     override suspend fun join(code: String, playerName: String): MatchTransport {

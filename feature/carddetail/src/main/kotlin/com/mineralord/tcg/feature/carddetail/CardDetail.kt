@@ -110,6 +110,8 @@ data class CardDetailUi(
     val setCode: String,
     val imageEs: String?,
     val imageLarge: String,
+    /** Si false, es una de las cartas más raras de su expansión y NO se puede fabricar con fichas. */
+    val craftable: Boolean = true,
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,6 +161,12 @@ fun CardDetailSheet(
     onDismiss: () -> Unit,
 ) {
     var showLangs by remember(card) { mutableStateOf(false) }
+
+    // Oculta la barra de navegación de la app mientras el visor está abierto (NUNCA debe tapar la X).
+    val hideBottomBar = com.mineralord.tcg.core.designsystem.LocalBottomBarHider.current
+    DisposableEffect(Unit) { hideBottomBar(true); onDispose { hideBottomBar(false) } }
+    // Solo se regresa con la X: atrás cierra el visor (no la pantalla de debajo).
+    androidx.activity.compose.BackHandler(onBack = onDismiss)
 
     // Grito oficial del Pokémon al abrir su visor (colección, editor de barajas, etc.). Streaming
     // + caché; silencioso si falla. En COMBATE el grito suena al atacar (otro reproductor).
@@ -465,7 +473,8 @@ private fun CraftDestroyRow(card: CardDetailUi, fichas: Int, onCraft: () -> Unit
     val playset = playsetSize(card.card)
     val cost = craftCostOf(card.card)
     val value = destroyValueOf(card.card)
-    val canCraft = card.count < playset && fichas >= cost
+    // Las cartas más raras de cada expansión no se fabrican: solo se consiguen en sobres.
+    val canCraft = card.craftable && card.count < playset && fichas >= cost
     val canDestroy = card.count > playset
     val isEnergy = ProfileRepository.isEnergyId(card.card.id.raw)
     var confirmDestroy by remember(card) { mutableStateOf(false) }
@@ -476,8 +485,12 @@ private fun CraftDestroyRow(card: CardDetailUi, fichas: Int, onCraft: () -> Unit
         Txt("$floorLabel ${card.count.coerceAtMost(playset)}/$playset" + if (card.count > playset) "  ·  ${card.count - playset} excedente(s)" else "", 12.sp, Muted, FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ActionPill("Fabricar", "$cost 🧩", Accent, enabled = canCraft, onClick = onCraft)
+            ActionPill("Fabricar", if (card.craftable) "$cost 🧩" else "🔒", Accent, enabled = canCraft, onClick = onCraft)
             ActionPill("Destruir", "+$value 🧩", destroyColor, enabled = canDestroy, onClick = { confirmDestroy = true })
+        }
+        if (!card.craftable) {
+            Spacer(Modifier.height(6.dp))
+            Txt("Carta más rara de la expansión: solo se consigue en sobres.", 11.sp, Muted, FontWeight.Medium, Modifier.fillMaxWidth(), align = TextAlign.Center)
         }
     }
 

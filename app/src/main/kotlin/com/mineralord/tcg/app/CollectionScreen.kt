@@ -144,6 +144,7 @@ private data class DexCard(
 private fun DexCard.toDetailUi() = com.mineralord.tcg.feature.carddetail.CardDetailUi(
     card = card, number = number, name = name, rarity = rarity, owned = owned,
     count = count, cap = cap, setCode = setCode, imageEs = imageEs, imageLarge = imageLarge,
+    craftable = com.mineralord.tcg.data.cards.CraftPolicy.isCraftable(card),
 )
 
 /** Una expansión con su progreso (como las tarjetas del modo agrupado). */
@@ -360,7 +361,14 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val craftRepo = remember { ProfileRepository(context) }
     var fichas by remember { mutableStateOf(0) }
-    LaunchedEffect(Unit) { craftRepo.profile.collectLatest { fichas = it.balances[com.mineralord.tcg.data.profile.CurrencyKind.FICHAS] ?: 0 } }
+    LaunchedEffect(Unit) {
+        craftRepo.profile.collectLatest {
+            fichas = it.balances[com.mineralord.tcg.data.profile.CurrencyKind.FICHAS] ?: 0
+            // Favoritos/deseadas PERSISTENTES: se sincronizan desde el perfil (reactivo).
+            favorites.clear(); favorites.addAll(it.favoriteCards)
+            wishlist.clear(); wishlist.addAll(it.wishlistCards)
+        }
+    }
     val flatState = rememberLazyGridState()
     val groupedState = rememberLazyListState()
 
@@ -521,9 +529,14 @@ fun CollectionScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 isFavorite = { it.card.id.raw in favorites },
                 isWished = { it.card.id.raw in wishlist },
                 fichas = fichas,
-                onToggleFavorite = { toggle(favorites, it.card.id.raw) },
-                onToggleWish = { toggle(wishlist, it.card.id.raw) },
-                onCraft = { c -> scope.launch { craftRepo.craftCard(c.card.id.raw, craftCostOf(c.card), playsetSize(c.card)) } },
+                onToggleFavorite = { scope.launch { craftRepo.toggleFavoriteCard(it.card.id.raw) } },
+                onToggleWish = { scope.launch { craftRepo.toggleWishlistCard(it.card.id.raw) } },
+                onCraft = { c ->
+                    // Las cartas más raras de cada expansión no se fabrican (solo en sobres).
+                    if (com.mineralord.tcg.data.cards.CraftPolicy.isCraftable(c.card)) {
+                        scope.launch { craftRepo.craftCard(c.card.id.raw, craftCostOf(c.card), playsetSize(c.card)) }
+                    }
+                },
                 onDestroy = { c -> scope.launch { craftRepo.destroyCopies(c.card.id.raw, 1, destroyValueOf(c.card), playsetSize(c.card)) } },
                 onDismiss = { detail = null },
             )

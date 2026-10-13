@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,7 +57,14 @@ private sealed interface LobbyPhase {
  * (host-autoritativo). El modo vs IA (PvE) es independiente y no se toca.
  */
 @Composable
-fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
+fun OnlineGameScreen(
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** Código de la sala de amigos. Si no es nulo, el lobby manual se omite y la partida arranca
+     *  automáticamente: el anfitrión ([autoHost] = true) host-ea ese código; el invitado se une a él. */
+    autoCode: String? = null,
+    autoHost: Boolean = false,
+) {
     val context = LocalContext.current
     val app = context.applicationContext as Application
     val factoryProvider = app as MatchFactoryProvider
@@ -79,13 +87,37 @@ fun OnlineGameScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         return deck.name to deck.expandedCardIds().map { it.raw }
     }
 
+    // Sala de amigos: arranca la partida directamente con el código compartido (sin lobby manual).
+    LaunchedEffect(autoCode) {
+        val code = autoCode?.trim().orEmpty()
+        if (code.isBlank() || controller != null) return@LaunchedEffect
+        phase = LobbyPhase.Connecting
+        runCatching {
+            val (deckName, printed) = loadDeck()
+            if (autoHost) {
+                val transport = factoryProvider.matchFactory.host(code, "Anfitrión")
+                controller = OnlineGameController(app, transport, "Anfitrión", printed, deckName)
+                phase = LobbyPhase.Hosting(code)
+            } else {
+                val transport = factoryProvider.matchFactory.join(code, "Invitado")
+                controller = OnlineGameController(app, transport, "Invitado", printed, deckName)
+                phase = LobbyPhase.Playing
+            }
+        }.onFailure { error = it.message ?: "No se pudo conectar con la sala"; phase = LobbyPhase.Choosing }
+    }
+
     val ctrl = controller
     if (ctrl != null) {
         val ui by ctrl.ui.collectAsStateWithLifecycle()
         val started = ui.coinFlip != null || ui.dealing != null || ui.setup != null || ui.state != null
         val hosting = phase as? LobbyPhase.Hosting
         if (hosting != null && !started) {
-            CodeWaitingCard(code = hosting.code, onCancel = onExit, modifier = modifier)
+            // Sala de amigos (autoCode): nada de "comparte código"; el rival ya viene en camino.
+            if (autoCode != null) {
+                ConnectingCard(modifier = modifier)
+            } else {
+                CodeWaitingCard(code = hosting.code, onCancel = onExit, modifier = modifier)
+            }
         } else {
             // Mismo tapete canónico que el modo vs IA.
             com.mineralord.tcg.feature.game.combat.CombatScreen(
@@ -185,6 +217,19 @@ private fun CodeWaitingCard(code: String, onCancel: () -> Unit, modifier: Modifi
         Text("Esperando a que tu rival se una…", color = TcgColors.Parchment.copy(alpha = 0.7f), fontSize = 13.sp)
         Spacer(Modifier.height(28.dp))
         LobbyButton("Cancelar", primary = false, onClick = onCancel)
+    }
+}
+
+@Composable
+private fun ConnectingCard(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxSize().background(TcgColors.Navy).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text("Preparando el combate…", color = TcgColors.Parchment, fontWeight = FontWeight.Black, fontSize = 18.sp)
+        Spacer(Modifier.height(10.dp))
+        Text("Conectando con tu rival", color = TcgColors.Parchment.copy(alpha = 0.7f), fontSize = 13.sp)
     }
 }
 

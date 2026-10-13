@@ -246,8 +246,8 @@ internal fun DeckCardPicker(
 @Composable
 internal fun DeckCardDetailViewer(initialId: String, viewModel: DeckEditorViewModel, onDismiss: () -> Unit) {
     val fichas by viewModel.fichas.collectAsStateWithLifecycle()
-    val favorites = remember { mutableStateListOf<String>() }
-    val wishlist = remember { mutableStateListOf<String>() }
+    val favorites by viewModel.favoriteCards.collectAsStateWithLifecycle()
+    val wishlist by viewModel.wishlistCards.collectAsStateWithLifecycle()
     val allDetails = remember { viewModel.allDetails() }
     if (allDetails.isEmpty()) { onDismiss(); return }
     val startIndex = remember(allDetails) {
@@ -261,8 +261,8 @@ internal fun DeckCardDetailViewer(initialId: String, viewModel: DeckEditorViewMo
             isFavorite = { it.card.id.raw in favorites },
             isWished = { it.card.id.raw in wishlist },
             fichas = fichas,
-            onToggleFavorite = { c -> val id = c.card.id.raw; if (id in favorites) favorites.remove(id) else favorites.add(id) },
-            onToggleWish = { c -> val id = c.card.id.raw; if (id in wishlist) wishlist.remove(id) else wishlist.add(id) },
+            onToggleFavorite = { c -> viewModel.toggleFavoriteCard(c.card.id.raw) },
+            onToggleWish = { c -> viewModel.toggleWishlistCard(c.card.id.raw) },
             onCraft = { c -> viewModel.craft(c.card.id.raw) },
             onDestroy = { c -> viewModel.destroy(c.card.id.raw) },
             onDismiss = onDismiss,

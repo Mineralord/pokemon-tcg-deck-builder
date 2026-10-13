@@ -40,6 +40,15 @@ service cloud.firestore {
         allow delete: if request.auth != null &&
           (request.auth.uid == uid || request.auth.uid == tid);
       }
+
+      // Invitaciones a combate: las lee el dueño; crear solo DESDE el emisor (id == su uid);
+      // borrar lo hace el dueño (acepta/rechaza) o el emisor (cancela).
+      match /matchInvites/{fid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null && request.auth.uid == fid;
+        allow delete: if request.auth != null &&
+          (request.auth.uid == uid || request.auth.uid == fid);
+      }
     }
 
     match /{document=**} {

@@ -94,6 +94,16 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
     /** Fichas del jugador (para Fabricar/Destruir en el visor de detalle). */
     private val _fichas = MutableStateFlow(0)
     val fichas: StateFlow<Int> = _fichas.asStateFlow()
+    private val _favoriteCards = MutableStateFlow<Set<String>>(emptySet())
+    val favoriteCards: StateFlow<Set<String>> = _favoriteCards.asStateFlow()
+    private val _wishlistCards = MutableStateFlow<Set<String>>(emptySet())
+    val wishlistCards: StateFlow<Set<String>> = _wishlistCards.asStateFlow()
+
+    /** Alterna favorito (★) PERSISTENTE de una carta. */
+    fun toggleFavoriteCard(id: String) = viewModelScope.launch { profileRepo.toggleFavoriteCard(id) }
+
+    /** Alterna deseada (♥ "¡La quiero!") PERSISTENTE de una carta. */
+    fun toggleWishlistCard(id: String) = viewModelScope.launch { profileRepo.toggleWishlistCard(id) }
 
     /** Snapshot de la baraja al entrar al editor (para descartar cambios). */
     private var original: Deck? = null
@@ -120,6 +130,7 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
             setCode = if (idRaw.startsWith("energy")) "energy" else idRaw.substringBeforeLast('-'),
             imageEs = card.artwork.smallEs,
             imageLarge = card.artwork.large(spanish = true),
+            craftable = com.mineralord.tcg.data.cards.CraftPolicy.isCraftable(card),
         )
     }
 
@@ -131,6 +142,8 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
 
     fun craft(id: String) = viewModelScope.launch {
         val c = repo[CardId(id)] ?: return@launch
+        // Las cartas más raras de cada expansión no se fabrican (solo en sobres).
+        if (!com.mineralord.tcg.data.cards.CraftPolicy.isCraftable(c)) return@launch
         profileRepo.craftCard(id, craftCostOf(c), playsetSize(c))
     }
 
@@ -150,6 +163,8 @@ class DeckEditorViewModel(app: Application) : AndroidViewModel(app) {
             }.collect { (profile, id2, f, s) ->
                 ownedMap = profile.owned
                 _fichas.value = profile.balances[CurrencyKind.FICHAS] ?: 0
+                _favoriteCards.value = profile.favoriteCards
+                _wishlistCards.value = profile.wishlistCards
                 val deck = profile.decks.firstOrNull { it.id == id2 }
                 if (deck == null) {
                     _state.value = EditorUiState(loading = false, exists = false, deckId = id2)

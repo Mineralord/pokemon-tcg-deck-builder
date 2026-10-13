@@ -42,6 +42,13 @@ interface MatchTransportFactory {
     /** Crea/host-ea una partida y devuelve un código corto para que el rival se una. */
     suspend fun host(playerName: String): Pair<String, MatchTransport>
 
+    /**
+     * Host-ea una partida con un [code] YA conocido (p. ej. el código de una sala de amigos creada
+     * antes de empezar). Útil para que anfitrión e invitado converjan en la misma partida sin que el
+     * transporte invente su propio código. Por defecto delega en [host] y descarta el código generado.
+     */
+    suspend fun host(code: String, playerName: String): MatchTransport = host(playerName).second
+
     /** Se une a una partida existente por [code]. */
     suspend fun join(code: String, playerName: String): MatchTransport
 }

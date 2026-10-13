@@ -5,6 +5,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -13,11 +14,26 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-/** Un amigo confirmado (bidireccional). [uid] = id de Auth del amigo. */
-data class FriendEntry(val uid: String, val username: String, val friendCode: String)
+/**
+ * Un amigo confirmado (bidireccional). [uid] = id de Auth del amigo. [lastSeenMillis] = última
+ * conexión (epoch ms, 0 si no compartida); [collectionCount] = total de cartas en su colección.
+ */
+data class FriendEntry(
+    val uid: String,
+    val username: String,
+    val friendCode: String,
+    val lastSeenMillis: Long = 0L,
+    val collectionCount: Int = 0,
+)
 
 /** Una solicitud de amistad (entrante o saliente). [uid] = id de Auth del otro jugador. */
 data class FriendRequest(val uid: String, val username: String, val friendCode: String)
+
+/**
+ * Una invitación a combate recibida de un amigo. [fromUid] = quién invita; [roomCode] = código de
+ * la sala/partida a la que unirse al aceptar; [ts] = marca temporal (ms) para detectar las nuevas.
+ */
+data class MatchInvite(val fromUid: String, val fromName: String, val roomCode: String, val ts: Long)
 
 /**
  * Backend REAL de amigos sobre Firestore (multidispositivo), reutilizando el mismo patrón que
@@ -45,21 +61,95 @@ class FirestoreFriendsRepository private constructor(
 
     private fun users() = db.collection(USERS)
 
-    /** Publica (o actualiza) tu registro en el directorio para que otros te encuentren por tu ID. */
-    suspend fun publishSelf(friendCode: String, username: String) {
+    /**
+     * Publica (o actualiza) tu registro en el directorio para que otros te encuentren por tu ID.
+     * Cada llamada refresca `lastSeen` (última conexión, visible para tus amigos) y `collectionCount`
+     * (total de cartas en tu colección, visible en tu perfil para tus amigos).
+     */
+    suspend fun publishSelf(friendCode: String, username: String, collectionCount: Int) {
         val me = uid()
         users().document(me).set(
             mapOf(
                 "friendCode" to friendCode,
                 "username" to username,
+                "collectionCount" to collectionCount,
+                "lastSeen" to FieldValue.serverTimestamp(),
                 "updatedAt" to FieldValue.serverTimestamp(),
             ),
             SetOptions.merge(),
         ).await()
     }
 
-    fun friends(): Flow<List<FriendEntry>> = subFlow(FRIENDS) {
-        FriendEntry(it.id, it.getString("username").orEmpty(), it.getString("friendCode").orEmpty())
+    /**
+     * Lista de amigos con el nombre y código SIEMPRE EN VIVO. La copia guardada en la subcolección
+     * `friends` queda congelada al hacerse amigos, así que si un amigo se cambia el nombre después
+     * no se reflejaría. Para evitarlo, escuchamos la subcolección `friends` (membresía) y, por cada
+     * amigo, también su doc de directorio `users/{amigoUid}` (nombre/código autoritativos y vivos);
+     * el nombre mostrado se toma del directorio, cayendo a la copia local solo si aún no ha llegado.
+     */
+    fun friends(): Flow<List<FriendEntry>> = callbackFlow {
+        val me = uid()
+        val lock = Any()
+        // Copia local (de la subcolección `friends`) por amigo: respaldo si el directorio aún no carga.
+        val stored = LinkedHashMap<String, FriendEntry>()
+        // Valores vivos del directorio `users/{amigoUid}`.
+        val liveName = HashMap<String, String>()
+        val liveCode = HashMap<String, String>()
+        val liveLastSeen = HashMap<String, Long>()
+        val liveCount = HashMap<String, Int>()
+        val userRegs = HashMap<String, ListenerRegistration>()
+
+        fun emit() {
+            val list = stored.map { (fuid, s) ->
+                FriendEntry(
+                    uid = fuid,
+                    username = liveName[fuid]?.takeIf { it.isNotEmpty() } ?: s.username,
+                    friendCode = liveCode[fuid]?.takeIf { it.isNotEmpty() } ?: s.friendCode,
+                    lastSeenMillis = liveLastSeen[fuid] ?: 0L,
+                    collectionCount = liveCount[fuid] ?: 0,
+                )
+            }
+            trySend(list)
+        }
+
+        val reg = users().document(me).collection(FRIENDS).addSnapshotListener { snap, _ ->
+            if (snap == null) return@addSnapshotListener
+            synchronized(lock) {
+                stored.clear()
+                val current = HashSet<String>()
+                for (d in snap.documents) {
+                    val fuid = d.id
+                    current.add(fuid)
+                    stored[fuid] = FriendEntry(
+                        fuid, d.getString("username").orEmpty(), d.getString("friendCode").orEmpty(),
+                    )
+                    // Suscríbete al directorio de este amigo una sola vez (nombre/código en vivo).
+                    if (!userRegs.containsKey(fuid)) {
+                        userRegs[fuid] = users().document(fuid).addSnapshotListener { u, _ ->
+                            if (u == null) return@addSnapshotListener
+                            synchronized(lock) {
+                                u.getString("username")?.let { liveName[fuid] = it }
+                                u.getString("friendCode")?.let { liveCode[fuid] = it }
+                                u.getTimestamp("lastSeen")?.let { liveLastSeen[fuid] = it.toDate().time }
+                                u.getLong("collectionCount")?.let { liveCount[fuid] = it.toInt() }
+                                emit()
+                            }
+                        }
+                    }
+                }
+                // Deja de escuchar a quienes ya no son amigos.
+                (userRegs.keys - current).toList().forEach { gone ->
+                    userRegs.remove(gone)?.remove()
+                    liveName.remove(gone); liveCode.remove(gone)
+                    liveLastSeen.remove(gone); liveCount.remove(gone)
+                }
+                emit()
+            }
+        }
+        awaitClose {
+            reg.remove()
+            synchronized(lock) { userRegs.values.forEach { it.remove() }; userRegs.clear() }
+        }
     }
 
     fun incoming(): Flow<List<FriendRequest>> = subFlow(INCOMING) {
@@ -156,6 +246,39 @@ class FirestoreFriendsRepository private constructor(
         batch.commit().await()
     }
 
+    // ───────── Invitaciones a combate ─────────
+
+    /**
+     * Invita a [targetUid] a tu sala [roomCode]: escribe un doc en su buzón `matchInvites`. Su
+     * dispositivo lo recibe en vivo (banner + notificación) y, al aceptar, se une a esa sala.
+     */
+    suspend fun inviteToMatch(targetUid: String, roomCode: String) {
+        val me = uid()
+        val meDoc = users().document(me).get().await()
+        users().document(targetUid).collection(MATCH_INVITES).document(me).set(
+            mapOf(
+                "fromName" to meDoc.getString("username").orEmpty(),
+                "roomCode" to roomCode,
+                "ts" to FieldValue.serverTimestamp(),
+            ),
+        ).await()
+    }
+
+    /** Escucha en vivo tus invitaciones a combate entrantes. */
+    fun matchInvites(): Flow<List<MatchInvite>> = subFlow(MATCH_INVITES) {
+        MatchInvite(
+            fromUid = it.id,
+            fromName = it.getString("fromName").orEmpty(),
+            roomCode = it.getString("roomCode").orEmpty(),
+            ts = it.getTimestamp("ts")?.toDate()?.time ?: 0L,
+        )
+    }
+
+    /** Descarta la invitación de [fromUid] (al aceptar, rechazar o tras entrar a la sala). */
+    suspend fun clearMatchInvite(fromUid: String) {
+        users().document(uid()).collection(MATCH_INVITES).document(fromUid).delete().await()
+    }
+
     /** Elimina la amistad con [otherUid] en ambos lados. */
     suspend fun removeFriend(otherUid: String) {
         val me = uid()
@@ -170,6 +293,7 @@ class FirestoreFriendsRepository private constructor(
         const val FRIENDS = "friends"
         const val INCOMING = "incomingRequests"
         const val OUTGOING = "outgoingRequests"
+        const val MATCH_INVITES = "matchInvites"
     }
 }
 

@@ -360,7 +360,12 @@ private val PACK_OPENING_PLAYLIST = listOf(
     Track("Evolución (Teselia)", UNOVA, "Disc 1/38 - Evolution.mp3"),
 )
 
-private const val MUSIC_VOLUME = 1f
+/**
+ * Atenuación del reproductor sobre el canal de MULTIMEDIA del dispositivo. Las pistas están
+ * masterizadas muy alto, así que a 1.0 se oían "a tope"; a ~0.5 quedan a un volumen cómodo, acorde
+ * con el resto de apps (sube/baja igualmente con el control de volumen de medios del sistema).
+ */
+private const val MUSIC_VOLUME = 0.5f
 
 /** Es de día entre las 06:00 y las 19:59 (hora local del dispositivo); si no, es de noche. */
 private fun isDaytime(): Boolean = java.time.LocalTime.now().hour in 6..19

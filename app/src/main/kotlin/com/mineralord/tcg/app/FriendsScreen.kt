@@ -63,26 +63,38 @@ private val AcceptGreen = Color(0xFF19D08B)
 private val RejectRed = Color(0xFFF24139)
 private val DarkPill = Color(0xFF415268)
 
-/** Estado de última conexión que muestra cada tarjeta. */
-private enum class LastSeen(val label: String) {
-    RECENT("Hace 16 h"),
-    WEEK_PLUS("Hace más de 7 d"),
-    NOT_SHARED("No compartida"),
+/**
+ * Etiqueta de "última conexión" a partir de la marca temporal (epoch ms). 0 = no compartida.
+ * Tope máximo de 7 días: cualquier cosa más antigua se muestra como "Hace 7 días".
+ */
+private fun lastSeenLabel(millis: Long): String {
+    if (millis <= 0L) return "No compartida"
+    val diff = (System.currentTimeMillis() - millis).coerceAtLeast(0L)
+    val sevenDays = 7L * 24 * 60 * 60 * 1000
+    if (diff >= sevenDays) return "Hace 7 días"
+    val mins = diff / 60_000
+    return when {
+        mins < 1 -> "Hace un momento"
+        mins < 60 -> "Hace $mins ${if (mins == 1L) "minuto" else "minutos"}"
+        mins < 1440 -> (mins / 60).let { "Hace $it ${if (it == 1L) "hora" else "horas"}" }
+        else -> (mins / 1440).let { "Hace $it ${if (it == 1L) "día" else "días"}" }
+    }
 }
 
 /** Un usuario del hub (amigo o solicitud). [uid] identifica al jugador en el backend real. */
 private data class FriendUi(
     val name: String,
     val level: Int,
-    val lastSeen: LastSeen,
+    val lastSeenLabel: String,
     val badges: List<Color>,
     val sharesSelection: Boolean = true,
     val avatar: List<Color>,
     val uid: String = "",
-    // Campos del PERFIL (valores de ejemplo por defecto; se poblarán desde el backend luego).
+    // Total de cartas en la colección (real, del backend; 0 si aún no se ha publicado).
+    val collectionCount: Int = 0,
+    // Campos del PERFIL (placeholders por ahora; se poblarán desde el backend luego).
     val friendCode: String = "4897-4115-8907-2209",
     val statusMessage: String = "¡Quiero completar el índice de cartas!",
-    val collectionCount: Int = 11_505,
     val tradeMessage: String = "Acepto cartas en cualquier idioma",
     val hashtag: String = "#LegendariosSingulares",
 )
@@ -109,20 +121,27 @@ private fun badges(n: Int, seed: Int) = List(n) { badgePalette[(seed + it) % bad
 
 // Avatar/insignias deterministas a partir del ID de amigo (placeholder visual estable, sin backend
 // de cosméticos social todavía). El nombre y el ID son datos REALES del backend.
-private fun uiFromReal(uid: String, username: String, friendCode: String): FriendUi {
+private fun uiFromReal(
+    uid: String,
+    username: String,
+    friendCode: String,
+    lastSeenMillis: Long = 0L,
+    collectionCount: Int = 0,
+): FriendUi {
     val seed = friendCode.hashCode().absoluteValue
     return FriendUi(
         name = username.ifBlank { "Entrenador" },
         level = 0,
-        lastSeen = LastSeen.NOT_SHARED,
+        lastSeenLabel = lastSeenLabel(lastSeenMillis),
         badges = badges(3, seed),
         avatar = avatarPalettes[seed % avatarPalettes.size],
         uid = uid,
+        collectionCount = collectionCount,
         friendCode = formatFriendCode(friendCode),
     )
 }
 
-private fun FriendEntry.toUi() = uiFromReal(uid, username, friendCode)
+private fun FriendEntry.toUi() = uiFromReal(uid, username, friendCode, lastSeenMillis, collectionCount)
 private fun FriendRequest.toUi() = uiFromReal(uid, username, friendCode)
 
 /**
@@ -457,7 +476,7 @@ private fun FriendCard(
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    "Última conexión: ${user.lastSeen.label}",
+                    "Última conexión: ${user.lastSeenLabel}",
                     color = BarajasPalette.Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
                 )
                 if (user.badges.isNotEmpty()) {

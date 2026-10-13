@@ -39,6 +39,9 @@ data class RevealedCard(
 )
 
 /** Estado de la pantalla de sobres (MVI). */
+/** Carta "hit" de la tira de previsualización del sobre (id + imagen para el marquee). */
+data class HitCard(val id: String, val image: String)
+
 data class PacksUiState(
     val loading: Boolean = true,
     val remainingToday: Int = 0,
@@ -66,6 +69,11 @@ data class PacksUiState(
     val buyRemaining: Int = 0,
     /** ¿Puede comprar ahora? (hay saldo y no ha llegado al tope diario). */
     val canBuy: Boolean = false,
+    /** "Hits" del set activo para la tira de previsualización (Rara Holo en adelante, sin las 2 más altas). */
+    val previewHits: List<HitCard> = emptyList(),
+    /** Favoritos (★) y deseadas (♥) PERSISTENTES del jugador, para el visor de carta. */
+    val favoriteCards: Set<String> = emptySet(),
+    val wishlistCards: Set<String> = emptySet(),
 )
 
 /**
@@ -87,11 +95,16 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private var wallet: com.mineralord.tcg.data.gacha.PackWallet? = null
     private var owned: Map<String, Int> = emptyMap()
     private var totalInSet: Int = 0
+    /** Hits del set activo (Rara Holo en adelante, sin las 2 rarezas más altas). */
+    private var hits: List<HitCard> = emptyList()
     /** Código del set ACTIVO en la pantalla (qué sobre se abre). Cambia con [selectSet]. */
     private var setCode: String = DEFAULT_SET
     /** Total de cartas por set (prefijo → nº), calculado una vez al cargar el catálogo. */
     private var totalBySet: Map<String, Int> = emptyMap()
     private var cristales: Int = 0
+    private var fichasBalance: Int = 0
+    private var favCards: Set<String> = emptySet()
+    private var wishCards: Set<String> = emptySet()
     private var buyState: com.mineralord.tcg.data.gacha.DailyPackState = com.mineralord.tcg.data.gacha.DailyPackState()
 
     private val _state = MutableStateFlow(PacksUiState())
@@ -130,6 +143,9 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                 profileRepo.profile.collect {
                     owned = it.owned
                     cristales = it.balanceOf(CurrencyKind.CRISTALES)
+                    fichasBalance = it.balanceOf(CurrencyKind.FICHAS)
+                    favCards = it.favoriteCards
+                    wishCards = it.wishlistCards
                     buyState = it.daily
                     refreshUi()
                 }
@@ -165,6 +181,9 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             packPrice = EconomyRules.PACK_PRICE_CRISTALES,
             buyRemaining = buyRemaining,
             canBuy = cristales >= EconomyRules.PACK_PRICE_CRISTALES && buyRemaining > 0,
+            previewHits = hits,
+            favoriteCards = favCards,
+            wishlistCards = wishCards,
         )
     }
 
@@ -193,6 +212,64 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         }
         pool = PackPool.from(setCards)
         totalInSet = totalBySet[code] ?: setCards.size
+        // Hits para la tira: rareza Rara Holo en adelante, EXCLUYENDO las 2 rarezas más altas del set
+        // (las chase no-fabricables, coherente con CraftPolicy). Son cartas valiosas y llamativas.
+        hits = setCards
+            .filter {
+                it.rarity.ordinal >= com.mineralord.tcg.engine.model.Rarity.RARE_HOLO.ordinal &&
+                    !com.mineralord.tcg.data.cards.CraftPolicy.isTopRarityOfSet(it)
+            }
+            .map { HitCard(it.id.raw, it.artwork.smallEs ?: it.artwork.large(spanish = true)) }
+    }
+
+    /** Detalle (visor compartido) de una carta por id, o null si no existe. */
+    fun detailFor(id: String): com.mineralord.tcg.feature.carddetail.CardDetailUi? {
+        if (!this::repo.isInitialized) return null
+        val c = repo[com.mineralord.tcg.engine.model.CardId(id)] ?: return null
+        val n = owned[id] ?: 0
+        return com.mineralord.tcg.feature.carddetail.CardDetailUi(
+            card = c,
+            number = id.substringAfterLast('-').toIntOrNull() ?: 0,
+            name = c.name.es,
+            rarity = c.rarity,
+            owned = n > 0,
+            count = n,
+            cap = com.mineralord.tcg.feature.carddetail.playsetSize(c),
+            setCode = if (id.startsWith("energy")) "energy" else id.substringBeforeLast('-'),
+            imageEs = c.artwork.smallEs,
+            imageLarge = c.artwork.large(spanish = true),
+            craftable = com.mineralord.tcg.data.cards.CraftPolicy.isCraftable(c),
+        )
+    }
+
+    /** Fichas de fabricación del jugador (para el visor de detalle). */
+    fun fichas(): Int = fichasBalance
+
+    /** Alterna favorito (★) PERSISTENTE de una carta. */
+    fun toggleFavorite(id: String) = viewModelScope.launch { profileRepo.toggleFavoriteCard(id) }
+
+    /** Alterna deseada (♥ "¡La quiero!") PERSISTENTE de una carta. */
+    fun toggleWish(id: String) = viewModelScope.launch { profileRepo.toggleWishlistCard(id) }
+
+    /** Fabrica una copia de la carta [id] desde el visor (bloqueada para las 2 rarezas más altas). */
+    fun craft(id: String) = viewModelScope.launch {
+        val c = repo[com.mineralord.tcg.engine.model.CardId(id)] ?: return@launch
+        if (!com.mineralord.tcg.data.cards.CraftPolicy.isCraftable(c)) return@launch
+        profileRepo.craftCard(
+            id,
+            com.mineralord.tcg.feature.carddetail.craftCostOf(c),
+            com.mineralord.tcg.feature.carddetail.playsetSize(c),
+        )
+    }
+
+    /** Destruye (recicla) una copia sobrante de la carta [id] desde el visor. */
+    fun destroy(id: String) = viewModelScope.launch {
+        val c = repo[com.mineralord.tcg.engine.model.CardId(id)] ?: return@launch
+        profileRepo.destroyCopies(
+            id, 1,
+            com.mineralord.tcg.feature.carddetail.destroyValueOf(c),
+            com.mineralord.tcg.feature.carddetail.playsetSize(c),
+        )
     }
 
     fun openPack() {

@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -73,6 +74,8 @@ fun HomeScreen(
     onJugarOnline: () -> Unit,
     onAmigos: () -> Unit = {},
     onOpenPack: (String) -> Unit = {},
+    /** Sobres gratis disponibles (0..6). A 6 el contador muestra "Al máximo". */
+    freePacks: Int = 6,
 ) {
     var info by remember { mutableStateOf<Currency?>(null) }
 
@@ -96,9 +99,12 @@ fun HomeScreen(
             Spacer(Modifier.height(16.dp))
             AccessRow(onPerfil = onPerfil)
             Spacer(Modifier.height(20.dp))
-            PackCarousel(showcase = showcase, onOpen = onOpenPack)
-            Spacer(Modifier.height(12.dp))
-            ProgressStrip()
+            PackShowcase(
+                showcase = showcase,
+                themeColor = showcase.firstOrNull()?.themeColor ?: HomePalette.ShowcaseGold,
+                freePacks = freePacks,
+                onOpen = onOpenPack,
+            )
             Spacer(Modifier.height(18.dp))
             ActionCards(onMercado = onTienda, onTienda = onTienda)
         }
@@ -133,6 +139,13 @@ private object HomePalette {
     val NavInactive = Color(0xFFAEBACB)
     val RedDot = Color(0xFFFF3B6B)
     val Teal = Color(0xFF07D4C1)
+
+    // Colores de RECUADRO del escaparate por expansión (la zona teñida; no siempre dorada).
+    val ShowcaseGold = Color(0xFFF2D18A)
+    val ShowcaseViolet = Color(0xFFBBA7E6)
+
+    /** Fondo de la cápsula "hundida" donde se embeben los minisobres (recessed). */
+    val Inset = Color(0xFFEDF2F8)
 
     // Monedas.
     val CristalHi = Color(0xFF8FD3FF)
@@ -458,54 +471,90 @@ private fun GiftIcon() {
 //  CARRUSEL DE SOBRES
 // ===========================================================================
 
-/** Una expansión mostrable en el escaparate de la Home ([code] = prefijo de set para abrir su sobre). */
-private data class HomeExpansion(val code: String, val art: Any)
+/**
+ * Una expansión mostrable en el escaparate de la Home. [code] = prefijo de set para abrir su sobre;
+ * [themeColor] tiñe el recuadro del escaparate (NO siempre dorado: cambia según la expansión destacada).
+ */
+private data class HomeExpansion(val code: String, val art: Any, val themeColor: Color)
 
 private object HomeExpansions {
     val ALL: List<HomeExpansion> = listOf(
-        HomeExpansion("sv3pt5", com.mineralord.tcg.feature.packs.PACK_IMAGE_151),
-        HomeExpansion("sv4", com.mineralord.tcg.feature.packs.PACK_ART_PARADOX),
-        // Al agregar futuras expansiones, añádelas aquí y el escaparate las rotará.
+        HomeExpansion("sv3pt5", com.mineralord.tcg.feature.packs.PACK_IMAGE_151, HomePalette.ShowcaseGold),
+        HomeExpansion("sv4", com.mineralord.tcg.feature.packs.PACK_ART_PARADOX, HomePalette.ShowcaseViolet),
+        // Al agregar futuras expansiones, añádelas aquí con su color de recuadro.
     )
 }
 
+/** Nº máximo de sobres gratis acumulables (al llegar, el contador muestra "Al máximo"). */
+private const val MAX_FREE_PACKS = 6
+
 @Composable
-private fun PackCarousel(showcase: List<HomeExpansion>, onOpen: (String) -> Unit) {
-    // Proporciones calcadas de la referencia: panel verde ~150dp con los sobres
-    // (~196dp de alto) sobresaliendo por arriba y por abajo.
+private fun PackShowcase(
+    showcase: List<HomeExpansion>,
+    themeColor: Color,
+    freePacks: Int,
+    onOpen: (String) -> Unit,
+) {
     Box(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .height(210.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 16.dp)
+            .height(236.dp),
     ) {
-        // Panel verde de fondo.
+        // Recuadro con fondo BICOLOR dividido por una diagonal: color temático (variable) en la zona
+        // superior-izquierda y blanco en la inferior-derecha. La diagonal entra a la izquierda alto y
+        // sale a la derecha bajo (~18-22°).
         Box(
             Modifier
+                .align(Alignment.Center)
                 .fillMaxWidth()
-                .height(154.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Brush.verticalGradient(listOf(Color(0xFFA6E9C8), Color(0xFF8FE0C7)))),
+                .height(176.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .drawBehind {
+                    drawRect(Color.White)
+                    val w = size.width; val h = size.height
+                    val top = Path().apply {
+                        moveTo(0f, 0f); lineTo(w, 0f)
+                        lineTo(w, h * 0.40f); lineTo(0f, h * 0.64f); close()
+                    }
+                    drawPath(
+                        top,
+                        Brush.linearGradient(
+                            listOf(themeColor, themeColor.copy(alpha = 0.78f)),
+                        ),
+                    )
+                },
         )
-        // Fila de sobres reales, sobresaliendo del panel.
+
+        // Fila de 3 sobres TODOS DEL MISMO TAMAÑO (sin realce central), sobresaliendo por arriba.
+        // Altura reducida para dejar una banda blanca inferior donde se embeben los minisobres.
         Row(
             Modifier
+                .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .height(196.dp)
-                .padding(horizontal = 22.dp),
+                .padding(horizontal = 24.dp)
+                .height(152.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
             showcase.forEach { exp ->
                 BoosterArt(exp, Modifier.weight(1f)) { onOpen(exp.code) }
             }
         }
+
+        // Bandeja EMBEBIDA en el CENTRO INFERIOR del recuadro: 2 minisobres (arte vectorial) + contador.
+        FreePacksTray(
+            freePacks = freePacks,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 14.dp),
+        )
+
         // Píldora ">" con icono de sobre (arriba-derecha).
         Row(
             Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 10.dp, end = 8.dp)
+                .padding(top = 36.dp, end = 10.dp)
                 .clip(RoundedCornerShape(50))
                 .background(Color.White)
                 .clickable { onOpen(showcase.firstOrNull()?.code ?: "sv3pt5") }
@@ -533,6 +582,107 @@ private fun PackCarousel(showcase: List<HomeExpansion>, onOpen: (String) -> Unit
     }
 }
 
+/**
+ * Bandeja de SOBRES GRATIS embebida (centro inferior del recuadro): una cápsula hundida con dos
+ * minisobres de ARTE VECTORIAL original y, debajo, el contador de sobres gratis disponibles (1, 2…).
+ * Al alcanzar [MAX_FREE_PACKS] muestra "Al máximo".
+ */
+@Composable
+private fun FreePacksTray(freePacks: Int, modifier: Modifier = Modifier) {
+    val free = freePacks.coerceIn(0, MAX_FREE_PACKS)
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        // Cápsula "hundida" (inset): fondo ligeramente más oscuro que el blanco + hairline → recessed.
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(HomePalette.Inset)
+                .border(1.dp, HomePalette.Hairline, RoundedCornerShape(50))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy((-7).dp),
+        ) {
+            // Dos minisobres escalonados (el 2º ligeramente elevado para dar profundidad).
+            MiniPackVector(Modifier.size(width = 24.dp, height = 34.dp))
+            MiniPackVector(Modifier.size(width = 24.dp, height = 34.dp).offset(y = (-3).dp))
+        }
+        Spacer(Modifier.height(5.dp))
+        // Contador / "Al máximo".
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(if (free >= MAX_FREE_PACKS) HomePalette.Teal else HomePalette.Surface)
+                .then(
+                    if (free >= MAX_FREE_PACKS) Modifier
+                    else Modifier.border(1.dp, HomePalette.Hairline, RoundedCornerShape(50)),
+                )
+                .padding(horizontal = 10.dp, vertical = 2.dp),
+        ) {
+            Text(
+                if (free >= MAX_FREE_PACKS) "Al máximo" else "$free/$MAX_FREE_PACKS",
+                color = if (free >= MAX_FREE_PACKS) Color.White else HomePalette.Ink,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp,
+            )
+        }
+    }
+}
+
+/**
+ * Minisobre de ARTE VECTORIAL original (sin usar arte de expansiones ni personajes con derechos):
+ * cuerpo con degradado, franja de sellado superior dentada (crimp), brillo diagonal, emblema
+ * circular abstracto y contorno. Diseño genérico de "sobre de cartas".
+ */
+@Composable
+private fun MiniPackVector(modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width; val h = size.height
+        val r = w * 0.22f
+        val corner = androidx.compose.ui.geometry.CornerRadius(r, r)
+        // Cuerpo con degradado (azul "sobre", genérico). Las esquinas redondeadas delimitan la forma.
+        drawRoundRect(
+            brush = Brush.verticalGradient(
+                listOf(Color(0xFF86B6FF), Color(0xFF4E86E6), Color(0xFF345FBF)),
+            ),
+            size = size,
+            cornerRadius = corner,
+        )
+        // Franja de sellado superior (más clara), con esquinas superiores redondeadas al ras del cuerpo.
+        val sealH = h * 0.26f
+        drawRoundRect(
+            color = Color(0xFFEAF2FF),
+            topLeft = Offset(0f, 0f),
+            size = Size(w, sealH),
+            cornerRadius = corner,
+        )
+        // Borde DENTADO (crimp) bajo la franja de sellado.
+        val teeth = h * 0.05f
+        val crimp = Path().apply {
+            moveTo(0f, sealH)
+            val n = 5; val tw = w / n
+            var x = 0f; var up = false
+            while (x < w) { x += tw; lineTo(x, if (up) sealH - teeth else sealH); up = !up }
+        }
+        drawPath(crimp, Color(0xFFCADAF2), style = Stroke(width = w * 0.05f))
+        // Brillo diagonal translúcido (dentro de los márgenes para no desbordar la forma).
+        val gloss = Path().apply {
+            moveTo(w * 0.20f, sealH); lineTo(w * 0.40f, sealH)
+            lineTo(w * 0.26f, h * 0.9f); lineTo(w * 0.08f, h * 0.9f); close()
+        }
+        drawPath(gloss, Color.White.copy(alpha = 0.16f))
+        // Emblema circular abstracto (anillo + disco), centrado en la mitad inferior.
+        val cx = w * 0.5f; val cy = h * 0.62f; val er = w * 0.19f
+        drawCircle(Color.White, er, Offset(cx, cy))
+        drawCircle(Color(0xFF2C56A8), er * 0.55f, Offset(cx, cy))
+        // Contorno.
+        drawRoundRect(
+            color = Color(0x33123A6E),
+            size = size,
+            cornerRadius = corner,
+            style = Stroke(width = w * 0.05f),
+        )
+    }
+}
+
 @Composable
 private fun BoosterArt(exp: HomeExpansion, modifier: Modifier, onOpen: () -> Unit) {
     Box(
@@ -547,58 +697,6 @@ private fun BoosterArt(exp: HomeExpansion, modifier: Modifier, onOpen: () -> Uni
             modifier = Modifier.fillMaxSize(),
             contentScale = androidx.compose.ui.layout.ContentScale.Fit,
         )
-    }
-}
-
-// ===========================================================================
-//  BANDA DE PROGRESO ("Al máximo" + contador)
-// ===========================================================================
-
-@Composable
-private fun ProgressStrip() {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            Modifier
-                .clip(RoundedCornerShape(50))
-                .background(HomePalette.Surface)
-                .border(1.dp, HomePalette.Hairline, RoundedCornerShape(50))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.size(20.dp).clip(CircleShape).background(Color(0xFFF2C94C)))
-            Spacer(Modifier.width(6.dp))
-            repeat(3) {
-                Box(Modifier.size(6.dp).clip(CircleShape).background(HomePalette.Muted.copy(alpha = 0.4f)))
-                Spacer(Modifier.width(4.dp))
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        Row(
-            Modifier
-                .clip(RoundedCornerShape(50))
-                .background(HomePalette.Surface)
-                .border(1.dp, HomePalette.Hairline, RoundedCornerShape(50))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.size(18.dp).clip(CircleShape).background(Color(0xFFFFE08A)))
-            Spacer(Modifier.width(4.dp))
-            Text("40", color = HomePalette.Ink, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-        }
-    }
-    Spacer(Modifier.height(6.dp))
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .offset(x = (-70).dp, y = (-16).dp)
-                .clip(RoundedCornerShape(50))
-                .background(HomePalette.Teal)
-                .padding(horizontal = 10.dp, vertical = 2.dp),
-        ) { Text("Al máximo", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 10.sp) }
     }
 }
 

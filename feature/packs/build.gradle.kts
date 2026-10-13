@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":data:cards"))
     implementation(project(":data:gacha"))
     implementation(project(":data:profile"))
+    implementation(project(":feature:carddetail"))
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

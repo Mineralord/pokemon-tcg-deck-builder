@@ -15,7 +15,14 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -104,6 +112,8 @@ fun PacksScreen(
     var step by remember { mutableStateOf(if (directExpansion != null) PackStep.PACK else PackStep.EXPANSION) }
     val series = remember { PACK_CATALOG.first() }
     var expansion by remember { mutableStateOf(directExpansion) }
+    // Carta tocada en la tira de hits → se abre su visor de detalle (con el botón de corazón).
+    var selectedCardId by remember { mutableStateOf<String?>(null) }
     // En modo directo (desde la Home) fija el set activo del ViewModel para abrir ESE sobre.
     LaunchedEffect(directExpansion) { directExpansion?.let { viewModel.selectSet(it.code) } }
 
@@ -143,13 +153,37 @@ fun PacksScreen(
                     packPrice = state.packPrice,
                     buyRemaining = state.buyRemaining,
                     canBuy = state.canBuy,
+                    previewHits = state.previewHits,
                     onBuy = viewModel::buyPack,
                     // En modo directo (desde la Home) el "atrás" sale a la Home; si vinimos del
                     // selector, vuelve a "Elige una expansión".
                     onBack = { if (directExpansion != null) onExit() else step = PackStep.EXPANSION },
                     onOpen = viewModel::openPack,
                     onExpire = viewModel::refresh,
+                    onOpenCard = { selectedCardId = it },
                 )
+            }
+        }
+
+        // Visor de detalle de la carta tocada en la tira (con corazón/favorito/fabricar funcionando).
+        selectedCardId?.let { id ->
+            val detail = remember(id, state.ownedDistinct) { viewModel.detailFor(id) }
+            if (detail != null) {
+                com.mineralord.tcg.feature.carddetail.CardDetailSheet(
+                    card = detail,
+                    allCards = emptyList(),
+                    isFavorite = id in state.favoriteCards,
+                    isWished = id in state.wishlistCards,
+                    fichas = viewModel.fichas(),
+                    onToggleFavorite = { viewModel.toggleFavorite(id) },
+                    onToggleWish = { viewModel.toggleWish(id) },
+                    onCraft = { viewModel.craft(id) },
+                    onDestroy = { viewModel.destroy(id) },
+                    onOpenRelated = {},
+                    onDismiss = { selectedCardId = null },
+                )
+            } else {
+                selectedCardId = null
             }
         }
     }
@@ -171,10 +205,12 @@ private fun PackStage(
     packPrice: Int,
     buyRemaining: Int,
     canBuy: Boolean,
+    previewHits: List<HitCard>,
     onBuy: () -> Unit,
     onBack: () -> Unit,
     onOpen: () -> Unit,
     onExpire: () -> Unit,
+    onOpenCard: (String) -> Unit,
 ) {
     val canOpen = remainingToday > 0
     // Cuenta atrás VIVA al próximo sobre: se siembra con el snapshot (tiempo confiable) y baja 1/s
@@ -222,56 +258,65 @@ private fun PackStage(
         animationSpec = infiniteRepeatable(tween(1300), RepeatMode.Reverse), label = "hintX",
     )
 
-    Box(Modifier.fillMaxSize().padding(20.dp)) {
-        // Botón "Volver" (toca para retroceder a la elección de expansión).
+    // Fondo con el COLOR DE ACENTO del sobre arriba (verde, violeta, etc. según la expansión) que
+    // se funde hacia un suelo claro donde el sobre se refleja.
+    val accent = expansion.accent
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    0f to accent,
+                    0.28f to accent.copy(alpha = 0.55f),
+                    0.5f to Color(0xFFF2F4F8),
+                    1f to Color(0xFFFFFFFF),
+                ),
+            )
+            .padding(horizontal = 16.dp),
+    ) {
+        // Cluster superior de contadores (centrado) + marcador a la derecha, como la referencia.
+        // Bajado para no quedar bajo el notch (en modo inmersivo statusBarsPadding puede ser 0).
         Box(
-            Modifier
-                .align(Alignment.TopStart)
-                .clip(RoundedCornerShape(50))
-                .background(Color(0x22FFFFFF))
-                .clickable(onClick = onBack)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-        ) { Text("‹  Volver", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+            Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().padding(top = 28.dp),
+        ) {
+            Row(
+                Modifier.align(Alignment.Center),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CounterPill {
+                    MiniPackGlyph(Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        if (remainingToday >= walletMax) "Al máximo" else "$remainingToday/$walletMax",
+                        color = PackInk, fontSize = 11.sp, fontWeight = FontWeight.Black,
+                    )
+                }
+                CounterPill {
+                    Text("💎", fontSize = 12.sp)
+                    Spacer(Modifier.width(5.dp))
+                    Text("${"%,d".format(cristales)}", color = PackInk, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                }
+                CounterCircle("?") {}
+            }
+            CounterCircle("🔖", Modifier.align(Alignment.CenterEnd)) {}
+        }
 
+        // TIRA + SOBRE + reflejo APILADOS en una sola columna: la tira queda físicamente ENCIMA del
+        // sobre (no detrás ni delante), con un pequeño espacio; debajo el reflejo.
         Column(
-            Modifier.align(Alignment.Center),
+            Modifier.align(androidx.compose.ui.BiasAlignment(0f, 0.06f)).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                if (canOpen) "Rasga el sobre por arriba" else "Sin sobres disponibles",
-                color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp, textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text("Sobres: $remainingToday/$walletMax", color = Color(0xB3FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            countdown?.let {
-                Text("Próximo sobre en ${fmtCountdown(it)}", color = Color(0x99FFFFFF), fontSize = 11.sp)
+            // Tira de hits ENCIMA del sobre (deslizable con el dedo; tocar → detalle).
+            if (previewHits.isNotEmpty()) {
+                HitsStrip(hits = previewHits, onOpenCard = onOpenCard)
+                Spacer(Modifier.height(10.dp))
             }
-            Spacer(Modifier.height(10.dp))
-            // Compra con Cristales (Fase 2 §7.4 / Fase 3 §4.6): además de los sobres gratis del monedero.
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (canBuy) Color(0xFF2E5FA8) else Color(0x332E5FA8))
-                    .clickable(enabled = canBuy, onClick = onBuy)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    "Comprar sobre · $packPrice 💎",
-                    color = if (canBuy) Color.White else Color(0x80FFFFFF),
-                    fontSize = 13.sp, fontWeight = FontWeight.Black,
-                )
-            }
-            Text(
-                "Cristales: $cristales · Compras restantes hoy: $buyRemaining",
-                color = Color(0x99FFFFFF), fontSize = 11.sp,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Spacer(Modifier.height(18.dp))
-
             // El sobre GRANDE con acercamiento a la parte superior. Se rasga con UN gesto continuo.
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.86f)
+                    .fillMaxWidth(0.58f)
                     .aspectRatio(0.62f)
                     // GESTO: agarre en TODO el sobre; el progreso acumula el DELTA del dedo (dirección
                     // tolerante), así llegar al borde no interrumpe el rasgado. Un solo gesto continuo.
@@ -334,7 +379,41 @@ private fun PackStage(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            // Pequeño espacio entre el sobre y su reflejo.
+            Spacer(Modifier.height(8.dp))
+            // Reflejo CORTO: SOLO la parte inferior del sobre, espejada y desvanecida hacia abajo.
+            // El contenedor es una franja baja (aspecto 0.58:0.26 del sobre) que recorta la imagen
+            // espejada; al estar anclada arriba, lo visible es el borde inferior del sobre reflejado.
+            Box(
+                Modifier
+                    .fillMaxWidth(0.58f)
+                    .aspectRatio(0.62f / 0.26f)
+                    // Sigue al sobre: el arte se desplaza ~44px hacia abajo al aterrizar (translationY
+                    // del acercamiento); el reflejo copia ese desplazamiento para no solaparse con él.
+                    .graphicsLayer {
+                        val ac = approach.value.coerceAtMost(1f)
+                        translationY = (1f - ac) * 120f + 44f * ac
+                    }
+                    .clipToBounds(),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                coil.compose.AsyncImage(
+                    model = expansion.packArt,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(0.62f)
+                        .graphicsLayer { scaleY = -1f; alpha = 0.26f },
+                )
+                // Desvanece el reflejo hacia abajo (hacia el color del suelo).
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(listOf(Color.Transparent, Color(0xCCFFFFFF), Color(0xFFFFFFFF))),
+                    ),
+                )
+            }
+
             if (canOpen) {
                 Text(
                     "Desliza para rasgar  →",
@@ -344,7 +423,142 @@ private fun PackStage(
             }
             deniedMessage?.let {
                 Spacer(Modifier.height(8.dp))
-                Text(it, color = Color(0xFFFF8A80), fontSize = 12.sp, textAlign = TextAlign.Center)
+                Text(it, color = Color(0xFFFF5A52), fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+        }
+
+        // Barra de acciones inferior, como la referencia: Tasas de aparición · ↺ · Otros sobres.
+        Row(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .fillMaxWidth()
+                .padding(bottom = 74.dp),   // deja hueco para la barra de navegación de la app
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ActionPill("Tasas de aparición", Modifier.weight(1f), onClick = {})
+            CounterCircle("↺") {
+                scope.launch {
+                    tear.snapTo(0f)
+                    approach.snapTo(0f)
+                    approach.animateTo(1.05f, tween(560, easing = AnimationCurves.EmphasizedDecelerate))
+                    approach.animateTo(1f, tween(200))
+                }
+            }
+            ActionPill("Otros sobres de mejora", Modifier.weight(1f), onClick = {})
+        }
+
+        // Widget "0 puntos" encima de las acciones, a la derecha.
+        Row(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
+                .padding(end = 4.dp, bottom = 120.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color.White)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MiniPackGlyph(Modifier.size(13.dp))
+            Spacer(Modifier.width(5.dp))
+            Text("0 puntos", color = PackMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+private val PackInk = Color(0xFF2B3346)
+private val PackMuted = Color(0xFF8A93A6)
+
+/** Píldora de acción inferior (blanca, redondeada). */
+@Composable
+private fun ActionPill(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = PackInk, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center)
+    }
+}
+
+/** Píldora blanca pequeña de contador (contenido libre). */
+@Composable
+private fun CounterPill(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(Color.White).padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
+}
+
+/** Círculo blanco con un glifo (para "?", marcador y ↺). */
+@Composable
+private fun CounterCircle(glyph: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.size(38.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color.White).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Text(glyph, color = PackInk, fontSize = 15.sp, fontWeight = FontWeight.Black) }
+}
+
+/** Minisobre vectorial ORIGINAL (genérico, sin arte de terceros) para los contadores/puntos. */
+@Composable
+private fun MiniPackGlyph(modifier: Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val w = size.width; val h = size.height
+        val r = androidx.compose.ui.geometry.CornerRadius(w * 0.24f, w * 0.24f)
+        drawRoundRect(
+            brush = Brush.verticalGradient(listOf(Color(0xFF86B6FF), Color(0xFF4E86E6))),
+            size = size, cornerRadius = r,
+        )
+        drawRoundRect(color = Color(0xFFEAF2FF), size = Size(w, h * 0.3f), cornerRadius = r)
+    }
+}
+
+/**
+ * Tira de PREVISUALIZACIÓN de "hits": contenedor blanco con las cartas valiosas del sobre. Auto-scroll
+ * LENTO hacia la izquierda y, además, DESLIZABLE con el dedo (el auto se pausa mientras arrastras).
+ * Tocar una carta abre su detalle.
+ */
+@Composable
+private fun HitsStrip(hits: List<HitCard>, onOpenCard: (String) -> Unit) {
+    val state = androidx.compose.foundation.lazy.rememberLazyListState()
+    val dragged by state.interactionSource.collectIsDraggedAsState()
+    // Auto-scroll pausado mientras el usuario arrastra; se reanuda al soltar.
+    LaunchedEffect(dragged, hits) {
+        if (dragged || hits.isEmpty()) return@LaunchedEffect
+        while (true) {
+            androidx.compose.runtime.withFrameNanos { }
+            state.scrollBy(1.1f)
+        }
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.95f))
+            .padding(10.dp),
+    ) {
+        androidx.compose.foundation.lazy.LazyRow(
+            state = state,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // Lista "infinita" (módulo) para un desplazamiento continuo en bucle.
+            items(count = if (hits.isEmpty()) 0 else 100_000) { i ->
+                val hit = hits[i % hits.size]
+                coil.compose.AsyncImage(
+                    model = hit.image,
+                    contentDescription = "Carta destacada del sobre",
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier
+                        .height(82.dp)
+                        .aspectRatio(0.72f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { onOpenCard(hit.id) },
+                )
             }
         }
     }
@@ -595,10 +809,12 @@ fun PackOpeningSimulator(
                         packPrice = 0,
                         buyRemaining = 999,
                         canBuy = true,
+                        previewHits = emptyList(),
                         onBuy = { revealed = s.generate(forceTier); session++; hudVisible = false; opening = true },
                         onBack = { step = PackStep.EXPANSION },
                         onOpen = { revealed = s.generate(forceTier); session++; hudVisible = false; opening = true },
                         onExpire = {},
+                        onOpenCard = {},
                     )
                 }
             }

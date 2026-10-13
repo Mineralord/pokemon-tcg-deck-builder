@@ -25,6 +25,10 @@ data class PlayerProfile(
     val ownedCosmetics: Set<String> = emptySet(),
     val equippedCosmetics: Map<CosmeticCategory, String> = emptyMap(),
     val favoriteCosmetics: Set<String> = emptySet(),
+    /** Cartas marcadas como FAVORITAS (★) por el jugador. Persisten entre sesiones. */
+    val favoriteCards: Set<String> = emptySet(),
+    /** Cartas en la LISTA DE DESEADAS (♥ "¡La quiero!"). Persisten entre sesiones. */
+    val wishlistCards: Set<String> = emptySet(),
     val daily: DailyPackState = DailyPackState(),
     val seeded: Boolean = false,
     val decks: List<Deck> = emptyList(),
