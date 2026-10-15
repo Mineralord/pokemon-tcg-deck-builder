@@ -79,9 +79,12 @@ fun HomeScreen(
 ) {
     var info by remember { mutableStateOf<Currency?>(null) }
 
-    // Escaparate de sobres: 3 huecos que se re-sortean en cada arranque en frío (nuevo proceso).
-    // Hoy solo existe la expansión 151, así que los 3 la muestran; al añadir expansiones, variará.
-    val showcase = remember { List(3) { HomeExpansions.ALL.random() } }
+    // Escaparate de sobres: SIEMPRE 3 expansiones, ALEATORIAS (distintas si hay ≥3), re-sorteadas en
+    // cada arranque en frío (nuevo proceso).
+    val showcase = remember {
+        val all = HomeExpansions.ALL
+        if (all.size >= 3) all.shuffled().take(3) else List(3) { all.random() }
+    }
 
     Box(
         modifier = modifier
@@ -101,7 +104,8 @@ fun HomeScreen(
             Spacer(Modifier.height(20.dp))
             PackShowcase(
                 showcase = showcase,
-                themeColor = showcase.firstOrNull()?.themeColor ?: HomePalette.ShowcaseGold,
+                // El acento de la zona = el del sobre del MEDIO (índice 1).
+                themeColor = (showcase.getOrNull(1) ?: showcase.firstOrNull())?.themeColor ?: HomePalette.ShowcaseGold,
                 freePacks = freePacks,
                 onOpen = onOpenPack,
             )
@@ -143,6 +147,7 @@ private object HomePalette {
     // Colores de RECUADRO del escaparate por expansión (la zona teñida; no siempre dorada).
     val ShowcaseGold = Color(0xFFF2D18A)
     val ShowcaseViolet = Color(0xFFBBA7E6)
+    val ShowcaseEmber = Color(0xFFE2572B)   // Llamaradas Fantasmales (Megaevolución)
 
     /** Fondo de la cápsula "hundida" donde se embeben los minisobres (recessed). */
     val Inset = Color(0xFFEDF2F8)
@@ -481,6 +486,7 @@ private object HomeExpansions {
     val ALL: List<HomeExpansion> = listOf(
         HomeExpansion("sv3pt5", com.mineralord.tcg.feature.packs.PACK_IMAGE_151, HomePalette.ShowcaseGold),
         HomeExpansion("sv4", com.mineralord.tcg.feature.packs.PACK_ART_PARADOX, HomePalette.ShowcaseViolet),
+        HomeExpansion("PFL-LA", com.mineralord.tcg.feature.packs.PACK_ART_ME2, HomePalette.ShowcaseEmber),
         // Al agregar futuras expansiones, añádelas aquí con su color de recuadro.
     )
 }

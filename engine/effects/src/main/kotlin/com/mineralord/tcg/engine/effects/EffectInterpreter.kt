@@ -442,17 +442,21 @@ class EffectInterpreter {
                         .map { it.id }
                     val targets =
                         (if (op.target == Target.OWN_BENCH) ps.bench else ps.allInPlay).map { it.card.id }
-                    if (energies.isEmpty() || targets.isEmpty()) null
+                    // Conteo dinámico: Burst of Braying une hasta los Premios que el RIVAL ha tomado.
+                    val maxN = if (op.countFromOppPrizesTaken)
+                        (6 - state.sideState(src.actingSide.other()).prizes.size).coerceAtLeast(0)
+                    else op.count
+                    if (energies.isEmpty() || targets.isEmpty() || maxN == 0) null
                     else PendingDecision.AttachFromRevealed(
                         src.actingSide,
                         LocalizedText(
-                            "Une hasta ${op.count} Energía del descarte a tus Pokémon",
-                            "Attach up to ${op.count} Energy from your discard to your Pokémon",
+                            "Une hasta $maxN Energía del descarte a tus Pokémon",
+                            "Attach up to $maxN Energy from your discard to your Pokémon",
                         ),
                         revealed = energies,
                         energyCandidates = energies,
                         benchCandidates = targets,
-                        maxAttach = op.count,
+                        maxAttach = maxN,
                         fromDiscard = true,
                         thenDrawUpTo = op.thenDrawUpTo,
                         coinFlip = op.coinFlip,
@@ -565,7 +569,8 @@ class EffectInterpreter {
                 if (benchMon == null || active == null) EffectResult(state, emptyList())
                 else {
                     val updated = ps.copy(
-                        active = benchMon,
+                        // Marca el paso Banca→Activo (habilidades tipo Tachyon Bits).
+                        active = benchMon.copy(movedToActiveOnTurn = state.turn),
                         bench = ps.bench.map { if (it.card.id == chosenId) active else it },
                     )
                     EffectResult(withPlayer(state, updated, src.actingSide), emptyList())
@@ -606,6 +611,26 @@ class EffectInterpreter {
                             bench = foe.bench.map { if (it.card.id == chosenId) active else it },
                         )
                         EffectResult(withPlayer(state, updated, foeSide), ev)
+                    }
+                }
+            }
+            is EffectOp.CoinFlipMoveOppActiveEnergyToChosen -> {
+                // Data Displacement: moneda; con cara, 1 Energía del Activo rival pasa al Pokémon de su
+                // Banca elegido (CHOSEN). El destino lo fijó una ChooseTarget previa sobre OPP_BENCH.
+                val heads = flip()
+                val ev = listOf(GameEvent.CoinFlipped(src.actingSide, heads))
+                if (!heads) EffectResult(state, ev)
+                else {
+                    val foeSide = src.actingSide.other()
+                    val foe = state.sideState(foeSide)
+                    val active = foe.active
+                    val energy = active?.attachedEnergy?.firstOrNull()
+                    val benchMon = foe.bench.firstOrNull { it.card.id == chosenIds.firstOrNull() }
+                    if (active == null || energy == null || benchMon == null) EffectResult(state, ev)
+                    else {
+                        var working = updatePokemon(state, active.card.id) { it.copy(attachedEnergy = it.attachedEnergy - energy) }
+                        working = updatePokemon(working, benchMon.card.id) { it.copy(attachedEnergy = it.attachedEnergy + energy) }
+                        EffectResult(working, ev + GameEvent.EnergyAttached(foeSide, energy.id, benchMon.card.id))
                     }
                 }
             }
@@ -700,6 +725,12 @@ class EffectInterpreter {
                         val drawn = draw(src.actingSide, (drawUpTo - have).coerceAtLeast(0), working)
                         working = drawn.state
                         events += drawn.events
+                    }
+                    // "Si lo haces, cura N a ese Pokémon" — atómico (Energizing Rock Salt).
+                    if (op.thenHeal > 0) {
+                        val healed = healTargets(listOf(targetMon), op.thenHeal, src.actingSide, working)
+                        working = healed.state
+                        events += healed.events
                     }
                     EffectResult(working, events)
                 }
@@ -1017,6 +1048,37 @@ class EffectInterpreter {
                 val drawn = draw(src.actingSide, heads, state)
                 EffectResult(drawn.state, events + drawn.events)
             }
+            is EffectOp.DrawPerBench -> {
+                // Roba 1 por cada Pokémon en Banca (tuya y, si procede, la del rival).
+                val own = state.sideState(src.actingSide).bench.size
+                val opp = if (op.includeOpponent) state.sideState(src.actingSide.other()).bench.size else 0
+                draw(src.actingSide, own + opp, state)
+            }
+            is EffectOp.DrawCardsActiveBonus -> {
+                // Roba [base] y, si el origen está en el Puesto Activo, [bonus] más (Coin Bonus).
+                val isActive = state.sideState(src.actingSide).active?.card?.id == src.sourceId
+                draw(src.actingSide, op.base + (if (isActive) op.bonus else 0), state)
+            }
+            is EffectOp.CoinUntilTailsShuffleOppActiveEnergy -> {
+                // Monedas hasta cruz; por cada cara, 1 Energía del Activo rival vuelve a su mazo (barajado).
+                val events = mutableListOf<GameEvent>()
+                var heads = 0
+                while (true) {
+                    val h = flip()
+                    events += GameEvent.CoinFlipped(src.actingSide, h)
+                    if (h) heads++ else break
+                }
+                val foeSide = src.actingSide.other()
+                val active = state.sideState(foeSide).active
+                val moved = active?.attachedEnergy?.take(heads).orEmpty()
+                if (active == null || moved.isEmpty()) EffectResult(state, events)
+                else {
+                    var working = updatePokemon(state, active.card.id) { it.copy(attachedEnergy = it.attachedEnergy.drop(moved.size)) }
+                    val fs = working.sideState(foeSide)
+                    working = withPlayer(working, fs.copy(deck = shuffle(fs.deck + moved)), foeSide)
+                    EffectResult(working, events + GameEvent.DeckShuffled(foeSide))
+                }
+            }
             is EffectOp.DiscardTopDeck -> {
                 // Descarta las N primeras cartas de la baraja (propia o rival) al descarte.
                 val side = if (op.own) src.actingSide else src.actingSide.other()
@@ -1171,12 +1233,17 @@ class EffectInterpreter {
                     .filterIsInstance<EnergyCard>()
                 if (targetMon == null || picked.isEmpty()) EffectResult(state, emptyList())
                 else {
-                    val working = updatePokemon(state, targetMon.card.id) {
+                    val attached = updatePokemon(state, targetMon.card.id) {
                         it.copy(attachedEnergy = it.attachedEnergy + picked)
                     }
-                    val me = working.sideState(src.actingSide)
-                    val next = withPlayer(working, me.copy(hand = me.hand - picked.toSet()), src.actingSide)
-                    val events = picked.map { GameEvent.EnergyAttached(src.actingSide, it.id, targetMon.card.id) }
+                    val me = attached.sideState(src.actingSide)
+                    var next = withPlayer(attached, me.copy(hand = me.hand - picked.toSet()), src.actingSide)
+                    val events = picked.mapTo(mutableListOf<GameEvent>()) { GameEvent.EnergyAttached(src.actingSide, it.id, targetMon.card.id) }
+                    // "Si lo haces, roba N" — atómico (solo porque se unió Energía).
+                    if (op.thenDraw > 0) {
+                        val drawn = draw(src.actingSide, op.thenDraw, next)
+                        next = drawn.state; events += drawn.events
+                    }
                     EffectResult(next, events)
                 }
             }
@@ -1700,8 +1767,13 @@ class EffectInterpreter {
     private fun resolveAmount(amount: Amount, src: EffectSource, state: GameState): Int = when (amount) {
         is Amount.Fixed -> amount.n
         is Amount.PerCount -> {
-            val refs = targets(amount.target, src, state, emptyList())
+            val refs = targets(amount.target, src, state, emptyList()).let { r ->
+                val names = buildList { amount.requiresName?.let { add(it) }; addAll(amount.namesAnyOf) }
+                if (names.isEmpty()) r
+                else r.filter { p -> names.any { p.card.name.en.contains(it, true) || p.card.name.es.contains(it, true) } }
+            }
             val count = when (amount.of) {
+                Counter.OWN_INPLAY_COUNT -> refs.size
                 Counter.BENCH_COUNT -> state.sideState(
                     if (amount.target == Target.OPP_BENCH || amount.target == Target.OPP_ALL) src.actingSide.other() else src.actingSide,
                 ).bench.size

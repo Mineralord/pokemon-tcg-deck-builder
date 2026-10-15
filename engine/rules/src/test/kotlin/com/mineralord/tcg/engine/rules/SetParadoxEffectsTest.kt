@@ -1,6 +1,7 @@
 package com.mineralord.tcg.engine.rules
 
 import com.mineralord.tcg.engine.events.GameEvent
+import com.mineralord.tcg.engine.model.Ability
 import com.mineralord.tcg.engine.model.ArtworkRefs
 import com.mineralord.tcg.engine.model.Attack
 import com.mineralord.tcg.engine.model.BasicEnergy
@@ -11,6 +12,7 @@ import com.mineralord.tcg.engine.model.EffectsDb
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.LocalizedText
+import com.mineralord.tcg.engine.model.ModKind
 import com.mineralord.tcg.engine.model.PendingDecision
 import com.mineralord.tcg.engine.model.Phase
 import com.mineralord.tcg.engine.model.PlayerState
@@ -23,6 +25,7 @@ import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.Stage
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -34,6 +37,14 @@ class SetParadoxEffectsTest {
 
     private class FixedRng(private val heads: Boolean) : Rng {
         override fun flipCoin(): Boolean = heads
+        override fun <T> shuffle(list: List<T>): List<T> = list
+        override fun nextInt(untilExclusive: Int): Int = 0
+    }
+
+    /** RNG con una secuencia fija de caras/cruces (para ataques "lanza hasta que salga cruz"). */
+    private class SeqRng(private val flips: List<Boolean>) : Rng {
+        private var i = 0
+        override fun flipCoin(): Boolean = flips[i++]
         override fun <T> shuffle(list: List<T>): List<T> = list
         override fun nextInt(untilExclusive: Int): Int = 0
     }
@@ -307,5 +318,373 @@ class SetParadoxEffectsTest {
         val r = GameEngine(SeededRng(1)).apply(duel(attacker, foe), GameIntent.Attack("Scorching Bazooka"))
         // El bono por Energía se aplica como daño adicional; comprobamos el TOTAL sobre el defensor.
         assertEquals(120, r.state.opponent.active?.damage)
+    }
+
+    // ─────────────────────────── Fase 15: Habilidades ───────────────────────────
+
+    @Test
+    fun `Exoskeleton reduce 30 el dano recibido`() {
+        val hit = attackFixed("Hit", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.FIRE, hit))
+        val withAbi = PokemonInPlay(mon("sv4-128", 200, EnergyType.GRASS, attack("x", EffectId("none"))).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Exoesqueleto", "Exoskeleton"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-128", "Exoskeleton")))))
+        val plain = PokemonInPlay(mon("plain", 200, EnergyType.GRASS, attack("x", EffectId("none"))))
+
+        assertEquals(70, GameEngine(SeededRng(1)).apply(duel(attacker, withAbi), GameIntent.Attack("Hit")).state.opponent.active?.damage)
+        assertEquals(100, GameEngine(SeededRng(1)).apply(duel(attacker, plain), GameIntent.Attack("Hit")).state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Startling Pumpkin descarta 2 cartas de la mano rival al ser Noqueado`() {
+        val ko = attackFixed("KO", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.PSYCHIC, ko))
+        val pumpkin = PokemonInPlay(mon("sv4-78", 60, EnergyType.PSYCHIC, attack("x", EffectId("none"))).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Calabaza Sobresaltante", "Startling Pumpkin"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-78", "Startling Pumpkin")))))
+        val oppBench = PokemonInPlay(mon("oppally", 100, EnergyType.DARKNESS, attack("x", EffectId("none"))))
+        val base = duel(attacker, pumpkin)
+        val st = base.copy(
+            player = base.player.copy(hand = listOf(
+                energy("h1", EnergyType.PSYCHIC), energy("h2", EnergyType.PSYCHIC), energy("h3", EnergyType.PSYCHIC))),
+            opponent = base.opponent.copy(bench = listOf(oppBench)),
+        )
+
+        // Al noquear a la calabaza, SU Habilidad hace que el atacante (jugador) descarte 2 de su mano.
+        // Comprobamos el descarte (el Premio del KO sumaría +1 a la mano, así que medimos el descarte).
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("KO"))
+        assertEquals(2, res.state.player.discard.size)
+    }
+
+    @Test
+    fun `Humming Heal cura 20 a cada uno de tus Pokemon`() {
+        val abi = Ability(
+            LocalizedText("Cura Tarareada", "Humming Heal"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-140", "Humming Heal"))
+        val active = PokemonInPlay(
+            mon("sv4-140", 150, EnergyType.PSYCHIC, attack("x", EffectId("none"))).copy(abilities = listOf(abi)),
+            damage = 50,
+        )
+        val benched = PokemonInPlay(mon("ally", 120, EnergyType.PSYCHIC, attack("x", EffectId("none"))), damage = 30)
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.DARKNESS, attack("x", EffectId("none"))))
+        val base = duel(active, foe)
+        val st = base.copy(player = base.player.copy(bench = listOf(benched)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-140"), "Cura Tarareada"))
+        assertTrue(res.accepted, res.rejection)
+        assertEquals(30, res.state.player.active?.damage)     // 50 - 20
+        assertEquals(10, res.state.player.bench.first().damage) // 30 - 20
+    }
+
+    @Test
+    fun `Suction Cup Draw roba 3 al evolucionar desde la mano`() {
+        val dummy = attack("x", EffectId("none"))
+        val basic = PokemonInPlay(mon("Remoraid", 60, EnergyType.WATER, dummy)).copy(turnsInPlay = 1)
+        val evo = mon("sv4-34", 110, EnergyType.WATER, dummy).copy(
+            stage = Stage.Stage1, evolvesFrom = "Remoraid",
+            abilities = listOf(Ability(
+                LocalizedText("Robo por Ventosas", "Suction Cup Draw"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-34", "Suction Cup Draw"))))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.FIRE, dummy))
+        val base = duel(basic, foe)
+        val st = base.copy(player = base.player.copy(hand = listOf(evo)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Evolve(CardId("sv4-34"), CardId("Remoraid")))
+        assertTrue(res.accepted, res.rejection)
+        assertEquals(2, res.state.player.deck.size)   // 5 - 3 robadas
+        assertEquals(3, res.state.player.hand.size)   // el evo salió de la mano; +3 robadas
+    }
+
+    @Test
+    fun `Stance evita dano y efectos al evolucionar desde la mano`() {
+        val dummy = attack("x", EffectId("none"))
+        val basic = PokemonInPlay(mon("Charcadet", 70, EnergyType.PSYCHIC, dummy)).copy(turnsInPlay = 1)
+        val evo = mon("sv4-81", 120, EnergyType.PSYCHIC, dummy).copy(
+            stage = Stage.Stage1, evolvesFrom = "Charcadet",
+            abilities = listOf(Ability(
+                LocalizedText("Postura", "Stance"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-81", "Stance"))))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.DARKNESS, dummy))
+        val base = duel(basic, foe)
+        val st = base.copy(player = base.player.copy(hand = listOf(evo)))
+
+        val res = GameEngine(SeededRng(1)).apply(st, GameIntent.Evolve(CardId("sv4-81"), CardId("Charcadet")))
+        assertTrue(res.accepted, res.rejection)
+        assertTrue(res.state.player.active?.preventDamageOnTurn != null)
+        assertTrue(res.state.player.active?.preventEffectsOnTurn != null)
+    }
+
+    @Test
+    fun `Swarming Rage cuenta solo los contadores de dano en tus Durant`() {
+        val a = attack("Swarming Rage", EffectsDb.atkKey("sv4-129", "Swarming Rage"))
+        val durant = PokemonInPlay(mon("Durant", 70, EnergyType.METAL, a), damage = 30)      // 3 contadores
+        val other = PokemonInPlay(mon("Snorlax", 150, EnergyType.COLORLESS, a), damage = 50)  // 5 contadores (no cuentan)
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.FIRE, a))
+        val base = duel(durant, foe)
+        val st = base.copy(player = base.player.copy(bench = listOf(other)))
+
+        // Solo los 3 contadores de Durant → 3 × 20 = 60 (los 5 de Snorlax quedan excluidos por el nombre).
+        val r = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Swarming Rage"))
+        assertEquals(60, r.state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Daunting Eyes devuelve al mazo rival 1 Energia por cada cara`() {
+        val a = attack("Daunting Eyes", EffectsDb.atkKey("sv4-2", "Daunting Eyes"))
+        val attacker = PokemonInPlay(mon("sv4-2", 120, EnergyType.PSYCHIC, a))
+        val foe = PokemonInPlay(
+            mon("foe", 200, EnergyType.WATER, a),
+            attachedEnergy = listOf(energy("e1", EnergyType.WATER), energy("e2", EnergyType.WATER)),
+        )
+        // 2 caras y luego cruz → mueve 2 Energías del Activo rival a su mazo.
+        val r = GameEngine(SeqRng(listOf(true, true, false))).apply(duel(attacker, foe), GameIntent.Attack("Daunting Eyes"))
+        assertEquals(0, r.state.opponent.active?.attachedEnergy?.size)
+        // Las 2 Energías vuelven a la zona de mazo del rival (mazo+mano = 5 iniciales + 2; el robo de
+        // inicio de su turno solo reubica 1 del mazo a la mano, por eso contamos ambos).
+        assertEquals(7, r.state.opponent.deck.size + r.state.opponent.hand.size)
+    }
+
+    @Test
+    fun `Pep Up baraja la mano y roba 1 por cada Pokemon en Banca de ambos lados`() {
+        val a = attack("Pep Up", EffectsDb.atkKey("sv4-67", "Pep Up"))
+        val attacker = PokemonInPlay(mon("sv4-67", 120, EnergyType.LIGHTNING, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a))
+        val myBench = listOf(
+            PokemonInPlay(mon("b1", 60, EnergyType.LIGHTNING, a)),
+            PokemonInPlay(mon("b2", 60, EnergyType.LIGHTNING, a)),
+        )
+        val oppBench = listOf(PokemonInPlay(mon("ob1", 60, EnergyType.WATER, a)))
+        val base = duel(attacker, foe)
+        val st = base.copy(
+            player = base.player.copy(
+                hand = listOf(energy("h1", EnergyType.LIGHTNING), energy("h2", EnergyType.LIGHTNING)),
+                bench = myBench,
+            ),
+            opponent = base.opponent.copy(bench = oppBench),
+        )
+        // Baraja la mano (2) en el mazo; luego roba 2 (mi Banca) + 1 (Banca rival) = 3.
+        val r = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Pep Up"))
+        assertEquals(3, r.state.player.hand.size)
+    }
+
+    @Test
+    fun `Data Displacement mueve 1 Energia del Activo rival a su Banca si sale cara`() {
+        val a = attack("Data Displacement", EffectsDb.atkKey("sv4-142", "Data Displacement"))
+        val attacker = PokemonInPlay(mon("sv4-142", 120, EnergyType.PSYCHIC, a))
+        val oppActive = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a), attachedEnergy = listOf(energy("e1", EnergyType.WATER)))
+        val oppBench = PokemonInPlay(mon("ob1", 90, EnergyType.WATER, a))
+        val base = duel(attacker, oppActive)
+        val st = base.copy(opponent = base.opponent.copy(bench = listOf(oppBench)))
+
+        // 1) El ataque pausa pidiendo el Pokémon de Banca rival destino.
+        val paused = GameEngine(FixedRng(true)).apply(st, GameIntent.Attack("Data Displacement"))
+        // 2) Se elige "ob1" y, con cara, la Energía del Activo rival pasa a ese Pokémon.
+        val r = GameEngine(FixedRng(true)).apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("ob1"))))
+        assertEquals(0, r.state.opponent.active?.attachedEnergy?.size)
+        assertEquals(1, r.state.opponent.bench.first().attachedEnergy.size)
+    }
+
+    @Test
+    fun `Burst of Braying une hasta los Premios que el rival ha tomado`() {
+        val a = attack("Burst of Braying", EffectsDb.atkKey("sv4-63", "Burst of Braying"))
+        val attacker = PokemonInPlay(mon("sv4-63", 120, EnergyType.LIGHTNING, a))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, a))
+        val base = duel(attacker, foe)
+        // El rival ha tomado 2 Premios (le quedan 4); mi descarte tiene 2 Energía Rayo.
+        val st = base.copy(
+            player = base.player.copy(discard = listOf(energy("l1", EnergyType.LIGHTNING), energy("l2", EnergyType.LIGHTNING))),
+            opponent = base.opponent.copy(prizes = base.opponent.prizes.take(4)),
+        )
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Burst of Braying"))
+        val d = paused.state.interaction!!.decision as PendingDecision.AttachFromRevealed
+        assertEquals(2, d.maxAttach)   // conteo dinámico = Premios tomados por el rival
+    }
+
+    @Test
+    fun `Crimson Armor reduce 80 solo con los PS completos`() {
+        val hit = attackFixed("Hit", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.FIRE, hit))
+        fun armor(dmg: Int) = PokemonInPlay(
+            mon("sv4-27", 200, EnergyType.GRASS, attack("x", EffectId("none"))).copy(
+                abilities = listOf(Ability(
+                    LocalizedText("Armadura Carmesí", "Crimson Armor"), LocalizedText("", ""),
+                    EffectsDb.abiKey("sv4-27", "Crimson Armor")))),
+            damage = dmg,
+        )
+        // PS completos → 100 − 80 = 20.
+        assertEquals(20, GameEngine(SeededRng(1)).apply(duel(attacker, armor(0)), GameIntent.Attack("Hit")).state.opponent.active?.damage)
+        // Con daño previo (no completo) → sin reducción: 10 + 100 = 110.
+        assertEquals(110, GameEngine(SeededRng(1)).apply(duel(attacker, armor(10)), GameIntent.Attack("Hit")).state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `In a Hungry Hurry permite retirarse gratis solo sin Energia unida`() {
+        val dummy = attack("x", EffectId("none"))
+        fun hungry(energy: List<BasicEnergy>) = PokemonInPlay(
+            mon("sv4-121", 120, EnergyType.COLORLESS, dummy)
+                .copy(retreatCost = listOf(EnergyType.COLORLESS, EnergyType.COLORLESS),
+                    abilities = listOf(Ability(
+                        LocalizedText("Con Prisas", "In a Hungry Hurry"), LocalizedText("", ""),
+                        EffectsDb.abiKey("sv4-121", "In a Hungry Hurry")))),
+            attachedEnergy = energy,
+        )
+        val bench = PokemonInPlay(mon("b1", 60, EnergyType.COLORLESS, dummy))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, dummy))
+        fun stateWith(energy: List<BasicEnergy>) = duel(hungry(energy), foe).let {
+            it.copy(player = it.player.copy(bench = listOf(bench)))
+        }
+        // Sin Energía → retirada gratis: acepta y cambia el Activo.
+        val ok = GameEngine(SeededRng(1)).apply(stateWith(emptyList()), GameIntent.Retreat(CardId("b1")))
+        assertTrue(ok.accepted, ok.rejection)
+        assertEquals(CardId("b1"), ok.state.player.active?.card?.id)
+        // Con 1 Energía (coste 2, no la paga) → rechazada.
+        val no = GameEngine(SeededRng(1)).apply(stateWith(listOf(energy("e1", EnergyType.COLORLESS))), GameIntent.Retreat(CardId("b1")))
+        assertFalse(no.accepted)
+    }
+
+    @Test
+    fun `Mysterious Shield evita el dano de atacantes ex y V`() {
+        val hit = attackFixed("Hit", 100, EffectId("none"))
+        val shield = PokemonInPlay(mon("sv4-134", 200, EnergyType.PSYCHIC, attack("x", EffectId("none"))).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Escudo Misterioso", "Mysterious Shield"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-134", "Mysterious Shield")))))
+        val exAttacker = PokemonInPlay(mon("ex", 200, EnergyType.FIRE, hit).copy(mechanic = PokemonMechanic.ExLower))
+        val normalAttacker = PokemonInPlay(mon("norm", 200, EnergyType.FIRE, hit))
+        // Atacante ex → 0 (escudo); atacante normal → 100.
+        assertEquals(0, GameEngine(SeededRng(1)).apply(duel(exAttacker, shield), GameIntent.Attack("Hit")).state.opponent.active?.damage)
+        assertEquals(100, GameEngine(SeededRng(1)).apply(duel(normalAttacker, shield), GameIntent.Attack("Hit")).state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Evanescent hace que el rival coja 1 Premio menos al ser Noqueado con cara`() {
+        val ko = attackFixed("KO", 100, EffectId("none"))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.PSYCHIC, ko))
+        val evan = PokemonInPlay(mon("sv4-3", 60, EnergyType.PSYCHIC, attack("x", EffectId("none"))).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Evanescente", "Evanescent"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-3", "Evanescent")))))
+        val oppBench = PokemonInPlay(mon("ob1", 100, EnergyType.DARKNESS, attack("x", EffectId("none"))))
+        val st = duel(attacker, evan).let { it.copy(opponent = it.opponent.copy(bench = listOf(oppBench))) }
+        // Cara → el atacante coge 1 Premio menos (1-1=0) → mantiene sus 6; cruz → coge 1 → 5.
+        assertEquals(6, GameEngine(FixedRng(true)).apply(st, GameIntent.Attack("KO")).state.player.prizes.size)
+        assertEquals(5, GameEngine(FixedRng(false)).apply(st, GameIntent.Attack("KO")).state.player.prizes.size)
+    }
+
+    @Test
+    fun `Coin Bonus roba 1 y 1 mas si esta Activo`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Bonificación por Moneda", "Coin Bonus"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-139", "Coin Bonus"))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        // Activo con la habilidad → roba 2 (1 base + 1 por estar Activo).
+        val active = PokemonInPlay(mon("sv4-139", 120, EnergyType.LIGHTNING, dummy).copy(abilities = listOf(abi)))
+        val rA = GameEngine(SeededRng(1)).apply(duel(active, foe), GameIntent.UseAbility(CardId("sv4-139"), "Bonificación por Moneda"))
+        assertTrue(rA.accepted, rA.rejection)
+        assertEquals(2, rA.state.player.hand.size)
+        // En Banca → solo roba 1.
+        val onBench = PokemonInPlay(mon("sv4-139", 120, EnergyType.LIGHTNING, dummy).copy(abilities = listOf(abi)))
+        val other = PokemonInPlay(mon("act", 120, EnergyType.LIGHTNING, dummy))
+        val st = duel(other, foe).let { it.copy(player = it.player.copy(bench = listOf(onBench))) }
+        val rB = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-139"), "Bonificación por Moneda"))
+        assertTrue(rB.accepted, rB.rejection)
+        assertEquals(1, rB.state.player.hand.size)
+    }
+
+    @Test
+    fun `Frigid Room impide atacar al rival con 40 PS o menos restantes`() {
+        val hit = attackFixed("Hit", 30, EffectId("none"))
+        val frigid = PokemonInPlay(mon("sv4-45", 120, EnergyType.WATER, attack("x", EffectId("none"))).copy(
+            abilities = listOf(Ability(
+                LocalizedText("Sala Gélida", "Frigid Room"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-45", "Frigid Room")))))
+        // 60 PS con 30 de daño → 30 PS restantes (≤40) → NO puede atacar.
+        val weak = PokemonInPlay(mon("weak", 60, EnergyType.FIRE, hit), damage = 30)
+        assertFalse(GameEngine(SeededRng(1)).apply(duel(weak, frigid), GameIntent.Attack("Hit")).accepted)
+        // 120 PS sin daño → 120 restantes (>40) → SÍ puede atacar.
+        val strong = PokemonInPlay(mon("strong", 120, EnergyType.FIRE, hit))
+        val r = GameEngine(SeededRng(1)).apply(duel(strong, frigid), GameIntent.Attack("Hit"))
+        assertTrue(r.accepted, r.rejection)
+    }
+
+    @Test
+    fun `Clairvoyant Sense une Energia de la mano a la Banca y roba 2`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Sentido Clarividente", "Clairvoyant Sense"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-72", "Clairvoyant Sense"))
+        val active = PokemonInPlay(mon("sv4-72", 120, EnergyType.PSYCHIC, dummy).copy(abilities = listOf(abi)))
+        val bench = PokemonInPlay(mon("b1", 60, EnergyType.PSYCHIC, dummy))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        val st = duel(active, foe).let {
+            it.copy(player = it.player.copy(hand = listOf(energy("pe", EnergyType.PSYCHIC)), bench = listOf(bench)))
+        }
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-72"), "Sentido Clarividente"))
+        val r = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("b1"))))
+        assertEquals(1, r.state.player.bench.first().attachedEnergy.size)   // Energía unida a b1
+        assertEquals(2, r.state.player.hand.size)                          // 1 - 1 unida + 2 robadas
+    }
+
+    @Test
+    fun `Energizing Rock Salt une Energia del descarte y cura 30 a ese Pokemon`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Sal Mineral Energizante", "Energizing Rock Salt"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-104", "Energizing Rock Salt"))
+        val active = PokemonInPlay(mon("sv4-104", 150, EnergyType.FIGHTING, dummy).copy(abilities = listOf(abi)), damage = 50)
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        val st = duel(active, foe).let {
+            it.copy(player = it.player.copy(discard = listOf(energy("fe", EnergyType.FIGHTING))))
+        }
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-104"), "Sal Mineral Energizante"))
+        val r = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("sv4-104"))))
+        assertEquals(1, r.state.player.active?.attachedEnergy?.size)   // 1 Energía unida al Activo
+        assertEquals(20, r.state.player.active?.damage)               // 50 - 30 curados
+    }
+
+    @Test
+    fun `Tachyon Bits solo es usable al pasar de la Banca al Activo y pone 2 contadores`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Bits de Taquión", "Tachyon Bits"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-89", "Tachyon Bits"))
+        val front = PokemonInPlay(mon("front", 100, EnergyType.PSYCHIC, dummy))
+        val tachyon = PokemonInPlay(mon("sv4-89", 120, EnergyType.PSYCHIC, dummy).copy(abilities = listOf(abi)))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.WATER, dummy))
+        val st = duel(front, foe).let { it.copy(player = it.player.copy(bench = listOf(tachyon))) }
+        // En Banca → la habilidad aún NO es usable.
+        assertFalse(GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-89"), "Bits de Taquión")).accepted)
+        // Retira → Tachyon pasa al Activo (marcado este turno).
+        val retreated = GameEngine(SeededRng(1)).apply(st, GameIntent.Retreat(CardId("sv4-89")))
+        assertTrue(retreated.accepted, retreated.rejection)
+        assertEquals(CardId("sv4-89"), retreated.state.player.active?.card?.id)
+        // Ahora usa la habilidad → elige al Activo rival → 2 contadores (20 de daño).
+        val paused = GameEngine(SeededRng(1)).apply(retreated.state, GameIntent.UseAbility(CardId("sv4-89"), "Bits de Taquión"))
+        val r = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("foe"))))
+        assertEquals(20, r.state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Solidarity pone 3 contadores en el Atacante por cada Tandemaus y Maushold en juego`() {
+        val dummy = attack("x", EffectId("none"))
+        val hit = attackFixed("Hit", 50, EffectId("none"))
+        val maushold = PokemonInPlay(mon("sv4-155", 200, EnergyType.PSYCHIC, dummy).copy(
+            name = LocalizedText("Maushold", "Maushold"),
+            abilities = listOf(Ability(
+                LocalizedText("Solidaridad", "Solidarity"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-155", "Solidarity")))))
+        val tandemaus = PokemonInPlay(mon("tande", 60, EnergyType.PSYCHIC, dummy).copy(
+            name = LocalizedText("Tandemaus", "Tandemaus")))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.FIRE, hit))
+        // El rival (defensor) tiene Maushold (Activo) + Tandemaus (Banca) = 2 → 2 × 30 = 60 al Atacante.
+        val st = duel(attacker, maushold).let { it.copy(opponent = it.opponent.copy(bench = listOf(tandemaus))) }
+        val r = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Hit"))
+        assertEquals(60, r.state.player.active?.damage)
+    }
+
+    @Test
+    fun `Slime Mold Colony registra el pasivo que bloquea el reciclaje de Entrenadores rival`() {
+        val eff = EffectsDb.registry[EffectsDb.abiKey("sv4-17", "Slime Mold Colony")]
+        assertTrue(eff != null)
+        assertTrue(eff!!.passives.any { it.mod == ModKind.BLOCK_OPPONENT_TRAINER_RECYCLE })
     }
 }

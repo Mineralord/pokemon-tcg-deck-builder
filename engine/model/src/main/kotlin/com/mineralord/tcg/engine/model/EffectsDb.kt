@@ -25,6 +25,7 @@ object EffectsDb {
             registerAcademiaDecks()
             registerSet151()
             registerParadoxRift()
+            registerLlamaradasFantasmales()
         },
     )
 }

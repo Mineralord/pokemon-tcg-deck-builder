@@ -65,6 +65,10 @@ const val SV_SERIES_LOGO =
  *  como drawable con fondo transparente. Es un Int de recurso (Coil lo acepta como `model`). */
 val PACK_ART_PARADOX: Int = R.drawable.pack_paradox
 
+/** Arte OFICIAL del sobre de «Llamaradas Fantasmales» (me2, Megaevolución): Mega-Charizard X,
+ *  versión Latinoamérica (Wikidex), con fondo transparente, empaquetada como drawable. */
+val PACK_ART_ME2: Int = R.drawable.pack_me2
+
 /** Catálogo raíz (extensible). Hoy: 1 serie · 2 expansiones (151 · Brecha Paradójica). */
 val PACK_CATALOG: List<SeriesUi> = listOf(
     SeriesUi(
@@ -90,6 +94,24 @@ val PACK_CATALOG: List<SeriesUi> = listOf(
             ),
         ),
     ),
+    SeriesUi(
+        id = "me",
+        title = "Megaevolución",
+        subtitle = "Serie ME",
+        // Logo oficial del set (pokemontcg.io). El arte del SOBRE es provisional (logo) hasta
+        // empaquetar el render del booster de Llamaradas Fantasmales.
+        logoUrl = "https://images.pokemontcg.io/me2/logo.png",
+        accent = Color(0xFFE2572B),
+        expansions = listOf(
+            ExpansionUi(
+                code = "PFL-LA",
+                name = "Llamaradas Fantasmales",
+                logoRes = R.drawable.set_me2_logo,
+                packArt = PACK_ART_ME2,
+                accent = Color(0xFFE2572B),
+            ),
+        ),
+    ),
 )
 
 // ========================== ELEGIR EXPANSIÓN (estilo TCG Pocket) ==========================
@@ -99,12 +121,16 @@ val PACK_CATALOG: List<SeriesUi> = listOf(
 
 @Composable
 fun ExpansionSelectStage(
-    series: SeriesUi,
+    /** Catálogo completo; cada serie es una pestaña. */
+    catalog: List<SeriesUi>,
+    selectedIndex: Int,
+    onSelectSeries: (Int) -> Unit,
     /** Progreso (poseídas, total) por código de expansión. Cada tarjeta muestra el suyo. */
     progressFor: (String) -> Pair<Int, Int>,
     onSelect: (ExpansionUi) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val series = catalog[selectedIndex.coerceIn(0, catalog.lastIndex)]
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -131,14 +157,27 @@ fun ExpansionSelectStage(
             Spacer(Modifier.height(18.dp))
         }
         Spacer(Modifier.weight(1f))
-        // Pestañas de SERIE (aquí irán las series que vayamos agregando). La activa: el nombre completo.
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(50))
-                .background(Color(0xFFFFFFFF))
-                .border(1.dp, Color(0x22000000), RoundedCornerShape(50))
-                .padding(horizontal = 22.dp, vertical = 8.dp),
-        ) { Text(series.title, color = Color(0xFF1B2A3A), fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        // Pestañas de SERIE: una por serie del catálogo; la activa resaltada. Tocar cambia de serie.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            catalog.forEachIndexed { i, s ->
+                val active = i == selectedIndex
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (active) Color(0xFFFFFFFF) else Color(0x66FFFFFF))
+                        .border(1.dp, if (active) s.accent else Color(0x22000000), RoundedCornerShape(50))
+                        .clickable { onSelectSeries(i) }
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        s.title,
+                        color = Color(0xFF1B2A3A),
+                        fontWeight = if (active) FontWeight.Black else FontWeight.Medium,
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(18.dp))
     }
 }

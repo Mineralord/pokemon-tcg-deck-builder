@@ -116,7 +116,10 @@ object RarityWeights {
      * cae al sobre estándar.
      */
     fun templateFor(setCode: String): PackTemplate = when (setCode) {
-        "sv3pt5", "sv4" -> SET_151_PACK
+        // 151/sv4 y Megaevolución (me2, Llamaradas Fantasmales) comparten la estructura moderna de
+        // rarezas (Ilustración / Ilustración especial / Ultra / Doble / Hiper), así que reutilizan la
+        // plantilla fiel de 151. El resto cae al sobre estándar.
+        "sv3pt5", "sv4", "PFL-LA" -> SET_151_PACK
         else -> STANDARD_PACK
     }
 }

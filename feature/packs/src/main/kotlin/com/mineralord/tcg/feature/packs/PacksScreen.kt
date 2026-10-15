@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -110,7 +111,8 @@ fun PacksScreen(
     }
     // En modo directo arrancamos en la etapa de rasgado; si no, en "Elige una expansión".
     var step by remember { mutableStateOf(if (directExpansion != null) PackStep.PACK else PackStep.EXPANSION) }
-    val series = remember { PACK_CATALOG.first() }
+    // Serie activa en el selector (pestañas): 0 = Escarlata y Púrpura, 1 = Megaevolución…
+    var seriesIdx by remember { mutableStateOf(0) }
     var expansion by remember { mutableStateOf(directExpansion) }
     // Carta tocada en la tira de hits → se abre su visor de detalle (con el botón de corazón).
     var selectedCardId by remember { mutableStateOf<String?>(null) }
@@ -139,7 +141,9 @@ fun PacksScreen(
         ) { s ->
             when (s) {
                 PackStep.EXPANSION -> ExpansionSelectStage(
-                    series = series,
+                    catalog = PACK_CATALOG,
+                    selectedIndex = seriesIdx,
+                    onSelectSeries = { seriesIdx = it },
                     progressFor = { code -> state.perSet[code] ?: (0 to 0) },
                     onSelect = { expansion = it; viewModel.selectSet(it.code); step = PackStep.PACK },
                 )
@@ -261,209 +265,330 @@ private fun PackStage(
     // Fondo con el COLOR DE ACENTO del sobre arriba (verde, violeta, etc. según la expansión) que
     // se funde hacia un suelo claro donde el sobre se refleja.
     val accent = expansion.accent
+
+    // Fase de apertura (réplica del flujo de TCG Pocket):
+    //  PREVIEW → sobre con la tira de cartas ENCIMA + reflejo (toca el sobre para enfocarlo).
+    //  READY   → la tira se oculta, el sobre se agranda, desaparece el reflejo y aparece "Abrir".
+    //  TEARING → sobre enorme anclado abajo, "Traza una línea para abrir" (rasgado con el dedo).
+    var phase by remember { mutableStateOf(PackPhase.PREVIEW) }
+    // Ancho del sobre por fase: anima el "agrandado" entre estados.
+    val widthFrac by animateFloatAsState(
+        targetValue = when (phase) {
+            PackPhase.PREVIEW -> 0.58f
+            PackPhase.READY -> 0.68f
+            PackPhase.TEARING -> 0.86f
+        },
+        animationSpec = tween(460, easing = AnimationCurves.EmphasizedDecelerate),
+        label = "packWidth",
+    )
+    // Contadores + píldoras inferiores: visibles salvo en el rasgado (como la referencia).
+    val chrome = phase != PackPhase.TEARING
+
     Box(
         Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    0f to accent,
-                    0.28f to accent.copy(alpha = 0.55f),
-                    0.5f to Color(0xFFF2F4F8),
-                    1f to Color(0xFFFFFFFF),
-                ),
+                if (chrome) {
+                    Brush.verticalGradient(
+                        0f to accent,
+                        0.28f to accent.copy(alpha = 0.55f),
+                        0.5f to Color(0xFFF2F4F8),
+                        1f to Color(0xFFFFFFFF),
+                    )
+                } else {
+                    // Rasgado: fondo claro lavanda (el acento desaparece, el sobre es el protagonista).
+                    Brush.verticalGradient(listOf(Color(0xFFEDEBF5), Color(0xFFFBFCFE)))
+                },
             )
             .padding(horizontal = 16.dp),
     ) {
         // Cluster superior de contadores (centrado) + marcador a la derecha, como la referencia.
         // Bajado para no quedar bajo el notch (en modo inmersivo statusBarsPadding puede ser 0).
-        Box(
-            Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().padding(top = 28.dp),
-        ) {
-            Row(
-                Modifier.align(Alignment.Center),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CounterPill {
-                    MiniPackGlyph(Modifier.size(15.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        if (remainingToday >= walletMax) "Al máximo" else "$remainingToday/$walletMax",
-                        color = PackInk, fontSize = 11.sp, fontWeight = FontWeight.Black,
-                    )
-                }
-                CounterPill {
-                    Text("💎", fontSize = 12.sp)
-                    Spacer(Modifier.width(5.dp))
-                    Text("${"%,d".format(cristales)}", color = PackInk, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                }
-                CounterCircle("?") {}
-            }
-            CounterCircle("🔖", Modifier.align(Alignment.CenterEnd)) {}
-        }
-
-        // TIRA + SOBRE + reflejo APILADOS en una sola columna: la tira queda físicamente ENCIMA del
-        // sobre (no detrás ni delante), con un pequeño espacio; debajo el reflejo.
-        Column(
-            Modifier.align(androidx.compose.ui.BiasAlignment(0f, 0.06f)).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // Tira de hits ENCIMA del sobre (deslizable con el dedo; tocar → detalle).
-            if (previewHits.isNotEmpty()) {
-                HitsStrip(hits = previewHits, onOpenCard = onOpenCard)
-                Spacer(Modifier.height(10.dp))
-            }
-            // El sobre GRANDE con acercamiento a la parte superior. Se rasga con UN gesto continuo.
+        if (chrome) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.58f)
-                    .aspectRatio(0.62f)
-                    // GESTO: agarre en TODO el sobre; el progreso acumula el DELTA del dedo (dirección
-                    // tolerante), así llegar al borde no interrumpe el rasgado. Un solo gesto continuo.
-                    .pointerInput(canOpen) {
-                        if (!canOpen) return@pointerInput
-                        detectDragGestures(
-                            onDragStart = {
-                                lastTick = 0f
-                                feedback.sfx(SfxCue.PACK_GRAB); feedback.haptic(HapticCue.CONTACT)
-                            },
-                            onDrag = { change, drag ->
-                                change.consume()
-                                // Magnitud del movimiento (X domina; Y aporta un poco) → intención de rasgar.
-                                val mag = abs(drag.x) + abs(drag.y) * 0.35f
-                                val next = (tear.value + mag / tearThresholdPx).coerceIn(0f, 1f)
-                                scope.launch { tear.snapTo(next) }
-                                if (next - lastTick >= 0.11f) { lastTick = next; feedback.tensionTick(next) }
-                                if (next >= 1f && !firing) {
-                                    firing = true
-                                    feedback.sfx(SfxCue.PACK_TEAR); feedback.haptic(HapticCue.TEAR)
-                                    onOpen()
-                                }
-                            },
-                            onDragEnd = {
-                                lastTick = 0f
-                                if (tear.value < 1f) scope.launch { tear.animateTo(0f, tween(260)) }
-                            },
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth().padding(top = 28.dp),
+            ) {
+                Row(
+                    Modifier.align(Alignment.Center),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CounterPill {
+                        MiniPackGlyph(Modifier.size(15.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            if (remainingToday >= walletMax) "Al máximo" else "$remainingToday/$walletMax",
+                            color = PackInk, fontSize = 11.sp, fontWeight = FontWeight.Black,
                         )
                     }
-                    .graphicsLayer {
-                        val a = approach.value
-                        val ac = a.coerceAtMost(1f)
-                        val t = tear.value
-                        cameraDistance = 20f * this.density
-                        // Llega desde más lejos/abajo, inclinado, y se endereza al posicionarse.
-                        val s = 0.74f + 0.30f * a
-                        scaleX = s
-                        scaleY = s * (1f + t * 0.05f)   // TENSIÓN: el plástico se estira al tirar
-                        rotationX = (1f - ac) * 16f     // inclinado al aproximarse → plano al settle
-                        rotationZ = t * 1.4f            // leve torsión del material al tirar
-                        translationY = (1f - ac) * 120f + 44f * ac   // de abajo hacia su posición
-                    },
-            ) {
-                // Interior del sobre asomando por la abertura (profundidad exterior→interior).
-                PackInterior(tear = tear.value, modifier = Modifier.fillMaxSize())
-                // Sobre TROCEADO: la tira superior se despega con el rasgado (arte real partido).
-                TearablePack(art = expansion.packArt, tear = tear.value, modifier = Modifier.fillMaxSize())
-                // Costura de luz irregular que avanza con el dedo (encima del arte).
-                TornTopOverlay(progress = tear.value, modifier = Modifier.fillMaxSize())
-
-                // Dedo-guía animado (solo antes de empezar a rasgar).
-                if (canOpen && tear.value < 0.02f) {
-                    Text(
-                        "👆",
-                        fontSize = 26.sp,
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .graphicsLayer { translationX = size.width * (0.12f + 0.62f * hint); translationY = size.height * 0.12f },
-                    )
-                }
-            }
-
-            // Pequeño espacio entre el sobre y su reflejo.
-            Spacer(Modifier.height(8.dp))
-            // Reflejo CORTO: SOLO la parte inferior del sobre, espejada y desvanecida hacia abajo.
-            // El contenedor es una franja baja (aspecto 0.58:0.26 del sobre) que recorta la imagen
-            // espejada; al estar anclada arriba, lo visible es el borde inferior del sobre reflejado.
-            Box(
-                Modifier
-                    .fillMaxWidth(0.58f)
-                    .aspectRatio(0.62f / 0.26f)
-                    // Sigue al sobre: el arte se desplaza ~44px hacia abajo al aterrizar (translationY
-                    // del acercamiento); el reflejo copia ese desplazamiento para no solaparse con él.
-                    .graphicsLayer {
-                        val ac = approach.value.coerceAtMost(1f)
-                        translationY = (1f - ac) * 120f + 44f * ac
+                    CounterPill {
+                        Text("💎", fontSize = 12.sp)
+                        Spacer(Modifier.width(5.dp))
+                        Text("${"%,d".format(cristales)}", color = PackInk, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
-                    .clipToBounds(),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                coil.compose.AsyncImage(
-                    model = expansion.packArt,
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(0.62f)
-                        .graphicsLayer { scaleY = -1f; alpha = 0.26f },
-                )
-                // Desvanece el reflejo hacia abajo (hacia el color del suelo).
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(listOf(Color.Transparent, Color(0xCCFFFFFF), Color(0xFFFFFFFF))),
-                    ),
-                )
+                    CounterCircle("?") {}
+                }
+                CounterCircle("🔖", Modifier.align(Alignment.CenterEnd)) {}
             }
+        }
 
-            if (canOpen) {
+        when (phase) {
+            // ─── PREVIEW: tira ENCIMA del sobre + reflejo; tocar el sobre → READY. ───
+            PackPhase.PREVIEW -> Column(
+                Modifier.align(androidx.compose.ui.BiasAlignment(0f, 0.06f)).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (previewHits.isNotEmpty()) {
+                    HitsStrip(hits = previewHits, onOpenCard = onOpenCard)
+                    Spacer(Modifier.height(10.dp))
+                }
+                PackArtBody(
+                    packArt = expansion.packArt, tear = tear.value, showFingerHint = false, hint = hint,
+                    modifier = Modifier
+                        .fillMaxWidth(widthFrac)
+                        .aspectRatio(0.62f)
+                        .graphicsLayer {
+                            val a = approach.value
+                            val ac = a.coerceAtMost(1f)
+                            cameraDistance = 20f * this.density
+                            val s = 0.74f + 0.30f * a
+                            scaleX = s; scaleY = s
+                            rotationX = (1f - ac) * 16f
+                            translationY = (1f - ac) * 120f + 44f * ac
+                        }
+                        // Toca el sobre para ENFOCARLO (no rasga aquí): oculta la tira, agranda, quita el
+                        // reflejo. Se permite SIEMPRE, aunque no haya sobres gratis (ahí se podrá comprar).
+                        .clickable { feedback.sfx(SfxCue.PACK_HOVER); phase = PackPhase.READY },
+                )
+                Spacer(Modifier.height(8.dp))
+                PackReflection(art = expansion.packArt, approach = approach.value)
                 Text(
-                    "Desliza para rasgar  →",
+                    "Toca el sobre",
                     color = Color.White.copy(alpha = 0.55f + 0.35f * hint),
                     fontSize = 13.sp, fontWeight = FontWeight.Bold,
                 )
-            }
-            deniedMessage?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, color = Color(0xFFFF5A52), fontSize = 12.sp, textAlign = TextAlign.Center)
-            }
-        }
-
-        // Barra de acciones inferior, como la referencia: Tasas de aparición · ↺ · Otros sobres.
-        Row(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .fillMaxWidth()
-                .padding(bottom = 74.dp),   // deja hueco para la barra de navegación de la app
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ActionPill("Tasas de aparición", Modifier.weight(1f), onClick = {})
-            CounterCircle("↺") {
-                scope.launch {
-                    tear.snapTo(0f)
-                    approach.snapTo(0f)
-                    approach.animateTo(1.05f, tween(560, easing = AnimationCurves.EmphasizedDecelerate))
-                    approach.animateTo(1f, tween(200))
+                deniedMessage?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, color = Color(0xFFFF5A52), fontSize = 12.sp, textAlign = TextAlign.Center)
                 }
             }
-            ActionPill("Otros sobres de mejora", Modifier.weight(1f), onClick = {})
+
+            // ─── READY: sobre agrandado centrado, sin tira ni reflejo + botón azul "Abrir". ───
+            PackPhase.READY -> Column(
+                Modifier.align(androidx.compose.ui.BiasAlignment(0f, -0.05f)).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                PackArtBody(
+                    packArt = expansion.packArt, tear = tear.value, showFingerHint = false, hint = hint,
+                    modifier = Modifier
+                        .fillMaxWidth(widthFrac)
+                        .aspectRatio(0.62f)
+                        .graphicsLayer { cameraDistance = 20f * this.density },
+                )
+                Spacer(Modifier.height(28.dp))
+                // Botón AZUL FIJO (independiente del acento del sobre). Con sobres gratis disponibles
+                // abre (→ rasgado); sin ellos, ofrece COMPRAR el sobre por cristales.
+                val canAct = if (canOpen) true else canBuy
+                Box(
+                    Modifier
+                        .fillMaxWidth(if (canOpen) 0.62f else 0.78f)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            if (canAct) Brush.verticalGradient(listOf(Color(0xFF7FC3FF), Color(0xFF4E9CF0)))
+                            else Brush.verticalGradient(listOf(Color(0xFFBFD3EA), Color(0xFF9FB6D2))),
+                        )
+                        .clickable(enabled = canAct) {
+                            if (canOpen) {
+                                scope.launch { tear.snapTo(0f) }
+                                phase = PackPhase.TEARING
+                            } else {
+                                onBuy()
+                            }
+                        }
+                        .padding(vertical = 15.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        if (canOpen) "Abrir" else "Comprar por $packPrice 💎",
+                        color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black,
+                    )
+                }
+                deniedMessage?.let {
+                    Spacer(Modifier.height(10.dp))
+                    Text(it, color = Color(0xFFD64540), fontSize = 12.sp, textAlign = TextAlign.Center)
+                }
+            }
+
+            // ─── TEARING: sobre enorme anclado abajo + "Traza una línea para abrir" (rasgado). ───
+            PackPhase.TEARING -> Column(
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.weight(0.30f))
+                Text(
+                    "Traza una línea para abrir",
+                    color = PackInk.copy(alpha = 0.7f),
+                    fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(18.dp))
+                PackArtBody(
+                    packArt = expansion.packArt, tear = tear.value,
+                    showFingerHint = canOpen && tear.value < 0.02f, hint = hint,
+                    modifier = Modifier
+                        .fillMaxWidth(widthFrac)
+                        .aspectRatio(0.62f)
+                        // GESTO: agarre en TODO el sobre; el progreso acumula el DELTA del dedo (dirección
+                        // tolerante), así llegar al borde no interrumpe el rasgado. Un solo gesto continuo.
+                        .pointerInput(canOpen) {
+                            if (!canOpen) return@pointerInput
+                            detectDragGestures(
+                                onDragStart = {
+                                    lastTick = 0f
+                                    feedback.sfx(SfxCue.PACK_GRAB); feedback.haptic(HapticCue.CONTACT)
+                                },
+                                onDrag = { change, drag ->
+                                    change.consume()
+                                    val mag = abs(drag.x) + abs(drag.y) * 0.35f
+                                    val next = (tear.value + mag / tearThresholdPx).coerceIn(0f, 1f)
+                                    scope.launch { tear.snapTo(next) }
+                                    if (next - lastTick >= 0.11f) { lastTick = next; feedback.tensionTick(next) }
+                                    if (next >= 1f && !firing) {
+                                        firing = true
+                                        feedback.sfx(SfxCue.PACK_TEAR); feedback.haptic(HapticCue.TEAR)
+                                        onOpen()
+                                    }
+                                },
+                                onDragEnd = {
+                                    lastTick = 0f
+                                    if (tear.value < 1f) scope.launch { tear.animateTo(0f, tween(260)) }
+                                },
+                            )
+                        }
+                        .graphicsLayer {
+                            val t = tear.value
+                            cameraDistance = 20f * this.density
+                            scaleY = 1f + t * 0.05f   // TENSIÓN: el plástico se estira al tirar
+                            rotationZ = t * 1.4f      // leve torsión del material al tirar
+                        },
+                )
+            }
         }
 
-        // Widget "0 puntos" encima de las acciones, a la derecha.
-        Row(
-            Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 4.dp, bottom = 120.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.White)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            MiniPackGlyph(Modifier.size(13.dp))
-            Spacer(Modifier.width(5.dp))
-            Text("0 puntos", color = PackMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        if (chrome) {
+            // Barra de acciones inferior, como la referencia: Tasas de aparición · ↺ · Otros sobres.
+            Row(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .fillMaxWidth()
+                    .padding(bottom = 74.dp),   // deja hueco para la barra de navegación de la app
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ActionPill("Tasas de aparición", Modifier.weight(1f), onClick = {})
+                CounterCircle("↺") {
+                    // Vuelve a la vista inicial (tira + sobre) y reinicia el acercamiento.
+                    phase = PackPhase.PREVIEW
+                    scope.launch {
+                        tear.snapTo(0f)
+                        approach.snapTo(0f)
+                        approach.animateTo(1.05f, tween(560, easing = AnimationCurves.EmphasizedDecelerate))
+                        approach.animateTo(1f, tween(200))
+                    }
+                }
+                ActionPill("Otros sobres de mejora", Modifier.weight(1f), onClick = {})
+            }
+
+            // Widget "0 puntos" encima de las acciones, a la derecha.
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 4.dp, bottom = 120.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MiniPackGlyph(Modifier.size(13.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("0 puntos", color = PackMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
         }
+    }
+}
+
+/** Fases de apertura del sobre (réplica del flujo de TCG Pocket). */
+private enum class PackPhase { PREVIEW, READY, TEARING }
+
+/**
+ * Cuerpo visual del sobre reutilizable entre fases: interior asomando + arte troceable + costura de
+ * luz del rasgado, con un dedo-guía opcional. El [modifier] (tamaño, gesto/click, transformaciones)
+ * lo aporta cada fase.
+ */
+@Composable
+private fun PackArtBody(
+    packArt: Any,
+    tear: Float,
+    showFingerHint: Boolean,
+    hint: Float,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier) {
+        // Interior del sobre asomando por la abertura (profundidad exterior→interior).
+        PackInterior(tear = tear, modifier = Modifier.fillMaxSize())
+        // Sobre TROCEADO: la tira superior se despega con el rasgado (arte real partido).
+        TearablePack(art = packArt, tear = tear, modifier = Modifier.fillMaxSize())
+        // Costura de luz irregular que avanza con el dedo (encima del arte).
+        TornTopOverlay(progress = tear, modifier = Modifier.fillMaxSize())
+        // Dedo-guía animado (solo antes de empezar a rasgar).
+        if (showFingerHint) {
+            Text(
+                "👆",
+                fontSize = 26.sp,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .graphicsLayer { translationX = size.width * (0.12f + 0.62f * hint); translationY = size.height * 0.12f },
+            )
+        }
+    }
+}
+
+/**
+ * Reflejo CORTO del sobre: SOLO su parte inferior, espejada y desvanecida hacia abajo. El contenedor
+ * es una franja baja que recorta la imagen espejada; anclada arriba, lo visible es el borde inferior.
+ */
+@Composable
+private fun PackReflection(art: Any, approach: Float) {
+    Box(
+        Modifier
+            .fillMaxWidth(0.58f)
+            .aspectRatio(0.62f / 0.26f)
+            // Sigue al sobre: el arte se desplaza ~44px hacia abajo al aterrizar (translationY del
+            // acercamiento); el reflejo copia ese desplazamiento para no solaparse con él.
+            .graphicsLayer {
+                val ac = approach.coerceAtMost(1f)
+                translationY = (1f - ac) * 120f + 44f * ac
+            }
+            .clipToBounds(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        coil.compose.AsyncImage(
+            model = art,
+            contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.62f)
+                .graphicsLayer { scaleY = -1f; alpha = 0.26f },
+        )
+        // Desvanece el reflejo hacia abajo (hacia el color del suelo).
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(listOf(Color.Transparent, Color(0xCCFFFFFF), Color(0xFFFFFFFF))),
+            ),
+        )
     }
 }
 
@@ -740,7 +865,8 @@ fun PackOpeningSimulator(
     val sim by androidx.compose.runtime.produceState<SimPacks?>(null) {
         value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { SimPacks.load() }
     }
-    val series = remember { PACK_CATALOG.first() }
+    var simSeriesIdx by remember { mutableStateOf(0) }
+    val series = PACK_CATALOG[simSeriesIdx.coerceIn(0, PACK_CATALOG.lastIndex)]
     var step by remember { mutableStateOf(PackStep.EXPANSION) }
     var expansion by remember { mutableStateOf<ExpansionUi?>(null) }
     var opening by remember { mutableStateOf(false) }
@@ -794,7 +920,9 @@ fun PackOpeningSimulator(
             ) { st ->
                 when (st) {
                     PackStep.EXPANSION -> ExpansionSelectStage(
-                        series = series,
+                        catalog = PACK_CATALOG,
+                        selectedIndex = simSeriesIdx,
+                        onSelectSeries = { simSeriesIdx = it },
                         // El Lab simula sólo el pool de 151 (colección efímera); muestra su progreso.
                         progressFor = { s.owned.size to s.totalInSet },
                         onSelect = { expansion = it; step = PackStep.PACK },

@@ -233,7 +233,10 @@ private fun CardVisual(card: CardDetailUi, modifier: Modifier = Modifier) {
             InteractiveHoloCard(
                 imageUrl = card.imageLarge, setCode = card.setCode, cardNumber = card.number,
                 rarity = card.rarity, contentDescription = card.name,
-                modifier = Modifier.fillMaxSize().shadow(16.dp, RoundedCornerShape(12.dp), clip = false).clip(RoundedCornerShape(12.dp)),
+                // Igual que el visor de combate: SIN .clip() ni .shadow(). El clip cortaba la carta al
+                // inclinarla (parallax 3D) y la sombra sobre contenido transparente dibujaba un
+                // "recuadro blanco" al interactuar. Se deja la carta libre, sin marco.
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
             Box(
@@ -350,6 +353,12 @@ fun CardDetailCarousel(
     val current = cards[currentPage]
     var showLangs by remember { mutableStateOf(false) }
 
+    // Mismo comportamiento que el visor de sobres (el estándar): oculta la barra de navegación de la
+    // app mientras el visor está abierto, y "atrás" cierra el visor (no la pantalla de debajo).
+    val hideBottomBar = com.mineralord.tcg.core.designsystem.LocalBottomBarHider.current
+    DisposableEffect(Unit) { hideBottomBar(true); onDispose { hideBottomBar(false) } }
+    androidx.activity.compose.BackHandler(onBack = onDismiss)
+
     // Grito de la carta ACTUAL (al asentarse en una nueva).
     val cryCtx = LocalContext.current
     val cryPlayer = remember { com.mineralord.tcg.core.designsystem.CryPlayer(cryCtx) }
@@ -399,7 +408,7 @@ fun CardDetailCarousel(
                 Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
                     CardVisual(
                         cards[page],
-                        Modifier.fillMaxWidth(0.82f).aspectRatio(0.72f).graphicsLayer {
+                        Modifier.fillMaxWidth(0.96f).aspectRatio(0.72f).graphicsLayer {
                             val offset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                             val o = offset.coerceIn(-1.5f, 1.5f)
                             val absO = abs(o).coerceIn(0f, 1f)

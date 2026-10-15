@@ -90,6 +90,13 @@
    "serie": "Mega Evolution",
    "expansion": "Mega Evolution",
    "file": "mega-evolution/mega-evolution.json"
+  },
+  {
+   "code": "PFL-LA",
+   "officialCode": "PFL",
+   "serie": "Mega Evolution",
+   "expansion": "Llamaradas Fantasmales",
+   "file": "mega-evolution/llamaradas-fantasmales.json"
   }
  ],
  "energies": "energies.json"

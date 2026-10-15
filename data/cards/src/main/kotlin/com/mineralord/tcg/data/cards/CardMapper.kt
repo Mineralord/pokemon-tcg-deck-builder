@@ -80,6 +80,7 @@ object CardMapper {
         "Illustration Rare" -> Rarity.ILLUSTRATION_RARE
         "Special Illustration Rare" -> Rarity.SPECIAL_ILLUSTRATION_RARE
         "Hyper Rare" -> Rarity.HYPER_RARE
+        "Mega Hyper Rare" -> Rarity.HYPER_RARE  // Megaevolución (Llamaradas Fantasmales): dorada tope de set
         "ACE SPEC Rare" -> Rarity.RARE          // ACE SPEC: rareza propia; se trata como Rara a efectos de pool
         "Promo" -> Rarity.PROMO
         else -> Rarity.COMMON

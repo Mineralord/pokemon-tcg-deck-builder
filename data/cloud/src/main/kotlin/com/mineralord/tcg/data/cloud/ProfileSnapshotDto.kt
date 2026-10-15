@@ -29,6 +29,10 @@ data class ProfileSnapshotDto(
     val equippedCosmetics: Map<String, String> = emptyMap(),
     /** Cosméticos marcados como favoritos (ids). */
     val favoriteCosmetics: List<String> = emptyList(),
+    /** Cartas marcadas como favoritas (★) — ids. Ausente en snapshots antiguos (default vacío). */
+    val favoriteCards: List<String> = emptyList(),
+    /** Cartas marcadas como deseadas (♥ "¡La quiero!") — ids. Ausente en snapshots antiguos. */
+    val wishlistCards: List<String> = emptyList(),
     val dailyDayId: Long = 0L,
     val dailyOpenedToday: Int = 0,
     val seeded: Boolean = false,
@@ -67,6 +71,8 @@ fun PlayerProfile.toSnapshot(): ProfileSnapshotDto = ProfileSnapshotDto(
     ownedCosmetics = ownedCosmetics.toList(),
     equippedCosmetics = equippedCosmetics.mapKeys { it.key.name },
     favoriteCosmetics = favoriteCosmetics.toList(),
+    favoriteCards = favoriteCards.toList(),
+    wishlistCards = wishlistCards.toList(),
     dailyDayId = daily.dayId,
     dailyOpenedToday = daily.openedToday,
     seeded = seeded,
@@ -100,6 +106,8 @@ fun ProfileSnapshotDto.toProfile(): PlayerProfile = PlayerProfile(
         runCatching { CosmeticCategory.valueOf(name) }.getOrNull()?.let { it to id }
     }.toMap(),
     favoriteCosmetics = favoriteCosmetics.toSet(),
+    favoriteCards = favoriteCards.toSet(),
+    wishlistCards = wishlistCards.toSet(),
     daily = DailyPackState(dayId = dailyDayId, openedToday = dailyOpenedToday),
     seeded = seeded,
     decks = decks.map { d ->

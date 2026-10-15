@@ -750,4 +750,167 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     put(EffectId("sv4-171"), turoScenario)
     put(EffectId("sv4-240"), turoScenario)
     put(EffectId("sv4-257"), turoScenario)
+
+    // =========================== Fase 15: Habilidades de Pokémon (flags/pasivos existentes) ===========================
+    // Solo las Habilidades que encajan en el DSL actual (pasivos y disparadores ya soportados). Las que
+    // requieren mecánicas aún inexistentes (triggers reactivos, condiciones de PS completo, conteo de
+    // aliados con nombre, etc.) quedan para fases posteriores y NO se registran.
+
+    // Colonia de Moho Mucilaginoso (Muk — Slime Mold Colony): mientras está en juego, las cartas del
+    // descarte del rival no pueden volver a su mano por efectos de sus Objetos/Partidarios.
+    val slimeMoldColony = Effect(passives = listOf(
+        PassiveModifier(ModKind.BLOCK_OPPONENT_TRAINER_RECYCLE, 0, Target.SELF)))
+    put(abiKey("sv4-17", "Slime Mold Colony"), slimeMoldColony)
+    put(abiKey("sv4-185", "Slime Mold Colony"), slimeMoldColony)
+
+    // Robo por Ventosas (Octillery — Suction Cup Draw): al jugar este Pokémon desde la mano para
+    // evolucionar a uno de los tuyos, roba 3 cartas. (Op NO interactiva → encaja en triggerOnEvolve.)
+    put(abiKey("sv4-34", "Suction Cup Draw"), Effect(
+        triggerOnEvolve = true, ops = listOf(EffectOp.DrawCards(3))))
+
+    // Postura (Stance): al evolucionar jugándolo desde la mano, evita todo el daño Y los efectos de los
+    // ataques rivales a este Pokémon hasta el final del próximo turno del rival.
+    val stance = Effect(
+        triggerOnEvolve = true,
+        ops = listOf(EffectOp.PreventDamageNextTurn(Target.SELF), EffectOp.PreventAttackEffectsNextTurn),
+    )
+    put(abiKey("sv4-81", "Stance"), stance)
+    put(abiKey("sv4-197", "Stance"), stance)
+
+    // Calabaza Sobresaltante (Gourgeist — Startling Pumpkin): si este Pokémon queda Fuera de Combate por
+    // el daño de un ataque rival, el rival descarta 2 cartas al azar de su mano (acting = defensor →
+    // OpponentDiscardsHand recae sobre el Atacante). Lo dispara applyDefenderRetaliation antes del KO.
+    put(abiKey("sv4-78", "Startling Pumpkin"), Effect(
+        triggerOnActiveKO = true, ops = listOf(EffectOp.OpponentDiscardsHand(2))))
+
+    // Exoesqueleto (Exoskeleton): este Pokémon recibe 30 de daño menos de los ataques (tras Debilidad/
+    // Resistencia). Pasivo de Habilidad, cableado en el motor vía abilityDamageReduction.
+    put(abiKey("sv4-128", "Exoskeleton"), Effect(passives = listOf(
+        PassiveModifier(ModKind.REDUCE_DAMAGE, 30, Target.SELF))))
+
+    // Cura Tarareada (Humming Heal): una vez durante tu turno, cura 20 de daño a cada uno de tus Pokémon.
+    val hummingHeal = Effect(oncePerTurn = true, ops = listOf(EffectOp.Heal(Target.OWN_ALL, Amount.Fixed(20))))
+    put(abiKey("sv4-140", "Humming Heal"), hummingHeal)
+    put(abiKey("sv4-232", "Humming Heal"), hummingHeal)
+    put(abiKey("sv4-253", "Humming Heal"), hummingHeal)
+
+    // =========================== Fase 16: último ataque de daño VARIABLE ===========================
+    // Colonia Furiosa (Durant — Swarming Rage sv4-129): 20 de daño por cada contador de daño en TODOS
+    // tus Durant (daño base Variable → 0; todo lo aporta ExtraDamage con el filtro de nombre).
+    put(atkKey("sv4-129", "Swarming Rage"), Effect(ops = listOf(
+        EffectOp.ExtraDamage(Amount.PerCount(Counter.DAMAGE_COUNTERS, Target.OWN_ALL, 20, requiresName = "Durant")))))
+
+    // =========================== Fase 17: riders antes no soportados (ops nuevas) ===========================
+
+    // Ojos Intimidantes (Daunting Eyes sv4-2): lanza 1 moneda hasta cruz; por cada cara, 1 Energía del
+    // Activo rival vuelve a su mazo (barajado).
+    put(atkKey("sv4-2", "Daunting Eyes"), Effect(ops = listOf(EffectOp.CoinUntilTailsShuffleOppActiveEnergy)))
+
+    // Subidón (Pep Up sv4-67): baraja tu mano en tu mazo; luego roba 1 carta por cada Pokémon en Banca
+    // (tuyos y del rival).
+    put(atkKey("sv4-67", "Pep Up"), Effect(ops = listOf(
+        EffectOp.ShuffleHandIntoDeck, EffectOp.DrawPerBench(includeOpponent = true))))
+
+    // Desplazamiento de Datos (Data Displacement sv4-142): elige 1 Pokémon de la Banca rival; lanza 1
+    // moneda y, si sale cara, mueve 1 Energía del Activo rival a ese Pokémon.
+    put(atkKey("sv4-142", "Data Displacement"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt(
+            "Elige un Pokémon de la Banca rival (si sale cara, recibe 1 Energía del Activo rival)",
+            "Choose a Benched Pokémon (if heads, move 1 Energy from the opponent's Active to it)"), optional = true),
+        EffectOp.CoinFlipMoveOppActiveEnergyToChosen,
+    )))
+
+    // Rebuzno Explosivo (Burst of Braying sv4-63): une Energía Rayo Básica de tu descarte a tus Pokémon
+    // (como quieras) hasta el nº de Premios que tu rival ha tomado.
+    put(atkKey("sv4-63", "Burst of Braying"), Effect(ops = listOf(
+        EffectOp.AttachEnergyFromDiscard(0, EnergyType.LIGHTNING, Target.OWN_ALL, countFromOppPrizesTaken = true))))
+
+    // =========================== Fase 18: Habilidades con condiciones de pasivo ===========================
+
+    // Exoesqueleto (reprint sv4-209): −30 de daño. (La principal sv4-128 ya estaba en la Fase 15.)
+    put(abiKey("sv4-209", "Exoskeleton"), Effect(passives = listOf(
+        PassiveModifier(ModKind.REDUCE_DAMAGE, 30, Target.SELF))))
+
+    // Armadura Carmesí (Crimson Armor): si tiene los PS completos, −80 de daño de ataques rivales.
+    val crimsonArmor = Effect(passives = listOf(
+        PassiveModifier(ModKind.REDUCE_DAMAGE, 80, Target.SELF, requiresFullHp = true)))
+    put(abiKey("sv4-27", "Crimson Armor"), crimsonArmor)
+    put(abiKey("sv4-218", "Crimson Armor"), crimsonArmor)
+
+    // Con Prisas (In a Hungry Hurry): si no tiene Energía unida, no tiene Coste de Retirada.
+    val inAHungryHurry = Effect(passives = listOf(
+        PassiveModifier(ModKind.NO_RETREAT, appliesTo = Target.SELF, requiresNoEnergy = true)))
+    put(abiKey("sv4-121", "In a Hungry Hurry"), inAHungryHurry)
+    put(abiKey("sv4-206", "In a Hungry Hurry"), inAHungryHurry)
+
+    // =========================== Fase 19: Habilidades con flags nuevos del motor ===========================
+
+    // Escudo Misterioso (Mysterious Shield): evita todo el daño de ataques de Pokémon ex y V del rival.
+    val mysteriousShield = Effect(preventsDamageFromExOrV = true)
+    put(abiKey("sv4-134", "Mysterious Shield"), mysteriousShield)
+    put(abiKey("sv4-210", "Mysterious Shield"), mysteriousShield)
+
+    // Evanescente (Evanescent): si está Activo y queda KO, lanza 1 moneda; con cara el rival coge 1
+    // Premio menos.
+    val evanescent = Effect(fewerPrizeOnKoWithCoin = true)
+    put(abiKey("sv4-3", "Evanescent"), evanescent)
+    put(abiKey("sv4-217", "Evanescent"), evanescent)
+
+    // =========================== Fase 20: op/flag nuevos (robo condicional, bloqueo por PS) ===========================
+
+    // Bonificación por Moneda (Coin Bonus): una vez por turno, roba 1 carta; si está Activo, 1 más.
+    val coinBonus = Effect(oncePerTurn = true, ops = listOf(EffectOp.DrawCardsActiveBonus(1, 1)))
+    put(abiKey("sv4-139", "Coin Bonus"), coinBonus)
+    put(abiKey("sv4-231", "Coin Bonus"), coinBonus)
+    put(abiKey("sv4-252", "Coin Bonus"), coinBonus)
+
+    // Sala Gélida (Frigid Room): los Pokémon del rival con 40 PS o menos restantes no pueden atacar.
+    put(abiKey("sv4-45", "Frigid Room"), Effect(oppCantAttackIfRemainingHpAtMost = 40))
+
+    // =========================== Fase 21: Habilidades manuales con bonus atómico "si lo haces" ===========================
+
+    // Sentido Clarividente (Clairvoyant Sense): una vez/turno, une 1 Energía Psíquica Básica de tu mano
+    // a 1 de tu Banca; si lo haces, roba 2 cartas.
+    put(abiKey("sv4-72", "Clairvoyant Sense"), Effect(oncePerTurn = true, ops = listOf(
+        EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt(
+            "Elige un Pokémon de tu Banca para unirle 1 Energía Psíquica",
+            "Choose a Benched Pokémon to attach a Psychic Energy to")),
+        EffectOp.AttachEnergyFromHand(EnergyType.PSYCHIC, Target.CHOSEN, 1, thenDraw = 2))))
+
+    // Sal Mineral Energizante (Energizing Rock Salt): una vez/turno, une 1 Energía Lucha Básica de tu
+    // descarte a 1 de tus Pokémon; si lo haces, cúrale 30.
+    val energizingRockSalt = Effect(oncePerTurn = true, ops = listOf(
+        EffectOp.ChooseTarget(Target.OWN_ALL, 1, prompt(
+            "Elige 1 de tus Pokémon para unirle 1 Energía Lucha",
+            "Choose 1 of your Pokémon to attach a Fighting Energy to")),
+        EffectOp.AttachEnergyFromDiscard(1, EnergyType.FIGHTING, Target.CHOSEN, thenHeal = 30)))
+    put(abiKey("sv4-104", "Energizing Rock Salt"), energizingRockSalt)
+    put(abiKey("sv4-202", "Energizing Rock Salt"), energizingRockSalt)
+
+    // =========================== Fase 22: Habilidades "al pasar de la Banca al Activo" ===========================
+
+    // Bits de Taquión (Tachyon Bits): una vez/turno, al pasar de la Banca al Activo, pon 2 contadores
+    // de daño (20) en 1 Pokémon del rival.
+    val tachyonBits = Effect(
+        oncePerTurn = true, requiresMovedToActiveThisTurn = true,
+        ops = listOf(
+            EffectOp.ChooseTarget(Target.OPP_ALL, 1, prompt(
+                "Elige 1 Pokémon del rival (2 contadores de daño)",
+                "Choose 1 of your opponent's Pokémon (2 damage counters)")),
+            EffectOp.Damage(Target.CHOSEN, Amount.Fixed(20))))
+    put(abiKey("sv4-89", "Tachyon Bits"), tachyonBits)
+    put(abiKey("sv4-225", "Tachyon Bits"), tachyonBits)
+    put(abiKey("sv4-249", "Tachyon Bits"), tachyonBits)
+    put(abiKey("sv4-261", "Tachyon Bits"), tachyonBits)
+
+    // =========================== Fase 23: contraataque "por cada aliado con nombre" ===========================
+
+    // Solidaridad (Solidarity): si está Activo y es dañado por un ataque (aunque quede KO), pon 3
+    // contadores de daño (30) en el Atacante por cada Tandemaus/Maushold (incl. "Maushold ex") en juego.
+    val solidarity = Effect(
+        triggerOnActiveDamaged = true,
+        ops = listOf(EffectOp.Damage(Target.OPP_ACTIVE, Amount.PerCount(
+            Counter.OWN_INPLAY_COUNT, Target.OWN_ALL, 30, namesAnyOf = listOf("Tandemaus", "Maushold")))))
+    put(abiKey("sv4-155", "Solidarity"), solidarity)
+    put(abiKey("sv4-233", "Solidarity"), solidarity)
 }

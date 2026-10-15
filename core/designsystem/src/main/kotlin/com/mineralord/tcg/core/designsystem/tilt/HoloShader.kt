@@ -80,7 +80,7 @@ private const val HOLO_AGSL = """
         else if (uProfile < 2.5) { freq = 5.0;  sat = 0.9; sparkleAmt = 0.16; baseCover = 0.28; amp = 0.55; metal = 1.0; }
         else if (uProfile < 3.5) { freq = 5.0;  sat = 1.0; sparkleAmt = 0.20; baseCover = 0.30; amp = 0.60; metal = 1.0; }
         else if (uProfile < 4.5) { freq = 9.0;  sat = 1.1; sparkleAmt = 0.26; baseCover = 0.34; amp = 0.55; }
-        else if (uProfile < 5.5) { freq = 12.0; sat = 1.2; sparkleAmt = 0.34; baseCover = 0.40; amp = 0.65; }
+        else if (uProfile < 5.5) { freq = 10.0; sat = 1.05; sparkleAmt = 0.20; baseCover = 0.22; amp = 0.42; }  // SIR: holo contenido como las cartas oficiales
         else                     { freq = 6.0;  sat = 1.0; sparkleAmt = 0.30; baseCover = 0.34; amp = 0.55; goldMix = 1.0; }
 
         half3 rb = rainbow(bt * freq * 0.15);
@@ -117,7 +117,9 @@ private const val HOLO_AGSL = """
         float real = uMask.eval(fragCoord * uMaskScale).a;
         float mask = mix(proc, real, uHasMask);
 
-        float2 c = float2(0.5) + uTilt * 0.5;
+        // El brillo especular se sitúa BAJO el dedo (uTilt viene de la posición del dedo): el centro
+        // del glare sigue al puntero, no al lado contrario (física real de un foil reflejando).
+        float2 c = float2(0.5) - uTilt * 0.5;
         float glare = smoothstep(0.7, 0.0, distance(uv, c));
 
         float spark = glitter(uv, 60.0) * (0.4 + glare) * sparkleAmt * mask;

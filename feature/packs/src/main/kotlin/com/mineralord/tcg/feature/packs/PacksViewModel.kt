@@ -173,7 +173,7 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             totalCards = pool.totalCards,
             ownedDistinct = owned.size,
             secondsToNext = nextAt?.let { ((it - now) / 1000).coerceAtLeast(0) },
-            setLabel = "Escarlata y Púrpura · ${SET_NAMES[setCode] ?: setCode}",
+            setLabel = "${SET_SERIES[setCode] ?: "Escarlata y Púrpura"} · ${SET_NAMES[setCode] ?: setCode}",
             ownedInSet = owned.keys.count { it.startsWith("$setCode-") },
             totalInSet = totalInSet,
             perSet = perSet,
@@ -374,6 +374,12 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         val SET_NAMES = mapOf(
             "sv3pt5" to "151",
             "sv4" to "Brecha Paradójica",
+            "PFL-LA" to "Llamaradas Fantasmales",
+        )
+
+        /** Serie en español por código de set (prefijo del rótulo). Default: Escarlata y Púrpura. */
+        val SET_SERIES = mapOf(
+            "PFL-LA" to "Megaevolución",
         )
     }
 }

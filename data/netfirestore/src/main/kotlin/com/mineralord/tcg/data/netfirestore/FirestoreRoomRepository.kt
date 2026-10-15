@@ -45,7 +45,11 @@ class FirestoreRoomRepository private constructor(
     suspend fun enterAsHost(code: String, name: String, deckName: String) {
         val me = myUid()
         room(code).set(
-            mapOf("host" to me, "lobbyStatus" to "waiting", "createdAt" to FieldValue.serverTimestamp()),
+            mapOf(
+                "host" to me, "lobbyStatus" to "waiting",
+                "format" to "EXPANDED",   // formato por defecto; el anfitrión lo cambia con setFormat
+                "createdAt" to FieldValue.serverTimestamp(),
+            ),
             SetOptions.merge(),
         ).await()
         members(code).document(me).set(
@@ -101,6 +105,19 @@ class FirestoreRoomRepository private constructor(
 
     suspend fun setDeck(code: String, deckName: String) {
         members(code).document(myUid()).set(mapOf("deckName" to deckName), SetOptions.merge()).await()
+    }
+
+    /** El anfitrión fija el formato (Límite de cartas) de la sala; ambos jugadores lo observan. */
+    suspend fun setFormat(code: String, format: String) {
+        room(code).set(mapOf("format" to format), SetOptions.merge()).await()
+    }
+
+    /** Formato de la sala en vivo (String codificado por encodeMatchFormat; vacío = aún sin fijar). */
+    fun roomFormatFlow(code: String): Flow<String> = callbackFlow {
+        val reg = room(code).addSnapshotListener { snap, _ ->
+            if (snap != null) trySend(snap.getString("format").orEmpty())
+        }
+        awaitClose { reg.remove() }
     }
 
     /** Señaliza el arranque: ambos dispositivos lo observan y caen al tapete. */

@@ -75,6 +75,8 @@ object MergeStrategy {
             favoriteDeckIds = local.favoriteDeckIds + cloud.favoriteDeckIds,
             ownedCosmetics = local.ownedCosmetics + cloud.ownedCosmetics,
             favoriteCosmetics = local.favoriteCosmetics + cloud.favoriteCosmetics,
+            favoriteCards = local.favoriteCards + cloud.favoriteCards,
+            wishlistCards = local.wishlistCards + cloud.wishlistCards,
             seeded = local.seeded || cloud.seeded,
             activeDeckId = activeDeckId,
             lastModified = max(local.lastModified, cloud.lastModified),

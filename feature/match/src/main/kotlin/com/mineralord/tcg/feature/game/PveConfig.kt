@@ -1,5 +1,6 @@
 package com.mineralord.tcg.feature.game
 
+import com.mineralord.tcg.engine.model.MatchFormat
 import com.mineralord.tcg.engine.rules.Difficulty
 
 /**
@@ -12,4 +13,8 @@ object PveConfig {
     /** Dificultad del rival IA para la siguiente partida. Por defecto, Ultra Ball. */
     @Volatile
     var difficulty: Difficulty = Difficulty.ULTRABALL
+
+    /** Formato (Límite de cartas) elegido al pulsar Individual. Por defecto, Expandido. */
+    @Volatile
+    var format: MatchFormat = MatchFormat.Expanded
 }

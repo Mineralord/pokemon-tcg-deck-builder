@@ -160,6 +160,8 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     var packsDirectCode by remember { mutableStateOf<String?>(null) }
     // Selector de dificultad PvE.
     var pickingDifficulty by remember { mutableStateOf(false) }
+    // Selector de formato (Límite de cartas) al elegir Individual, ANTES de la baraja/dificultad.
+    var pickingPveFormat by remember { mutableStateOf(false) }
     // Nonce que IDENTIFICA la partida actual: sube cada vez que se ENTRA a un combate
     // (PvE/PvP). Fuerza un subárbol nuevo por partida → GameViewModel/controller frescos,
     // evitando que la partida anterior (ya terminada) quede pegada al reabrir el combate.
@@ -177,6 +179,9 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     var roomAsHost by remember { mutableStateOf(true) }
 
     val ctx = LocalContext.current
+    // Catálogo + series disponibles (para el selector de formato en sala y en PvE). Se carga una vez.
+    val cardRepo = remember { com.mineralord.tcg.data.cards.CardRepository.load() }
+    val allSeries = remember(cardRepo) { com.mineralord.tcg.data.cards.DeckValidation.availableSeries(cardRepo) }
     val profileRepo = remember { ProfileRepository(ctx.applicationContext) }
     val profile by profileRepo.profile.collectAsState(initial = PlayerProfile())
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -392,7 +397,8 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                             scope.launch { runCatching { roomRepo.enterAsHost(code, myName, myDeckName) } }
                             push(Screen.ROOM)
                         },
-                        onIndividual = { afterDeckSelect = { pickingDifficulty = true }; push(Screen.DECK_SELECT) },
+                        // Individual (PvE): primero pregunta el formato (Estándar/Expandido), luego baraja y dificultad.
+                        onIndividual = { pickingPveFormat = true },
                         onBarajas = { push(Screen.DECKS) },
                     )
                 }
@@ -445,6 +451,30 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                                 )
                             }
                         }
+                        // Formato de la partida (botón "Límite de cartas"), SINCRONIZADO por la sala:
+                        // lo fija el anfitrión y ambos jugadores lo observan. Expandido por defecto.
+                        val roomFormatStr by remember(roomCode) {
+                            if (roomCode.isBlank()) kotlinx.coroutines.flow.flowOf("")
+                            else roomRepo.roomFormatFlow(roomCode)
+                        }.collectAsState(initial = "")
+                        val matchFormat = com.mineralord.tcg.engine.model.decodeMatchFormat(roomFormatStr)
+                        var showFormatPicker by remember { mutableStateOf(false) }
+                        val activeDeck = profile.decks.firstOrNull { it.id == profile.activeDeckId }
+                            ?: profile.decks.firstOrNull()
+                        // Cartas de MI baraja activa no permitidas en el formato actual (gate de "Listo").
+                        val deckIllegal = remember(activeDeck, matchFormat) {
+                            activeDeck?.let { com.mineralord.tcg.data.cards.DeckValidation.illegalCards(it, cardRepo, matchFormat) }
+                                .orEmpty()
+                        }
+                        // Avisa (a ambos jugadores) cuando el formato activo deja cartas de tu baraja fuera.
+                        androidx.compose.runtime.LaunchedEffect(matchFormat, deckIllegal.size) {
+                            if (deckIllegal.isNotEmpty()) android.widget.Toast.makeText(
+                                ctx,
+                                "Tu baraja tiene ${deckIllegal.size} carta(s) no permitidas en ${com.mineralord.tcg.data.cards.DeckValidation.formatLabel(matchFormat)}.",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
+
                         com.mineralord.tcg.feature.game.FriendLobbyScreen(
                             modifier = Modifier.fillMaxSize(),
                             roomCode = roomCode.ifBlank { "------" },
@@ -458,7 +488,17 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                             },
                             canStart = canStart,
                             localReady = localReady,
-                            onToggleReady = { ready -> scope.launch { runCatching { roomRepo.setReady(roomCode, ready) } } },
+                            onToggleReady = { ready ->
+                                if (ready && deckIllegal.isNotEmpty()) {
+                                    android.widget.Toast.makeText(
+                                        ctx,
+                                        "No puedes estar Listo: ${deckIllegal.size} carta(s) de tu baraja no se permiten en ${com.mineralord.tcg.data.cards.DeckValidation.formatLabel(matchFormat)}.",
+                                        android.widget.Toast.LENGTH_LONG,
+                                    ).show()
+                                } else {
+                                    scope.launch { runCatching { roomRepo.setReady(roomCode, ready) } }
+                                }
+                            },
                             onBack = {
                                 val leaving = roomCode
                                 scope.launch { runCatching { roomRepo.leave(leaving) } }
@@ -475,7 +515,11 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                                 friendsVm.inviteToMatch(friend.uid, roomCode)
                                 android.widget.Toast.makeText(ctx, "Invitación enviada a ${friend.name}", android.widget.Toast.LENGTH_SHORT).show()
                             },
-                            onCardLimit = { /* Detalle de límite de cartas: por implementar. */ },
+                            format = com.mineralord.tcg.data.cards.DeckValidation.formatLabel(matchFormat),
+                            onCardLimit = {
+                                if (roomAsHost) showFormatPicker = true
+                                else android.widget.Toast.makeText(ctx, "Solo el anfitrión cambia el formato.", android.widget.Toast.LENGTH_SHORT).show()
+                            },
                             // Cada jugador elige SU baraja en la sala: abre el selector (fija la baraja
                             // activa); al volver se sincroniza a su miembro de la sala.
                             onChooseDeck = { afterDeckSelect = null; push(Screen.DECK_SELECT) },
@@ -483,6 +527,19 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                             // INICIAR solo señaliza el arranque; ambos caen al tapete por el estado del lobby.
                             onStart = { scope.launch { runCatching { roomRepo.start(roomCode) } } },
                         )
+
+                        if (showFormatPicker) {
+                            FormatPickerDialog(
+                                current = matchFormat,
+                                series = allSeries,
+                                onPick = { f ->
+                                    showFormatPicker = false
+                                    // Lo fija el anfitrión en la sala; ambos lo observan vía roomFormatFlow.
+                                    scope.launch { runCatching { roomRepo.setFormat(roomCode, com.mineralord.tcg.engine.model.encodeMatchFormat(f)) } }
+                                },
+                                onDismiss = { showFormatPicker = false },
+                            )
+                        }
                     }
                     Screen.MATCHMAKING -> MatchmakingScreen(
                         deckName = "Mega-Charizard X ex",
@@ -617,11 +674,36 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
             }
         }
 
+        if (pickingPveFormat) {
+            FormatPickerDialog(
+                current = com.mineralord.tcg.feature.game.PveConfig.format,
+                series = allSeries,
+                onPick = { f ->
+                    com.mineralord.tcg.feature.game.PveConfig.format = f
+                    pickingPveFormat = false
+                    // Continúa el flujo PvE: elegir baraja → dificultad.
+                    afterDeckSelect = { pickingDifficulty = true }
+                    push(Screen.DECK_SELECT)
+                },
+                onDismiss = { pickingPveFormat = false },
+            )
+        }
+
         if (pickingDifficulty) {
             DifficultyDialog(
                 onPick = { difficulty ->
                     com.mineralord.tcg.feature.game.PveConfig.difficulty = difficulty
                     pickingDifficulty = false
+                    // Aviso si la baraja activa tiene cartas fuera del formato elegido para esta PvE.
+                    val deck = profile.decks.firstOrNull { it.id == profile.activeDeckId } ?: profile.decks.firstOrNull()
+                    val illegal = deck?.let {
+                        com.mineralord.tcg.data.cards.DeckValidation.illegalCards(it, cardRepo, com.mineralord.tcg.feature.game.PveConfig.format)
+                    }.orEmpty()
+                    if (illegal.isNotEmpty()) android.widget.Toast.makeText(
+                        ctx,
+                        "Tu baraja tiene ${illegal.size} carta(s) no permitidas en ${com.mineralord.tcg.data.cards.DeckValidation.formatLabel(com.mineralord.tcg.feature.game.PveConfig.format)}.",
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
                     push(Screen.MATCHMAKING)
                 },
                 onDismiss = { pickingDifficulty = false },

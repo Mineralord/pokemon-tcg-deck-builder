@@ -31,6 +31,9 @@ enum class Counter {
     OPP_DISCARD_ENERGY,
     /** Nº de cartas de Premio que TÚ has tomado ya (Peerless Edge sv4-135: 70× por Premio tomado). */
     OWN_PRIZES_TAKEN,
+    /** Nº de TUS Pokémon en juego (opcionalmente filtrados por nombre vía [Amount.PerCount.namesAnyOf]):
+     *  Solidarity sv4-155 = 3 contadores por cada Tandemaus/Maushold en juego. */
+    OWN_INPLAY_COUNT,
 }
 
 /** Cantidad fija o derivada de un conteo del estado de juego. */
@@ -47,6 +50,18 @@ sealed interface Amount {
         val target: Target,
         val mult: Int,
         val energyType: EnergyType? = null,
+        /**
+         * Si no es null, los contadores solo se cuentan sobre los Pokémon de [target] cuyo nombre
+         * (ES o EN) contenga este texto (Durant — Colonia Furiosa sv4-129: "20 por cada contador de
+         * daño en TODOS tus Durant"). Solo afecta a contadores sumados sobre los refs
+         * ([Counter.DAMAGE_COUNTERS], [Counter.ENERGY_ATTACHED]).
+         */
+        val requiresName: String? = null,
+        /**
+         * Como [requiresName] pero acepta VARIOS nombres (cuenta los Pokémon cuyo nombre contenga
+         * CUALQUIERA de ellos). Para [Counter.OWN_INPLAY_COUNT]: Solidarity cuenta Tandemaus + Maushold
+         * (+ "Maushold ex", que contiene "Maushold"). Vacío = sin filtro de nombre. */
+        val namesAnyOf: List<String> = emptyList(),
     ) : Amount
 }
 
@@ -123,6 +138,14 @@ data class PassiveModifier(
      * Si es true, el pasivo solo aplica cuando el Pokémon portador NO tiene caja de regla
      * (Capa Lujosa / Luxurious Cape: +100 PS si no es ex/V/etc.). */
     val requiresNoRuleBox: Boolean = false,
+    /**
+     * Si es true, el pasivo solo aplica cuando el Pokémon portador tiene los PS completos (sin daño)
+     * (Crimson Armor sv4-27: −80 de daño si este Pokémon tiene los PS completos). */
+    val requiresFullHp: Boolean = false,
+    /**
+     * Si es true, el pasivo solo aplica cuando el Pokémon portador NO tiene Energía unida
+     * (In a Hungry Hurry sv4-121: sin Coste de Retirada si no tiene Energía). */
+    val requiresNoEnergy: Boolean = false,
     /**
      * Solo para [ModKind.BLOCK_ABILITY]: alcance del bloqueo de Habilidades.
      * - [blockBothSides] true (por defecto): afecta a los Pokémon de AMBOS lados en juego
@@ -313,6 +336,11 @@ sealed interface EffectOp {
         val energyType: EnergyType?,
         val target: Target,
         /**
+         * Si es true, el nº máximo a unir NO es [count] sino el nº de cartas de Premio que el RIVAL
+         * ha tomado ya (Burst of Braying sv4-63: "hasta el número de Premios que tu rival ha tomado").
+         * Se calcula al resolver; si es 0, la op no hace nada. */
+        val countFromOppPrizesTaken: Boolean = false,
+        /**
          * "Si lo haces, roba hasta tener [thenDrawUpTo] cartas" (Melo). El robo
          * es ATÓMICO con el enganche: solo ocurre si se unió al menos 1 Energía.
          * null = no roba. */
@@ -323,6 +351,11 @@ sealed interface EffectOp {
          * sv3pt5-159: "Lanza 1 moneda. Si sale cara, une 1 Energía Básica de tu descarte a
          * uno de tus Pokémon en Banca"). Emite [GameEvent.CoinFlipped]. */
         val coinFlip: Boolean = false,
+        /**
+         * "Si lo haces, cura [thenHeal] de daño a ESE Pokémon" (Energizing Rock Salt sv4-104). Atómico:
+         * solo cura si se unió al menos 1 Energía. 0 = no cura. Solo aplica a la ruta determinista
+         * (target CHOSEN/SELF/OWN_ACTIVE). */
+        val thenHeal: Int = 0,
     ) : EffectOp
 
     /**
@@ -644,7 +677,14 @@ sealed interface EffectOp {
      * [target] (Clinging Spore sv4-15, Swelling Power sv4-93). Determinista: toma las primeras de la
      * mano que casen (cualquier copia básica equivale). Para "1 de tus Pokémon" se precede de una
      * [ChooseTarget] y se usa [Target.CHOSEN]. No-op si no hay Energía válida en la mano. */
-    data class AttachEnergyFromHand(val energyType: EnergyType?, val target: Target, val count: Int = 1) : EffectOp
+    data class AttachEnergyFromHand(
+        val energyType: EnergyType?,
+        val target: Target,
+        val count: Int = 1,
+        /** "Si lo haces, roba [thenDraw] cartas" (Clairvoyant Sense sv4-72). Atómico: solo si se unió
+         *  Energía. 0 = no roba. */
+        val thenDraw: Int = 0,
+    ) : EffectOp
 
     /**
      * Devuelve a tu mano el Pokémon propio elegido por una [ChooseTarget] previa (sobre
@@ -652,6 +692,30 @@ sealed interface EffectOp {
      * Profesor Turo sv4-171. La carta (y su pila de evolución) va a la mano; lo unido, al descarte.
      * Si era el Activo y queda Banca, marca la promoción pendiente. No-op si no hay elegido. */
     data object BounceChosenToHandDiscardingAttached : EffectOp
+
+    /**
+     * Roba 1 carta por cada Pokémon en Banca (Pep Up sv4-67: "roba 1 carta por cada Pokémon en Banca,
+     * tuyos y de tu rival"). Si [includeOpponent] es true cuenta ambas Bancas; si no, solo la tuya.
+     * Se cuenta en el momento de ejecutar (p. ej. tras barajar la mano). Determinista. */
+    data class DrawPerBench(val includeOpponent: Boolean) : EffectOp
+
+    /**
+     * "Lanza 1 moneda hasta que salga cruz. Por cada cara, pon 1 Energía unida al Activo del rival en
+     * su baraja y barájala" (Daunting Eyes sv4-2). Por cada cara mueve 1 Energía del Activo rival a su
+     * mazo (hasta agotar las Energías unidas) y baraja el mazo rival. Emite 1 CoinFlipped por tirada. */
+    data object CoinUntilTailsShuffleOppActiveEnergy : EffectOp
+
+    /**
+     * "Lanza 1 moneda. Si sale cara, mueve 1 Energía del Activo del rival a 1 de sus Pokémon en Banca"
+     * (Data Displacement sv4-142). El Pokémon de Banca destino lo elige una [ChooseTarget] previa sobre
+     * [Target.OPP_BENCH] (como [CoinFlipSwapOppActiveWithChosen]). Cruz, sin elegido, Activo sin Energía
+     * o Banca vacía → no hace nada. Emite [GameEvent.CoinFlipped]. */
+    data object CoinFlipMoveOppActiveEnergyToChosen : EffectOp
+
+    /**
+     * Roba [base] cartas y, si el Pokémon origen está en el Puesto Activo, [bonus] más (Coin Bonus
+     * sv4-139: "roba 1 carta; si este Pokémon está Activo, roba 1 más"). Determinista. */
+    data class DrawCardsActiveBonus(val base: Int, val bonus: Int) : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */
@@ -740,6 +804,12 @@ data class Effect(
     val oncePerTurn: Boolean = false,
     val activeOnly: Boolean = false,
     /**
+     * Si es true, esta habilidad manual solo puede usarse durante el turno en que este Pokémon pasó
+     * de la Banca al Puesto Activo (Tachyon Bits sv4-89: "cuando este Pokémon pasa de tu Banca al
+     * Puesto Activo…"). Lo comprueban [GameEngine.useAbility]/[legalIntents] contra
+     * [PokemonInPlay.movedToActiveOnTurn]. */
+    val requiresMovedToActiveThisTurn: Boolean = false,
+    /**
      * Daño de ataque autorado (para ataques "X+" con bonus condicional). Si NO
      * está vacío, el motor usa la suma de los términos aplicables como daño base
      * (sustituye al `baseDamage` de la carta, que es Variable) y le aplica
@@ -803,6 +873,21 @@ data class Effect(
      * evita todo el daño que le inflijan los ataques rivales. La comprueba [GameEngine.attack]
      * al calcular la prevención de daño (se salta si el ataque ignora los efectos del Defensor). */
     val preventsDamageIfEnergyParity: Boolean = false,
+    /**
+     * Habilidad-escudo: evita TODO el daño que le inflijan los ataques de Pokémon **ex** y Pokémon
+     * **V** del rival (Mysterious Shield sv4-134/-210). La comprueba [GameEngine.attack] al calcular la
+     * prevención de daño (se salta si el ataque ignora los efectos del Defensor). */
+    val preventsDamageFromExOrV: Boolean = false,
+    /**
+     * Habilidad: "si este Pokémon está en el Puesto Activo y queda Fuera de Combate, lanza 1 moneda; si
+     * sale cara, tu rival coge 1 carta de Premio menos" (Evanescent sv4-3/-217). La resuelve
+     * [GameEngine.handleKnockouts] al repartir los premios del KO. */
+    val fewerPrizeOnKoWithCoin: Boolean = false,
+    /**
+     * Habilidad pasiva global: mientras este Pokémon está en juego, los Pokémon del RIVAL con PS
+     * restantes ≤ [oppCantAttackIfRemainingHpAtMost] no pueden atacar (Frigid Room sv4-45: ≤40 PS).
+     * 0 = no aplica. La comprueba [GameEngine.attack] y [GameEngine.legalIntents]. */
+    val oppCantAttackIfRemainingHpAtMost: Int = 0,
     /**
      * "Si este Pokémon NO está Confundido, este ataque no hace nada" (Primeape — Golpe Rabioso
      * sv3pt5-57). Si es true y el atacante no está Confundido, `GameEngine.attack` anula el daño

@@ -28,6 +28,11 @@ data class PokemonInPlay(
      */
     val cannotAttackOnTurn: Int? = null,
     /**
+     * Si no es null, número de turno en el que este Pokémon pasó de la Banca al Puesto Activo
+     * (por retirada o cambio). Habilita las habilidades "cuando este Pokémon pasa de tu Banca al
+     * Puesto Activo…" (Tachyon Bits sv4-89, Thermal Reactor sv4-28) SOLO durante ese turno. */
+    val movedToActiveOnTurn: Int? = null,
+    /**
      * Si no es null, número de turno durante el cual, si este Pokémon intenta atacar, su
      * dueño primero lanza [flipsToAttackCount] monedas; si sale cruz en ALGUNA, el ataque
      * "no se lleva a cabo" (Seadra — Tinta Cegadora sv3pt5-117: "durante el próximo turno de

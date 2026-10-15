@@ -1,6 +1,9 @@
 package com.mineralord.tcg.data.cards
 
 import com.mineralord.tcg.engine.model.BasicEnergy
+import com.mineralord.tcg.engine.model.CardId
+import com.mineralord.tcg.engine.model.FormatLegality
+import com.mineralord.tcg.engine.model.MatchFormat
 import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.TrainerCard
 
@@ -63,5 +66,38 @@ object DeckValidation {
         }
 
         return DeckValidity(reasons.isEmpty(), reasons)
+    }
+
+    /**
+     * Valida la baraja y, ADEMÁS, su legalidad en [format] (filtro de pool por serie). Expandido
+     * acepta todas las series; Estándar solo la serie elegida. La Energía Básica está exenta
+     * (legal en cualquier formato) — lo decide [FormatLegality].
+     */
+    fun validate(deck: Deck, repo: CardRepository, format: MatchFormat): DeckValidity {
+        val base = validate(deck, repo)
+        val reasons = base.reasons.toMutableList()
+        val illegal = deck.entries.mapNotNull { repo[it.cardId] }
+            .filterNot { FormatLegality.isLegal(it, format) }
+            .distinctBy { it.name.en }
+        if (illegal.isNotEmpty()) {
+            val names = illegal.joinToString(", ") { it.name.es.ifBlank { it.name.en } }
+            reasons += "Cartas no permitidas en ${formatLabel(format)}: $names."
+        }
+        return DeckValidity(reasons.isEmpty(), reasons)
+    }
+
+    /** Ids de las cartas de la baraja NO legales en [format] (para marcarlas en la UI). */
+    fun illegalCards(deck: Deck, repo: CardRepository, format: MatchFormat): List<CardId> =
+        deck.entries.map { it.cardId }
+            .filter { id -> repo[id]?.let { !FormatLegality.isLegal(it, format) } ?: false }
+            .distinct()
+
+    /** Series disponibles en el catálogo, para poblar el selector de formato Estándar. */
+    fun availableSeries(repo: CardRepository): List<String> =
+        repo.all.map { it.set.series }.distinct().sorted()
+
+    fun formatLabel(format: MatchFormat): String = when (format) {
+        MatchFormat.Expanded -> "Expandido"
+        is MatchFormat.Standard -> "Estándar · ${format.series}"
     }
 }

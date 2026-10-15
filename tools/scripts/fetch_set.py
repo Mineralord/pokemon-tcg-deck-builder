@@ -18,22 +18,32 @@ import io, sys, os, json, time, urllib.request, urllib.error
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUT_DIR = os.path.join(ROOT, 'data', 'cards', 'src', 'main', 'resources', 'cards', 'scarlet-violet')
+CARDS_DIR = os.path.join(ROOT, 'data', 'cards', 'src', 'main', 'resources', 'cards')
 
-# code interno -> (codigo pokemontcg.io, codigo tcgdex, serie-slug tcgdex)
+# slug de serie -> carpeta de salida bajo cards/
+SERIES_DIR = {
+    'sv': 'scarlet-violet',
+    'me': 'mega-evolution',
+}
+
+# code interno -> (codigo pokemontcg.io, codigo tcgdex, slug de serie, CODIGO OFICIAL)
 # tcgdex usa "sv04" y ruta de assets "sv/sv04"; pokemontcg.io usa "sv4".
+# POLITICA: toda expansion nueva usa su CODIGO OFICIAL como prefijo de id de carta (4o elemento).
+# Los ids pasan de "<ptcg>-N" a "<oficial>-N"; las imagenes (URLs completas) NO cambian.
+# Megaevolucion: pokemontcg "me2", tcgdex "me02", oficial "PFL-LA" (Llamaradas Fantasmales, Latino).
 SET_MAP = {
-    'sv4': ('sv4', 'sv04', 'sv'),
-    'sv5': ('sv5', 'sv05', 'sv'),
-    'sv6': ('sv6', 'sv06', 'sv'),
-    'sv7': ('sv7', 'sv07', 'sv'),
-    'sv8': ('sv8', 'sv08', 'sv'),
+    'sv4': ('sv4', 'sv04', 'sv', 'sv4'),
+    'sv5': ('sv5', 'sv05', 'sv', 'sv5'),
+    'sv6': ('sv6', 'sv06', 'sv', 'sv6'),
+    'sv7': ('sv7', 'sv07', 'sv', 'sv7'),
+    'sv8': ('sv8', 'sv08', 'sv', 'sv8'),
+    'me2': ('me2', 'me02', 'me', 'PFL-LA'),
 }
 
 UA = {'User-Agent': 'tcg-clone-fetcher/1.0'}
 
 
-def get_json(url, tries=4, delay=0.6):
+def get_json(url, tries=8, delay=1.0):
     last = None
     for i in range(tries):
         try:
@@ -62,20 +72,32 @@ def fetch_ptcg_base(ptcg_code):
     return cards
 
 
+# Idiomas TCGdex en orden de PREFERENCIA: español LATINOAMERICANO primero (política del proyecto:
+# usar Latino siempre que exista), con fallback a español de España. El Latino solo existe para sets
+# desde «Aventuras Compartidas» (mar 2025); los anteriores caen a 'es'.
+TCGDEX_LANGS = ('es-mx', 'es')
+
+
 def fetch_tcgdex_es(tcg_code):
-    """Detalle ES por carta de TCGdex, indexado por localId (str sin ceros)."""
-    s = get_json(f'https://api.tcgdex.net/v2/es/sets/{tcg_code}')
-    out = {}
-    brief = s.get('cards', [])
-    for i, c in enumerate(brief, 1):
-        cid = c['id']  # p.ej. sv04-025
-        det = get_json(f'https://api.tcgdex.net/v2/es/cards/{cid}')
-        local = str(int(det.get('localId', c.get('localId', '0')))) if str(det.get('localId', '')).isdigit() else det.get('localId')
-        out[local] = det
-        if i % 25 == 0:
-            print(f'  TCGdex ES: {i}/{len(brief)}')
-        time.sleep(0.05)
-    return out
+    """Detalle en español por carta de TCGdex (Latino si existe, si no España). Devuelve
+    (dict_por_localId, nombre_del_set, idioma_usado)."""
+    for lang in TCGDEX_LANGS:
+        try:
+            s = get_json(f'https://api.tcgdex.net/v2/{lang}/sets/{tcg_code}')
+        except Exception:  # noqa
+            continue
+        out = {}
+        brief = s.get('cards', [])
+        for i, c in enumerate(brief, 1):
+            cid = c['id']  # p.ej. me02-025
+            det = get_json(f'https://api.tcgdex.net/v2/{lang}/cards/{cid}')
+            local = str(int(det.get('localId', c.get('localId', '0')))) if str(det.get('localId', '')).isdigit() else det.get('localId')
+            out[local] = det
+            if i % 25 == 0:
+                print(f'  TCGdex {lang}: {i}/{len(brief)}')
+            time.sleep(0.05)
+        return out, s.get('name'), lang
+    raise RuntimeError(f'TCGdex no tiene datos en español para {tcg_code}')
 
 
 def es_block(det, set_name_es):
@@ -155,24 +177,30 @@ def main():
     code, out_file = sys.argv[1], sys.argv[2]
     if code not in SET_MAP:
         print(f'codigo desconocido {code}; agregalo a SET_MAP'); sys.exit(1)
-    ptcg_code, tcg_code, _ = SET_MAP[code]
+    ptcg_code, tcg_code, slug, official = SET_MAP[code]
+    out_dir = os.path.join(CARDS_DIR, SERIES_DIR.get(slug, 'scarlet-violet'))
+    os.makedirs(out_dir, exist_ok=True)
 
     print(f'[1/3] pokemontcg.io base ({ptcg_code})...')
     base = fetch_ptcg_base(ptcg_code)
     print(f'      {len(base)} cartas EN')
 
-    print(f'[2/3] TCGdex ES ({tcg_code})...')
-    es_set = get_json(f'https://api.tcgdex.net/v2/es/sets/{tcg_code}')
-    set_name_es = es_set.get('name')
-    es_by_local = fetch_tcgdex_es(tcg_code)
-    print(f'      {len(es_by_local)} cartas ES · set ES = "{set_name_es}"')
+    print(f'[2/3] TCGdex español ({tcg_code})...')
+    es_by_local, set_name_es, lang = fetch_tcgdex_es(tcg_code)
+    print(f'      {len(es_by_local)} cartas [{lang}] · set = "{set_name_es}"')
 
     print('[3/3] mapeando y escribiendo...')
     base_sorted = sorted(base, key=lambda c: int(c['number']) if str(c.get('number', '')).isdigit() else 9999)
     cartas = [map_card(c, es_by_local, set_name_es) for c in base_sorted]
+    # POLITICA de codigo oficial: reescribe el prefijo del id de carta ("<ptcg>-N" -> "<oficial>-N").
+    # Las imagenes son URLs completas y NO se tocan. El split por el ULTIMO guion mantiene compatible
+    # un codigo con guion como "PFL-LA" (setCode = substringBeforeLast('-')).
+    if official != ptcg_code:
+        for cc in cartas:
+            cc['id'] = cc['id'].replace(f'{ptcg_code}-', f'{official}-', 1)
     missing_es = [c['id'] for c in cartas if c['es'] is None]
     doc = {'totalCartas': len(cartas), 'cartas': cartas}
-    out_path = os.path.join(OUT_DIR, out_file)
+    out_path = os.path.join(out_dir, out_file)
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(doc, f, ensure_ascii=False, indent=1)
     print(f'OK -> {out_path}  ({len(cartas)} cartas; sin bloque es: {len(missing_es)})')

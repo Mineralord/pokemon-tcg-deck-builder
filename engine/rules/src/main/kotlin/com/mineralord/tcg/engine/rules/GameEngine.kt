@@ -335,7 +335,8 @@ class GameEngine(
         }
         // Descarta tantas energías como cueste retirarse.
         val toDiscard = active.attachedEnergy.take(retreatCost)
-        val newActive = benchMon.copy(statuses = emptySet())   // retirarse cura condiciones
+        // retirarse cura condiciones; marca el paso Banca→Activo para habilidades tipo Tachyon Bits.
+        val newActive = benchMon.copy(statuses = emptySet(), movedToActiveOnTurn = state.turn)
         val updated = me.copy(
             active = newActive,
             bench = me.bench - benchMon + active.copy(
@@ -384,6 +385,11 @@ class GameEngine(
         // Restricción "no puede atacar este turno" (Jet Wing y similares).
         if (attacker.cannotAttackOnTurn == state.turn) {
             return EngineResult.reject(state, "${attacker.card.name.es} no puede atacar este turno")
+        }
+        // Frigid Room (sv4-45): si el rival tiene la habilidad en juego y a este atacante le quedan
+        // pocos PS, no puede atacar.
+        if (lowHpAttackLock(state, state.activeSide, attacker)) {
+            return EngineResult.reject(state, "${attacker.card.name.es} tiene muy pocos PS y no puede atacar")
         }
         // Restricción "no puede usar ESTE ataque este turno" (Heat Ray, Bandit's Fist, Slashing Strike).
         if (attacker.lockedAttackOnTurn == state.turn &&
@@ -555,12 +561,27 @@ class GameEngine(
             defender.card.effectiveAbilities(false).any { ab ->
                 ab.effect?.let { effects[it]?.preventsDamageIfEnergyParity } == true
             }
-        val damagePrevented = energyParityShield ||
+        // Escudo contra ex/V (Escudo Misterioso): evita el daño si el Defensor tiene la habilidad (no
+        // bloqueada) y el ATACANTE es un Pokémon ex o V.
+        val attackerIsExOrV = when (attacker.card.mechanic) {
+            com.mineralord.tcg.engine.model.PokemonMechanic.ExLower,
+            com.mineralord.tcg.engine.model.PokemonMechanic.ExUpper,
+            com.mineralord.tcg.engine.model.PokemonMechanic.V,
+            com.mineralord.tcg.engine.model.PokemonMechanic.VMax,
+            com.mineralord.tcg.engine.model.PokemonMechanic.VStar -> true
+            else -> false
+        }
+        val exVShield = attackerIsExOrV && !isAbilityLocked(state, foeSide, defender) &&
+            defender.card.effectiveAbilities(false).any { ab ->
+                ab.effect?.let { effects[it]?.preventsDamageFromExOrV } == true
+            }
+        val damagePrevented = energyParityShield || exVShield ||
             defender.preventDamageOnTurn == state.turn ||
             (defender.preventBasicDamageOnTurn == state.turn && attacker.card.isBasic)
         val finalAmount = if (dmg.finalAmount > 0 && (ignoresDefEffects || !damagePrevented)) {
             if (ignoresDefEffects) dmg.finalAmount
-            else (dmg.finalAmount - toolDamageReduction(state, foeSide, defender) - selfReduction).coerceAtLeast(0)
+            else (dmg.finalAmount - toolDamageReduction(state, foeSide, defender)
+                - abilityDamageReduction(state, foeSide, defender) - selfReduction).coerceAtLeast(0)
         } else 0
         var newFoe = foe
         if (finalAmount > 0) {
@@ -797,6 +818,9 @@ class GameEngine(
         }
         if (effect.oncePerTurn && pokemonId in state.abilitiesUsedThisTurn) {
             return EngineResult.reject(state, "Esta habilidad ya se usó este turno")
+        }
+        if (effect.requiresMovedToActiveThisTurn && mon.movedToActiveOnTurn != state.turn) {
+            return EngineResult.reject(state, "Esta habilidad solo al pasar este Pokémon de la Banca al Activo")
         }
         var working = state
         if (effect.oncePerTurn) {
@@ -1053,6 +1077,19 @@ class GameEngine(
     private fun toolDamageReduction(state: GameState, side: Side, pip: PokemonInPlay): Int =
         activeToolMods(state, side, pip).filter { it.mod == ModKind.REDUCE_DAMAGE }.sumOf { it.amount }
 
+    /**
+     * Reducción de daño de ataques aportada por las HABILIDADES del propio defensor (Exoskeleton
+     * sv4-128: -30 permanente). Respeta el bloqueo de Habilidades y la condición de energía, igual
+     * que el HP extra por habilidad ([effectiveMaxHp]). appliesTo == SELF = el portador se protege. */
+    private fun abilityDamageReduction(state: GameState, side: Side, pip: PokemonInPlay): Int =
+        abilityPassives(state, side, pip)
+            .filter {
+                it.mod == ModKind.REDUCE_DAMAGE && it.appliesTo == Target.SELF &&
+                    passiveEnergyConditionMet(pip, it) &&
+                    (!it.requiresFullHp || pip.damage == 0)
+            }
+            .sumOf { it.amount }
+
     // --- Pasivos de HABILIDADES (Fase 7 del set 151: Flotación / Travesía / Tentáculos) ---
 
     /** Pasivos de TODAS las habilidades de un Pokémon SIN filtrar por bloqueo (uso interno:
@@ -1082,6 +1119,20 @@ class GameEngine(
     ): List<com.mineralord.tcg.engine.model.Effect> {
         val active = pip.card.effectiveAbilities(isAbilityLocked(state, side, pip))
         return active.mapNotNull { it.effect }.mapNotNull { effects[it] }
+    }
+
+    /**
+     * Frigid Room (sv4-45): ¿el rival de [attackerSide] tiene en juego una habilidad (no bloqueada) que
+     * impide atacar a los Pokémon con PS restantes ≤ umbral, y a [attacker] le quedan ≤ ese umbral?
+     */
+    private fun lowHpAttackLock(state: GameState, attackerSide: Side, attacker: PokemonInPlay): Boolean {
+        val foeSide = attackerSide.other()
+        val threshold = state.sideState(foeSide).allInPlay.maxOfOrNull { pip ->
+            abilityEffects(state, foeSide, pip).maxOfOrNull { it.oppCantAttackIfRemainingHpAtMost } ?: 0
+        } ?: 0
+        if (threshold <= 0) return false
+        val remaining = effectiveMaxHp(state, attackerSide, attacker) - attacker.damage
+        return remaining <= threshold
     }
 
     /**
@@ -1213,6 +1264,12 @@ class GameEngine(
         // Herramienta que elimina el Coste de Retirada del portador (Cápsula de Energía Propulsora
         // del Futuro: el Pokémon Futuro no tiene Coste de Retirada).
         if (activeToolMods(state, side, active).any { it.mod == ModKind.NO_RETREAT }) return 0
+        // NO_RETREAT por HABILIDAD del propio Activo (In a Hungry Hurry: sin retirada si no tiene Energía).
+        if (abilityPassives(state, side, active).any {
+                it.mod == ModKind.NO_RETREAT && it.appliesTo == Target.SELF &&
+                    (!it.requiresNoEnergy || active.attachedEnergy.isEmpty())
+            }
+        ) return 0
         // Travesía Propulsión: cualquier Pokémon propio en juego con pasivo OWN_ALL.
         val allFree = player.allInPlay.any { pip ->
             abilityPassives(state, side, pip).any { it.mod == ModKind.RETREAT_COST && it.appliesTo == Target.OWN_ALL }
@@ -1353,8 +1410,19 @@ class GameEngine(
 
         events += GameEvent.KnockedOut(koSide, active.card.id)
 
+        // Evanescente (Evanescent): si el Pokémon Noqueado tiene la habilidad (no bloqueada), lanza 1
+        // moneda; con cara el atacante coge 1 Premio menos.
+        var prizesBase = active.card.prizeValue + extraPrizes
+        if (!isAbilityLocked(state, koSide, active) &&
+            active.card.effectiveAbilities(false).any { ab -> ab.effect?.let { effects[it]?.fewerPrizeOnKoWithCoin } == true }
+        ) {
+            val heads = rng.flipCoin()
+            events += GameEvent.CoinFlipped(koSide, heads)
+            if (heads) prizesBase = (prizesBase - 1).coerceAtLeast(0)
+        }
+
         // El atacante toma premios (+ los extra de Clefable — Más Luna), sin exceder los que quedan.
-        val prizesToTake = (active.card.prizeValue + extraPrizes)
+        val prizesToTake = prizesBase
             .coerceAtMost(state.sideState(attackerSide).prizes.size)
         val attacker = state.sideState(attackerSide)
         val taken = attacker.prizes.take(prizesToTake)
@@ -1735,7 +1803,8 @@ class GameEngine(
 
         // Atacar con ataques pagables (salvo en el turno 1: quien empieza no ataca,
         // o si el Activo está restringido este turno por Jet Wing y similares).
-        if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn) {
+        if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn &&
+            !(active != null && lowHpAttackLock(state, state.activeSide, active))) {
             active?.card?.attacks
                 ?.filter { it.name.es != active.lockedAttackName || active.lockedAttackOnTurn != state.turn }
                 ?.filter { canPayAttack(it, active, state, state.activeSide) }
@@ -1745,6 +1814,7 @@ class GameEngine(
         if (state.turn > 1 && state.sideState(state.activeSide.other()).active != null) {
             me.bench.forEach { b ->
                 if (b.cannotAttackOnTurn == state.turn) return@forEach
+                if (lowHpAttackLock(state, state.activeSide, b)) return@forEach
                 b.card.attacks
                     .filter {
                         effects[it.effect]?.usableFromBench == true &&
@@ -1807,6 +1877,7 @@ class GameEngine(
                     !eff.triggerOnActiveDamaged && !eff.triggerOnActiveKO &&  // se disparan solas al recibir daño
                     (!eff.activeOnly || me.active?.card?.id == p.card.id) &&
                     (!eff.firstTurnOnly || state.turn <= 2) &&
+                    (!eff.requiresMovedToActiveThisTurn || p.movedToActiveOnTurn == state.turn) &&
                     (!eff.oncePerTurn || p.card.id !in state.abilitiesUsedThisTurn)
                 ) {
                     intents += GameIntent.UseAbility(p.card.id, ability.name.es)

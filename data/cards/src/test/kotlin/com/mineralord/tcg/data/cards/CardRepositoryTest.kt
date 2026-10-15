@@ -20,8 +20,9 @@ class CardRepositoryTest {
     @Test
     fun `carga el dataset completo (todas las expansiones + energias basicas)`() {
         // Cartas repartidas en las expansiones del índice + 8 energías básicas. Sube al
-        // completar expansiones (151: 207 · Surging Sparks: 252 · Brecha Paradójica/sv4: 266).
-        assertEquals(785, repo.size)
+        // completar expansiones (151: 207 · Surging Sparks: 252 · Brecha Paradójica/sv4: 266 ·
+        // Llamaradas Fantasmales/me2: 130).
+        assertEquals(915, repo.size)
     }
 
     @Test

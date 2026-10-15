@@ -106,6 +106,10 @@ fun PackOpeningOverlay(
     val feedback = remember { BoosterFeedback(audio, vibrator) }
     DisposableEffect(Unit) { onDispose { audio.release() } }
 
+    // Oculta la barra de navegación de la app mientras se sacan cartas del sobre (igual que los visores).
+    val hideBottomBar = com.mineralord.tcg.core.designsystem.LocalBottomBarHider.current
+    DisposableEffect(Unit) { hideBottomBar(true); onDispose { hideBottomBar(false) } }
+
     val spd = speed.coerceIn(0.25f, 3f)
     var phase by remember { mutableStateOf(if (reducedMotion) Phase.SUMMARY else Phase.PACK_OPEN) }
     var index by remember { mutableIntStateOf(0) }
@@ -344,7 +348,7 @@ private fun CardScene(
         val rotY = (1f - flip.value) * (pres.revealTurns * 360f) + (if (revealed) sway * flip.value else 0f)
         val showBack = (((rotY % 360f) + 360f) % 360f).let { it in 90f..270f }
         Box(
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.90f).aspectRatio(0.72f)
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.96f).aspectRatio(0.72f)
                 .graphicsLayer {
                     cameraDistance = 16f * this.density
                     // EMERGENCE: sube desde el interior con leve inclinación hacia atrás.
@@ -390,7 +394,9 @@ private fun CardScene(
                     cardNumber = card.cardNumber,
                     rarity = card.rarity,
                     contentDescription = card.name,
-                    modifier = Modifier.fillMaxSize().padding(6.dp).clip(RoundedCornerShape(10.dp)),
+                    // Sin .clip(): el recorte creaba un "marco" que cortaba la carta al inclinarla con el
+                    // dedo (parallax 3D). Como en el visor de combate, se deja libre para que no corte.
+                    modifier = Modifier.fillMaxSize().padding(6.dp),
                 )
             }
             // Barrido de luz al cruzar el canto (premium): brillo cuando la carta está de perfil.

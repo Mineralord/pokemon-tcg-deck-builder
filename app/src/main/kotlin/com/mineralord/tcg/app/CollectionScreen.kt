@@ -227,11 +227,13 @@ private fun PokemonCard.maxPrintedDamage(): Int =
     attacks.maxOfOrNull { (it.baseDamage as? Damage.Fixed)?.value ?: 0 } ?: 0
 
 /** Orden de expansiones: MÁS NUEVAS ARRIBA → más viejas abajo (por fecha de lanzamiento),
- *  con promos y energías al final. sv4 (nov'23) ▸ 151/sv3pt5 (sep'23) ▸ sv3 (ago'23) ▸ sv2 ▸ sv1. */
-private val ORDERED_SETS = listOf("sv4", "sv3pt5", "sv3", "sv2", "sv1", "svp", "energy")
+ *  con promos y energías al final. me2 (nov'25, Megaevolución) ▸ sv4 (nov'23) ▸ 151/sv3pt5 (sep'23)
+ *  ▸ sv3 (ago'23) ▸ sv2 ▸ sv1. */
+private val ORDERED_SETS = listOf("PFL-LA", "sv4", "sv3pt5", "sv3", "sv2", "sv1", "svp", "energy")
 
 /** Logo HD oficial EN ESPAÑOL por expansión (fuente WikiDex). null → sin logo → fallback a nombre arcoíris. */
 private fun setLogoRes(code: String): Int? = when (code) {
+    "PFL-LA" -> R.drawable.set_me2_logo          // Llamaradas Fantasmales (Megaevolución)
     "sv1" -> R.drawable.set_sv1_logo          // Escarlata y Púrpura
     "sv2" -> R.drawable.set_sv2_logo          // Evoluciones en Paldea
     "sv3" -> R.drawable.set_sv3_logo          // Llamas Obsidianas
