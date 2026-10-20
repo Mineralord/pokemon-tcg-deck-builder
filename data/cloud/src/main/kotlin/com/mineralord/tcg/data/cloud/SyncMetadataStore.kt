@@ -1,6 +1,7 @@
 package com.mineralord.tcg.data.cloud
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -48,6 +49,14 @@ class SyncMetadataStore(context: Context) {
         }
     }
 
+    /** ¿El usuario eligió explícitamente "continuar como invitado"? (para no preguntar cada vez). */
+    suspend fun isGuestChosen(): Boolean = store.data.first()[GUEST] ?: false
+
+    /** Recuerda que el usuario aceptó jugar como invitado. Se borra al iniciar sesión. */
+    suspend fun setGuestChosen(value: Boolean) {
+        store.edit { it[GUEST] = value }
+    }
+
     /** Limpia la sesión y el vínculo con Drive (al cerrar sesión). No toca el perfil. */
     suspend fun clear() {
         store.edit { it.clear() }
@@ -59,5 +68,6 @@ class SyncMetadataStore(context: Context) {
         val EMAIL = stringPreferencesKey("signed_in_email")
         val NAME = stringPreferencesKey("signed_in_name")
         val AVATAR = stringPreferencesKey("signed_in_avatar")
+        val GUEST = booleanPreferencesKey("guest_mode_chosen")
     }
 }

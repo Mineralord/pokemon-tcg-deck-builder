@@ -39,6 +39,15 @@ class CloudSyncRepository(
     val authState: StateFlow<AuthState> = auth.authState
     val lastSynced get() = metadata.lastSynced
 
+    /** ¿Hay una cuenta recordada de una sesión anterior? (persistida, aunque aún no se haya restaurado). */
+    suspend fun hasRememberedSession(): Boolean = metadata.getSession() != null
+
+    /** ¿El usuario eligió jugar como invitado? (para no volver a preguntar al arrancar). */
+    suspend fun isGuestChosen(): Boolean = metadata.isGuestChosen()
+
+    /** Recuerda que el usuario acepta jugar como invitado. */
+    suspend fun chooseGuest() = metadata.setGuestChosen(true)
+
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
 
@@ -80,6 +89,8 @@ class CloudSyncRepository(
             val account = auth.signIn(activity)
             currentToken = auth.authorizeDriveScope(launcher)
             metadata.setSession(account.email, account.name, account.avatarUrl)
+            // Al iniciar sesión deja de ser invitado: la colección ya se guarda en la nube.
+            metadata.setGuestChosen(false)
             syncNow(preferCloud = true)
         }.onFailure { Log.w(TAG, "signIn/sync falló", it); _syncStatus.value = SyncStatus.Error(it) }
     }

@@ -755,6 +755,11 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
             )
         }
 
+        // Bienvenida al inicio (tras pasar la pantalla de carga): si no hay sesión ni invitado
+        // elegido, ofrece entrar con Google (recomendado) o continuar como invitado. Se dibuja
+        // ANTES del UpdateGate para que el aviso de actualización (si lo hay) quede por encima.
+        if (entered) WelcomeGate()
+
         // Aviso OBLIGATORIO de nueva versión: cubre todo (incluso el splash) si hay una versión más
         // reciente publicada en Firestore; el único camino es "Actualizar" → enlace de descarga.
         UpdateGate()
