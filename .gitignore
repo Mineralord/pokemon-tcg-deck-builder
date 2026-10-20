@@ -31,6 +31,15 @@ tools/.venv/
 app/google-services.json
 .firebase/
 
+# Firma release (keystore + contraseñas; NUNCA versionar)
+keystore.properties
+*.jks
+*.keystore
+
+# Herramientas de release (clave de servicio Admin SDK + deps; NUNCA versionar la clave)
+tools/release/service-account.json
+tools/release/node_modules/
+
 # Volcados de referencia locales (capturas pesadas; no van al remoto)
 /tcglive-capture/
 /referencias_live - copia/

@@ -51,6 +51,15 @@ service cloud.firestore {
       }
     }
 
+    // ───────── Configuración de la app (aviso de nueva versión) ─────────
+    // El cliente consulta config/appVersion AL ARRANCAR (posiblemente antes de que el login
+    // anónimo termine), por eso la lectura es pública. La escritura queda denegada: solo tú
+    // actualizas la última versión descargable a mano desde la consola de Firebase.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

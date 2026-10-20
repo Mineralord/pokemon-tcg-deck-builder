@@ -26,7 +26,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -47,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -751,6 +754,10 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                 onEnter = { if (appReady) entered = true },
             )
         }
+
+        // Aviso OBLIGATORIO de nueva versión: cubre todo (incluso el splash) si hay una versión más
+        // reciente publicada en Firestore; el único camino es "Actualizar" → enlace de descarga.
+        UpdateGate()
     }
     }
 }
@@ -773,14 +780,18 @@ private fun SplashScreen(ready: Boolean, onEnter: () -> Unit) {
         ),
         label = "splashPromptAlpha",
     )
+    // Paleta OFICIAL clara de la app (fondo blanco-lila; igual que menú/colección y el aviso de versión).
+    val bgTop = Color(0xFFEDF1F8)
+    val bgBottom = Color(0xFFDBE3EF)
+    val ink = Color(0xFF2B3346)
+    val muted = Color(0xFF8A93A6)
+    val accent = Color(0xFF35C4E8)
+    val track = Color(0xFFE3EAF3)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(TcgColors.Navy, TcgColors.Ink),
-                ),
-            )
+            .background(Brush.verticalGradient(listOf(bgTop, bgBottom)))
             .clickable(
                 enabled = ready,
                 indication = null,
@@ -795,33 +806,38 @@ private fun SplashScreen(ready: Boolean, onEnter: () -> Unit) {
         ) {
             Text(
                 "Pokémon TCG",
-                color = TcgColors.Gold,
+                color = ink,
                 fontWeight = FontWeight.Black,
                 fontSize = 30.sp,
             )
-            Spacer(Modifier.height(32.dp))
-            // Transición elegante entre el indicador de carga y la invitación a tocar.
+            Spacer(Modifier.height(36.dp))
+            // Transición elegante entre la barra de carga y la invitación a tocar.
             androidx.compose.animation.Crossfade(targetState = ready, label = "splashState") { isReady ->
                 if (isReady) {
                     Text(
                         "Toca para entrar",
-                        color = Color.White.copy(alpha = promptAlpha),
+                        color = ink.copy(alpha = promptAlpha),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                     )
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = TcgColors.Gold,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(34.dp),
+                        // Barra de progreso indeterminada, fina y con esquinas redondeadas (cian de la app).
+                        LinearProgressIndicator(
+                            color = accent,
+                            trackColor = track,
+                            modifier = Modifier
+                                .width(180.dp)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(50)),
                         )
                         Text(
-                            "Preparando la partida…",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontWeight = FontWeight.Medium,
+                            "Cargando",
+                            color = muted,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
-                            modifier = Modifier.padding(top = 16.dp),
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(top = 18.dp),
                         )
                     }
                 }

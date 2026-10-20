@@ -1,0 +1,6 @@
+{
+  "_comment": "Config estable de publicación. El enlace/ID de descarga NO cambia entre versiones porque se reemplaza el CONTENIDO del MISMO archivo en Drive (mismo fileId). Cambia solo si mueves la APK a otro sitio.",
+  "driveFileId": "1xp4BOhPv_yU8V8Nj7SOFCBxPPTKLgQ16",
+  "downloadUrl": "https://drive.google.com/file/d/1xp4BOhPv_yU8V8Nj7SOFCBxPPTKLgQ16/view?usp=drive_link",
+  "apkPath": "../../app/build/outputs/apk/release/app-release.apk"
+}

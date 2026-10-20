@@ -1,9 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.services)
 }
+
+// Credenciales de firma RELEASE: viven en `keystore.properties` (NO versionado, ver .gitignore),
+// nunca en gradle.properties (que sí va al repo). Si el archivo no existe, la build release queda
+// sin firmar y se omite la signingConfig: así cualquiera puede compilar debug sin tus claves.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+}
+val hasReleaseKeystore = keystoreProps.getProperty("storeFile") != null
 
 android {
     namespace = "com.mineralord.tcg.app"
@@ -13,8 +24,8 @@ android {
         applicationId = "com.mineralord.tcg"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 4
+        versionName = "0.2.2"
     }
 
     signingConfigs {
@@ -26,11 +37,26 @@ android {
             enableV1Signing = true
             enableV2Signing = true
         }
+        // Firma RELEASE con TU propio keystore (clave estable, "desarrollador conocido"): reduce el
+        // aviso agresivo de Play Protect al instalar por sideload. Solo se registra si existe
+        // keystore.properties; sus valores NO se versionan.
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Firma la APK que repartes a tus amigos con tu clave estable (si está configurada).
+            if (hasReleaseKeystore) signingConfig = signingConfigs.getByName("release")
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")

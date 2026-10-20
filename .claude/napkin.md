@@ -2,6 +2,32 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## 🚀 PUBLICAR NUEVA VERSIÓN (REGLA PERMANENTE del dueño, 20 Oct 2026)
+**Cuando el dueño pida "publicar/sacar nueva versión", Claude SIEMPRE hace los pasos 1 y 3; el dueño sube la APK a Drive.**
+1. **(SIEMPRE Claude) Subir versión** en `app/build.gradle.kts` (líneas ~16-17): incrementar `versionCode` (+1) y
+   actualizar `versionName` al que indique el dueño. El `versionCode` es el que de verdad dispara el aviso.
+2. **(Claude) Build APK release firmada:** `./gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+   Firma con el keystore release `tcg-release.jks` vía `keystore.properties` (ambos gitignored; si se pierden, no se
+   puede actualizar como "misma app"). Si el build falla por lock de .dex (antivirus), reintentar.
+3. **(SIEMPRE Claude) Publicar en Firestore (paso que dispara el aviso a todos):**
+   `node tools/release/publish-version.mjs --code <N> --name <x.y.z> [--message "…"]`. Escribe `config/appVersion`
+   (Admin SDK, ignora reglas). Requiere `tools/release/service-account.json` (gitignored, el dueño lo descarga 1 vez
+   de Consola Firebase → Cuentas de servicio). El enlace de descarga estable vive en `tools/release/release.config.json`.
+4. **(Claude) Subir `app-release.apk` a Drive:** `node tools/release/upload-apk.mjs`. Reemplaza el CONTENIDO del
+   MISMO archivo (fileId en `release.config.json`) vía Drive API con la cuenta de servicio → el enlace NO cambia.
+   Requiere: API de Drive habilitada + el archivo compartido con el email de la cuenta de servicio (client_email)
+   como Editor, y como "Cualquiera con el enlace" (lector) para que los amigos puedan descargar. Si el dueño ya lo
+   subió a mano, saltar. **Flujo completo Claude = editar gradle → assembleRelease → upload-apk.mjs → publish-version.mjs.**
+**Aviso de actualización (código):** `app/.../UpdateGate.kt` lee `config/appVersion` al arrancar (lectura pública en
+`firestore.rules`), compara `latestVersionCode` > versionCode instalado (vía PackageManager) y, si hay más nueva, muestra
+diálogo OBLIGATORIO (sin cerrar, sin atrás) → descarga la APK DENTRO de la app (normaliza enlaces Drive a descarga
+directa) → lanza el instalador (permiso `REQUEST_INSTALL_PACKAGES` + FileProvider `${applicationId}.updateprovider`).
+Montado en `MainActivity.AppShell` encima de todo. Repo Firestore: `data:netfirestore/FirestoreAppVersionRepository.kt`.
+**Instalación 100% silenciosa = IMPOSIBLE fuera de Play Store** (Android exige confirmación del usuario); lo máximo es
+descargar in-app + 1 toque "Instalar". El aviso "app sospechosa" se mitiga (no se elimina) con la firma release propia.
+**Hoy (20 Oct):** app subida a versionCode=2/0.2.0, APK release firmada generada; reglas desplegadas. PENDIENTE del dueño:
+(a) poner `service-account.json`, (b) subir APK a Drive compartida, (c) crear/publicar doc (Claude lo hará con el script).
+
 ## 🃏 AÑADIR EXPANSIÓN + EFECTOS (29 Sep 2026) — pipeline reutilizable, aprende y crece
 **Objetivo del dueño:** cada expansión nueva = MÁS cartas jugables; conforme se añaden, aplicar los efectos
 correctamente reutilizando lo aprendido de 151. Rama `feature/studio-match-mode`. Hecho: **Brecha Paradójica (sv4)**
