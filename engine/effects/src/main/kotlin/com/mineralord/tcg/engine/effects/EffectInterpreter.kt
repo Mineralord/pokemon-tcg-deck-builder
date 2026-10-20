@@ -402,13 +402,23 @@ class EffectInterpreter {
                 ifHeads = op.ifHeads,
                 ifTails = op.ifTails,
             )
-            is EffectOp.MoveEnergy -> PendingDecision.MoveEnergy(
-                src.actingSide,
-                LocalizedText("Mueve energía", "Move Energy"),
-                fromCandidates = targets(op.from, src, state, emptyList()).map { it.card.id },
-                toCandidates = targets(op.to, src, state, emptyList()).map { it.card.id },
-                count = op.count,
-            )
+            is EffectOp.MoveEnergy -> {
+                // Solo pausamos si hay Energía que mover (del tipo pedido) y algún destino: si no, no-op.
+                fun hasMovable(p: PokemonInPlay) = p.attachedEnergy.any {
+                    op.energyType == null || (it is BasicEnergy && it.type == op.energyType)
+                }
+                val fromC = targets(op.from, src, state, emptyList()).filter { hasMovable(it) }.map { it.card.id }
+                val toC = targets(op.to, src, state, emptyList()).map { it.card.id }
+                if (fromC.isEmpty() || toC.isEmpty()) null
+                else PendingDecision.MoveEnergy(
+                    src.actingSide,
+                    LocalizedText("Mueve energía", "Move Energy"),
+                    fromCandidates = fromC,
+                    toCandidates = toC,
+                    count = op.count,
+                    energyType = op.energyType,
+                )
+            }
             is EffectOp.RevealAttachEnergy -> {
                 val ps = state.sideState(src.actingSide)
                 val revealed = ps.deck.take(op.lookAt)
@@ -1223,6 +1233,58 @@ class EffectInterpreter {
                     EffectResult(working, events)
                 }
             }
+            is EffectOp.CoinAttachFromDiscardElseDiscardSelf -> {
+                // Buggy Turbo: cara → une hasta [attachCount] Energías Básicas del descarte a ESTE
+                // Pokémon; cruz → descarta 1 Energía de ESTE Pokémon. Emite la moneda.
+                val id = src.sourceId
+                val self = state.sideState(src.actingSide).allInPlay.firstOrNull { it.card.id == id }
+                val h = flip()
+                val events = mutableListOf<GameEvent>(GameEvent.CoinFlipped(src.actingSide, h))
+                if (id == null || self == null) EffectResult(state, events)
+                else if (h) {
+                    val ps = state.sideState(src.actingSide)
+                    val picked = ps.discard
+                        .filter { it is BasicEnergy && (op.energyType == null || it.type == op.energyType) }
+                        .take(op.attachCount)
+                        .filterIsInstance<EnergyCard>()
+                    if (picked.isEmpty()) EffectResult(state, events)
+                    else {
+                        val attached = updatePokemon(state, id) { it.copy(attachedEnergy = it.attachedEnergy + picked) }
+                        val next = withPlayer(attached, attached.sideState(src.actingSide).copy(discard = ps.discard - picked.toSet()), src.actingSide)
+                        picked.forEach { events += GameEvent.EnergyAttached(src.actingSide, it.id, id) }
+                        EffectResult(next, events)
+                    }
+                } else {
+                    if (self.attachedEnergy.isEmpty()) EffectResult(state, events)
+                    else {
+                        val discarded = self.attachedEnergy.take(1)
+                        val cleared = updatePokemon(state, id) { it.copy(attachedEnergy = it.attachedEnergy.drop(1)) }
+                        val me = cleared.sideState(src.actingSide)
+                        val next = withPlayer(cleared, me.copy(discard = me.discard + discarded), src.actingSide)
+                        EffectResult(next, events + GameEvent.CardsDiscarded(src.actingSide, discarded.size))
+                    }
+                }
+            }
+            is EffectOp.DiscardHandEnergyForTurnAttackBonus -> {
+                // Incendiary Song: descarta 1 Energía Básica [tipo] de tu mano y suma [bonus] al daño
+                // de tus ataques al Activo rival DURANTE este turno (acumulable). El gate garantiza que
+                // hay al menos 1 Energía válida en mano.
+                val ps = state.sideState(src.actingSide)
+                val fuel = ps.hand.firstOrNull { it is BasicEnergy && it.type == op.energyType }
+                if (fuel == null) EffectResult(state, emptyList())
+                else {
+                    val afterDiscard = withPlayer(state, ps.copy(hand = ps.hand - fuel, discard = ps.discard + fuel), src.actingSide)
+                    val stacked = if (afterDiscard.attackBonusThisTurnSide == src.actingSide &&
+                        afterDiscard.attackBonusThisTurnOnTurn == afterDiscard.turn
+                    ) afterDiscard.attackBonusThisTurnAmount + op.bonus else op.bonus
+                    val next = afterDiscard.copy(
+                        attackBonusThisTurnSide = src.actingSide,
+                        attackBonusThisTurnOnTurn = afterDiscard.turn,
+                        attackBonusThisTurnAmount = stacked,
+                    )
+                    EffectResult(next, listOf(GameEvent.CardsDiscarded(src.actingSide, 1)))
+                }
+            }
             is EffectOp.AttachEnergyFromHand -> {
                 // Une [count] Energía Básica [tipo] de tu mano al Pokémon objetivo (determinista).
                 val ps = state.sideState(src.actingSide)
@@ -1289,6 +1351,27 @@ class EffectInterpreter {
                         next = next.copy(pendingPromotion = next.pendingPromotion + src.actingSide)
                     }
                     EffectResult(next, emptyList())
+                }
+            }
+            is EffectOp.DiscardSelf -> {
+                // Descarta el Pokémon origen con todas sus cartas; promoción pendiente si era Activo.
+                val id = src.sourceId
+                val ps = state.sideState(src.actingSide)
+                val self = ps.allInPlay.firstOrNull { it.card.id == id }
+                if (id == null || self == null) EffectResult(state, emptyList())
+                else {
+                    val wasActive = ps.active?.card?.id == id
+                    val toDiscard = self.cardsWhenLeavingPlay()
+                    val updated = ps.copy(
+                        discard = ps.discard + toDiscard,
+                        active = if (wasActive) null else ps.active,
+                        bench = ps.bench.filterNot { it.card.id == id },
+                    )
+                    var next = withPlayer(state, updated, src.actingSide)
+                    if (wasActive && updated.bench.isNotEmpty()) {
+                        next = next.copy(pendingPromotion = next.pendingPromotion + src.actingSide)
+                    }
+                    EffectResult(next, listOf(GameEvent.CardsDiscarded(src.actingSide, toDiscard.size)))
                 }
             }
             is EffectOp.SelfAttackBonusNextTurn -> {
@@ -1651,7 +1734,9 @@ class EffectInterpreter {
         val fromId = chosen.firstOrNull { it in d.fromCandidates } ?: return EffectResult(state, emptyList())
         val toId = chosen.firstOrNull { it in d.toCandidates && it != fromId } ?: return EffectResult(state, emptyList())
         val fromMon = inPlay(state, fromId) ?: return EffectResult(state, emptyList())
-        val moved = fromMon.attachedEnergy.take(d.count)
+        val moved = fromMon.attachedEnergy
+            .filter { d.energyType == null || (it is BasicEnergy && it.type == d.energyType) }
+            .take(d.count)
         if (moved.isEmpty()) return EffectResult(state, emptyList())
         var working = updatePokemon(state, fromId) { it.copy(attachedEnergy = it.attachedEnergy - moved.toSet()) }
         working = updatePokemon(working, toId) { it.copy(attachedEnergy = it.attachedEnergy + moved) }

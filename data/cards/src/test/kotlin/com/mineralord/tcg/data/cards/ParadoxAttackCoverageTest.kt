@@ -59,22 +59,10 @@ class ParadoxAttackCoverageTest {
         // prevención/restricción muy específicas…). Allowlist: si una habilidad NUEVA queda sin cubrir
         // o se implementa una de estas, el test falla para revisar la cobertura.
         val unsupported = setOf(
-            "sv4-5 · Monkey Trio", "sv4-21 · Monkey Trio", "sv4-42 · Monkey Trio",
             "sv4-28 · Thermal Reactor", "sv4-187 · Thermal Reactor",
             "sv4-36 · Lifeboat",
-            "sv4-53 · Suddenly Select",
-            "sv4-54 · Fillet Memento", "sv4-192 · Fillet Memento",
-            "sv4-56 · Hyper Blower",
-            "sv4-61 · Buddy Pulse", "sv4-194 · Buddy Pulse",
-            "sv4-76 · Gold Coffin", "sv4-224 · Gold Coffin",
-            "sv4-99 · Far-Flying Meteor", "sv4-201 · Far-Flying Meteor",
-            "sv4-108 · Magnetic Absorption", "sv4-228 · Magnetic Absorption", "sv4-250 · Magnetic Absorption",
             "sv4-120 · Rob-'n'-Run",
-            "sv4-123 · Toxic Powder", "sv4-207 · Toxic Powder",
             "sv4-126 · Stellar Veil",
-            "sv4-137 · Incendiary Song",
-            "sv4-144 · Buggy Turbo", "sv4-214 · Buggy Turbo",
-            "sv4-151 · Tangled Feet",
         )
         assertEquals(
             unsupported, gaps,
@@ -104,8 +92,6 @@ class ParadoxAttackCoverageTest {
             "sv4-82 · Mountain Scrounging",
             "sv4-112 · Echoing Madness",
             "sv4-113 · Drawareness",
-            "sv4-158 · Baryon Beam",
-            "sv4-216 · Baryon Beam",
         )
         assertEquals(
             unsupported, gaps,

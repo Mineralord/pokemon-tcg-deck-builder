@@ -913,4 +913,117 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
             Counter.OWN_INPLAY_COUNT, Target.OWN_ALL, 30, namesAnyOf = listOf("Tandemaus", "Maushold")))))
     put(abiKey("sv4-155", "Solidarity"), solidarity)
     put(abiKey("sv4-233", "Solidarity"), solidarity)
+
+    // =========================== Fase 24: coste reducido por trío de aliados nombrados ===========================
+
+    // Trío de Monos (Monkey Trio): si tienes a Simisage, Simisear y Simipour en juego, se ignoran todas
+    // las Energías {C} en los costes de los ataques usados por este Pokémon.
+    val monkeyTrio = Effect(ignoreColorlessIfAlliesNamed = listOf("Simisage", "Simisear", "Simipour"))
+    put(abiKey("sv4-5", "Monkey Trio"), monkeyTrio)
+    put(abiKey("sv4-21", "Monkey Trio"), monkeyTrio)
+    put(abiKey("sv4-42", "Monkey Trio"), monkeyTrio)
+
+    // =========================== Fase 25: habilidades manuales con condición de activación ===========================
+
+    // Escudo Enredado (Tangled Feet): si este Pokémon está Confundido y es dañado por un ataque, lanza
+    // 1 moneda; con cara se evita ese daño. Pasiva (sin ops): la resuelve GameEngine.attack().
+    put(abiKey("sv4-151", "Tangled Feet"), Effect(preventsDamageIfConfusedWithCoin = true))
+
+    // Polvo Tóxico (Toxic Powder): una vez/turno, si este Pokémon tiene unido un Tanque de Energía
+    // Potenciadora del Pasado (Ancient Booster Energy Capsule), deja Envenenados a AMBOS Activos.
+    put(abiKey("sv4-123", "Toxic Powder"), Effect(
+        oncePerTurn = true,
+        requiresToolNamed = "Ancient Booster",
+        ops = listOf(
+            EffectOp.ApplyStatus(Target.OWN_ACTIVE, listOf(Status.POISONED)),
+            EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.POISONED)))))
+    put(abiKey("sv4-207", "Toxic Powder"), Effect(
+        oncePerTurn = true,
+        requiresToolNamed = "Ancient Booster",
+        ops = listOf(
+            EffectOp.ApplyStatus(Target.OWN_ACTIVE, listOf(Status.POISONED)),
+            EffectOp.ApplyStatus(Target.OPP_ACTIVE, listOf(Status.POISONED)))))
+
+    // Absorción Magnética (Magnetic Absorption): una vez/turno, si al rival le quedan 4 Premios o menos,
+    // une 1 Energía Lucha Básica de tu descarte a este Pokémon.
+    val magneticAbsorption = Effect(
+        oncePerTurn = true,
+        requiresOppPrizesRemainingAtMost = 4,
+        ops = listOf(EffectOp.AttachEnergyFromDiscard(1, EnergyType.FIGHTING, Target.SELF)))
+    put(abiKey("sv4-108", "Magnetic Absorption"), magneticAbsorption)
+    put(abiKey("sv4-228", "Magnetic Absorption"), magneticAbsorption)
+    put(abiKey("sv4-250", "Magnetic Absorption"), magneticAbsorption)
+
+    // =========================== Fase 26: moneda atar/descartar y bonus de turno con coste ===========================
+
+    // Turbo Defectuoso (Buggy Turbo): una vez/turno, lanza 1 moneda. Cara → une hasta 4 Energías Básicas
+    // de tu descarte a este Pokémon; cruz → descarta 1 Energía de este Pokémon.
+    val buggyTurbo = Effect(
+        oncePerTurn = true,
+        ops = listOf(EffectOp.CoinAttachFromDiscardElseDiscardSelf(4, null)))
+    put(abiKey("sv4-144", "Buggy Turbo"), buggyTurbo)
+    put(abiKey("sv4-214", "Buggy Turbo"), buggyTurbo)
+
+    // Canción Incendiaria (Incendiary Song): una vez/turno, descarta 1 Energía Fuego Básica de tu mano;
+    // durante este turno tus ataques hacen 60 de daño más al Activo rival (antes de Debilidad/Resistencia).
+    put(abiKey("sv4-137", "Incendiary Song"), Effect(
+        oncePerTurn = true,
+        requiresBasicEnergyInHandOfType = EnergyType.FIRE,
+        ops = listOf(EffectOp.DiscardHandEnergyForTurnAttackBonus(EnergyType.FIRE, 60))))
+
+    // =========================== Fase 27: búsqueda al evolucionar y coste alternativo por Herramienta ===========================
+
+    // Selección Repentina (Suddenly Select): al jugar este Pokémon desde la mano para evolucionar, busca
+    // en tu mazo hasta 3 Herramientas, enséñalas, ponlas en tu mano y baraja.
+    put(abiKey("sv4-53", "Suddenly Select"), Effect(
+        triggerOnEvolve = true,
+        ops = listOf(EffectOp.SearchDeck(CardFilter(trainerKind = TrainerCategory.TOOL), Zone.HAND, 3))))
+
+    // Rayo Barión (Baryon Beam): coste impreso {C}×5, pero con un Tanque de Energía Potenciadora del
+    // Futuro (Future Booster Energy Capsule) unido, se puede usar por {C}{C}{C}.
+    val baryonBeam = Effect(altCostToolNamed = "Future Booster", altColorlessCost = 3)
+    put(atkKey("sv4-158", "Baryon Beam"), baryonBeam)
+    put(atkKey("sv4-216", "Baryon Beam"), baryonBeam)
+
+    // =========================== Fase 28: gust desde la Banca + autodescarte ===========================
+
+    // Soplador Híper (Hyper Blower): una vez/turno, estando en tu Banca, cambia el Activo rival a su
+    // Banca (el rival elige el nuevo Activo); si lo haces, descarta este Pokémon y todas sus cartas.
+    put(abiKey("sv4-56", "Hyper Blower"), Effect(
+        oncePerTurn = true,
+        benchOnly = true,
+        ops = listOf(EffectOp.GustDefenderChooseNewActive, EffectOp.DiscardSelf)))
+
+    // =========================== Fase 29: reactivo al enganche de Energía del rival ===========================
+
+    // Pulso Amistoso (Buddy Pulse): si tienes a Plusle en juego, cuando el rival une una Energía de su
+    // mano a 1 de sus Pokémon, pon 2 contadores de daño (20) en ese Pokémon. No acumula.
+    val buddyPulse = Effect(onOppEnergyAttachCounters = 2, onOppEnergyAttachRequiresAlly = "Plusle")
+    put(abiKey("sv4-61", "Buddy Pulse"), buddyPulse)
+    put(abiKey("sv4-194", "Buddy Pulse"), buddyPulse)
+
+    // Meteoro Lejano (Far-Flying Meteor): una vez/turno, estando en tu Banca, al unirle una Energía de
+    // tu mano puedes cambiarlo por tu Pokémon Activo.
+    val farFlyingMeteor = Effect(switchSelfOnOwnEnergyAttach = true)
+    put(abiKey("sv4-99", "Far-Flying Meteor"), farFlyingMeteor)
+    put(abiKey("sv4-201", "Far-Flying Meteor"), farFlyingMeteor)
+
+    // =========================== Fase 30: KO-trigger con decisión out-of-turn ===========================
+
+    // Ataúd Dorado (Gold Coffin): si este Pokémon queda Fuera de Combate por el daño de un ataque rival,
+    // busca en tu mazo 1 carta, ponla en tu mano y baraja. La decisión la resuelve su dueño fuera de turno.
+    val goldCoffin = Effect(
+        triggerOnActiveKO = true,
+        ops = listOf(EffectOp.SearchDeck(CardFilter(), Zone.HAND, 1)))
+    put(abiKey("sv4-76", "Gold Coffin"), goldCoffin)
+    put(abiKey("sv4-224", "Gold Coffin"), goldCoffin)
+
+    // Reliquia de Filete (Fillet Memento): si este Pokémon está Activo y queda Fuera de Combate por el
+    // daño de un ataque rival, mueve hasta 2 Energías {W} de este Pokémon a 1 de tus Pokémon en Banca
+    // (antes del descarte). La decisión la resuelve su dueño fuera de turno.
+    val filletMemento = Effect(
+        triggerOnActiveKO = true,
+        ops = listOf(EffectOp.MoveEnergy(Target.SELF, Target.OWN_BENCH, 2, EnergyType.WATER)))
+    put(abiKey("sv4-54", "Fillet Memento"), filletMemento)
+    put(abiKey("sv4-192", "Fillet Memento"), filletMemento)
 }

@@ -23,6 +23,9 @@ import com.mineralord.tcg.engine.model.Rarity
 import com.mineralord.tcg.engine.model.SetInfo
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.Stage
+import com.mineralord.tcg.engine.model.Status
+import com.mineralord.tcg.engine.model.TrainerCard
+import com.mineralord.tcg.engine.model.TrainerKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -679,6 +682,352 @@ class SetParadoxEffectsTest {
         val st = duel(attacker, maushold).let { it.copy(opponent = it.opponent.copy(bench = listOf(tandemaus))) }
         val r = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Hit"))
         assertEquals(60, r.state.player.active?.damage)
+    }
+
+    @Test
+    fun `Monkey Trio ignora los Incoloros del coste solo con el trio completo en juego`() {
+        // Simisage con un ataque de coste {G}{C}{C} y solo 1 Energía {G} unida.
+        val atk = Attack(
+            LocalizedText("Púa", "Arm Thrust"),
+            listOf(EnergyType.GRASS, EnergyType.COLORLESS, EnergyType.COLORLESS),
+            3, DamageModel.Fixed(100), EffectId("none"),
+        )
+        fun simisage() = PokemonInPlay(
+            mon("sv4-5", 100, EnergyType.GRASS, atk, Stage.Stage1).copy(
+                name = LocalizedText("Simisage", "Simisage"),
+                abilities = listOf(Ability(
+                    LocalizedText("Trío de Monos", "Monkey Trio"), LocalizedText("", ""),
+                    EffectsDb.abiKey("sv4-5", "Monkey Trio"))),
+            ),
+            attachedEnergy = listOf(energy("g", EnergyType.GRASS)),
+        )
+        val simisear = PokemonInPlay(mon("sv4-21", 100, EnergyType.FIRE, atk, Stage.Stage1).copy(
+            name = LocalizedText("Simisear", "Simisear")))
+        val simipour = PokemonInPlay(mon("sv4-42", 100, EnergyType.WATER, atk, Stage.Stage1).copy(
+            name = LocalizedText("Simipour", "Simipour")))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.PSYCHIC, atk))
+        val engine = GameEngine(SeededRng(1))
+
+        // Sin el trío completo (solo Simisage): no puede pagar {G}{C}{C} con 1 {G} → ataque NO legal.
+        val solo = duel(simisage(), foe)
+        assertFalse(engine.legalIntents(solo).any { it is GameIntent.Attack && it.attackName == "Púa" })
+
+        // Con Simisear y Simipour en la Banca: se ignoran los {C} → basta 1 {G} → ataque legal.
+        val trio = duel(simisage(), foe).let {
+            it.copy(player = it.player.copy(bench = listOf(simisear, simipour)))
+        }
+        assertTrue(engine.legalIntents(trio).any { it is GameIntent.Attack && it.attackName == "Púa" })
+    }
+
+    @Test
+    fun `Tangled Feet evita el dano con cara solo si esta Confundido`() {
+        val hit = attackFixed("Hit", 50, EffectId("none"))
+        val abi = Ability(LocalizedText("Pies Enredados", "Tangled Feet"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-151", "Tangled Feet"))
+        fun spinda(confused: Boolean) = PokemonInPlay(
+            mon("sv4-151", 120, EnergyType.COLORLESS, hit).copy(abilities = listOf(abi)),
+            statuses = if (confused) setOf(Status.CONFUSED) else emptySet())
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.FIRE, hit))
+        // Confundido + cara → daño evitado.
+        val heads = GameEngine(FixedRng(true)).apply(duel(attacker, spinda(true)), GameIntent.Attack("Hit"))
+        assertEquals(0, heads.state.opponent.active?.damage)
+        // Confundido + cruz → daño normal.
+        val tails = GameEngine(FixedRng(false)).apply(duel(attacker, spinda(true)), GameIntent.Attack("Hit"))
+        assertEquals(50, tails.state.opponent.active?.damage)
+        // No Confundido → el escudo no aplica aunque la moneda fuese cara.
+        val sano = GameEngine(FixedRng(true)).apply(duel(attacker, spinda(false)), GameIntent.Attack("Hit"))
+        assertEquals(50, sano.state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Toxic Powder envenena ambos Activos solo con el Tanque del Pasado unido`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Polvo Tóxico", "Toxic Powder"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-123", "Toxic Powder"))
+        val capsule = TrainerCard(
+            id = CardId("sv4-159"),
+            name = LocalizedText("Tanque de Energía Potenciadora del Pasado", "Ancient Booster Energy Capsule"),
+            set = set(), rarity = Rarity.COMMON, regulationMark = "H", artwork = art(),
+            kind = TrainerKind.Tool(), text = LocalizedText("t", "t"), effect = EffectId("none"))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        // Sin la Herramienta → la habilidad se rechaza.
+        val sinTool = PokemonInPlay(mon("sv4-123", 120, EnergyType.DARKNESS, dummy).copy(abilities = listOf(abi)))
+        assertFalse(GameEngine(SeededRng(1)).apply(
+            duel(sinTool, foe), GameIntent.UseAbility(CardId("sv4-123"), "Polvo Tóxico")).accepted)
+        // Con el Tanque del Pasado unido → ambos Activos quedan Envenenados.
+        val conTool = PokemonInPlay(
+            mon("sv4-123", 120, EnergyType.DARKNESS, dummy).copy(abilities = listOf(abi)),
+            attachedTools = listOf(capsule))
+        val r = GameEngine(SeededRng(1)).apply(
+            duel(conTool, foe), GameIntent.UseAbility(CardId("sv4-123"), "Polvo Tóxico"))
+        assertTrue(r.accepted, r.rejection)
+        assertTrue(Status.POISONED in (r.state.player.active?.statuses ?: emptySet()))
+        assertTrue(Status.POISONED in (r.state.opponent.active?.statuses ?: emptySet()))
+    }
+
+    @Test
+    fun `Magnetic Absorption une Energia Lucha del descarte solo con 4 Premios rivales o menos`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Absorción Magnética", "Magnetic Absorption"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-108", "Magnetic Absorption"))
+        val active = PokemonInPlay(mon("sv4-108", 150, EnergyType.FIGHTING, dummy).copy(abilities = listOf(abi)))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        fun conPremios(n: Int) = duel(active, foe).let {
+            it.copy(
+                player = it.player.copy(discard = listOf(energy("fe", EnergyType.FIGHTING))),
+                opponent = it.opponent.copy(prizes = (1..n).map { k -> energy("op$k", EnergyType.WATER) }))
+        }
+        // Rival con 6 Premios → rechazada.
+        assertFalse(GameEngine(SeededRng(1)).apply(
+            conPremios(6), GameIntent.UseAbility(CardId("sv4-108"), "Absorción Magnética")).accepted)
+        // Rival con 4 Premios → une 1 Energía Lucha del descarte al portador.
+        val r = GameEngine(SeededRng(1)).apply(
+            conPremios(4), GameIntent.UseAbility(CardId("sv4-108"), "Absorción Magnética"))
+        assertTrue(r.accepted, r.rejection)
+        assertEquals(1, r.state.player.active?.attachedEnergy?.size)
+        assertEquals(0, r.state.player.discard.size)
+    }
+
+    @Test
+    fun `Buggy Turbo une hasta 4 Energias del descarte con cara`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Turbo Defectuoso", "Buggy Turbo"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-144", "Buggy Turbo"))
+        val active = PokemonInPlay(mon("sv4-144", 120, EnergyType.COLORLESS, dummy).copy(abilities = listOf(abi)))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        val st = duel(active, foe).let {
+            it.copy(player = it.player.copy(discard = (1..5).map { k -> energy("de$k", EnergyType.FIRE) }))
+        }
+        val r = GameEngine(FixedRng(true)).apply(st, GameIntent.UseAbility(CardId("sv4-144"), "Turbo Defectuoso"))
+        assertTrue(r.accepted, r.rejection)
+        assertEquals(4, r.state.player.active?.attachedEnergy?.size)   // hasta 4 unidas
+        assertEquals(1, r.state.player.discard.size)                  // 5 - 4
+    }
+
+    @Test
+    fun `Buggy Turbo descarta 1 Energia propia con cruz`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Turbo Defectuoso", "Buggy Turbo"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-144", "Buggy Turbo"))
+        val active = PokemonInPlay(
+            mon("sv4-144", 120, EnergyType.COLORLESS, dummy).copy(abilities = listOf(abi)),
+            attachedEnergy = listOf(energy("at", EnergyType.FIRE)))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.WATER, dummy))
+        val r = GameEngine(FixedRng(false)).apply(duel(active, foe), GameIntent.UseAbility(CardId("sv4-144"), "Turbo Defectuoso"))
+        assertTrue(r.accepted, r.rejection)
+        assertEquals(0, r.state.player.active?.attachedEnergy?.size)
+        assertEquals(1, r.state.player.discard.size)
+    }
+
+    @Test
+    fun `Incendiary Song descarta 1 Fuego y suma 60 a los ataques del turno`() {
+        val hit = attackFixed("Hit", 40, EffectId("none"))
+        val abi = Ability(LocalizedText("Canción Incendiaria", "Incendiary Song"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-137", "Incendiary Song"))
+        val active = PokemonInPlay(mon("sv4-137", 150, EnergyType.FIRE, hit).copy(abilities = listOf(abi)))
+        val foe = PokemonInPlay(mon("foe", 300, EnergyType.PSYCHIC, hit))
+        // Sin Energía Fuego en mano → rechazada.
+        assertFalse(GameEngine(SeededRng(1)).apply(
+            duel(active, foe), GameIntent.UseAbility(CardId("sv4-137"), "Canción Incendiaria")).accepted)
+        // Con Energía Fuego en mano → se descarta y el ataque hace 40 + 60 = 100.
+        val st = duel(active, foe).let { it.copy(player = it.player.copy(hand = listOf(energy("fe", EnergyType.FIRE)))) }
+        val used = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-137"), "Canción Incendiaria"))
+        assertTrue(used.accepted, used.rejection)
+        assertEquals(0, used.state.player.hand.size)
+        assertEquals(1, used.state.player.discard.size)
+        val r = GameEngine(SeededRng(1)).apply(used.state, GameIntent.Attack("Hit"))
+        assertEquals(100, r.state.opponent.active?.damage)
+    }
+
+    @Test
+    fun `Suddenly Select busca hasta 3 Herramientas a la mano al evolucionar`() {
+        val dummy = attack("x", EffectId("none"))
+        val basic = PokemonInPlay(mon("Wugmo", 70, EnergyType.WATER, dummy)).copy(turnsInPlay = 1)
+        val evo = mon("sv4-53", 90, EnergyType.WATER, dummy).copy(
+            stage = Stage.Stage1, evolvesFrom = "Wugmo",
+            abilities = listOf(Ability(
+                LocalizedText("Selección Repentina", "Suddenly Select"), LocalizedText("", ""),
+                EffectsDb.abiKey("sv4-53", "Suddenly Select"))))
+        fun tool(id: String) = TrainerCard(
+            id = CardId(id), name = LocalizedText("Herramienta $id", "Tool $id"), set = set(),
+            rarity = Rarity.COMMON, regulationMark = "H", artwork = art(),
+            kind = TrainerKind.Tool(), text = LocalizedText("t", "t"), effect = EffectId("none"))
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.FIRE, dummy))
+        val base = duel(basic, foe)
+        val st = base.copy(player = base.player.copy(
+            hand = listOf(evo),
+            deck = listOf(tool("t1"), tool("t2"), tool("t3"), energy("d1", EnergyType.WATER))))
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.Evolve(CardId("sv4-53"), CardId("Wugmo")))
+        assertTrue(paused.accepted, paused.rejection)
+        // Elige las 3 Herramientas → van a la mano; el mazo se baraja sin Herramientas.
+        val r = GameEngine(SeededRng(1)).apply(
+            paused.state, GameIntent.ResolveDecision(listOf(CardId("t1"), CardId("t2"), CardId("t3"))))
+        assertEquals(3, r.state.player.hand.count { it is TrainerCard })
+        assertFalse(r.state.player.deck.any { it is TrainerCard })
+    }
+
+    @Test
+    fun `Baryon Beam se puede pagar por 3 Incoloros con el Tanque del Futuro unido`() {
+        val atk = Attack(
+            LocalizedText("Rayo Barión", "Baryon Beam"),
+            List(5) { EnergyType.COLORLESS }, 5, DamageModel.Fixed(150),
+            EffectsDb.atkKey("sv4-158", "Baryon Beam"))
+        val capsule = TrainerCard(
+            id = CardId("sv4-164"),
+            name = LocalizedText("Tanque de Energía Potenciadora del Futuro", "Future Booster Energy Capsule"),
+            set = set(), rarity = Rarity.COMMON, regulationMark = "H", artwork = art(),
+            kind = TrainerKind.Tool(), text = LocalizedText("t", "t"), effect = EffectId("none"))
+        fun jugulis(tool: Boolean) = PokemonInPlay(
+            mon("sv4-158", 220, EnergyType.DARKNESS, atk).copy(name = LocalizedText("Iron Jugulis", "Iron Jugulis")),
+            attachedEnergy = (1..3).map { energy("c$it", EnergyType.PSYCHIC) },
+            attachedTools = if (tool) listOf(capsule) else emptyList())
+        val foe = PokemonInPlay(mon("foe", 200, EnergyType.PSYCHIC, atk))
+        val engine = GameEngine(SeededRng(1))
+        // Sin el Tanque → 3 Energías no cubren {C}×5 → ataque NO legal.
+        assertFalse(engine.legalIntents(duel(jugulis(false), foe))
+            .any { it is GameIntent.Attack && it.attackName == "Rayo Barión" })
+        // Con el Tanque del Futuro → coste alternativo {C}×3 → ataque legal.
+        assertTrue(engine.legalIntents(duel(jugulis(true), foe))
+            .any { it is GameIntent.Attack && it.attackName == "Rayo Barión" })
+    }
+
+    @Test
+    fun `Hyper Blower cambia el Activo rival y descarta a este Pokemon desde la Banca`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Soplador Híper", "Hyper Blower"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-56", "Hyper Blower"))
+        val active = PokemonInPlay(mon("myActive", 120, EnergyType.WATER, dummy))
+        val bundle = PokemonInPlay(
+            mon("sv4-56", 90, EnergyType.WATER, dummy).copy(abilities = listOf(abi)),
+            attachedEnergy = listOf(energy("be", EnergyType.WATER)))
+        val oppActive = PokemonInPlay(mon("oppA", 120, EnergyType.FIRE, dummy))
+        val oppBench = PokemonInPlay(mon("oppB", 100, EnergyType.FIRE, dummy))
+        val st = duel(active, oppActive).let {
+            it.copy(
+                player = it.player.copy(bench = listOf(bundle)),
+                opponent = it.opponent.copy(bench = listOf(oppBench)))
+        }
+        // En el Puesto Activo la habilidad NO es usable (benchOnly). En Banca, sí.
+        val r = GameEngine(SeededRng(1)).apply(st, GameIntent.UseAbility(CardId("sv4-56"), "Soplador Híper"))
+        assertTrue(r.accepted, r.rejection)
+        assertFalse(r.state.player.bench.any { it.card.id == CardId("sv4-56") })   // ya no está en Banca
+        assertEquals(2, r.state.player.discard.size)                               // Iron Bundle + 1 Energía
+        assertTrue(Side.OPPONENT in r.state.pendingPromotion)                      // el rival elige nuevo Activo
+    }
+
+    @Test
+    fun `Buddy Pulse pone 2 contadores al cargar el rival solo si hay Plusle en juego`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Pulso Amistoso", "Buddy Pulse"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-61", "Buddy Pulse"))
+        val minun = PokemonInPlay(mon("sv4-61", 70, EnergyType.LIGHTNING, dummy).copy(
+            name = LocalizedText("Minun", "Minun"), abilities = listOf(abi)))
+        val plusle = PokemonInPlay(mon("plusle", 70, EnergyType.LIGHTNING, dummy).copy(
+            name = LocalizedText("Plusle", "Plusle")))
+        // El jugador (en turno) une 1 Energía de su mano a su Activo.
+        fun stateWithOppBench(bench: List<PokemonInPlay>): GameState {
+            val mine = PokemonInPlay(mon("mine", 120, EnergyType.WATER, dummy))
+            return duel(mine, minun).let {
+                it.copy(
+                    player = it.player.copy(hand = listOf(energy("we", EnergyType.WATER))),
+                    opponent = it.opponent.copy(bench = bench))
+            }
+        }
+        // Con Plusle en la Banca rival → 2 contadores (20) en el Pokémon recién cargado.
+        val conPlusle = GameEngine(SeededRng(1)).apply(
+            stateWithOppBench(listOf(plusle)), GameIntent.AttachEnergy(CardId("we"), CardId("mine")))
+        assertTrue(conPlusle.accepted, conPlusle.rejection)
+        assertEquals(20, conPlusle.state.player.active?.damage)
+        assertEquals(1, conPlusle.state.player.active?.attachedEnergy?.size)
+        // Sin Plusle → sin contadores.
+        val sinPlusle = GameEngine(SeededRng(1)).apply(
+            stateWithOppBench(emptyList()), GameIntent.AttachEnergy(CardId("we"), CardId("mine")))
+        assertTrue(sinPlusle.accepted, sinPlusle.rejection)
+        assertEquals(0, sinPlusle.state.player.active?.damage)
+    }
+
+    @Test
+    fun `Far-Flying Meteor puede cambiar el Minior cargado por el Activo`() {
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Meteoro Lejano", "Far-Flying Meteor"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-99", "Far-Flying Meteor"))
+        val oldActive = PokemonInPlay(mon("act", 120, EnergyType.WATER, dummy))
+        val minior = PokemonInPlay(mon("sv4-99", 70, EnergyType.PSYCHIC, dummy).copy(
+            name = LocalizedText("Minior", "Minior"), abilities = listOf(abi)))
+        val foe = PokemonInPlay(mon("foe", 120, EnergyType.FIRE, dummy))
+        val st = duel(oldActive, foe).let {
+            it.copy(player = it.player.copy(hand = listOf(energy("pe", EnergyType.PSYCHIC)), bench = listOf(minior)))
+        }
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.AttachEnergy(CardId("pe"), CardId("sv4-99")))
+        assertTrue(paused.accepted, paused.rejection)
+        assertTrue(paused.state.interaction?.decision is PendingDecision.ChooseTargets)
+        // Acepta el cambio → Minior al Activo (con su Energía), el anterior a la Banca.
+        val swapped = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("sv4-99"))))
+        assertEquals(CardId("sv4-99"), swapped.state.player.active?.card?.id)
+        assertTrue(swapped.state.player.bench.any { it.card.id == CardId("act") })
+        assertEquals(1, swapped.state.player.active?.attachedEnergy?.size)
+        // Declinar (resolver vacío) → el Activo sigue siendo el anterior.
+        val declined = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(emptyList()))
+        assertEquals(CardId("act"), declined.state.player.active?.card?.id)
+    }
+
+    @Test
+    fun `Gold Coffin busca 1 carta fuera de turno al ser Noqueado por un ataque`() {
+        val hit = attackFixed("Hit", 200, EffectId("none"))
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Ataúd Dorado", "Gold Coffin"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-76", "Gold Coffin"))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.DARKNESS, hit))
+        val cofagrigus = PokemonInPlay(mon("sv4-76", 150, EnergyType.PSYCHIC, dummy).copy(
+            name = LocalizedText("Cofagrigus", "Cofagrigus"), abilities = listOf(abi)))
+        val oppBench = PokemonInPlay(mon("ob", 100, EnergyType.PSYCHIC, dummy))
+        val st = duel(attacker, cofagrigus).let {
+            it.copy(opponent = it.opponent.copy(
+                bench = listOf(oppBench),
+                deck = listOf(energy("tgt", EnergyType.PSYCHIC)) + (1..4).map { k -> energy("x$k", EnergyType.PSYCHIC) }))
+        }
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Hit"))
+        assertTrue(paused.accepted, paused.rejection)
+        val inter = paused.state.interaction
+        assertTrue(inter?.outOfTurn == true)                 // la resuelve el dueño del KO, fuera de turno
+        assertEquals(Side.OPPONENT, inter?.side)
+        // Cofagrigus aún en juego mientras se decide (la decisión precede al descarte).
+        assertEquals(CardId("sv4-76"), paused.state.opponent.active?.card?.id)
+        // El rival resuelve: elige 1 carta de su mazo → a su mano; luego se aplican los KO.
+        val r = GameEngine(SeededRng(1)).apply(paused.state, GameIntent.ResolveDecision(listOf(CardId("tgt"))))
+        assertTrue(r.state.opponent.hand.any { it.id == CardId("tgt") })
+        assertTrue(r.state.opponent.discard.any { it.id == CardId("sv4-76") })   // ya Noqueado/descartado
+    }
+
+    @Test
+    fun `Fillet Memento mueve hasta 2 Energia Agua a la Banca fuera de turno al ser Noqueado`() {
+        val hit = attackFixed("Hit", 200, EffectId("none"))
+        val dummy = attack("x", EffectId("none"))
+        val abi = Ability(LocalizedText("Reliquia de Filete", "Fillet Memento"), LocalizedText("", ""),
+            EffectsDb.abiKey("sv4-54", "Fillet Memento"))
+        val attacker = PokemonInPlay(mon("atk", 200, EnergyType.LIGHTNING, hit))
+        val veluza = PokemonInPlay(
+            mon("sv4-54", 120, EnergyType.WATER, dummy).copy(
+                name = LocalizedText("Veluza", "Veluza"), abilities = listOf(abi)),
+            attachedEnergy = listOf(
+                energy("w1", EnergyType.WATER), energy("w2", EnergyType.WATER), energy("f1", EnergyType.FIRE)))
+        val benchMon = PokemonInPlay(mon("ob", 100, EnergyType.WATER, dummy))
+        val st = duel(attacker, veluza).let {
+            it.copy(opponent = it.opponent.copy(
+                bench = listOf(benchMon),
+                deck = (1..4).map { k -> energy("d$k", EnergyType.WATER) }))
+        }
+        val paused = GameEngine(SeededRng(1)).apply(st, GameIntent.Attack("Hit"))
+        assertTrue(paused.accepted, paused.rejection)
+        assertTrue(paused.state.interaction?.outOfTurn == true)
+        assertEquals(Side.OPPONENT, paused.state.interaction?.side)
+        // El dueño mueve 2 {W} de Veluza (no la {F}) a su Pokémon de Banca; luego Veluza se descarta.
+        val r = GameEngine(SeededRng(1)).apply(
+            paused.state, GameIntent.ResolveDecision(listOf(CardId("sv4-54"), CardId("ob"))))
+        val bench = r.state.opponent.bench.firstOrNull { it.card.id == CardId("ob") }
+        assertEquals(2, bench?.attachedEnergy?.size)
+        assertTrue(bench!!.attachedEnergy.all { it is BasicEnergy && it.type == EnergyType.WATER })
+        assertTrue(r.state.opponent.discard.any { it.id == CardId("sv4-54") })
     }
 
     @Test

@@ -128,6 +128,8 @@ sealed interface PendingDecision {
         val fromCandidates: List<CardId>,
         val toCandidates: List<CardId>,
         val count: Int,
+        /** Si no es null, solo se mueven Energías Básicas de este tipo (Fillet Memento). */
+        val energyType: EnergyType? = null,
     ) : PendingDecision
 
     /**
@@ -220,4 +222,11 @@ data class PendingInteraction(
     val side: Side,
     val sourceId: CardId?,
     val endsTurnOnResolve: Boolean = false,
+    /**
+     * Si es true, esta decisión la resuelve [side] AUNQUE no sea el jugador en turno (habilidades que
+     * se disparan al ser NOQUEADO durante el turno del rival y piden una elección a su dueño — Gold
+     * Coffin: buscar 1 carta; Fillet Memento: mover Energía antes del descarte). [GameEngine.resolveDecision]
+     * relaja la comprobación de "turno" para estas; al resolverse se aplican los KO diferidos y se cierra
+     * el turno del atacante (como cualquier KO por ataque). */
+    val outOfTurn: Boolean = false,
 )

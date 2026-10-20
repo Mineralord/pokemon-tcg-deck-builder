@@ -266,6 +266,14 @@ data class GameState(
     val coinsAsTailsSide: Side? = null,
     val coinsAsTailsOnTurn: Int? = null,
     /**
+     * Incendiary Song (Skeledirge ex sv4-137): durante el turno [attackBonusThisTurnOnTurn] del lado
+     * [attackBonusThisTurnSide], los ataques de ese jugador hacen [attackBonusThisTurnAmount] de daño
+     * más al Activo rival (antes de Debilidad/Resistencia). Acumulable en el mismo turno. Expira solo
+     * por el guard de turno (no necesita reseteo explícito). */
+    val attackBonusThisTurnSide: Side? = null,
+    val attackBonusThisTurnOnTurn: Int = -1,
+    val attackBonusThisTurnAmount: Int = 0,
+    /**
      * Chansey — Regalo Fortuito (Lucky Bonus sv3pt5-113): ids de las Chansey que acabas de coger
      * de tus Premios durante tu turno (ya en la mano de [luckyBonusSide]) y sobre las que puedes
      * decidir ponerlas en la Banca (con moneda → posible +1 Premio) en vez de en la mano. Mientras

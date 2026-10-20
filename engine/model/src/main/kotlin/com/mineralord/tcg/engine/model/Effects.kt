@@ -268,7 +268,15 @@ sealed interface EffectOp {
         val onlyDamaged: Boolean = false,
         val optional: Boolean = false,
     ) : EffectOp
-    data class MoveEnergy(val from: Target, val to: Target, val count: Int) : EffectOp
+    data class MoveEnergy(
+        val from: Target,
+        val to: Target,
+        val count: Int,
+        /**
+         * Si no es null, solo se mueven Energías Básicas de este tipo (Fillet Memento sv4-54: "mueve
+         * hasta 2 Energías {W} de este Pokémon a 1 de tus Pokémon en Banca"). null = cualquier Energía. */
+        val energyType: EnergyType? = null,
+    ) : EffectOp
 
     /**
      * Reparte [count] contadores de daño (10 de daño cada uno) entre los Pokémon de
@@ -716,6 +724,28 @@ sealed interface EffectOp {
      * Roba [base] cartas y, si el Pokémon origen está en el Puesto Activo, [bonus] más (Coin Bonus
      * sv4-139: "roba 1 carta; si este Pokémon está Activo, roba 1 más"). Determinista. */
     data class DrawCardsActiveBonus(val base: Int, val bonus: Int) : EffectOp
+
+    /**
+     * Buggy Turbo (Porygon-Z sv4-144/214): lanza 1 moneda. Con cara, une hasta [attachCount] Energías
+     * Básicas (de tipo [energyType]; null = cualquier Básica) de tu descarte a ESTE Pokémon; con cruz,
+     * descarta 1 Energía de ESTE Pokémon. Emite [GameEvent.CoinFlipped]. Determinista salvo la moneda
+     * (cualquier copia de Energía Básica es equivalente: se toman las primeras). */
+    data class CoinAttachFromDiscardElseDiscardSelf(val attachCount: Int, val energyType: EnergyType?) : EffectOp
+
+    /**
+     * Incendiary Song (Skeledirge ex sv4-137): descarta 1 Energía Básica de tipo [energyType] de tu mano
+     * y, durante ESTE turno, los ataques de tus Pokémon hacen [bonus] de daño más al Activo rival (antes
+     * de Debilidad y Resistencia). El coste (tener la Energía en mano) lo garantiza el gate
+     * [Effect.requiresBasicEnergyInHandOfType]; el bonus se ACUMULA si se usa varias veces el mismo turno.
+     * Fija los campos turn-scoped [GameState.attackBonusThisTurnSide]/`…OnTurn`/`…Amount`. */
+    data class DiscardHandEnergyForTurnAttackBonus(val energyType: EnergyType, val bonus: Int) : EffectOp
+
+    /**
+     * Descarta el Pokémon origen (SELF) y TODAS sus cartas (pila de evolución, Energías y Herramientas)
+     * a la pila de descartes de su dueño — Hyper Blower (Iron Bundle sv4-56): "si lo haces, descarta este
+     * Pokémon y todas las cartas unidas a él". Si era el Activo y queda Banca, marca la promoción pendiente
+     * (en Hyper Blower siempre está en Banca). No-op si el origen ya no está en juego. */
+    data object DiscardSelf : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */
@@ -810,6 +840,45 @@ data class Effect(
      * [PokemonInPlay.movedToActiveOnTurn]. */
     val requiresMovedToActiveThisTurn: Boolean = false,
     /**
+     * Si no es null, esta habilidad manual solo puede usarse cuando el Pokémon portador tiene unida una
+     * Herramienta Pokémon cuyo nombre (ES o EN) contiene este texto (Toxic Powder sv4-123: "si este
+     * Pokémon tiene una Cápsula de Energía Propulsora Antigua unida…"). Lo comprueban
+     * [GameEngine.useAbility] y [GameEngine.legalIntents]. null = no aplica. */
+    val requiresToolNamed: String? = null,
+    /**
+     * Si es > 0, esta habilidad manual solo puede usarse cuando al RIVAL le quedan [requiresOppPrizesRemainingAtMost]
+     * cartas de Premio o menos (Magnetic Absorption sv4-108: "si a tu rival le quedan 4 cartas de Premio o
+     * menos…"). Lo comprueban [GameEngine.useAbility] y [GameEngine.legalIntents]. 0 = no aplica. */
+    val requiresOppPrizesRemainingAtMost: Int = 0,
+    /**
+     * Si no es null, esta habilidad manual solo puede usarse cuando hay en TU mano al menos 1 carta de
+     * Energía Básica de este tipo (Incendiary Song sv4-137: "puedes descartar 1 Energía Fuego Básica de
+     * tu mano para usar esta Habilidad"). Lo comprueban [GameEngine.useAbility] y [GameEngine.legalIntents].
+     * null = no aplica. */
+    val requiresBasicEnergyInHandOfType: EnergyType? = null,
+    /**
+     * Si es true, esta habilidad manual solo puede usarse cuando el Pokémon portador está en la BANCA
+     * (Hyper Blower sv4-56: "si este Pokémon está en tu Banca…"). Lo comprueban [GameEngine.useAbility]
+     * y [GameEngine.legalIntents]. */
+    val benchOnly: Boolean = false,
+    /**
+     * Habilidad reactiva (Buddy Pulse — Minun sv4-61/-194): si el portador está en juego (Habilidad no
+     * bloqueada) y el RIVAL une una carta de Energía DESDE SU MANO a uno de sus Pokémon, se ponen
+     * [onOppEnergyAttachCounters] contadores de daño (×10) en ese Pokémon. No acumula entre varios
+     * portadores (se aplica una sola vez). La dispara [GameEngine.attachEnergy]. 0 = no aplica. */
+    val onOppEnergyAttachCounters: Int = 0,
+    /**
+     * Solo con [onOppEnergyAttachCounters] > 0: el reactivo solo se dispara si el portador tiene además
+     * en juego un aliado cuyo nombre (ES o EN) contiene este texto (Buddy Pulse exige tener a "Plusle" en
+     * juego). null = sin requisito de aliado. */
+    val onOppEnergyAttachRequiresAlly: String? = null,
+    /**
+     * Habilidad reactiva (Far-Flying Meteor — Minior sv4-99/-201): una vez por turno, si este Pokémon
+     * está en TU Banca y le unes una carta de Energía DESDE TU MANO, puedes cambiarlo por tu Pokémon
+     * Activo. La dispara [GameEngine.attachEnergy], que deja una decisión OPCIONAL (elegir este Pokémon =
+     * cambiar; resolver vacío = no cambiar). Pasiva (ops vacías). */
+    val switchSelfOnOwnEnergyAttach: Boolean = false,
+    /**
      * Daño de ataque autorado (para ataques "X+" con bonus condicional). Si NO
      * está vacío, el motor usa la suma de los términos aplicables como daño base
      * (sustituye al `baseDamage` de la carta, que es Variable) y le aplica
@@ -879,6 +948,12 @@ data class Effect(
      * prevención de daño (se salta si el ataque ignora los efectos del Defensor). */
     val preventsDamageFromExOrV: Boolean = false,
     /**
+     * Habilidad-escudo con moneda (Tangled Feet sv4-151): si este Pokémon está Confundido y resulta
+     * dañado por un ataque, lanza 1 moneda; con cara se evita ese daño. La comprueba [GameEngine.attack]
+     * al calcular la prevención de daño (solo si el ataque hace daño, el portador está Confundido y su
+     * Habilidad no está bloqueada; se salta si el ataque ignora los efectos del Defensor). */
+    val preventsDamageIfConfusedWithCoin: Boolean = false,
+    /**
      * Habilidad: "si este Pokémon está en el Puesto Activo y queda Fuera de Combate, lanza 1 moneda; si
      * sale cara, tu rival coge 1 carta de Premio menos" (Evanescent sv4-3/-217). La resuelve
      * [GameEngine.handleKnockouts] al repartir los premios del KO. */
@@ -916,6 +991,23 @@ data class Effect(
      * Energías en el coste de los ataques usados por este Pokémon"). La comprueba
      * [GameEngine.effectiveAttackCost] (respeta el bloqueo de Habilidades). null = no aplica. */
     val freeAttackIfAllyNamed: String? = null,
+    /**
+     * Habilidad pasiva: si TODOS los Pokémon cuyos nombres (ES o EN) se listan aquí están en juego
+     * (Activo o Banca de su dueño), se IGNORAN las Energías {C} en el coste de los ataques usados por
+     * este Pokémon (Simisage/Simisear/Simipour — Monkey Trio sv4-5/-21/-42: "si tienes a Simisage,
+     * Simisear y Simipour en juego, ignora todas las Energías {C} en los costes de los ataques usados
+     * por este Pokémon"). La comprueba [GameEngine.canPayAttack] (respeta el bloqueo de Habilidades).
+     * Vacío = no aplica. A diferencia de [freeAttackIfAllyNamed], solo descuenta los {C}, no el coste
+     * de tipo específico. */
+    val ignoreColorlessIfAlliesNamed: List<String> = emptyList(),
+    /**
+     * Coste ALTERNATIVO de este ataque: si el Pokémon atacante tiene unida una Herramienta cuyo nombre
+     * (ES o EN) contiene [altCostToolNamed], el ataque puede pagarse con [altColorlessCost] Energías {C}
+     * en vez de su coste impreso (Baryon Beam sv4-158/-216: "si este Pokémon tiene un Tanque de Energía
+     * Potenciadora del Futuro unido, este ataque se puede usar por {C}{C}{C}"). Lo comprueba
+     * [GameEngine.canPayAttack]. null = sin coste alternativo. */
+    val altCostToolNamed: String? = null,
+    val altColorlessCost: Int = 0,
     /**
      * Habilidad pasiva de un Pokémon en Banca: los ataques de tus Pokémon cuyo nombre (ES o EN)
      * contiene [boostAlliedAttackerNamed] hacen [boostAlliedAttackerAmount] puntos MÁS al Activo

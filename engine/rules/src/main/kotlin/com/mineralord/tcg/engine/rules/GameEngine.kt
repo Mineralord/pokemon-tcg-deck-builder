@@ -261,10 +261,57 @@ class GameEngine(
             toId,
             target.copy(attachedEnergy = target.attachedEnergy + energy),
         ).copy(hand = me.hand - (energy as Card))
-        return EngineResult(
-            withPlayer(state, updated).copy(energyAttachedThisTurn = true),
-            listOf(GameEvent.EnergyAttached(state.activeSide, energyId, toId)),
-        )
+        var working = withPlayer(state, updated).copy(energyAttachedThisTurn = true)
+        val events = mutableListOf<GameEvent>(GameEvent.EnergyAttached(state.activeSide, energyId, toId))
+        // Buddy Pulse (Minun): si el RIVAL del que une tiene en juego un Pokémon con esta habilidad (no
+        // bloqueada) y además el aliado requerido (Plusle), pon N contadores de daño en el Pokémon recién
+        // cargado. No acumula: se aplica una sola vez aunque haya varios portadores.
+        val reactSide = state.activeSide.other()
+        val reactState = working.sideState(reactSide)
+        val pulse = reactState.allInPlay.firstNotNullOfOrNull { pip ->
+            abilityEffects(working, reactSide, pip).firstOrNull { e ->
+                e.onOppEnergyAttachCounters > 0 &&
+                    (e.onOppEnergyAttachRequiresAlly == null ||
+                        reactState.allInPlay.any { nameMatches(it, e.onOppEnergyAttachRequiresAlly!!) })
+            }
+        }
+        if (pulse != null) {
+            val meNow = working.activePlayer
+            val charged = meNow.allInPlay.firstOrNull { it.card.id == toId }
+            if (charged != null) {
+                val dmg = pulse.onOppEnergyAttachCounters * 10
+                working = withPlayer(working, replaceInPlay(meNow, toId, charged.copy(damage = charged.damage + dmg)), state.activeSide)
+                events += GameEvent.DamageDealt(reactSide, toId, dmg, false, false)
+                working = handleKnockouts(working, state.activeSide, events)
+            }
+        }
+        // Far-Flying Meteor (Minior): una vez/turno, si uniste la Energía a ESTE Pokémon estando en TU
+        // Banca, puedes cambiarlo por tu Activo. Deja una decisión OPCIONAL (elegirlo = cambiar; vacío = no).
+        val charged = working.activePlayer.bench.firstOrNull { it.card.id == toId }
+        if (charged != null && toId !in working.abilitiesUsedThisTurn &&
+            abilityEffects(working, state.activeSide, charged).any { it.switchSelfOnOwnEnergyAttach }
+        ) {
+            val decision = PendingDecision.ChooseTargets(
+                state.activeSide,
+                com.mineralord.tcg.engine.model.LocalizedText(
+                    "Puedes cambiar ${charged.card.name.es} por tu Pokémon Activo",
+                    "You may switch ${charged.card.name.en} with your Active Pokémon",
+                ),
+                candidates = listOf(toId),
+                count = 1,
+            )
+            working = working.copy(
+                abilitiesUsedThisTurn = working.abilitiesUsedThisTurn + toId,
+                interaction = PendingInteraction(
+                    decision = decision,
+                    remainingOps = listOf(EffectOp.SwapActiveWithChosen),
+                    side = state.activeSide,
+                    sourceId = toId,
+                ),
+            )
+            return EngineResult(working, events, pending = listOf(decision))
+        }
+        return EngineResult(working, events)
     }
 
     /**
@@ -530,6 +577,10 @@ class GameEngine(
         // los ataques del Pokémon Futuro hacen +20, antes de Debilidad/Resistencia).
         val toolBonus = if (dmgBase > 0) activeToolMods(state, state.activeSide, attacker)
             .filter { it.mod == ModKind.EXTRA_DAMAGE }.sumOf { it.amount } else 0
+        // Incendiary Song (Skeledirge ex): este turno tus ataques hacen +N al Activo rival (antes de
+        // Debilidad/Resistencia). Turn-scoped por lado; se suma una vez al total (daño al Activo rival).
+        val songBonus = if (dmgBase > 0 && state.attackBonusThisTurnSide == state.activeSide &&
+            state.attackBonusThisTurnOnTurn == state.turn) state.attackBonusThisTurnAmount else 0
         // "El daño no se ve afectado por Debilidad/Resistencia" (Staryu, Golem ex).
         val ignoresDefEffects = atkEffect?.ignoresDefenderEffects == true
         // Override de Debilidad: Porygon (tipo, persistente en el Defensor) y Kabutops (multiplicador
@@ -538,7 +589,7 @@ class GameEngine(
             abilityEffects(state, state.activeSide, pip).firstNotNullOfOrNull { it.overridesDefenderWeaknessMultiplier }
         }
         val dmg = Damage.calculate(
-            dmgBase + selfBonus + namedAttackBonus + allyBoost + toolBonus, attacker.card.types, defender,
+            dmgBase + selfBonus + namedAttackBonus + allyBoost + toolBonus + songBonus, attacker.card.types, defender,
             ignoreWeakness = atkEffect?.ignoresWeakness == true,
             ignoreResistance = atkEffect?.ignoresResistance == true,
             weaknessTypeOverride = defender.weaknessOverrideType,
@@ -575,7 +626,20 @@ class GameEngine(
             defender.card.effectiveAbilities(false).any { ab ->
                 ab.effect?.let { effects[it]?.preventsDamageFromExOrV } == true
             }
-        val damagePrevented = energyParityShield || exVShield ||
+        // Escudo con moneda si el Defensor está Confundido (Tangled Feet): solo tira la moneda cuando
+        // el ataque hace daño, el portador está Confundido y su Habilidad no está bloqueada. Cara = evita.
+        val confusedCoinShield = dmg.finalAmount > 0 && !ignoresDefEffects &&
+            Status.CONFUSED in defender.statuses &&
+            !isAbilityLocked(state, foeSide, defender) &&
+            defender.card.effectiveAbilities(false).any { ab ->
+                ab.effect?.let { effects[it]?.preventsDamageIfConfusedWithCoin } == true
+            } &&
+            run {
+                val heads = rng.flipCoin()
+                events += GameEvent.CoinFlipped(foeSide, heads)
+                heads
+            }
+        val damagePrevented = energyParityShield || exVShield || confusedCoinShield ||
             defender.preventDamageOnTurn == state.turn ||
             (defender.preventBasicDamageOnTurn == state.turn && attacker.card.isBasic)
         val finalAmount = if (dmg.finalAmount > 0 && (ignoresDefEffects || !damagePrevented)) {
@@ -673,6 +737,12 @@ class GameEngine(
         // Noqueado por el ataque (Hitmonchan Contragolpe, Weezing A Pasarlo Bomba). Corre ANTES
         // de resolver KOs para que el Pokémon aún esté en juego ("incluso si queda Fuera de Combate").
         working = applyDefenderRetaliation(working, foeSide, finalAmount, events)
+        // Un KO-trigger del Defensor dejó una decisión out-of-turn (Gold Coffin/Fillet Memento): se
+        // difieren los KO. El dueño del KO la resuelve; resolveDecision aplicará entonces los KO
+        // (descarte, premios, promoción) y cerrará el turno del atacante.
+        working.interaction?.takeIf { it.outOfTurn }?.let {
+            return EngineResult(working, events, pending = listOf(it.decision))
+        }
 
         // KO del rival y, si hubo recoil/auto-daño/contragolpe, también del atacante.
         // byAttack=true habilita los KO-triggers (Machamp Agallas, Raichu Toma de Tierra).
@@ -813,6 +883,9 @@ class GameEngine(
         if (effect.activeOnly && me.active?.card?.id != pokemonId) {
             return EngineResult.reject(state, "Esta habilidad solo puede usarla el Activo")
         }
+        if (effect.benchOnly && me.active?.card?.id == pokemonId) {
+            return EngineResult.reject(state, "Esta habilidad solo puede usarse desde la Banca")
+        }
         if (effect.firstTurnOnly && state.turn > 2) {
             return EngineResult.reject(state, "Esta habilidad solo puede usarse en tu primer turno")
         }
@@ -821,6 +894,23 @@ class GameEngine(
         }
         if (effect.requiresMovedToActiveThisTurn && mon.movedToActiveOnTurn != state.turn) {
             return EngineResult.reject(state, "Esta habilidad solo al pasar este Pokémon de la Banca al Activo")
+        }
+        if (effect.requiresToolNamed != null && mon.attachedTools.none {
+                it.name.es.contains(effect.requiresToolNamed!!, true) ||
+                    it.name.en.contains(effect.requiresToolNamed!!, true)
+            }
+        ) {
+            return EngineResult.reject(state, "Esta habilidad requiere una Herramienta concreta unida")
+        }
+        if (effect.requiresOppPrizesRemainingAtMost > 0 &&
+            state.sideState(state.activeSide.other()).prizes.size > effect.requiresOppPrizesRemainingAtMost
+        ) {
+            return EngineResult.reject(state, "Esta habilidad requiere que al rival le queden menos Premios")
+        }
+        if (effect.requiresBasicEnergyInHandOfType != null &&
+            me.hand.none { it is BasicEnergy && it.type == effect.requiresBasicEnergyInHandOfType }
+        ) {
+            return EngineResult.reject(state, "Esta habilidad requiere descartar una Energía Básica concreta de tu mano")
         }
         var working = state
         if (effect.oncePerTurn) {
@@ -940,7 +1030,9 @@ class GameEngine(
     private fun resolveDecision(state: GameState, chosen: List<CardId>): EngineResult {
         val interaction = state.interaction
             ?: return EngineResult.reject(state, "No hay ninguna decisión pendiente")
-        if (interaction.side != state.activeSide) {
+        // Las decisiones out-of-turn (KO-triggers tipo Gold Coffin/Fillet Memento) las resuelve su
+        // propio [side] aunque no sea el jugador en turno; el resto exige ser del lado activo.
+        if (!interaction.outOfTurn && interaction.side != state.activeSide) {
             return EngineResult.reject(state, "La decisión pendiente no es de quien juega")
         }
         validateChoice(interaction.decision, chosen)?.let { return EngineResult.reject(state, it) }
@@ -1239,13 +1331,31 @@ class GameEngine(
         state: GameState,
         side: Side,
     ): Boolean {
-        val freeByAlly = abilityEffects(state, side, attacker).any { e ->
+        val abilities = abilityEffects(state, side, attacker)
+        val inPlay = state.sideState(side).allInPlay
+        val freeByAlly = abilities.any { e ->
             e.freeAttackIfAllyNamed != null &&
-                state.sideState(side).allInPlay.any { nameMatches(it, e.freeAttackIfAllyNamed!!) }
+                inPlay.any { nameMatches(it, e.freeAttackIfAllyNamed!!) }
         }
         if (freeByAlly) return true
+        // Monkey Trio: si TODOS los aliados nombrados están en juego, se ignoran los {C} del coste.
+        val ignoreColorless = abilities.any { e ->
+            e.ignoreColorlessIfAlliesNamed.isNotEmpty() &&
+                e.ignoreColorlessIfAlliesNamed.all { name -> inPlay.any { nameMatches(it, name) } }
+        }
         val bump = if (attacker.attackCostBumpOnTurn == state.turn) attacker.attackCostBumpAmount else 0
-        return canPayEnergyCost(attacker.attachedEnergy, atk.cost, bump)
+        // Coste alternativo por Herramienta (Baryon Beam): si el atacante porta la Herramienta nombrada,
+        // el ataque puede pagarse con N {C} en vez de su coste impreso. Se ofrece la opción más barata.
+        val atkEffect = effects[atk.effect]
+        val altCost = atkEffect?.altCostToolNamed?.let { toolName ->
+            if (attacker.attachedTools.any {
+                    it.name.es.contains(toolName, true) || it.name.en.contains(toolName, true)
+                }
+            ) List(atkEffect.altColorlessCost) { EnergyType.COLORLESS } else null
+        }
+        if (altCost != null && canPayEnergyCost(attacker.attachedEnergy, altCost, bump)) return true
+        val cost = if (ignoreColorless) atk.cost.filter { it != EnergyType.COLORLESS } else atk.cost
+        return canPayEnergyCost(attacker.attachedEnergy, cost, bump)
     }
 
     private fun effectiveRetreatCost(state: GameState, side: Side): Int {
@@ -1341,12 +1451,22 @@ class GameEngine(
         for (ab in active.card.effectiveAbilities(isAbilityLocked(state, defenderSide, active))) {
             val eff = ab.effect?.let { effects[it] } ?: continue
             if (!eff.triggerOnActiveDamaged && !(eff.triggerOnActiveKO && koed)) continue
+            if (working.awaitingDecision) break   // no pisar una decisión ya pendiente (p. ej. del ataque)
             val res = interpreter.execute(
                 eff, EffectSource(defenderSide, active.card.id), working,
+                // Si el trigger deja una decisión (Gold Coffin/Fillet Memento), la resolverá el DUEÑO del
+                // KO fuera de turno y entonces se cerrará el turno del atacante (como cualquier KO).
+                endsTurnOnResolve = true,
                 shuffle = { rng.shuffle(it) }, flip = { rng.flipCoin() },
             )
             working = res.state
             events += res.events
+            // KO-trigger interactivo (Gold Coffin busca, Fillet Memento elige Banca): marca la decisión
+            // como out-of-turn. El KO/descarte/premios/promoción se difieren hasta que se resuelva.
+            if (res.pending.isNotEmpty()) {
+                working.interaction?.let { working = working.copy(interaction = it.copy(outOfTurn = true)) }
+                break
+            }
         }
         return working
     }
@@ -1876,8 +1996,17 @@ class GameEngine(
                     !eff.triggerOnEvolve &&                  // se dispara sola al evolucionar
                     !eff.triggerOnActiveDamaged && !eff.triggerOnActiveKO &&  // se disparan solas al recibir daño
                     (!eff.activeOnly || me.active?.card?.id == p.card.id) &&
+                    (!eff.benchOnly || me.active?.card?.id != p.card.id) &&
                     (!eff.firstTurnOnly || state.turn <= 2) &&
                     (!eff.requiresMovedToActiveThisTurn || p.movedToActiveOnTurn == state.turn) &&
+                    (eff.requiresToolNamed == null || p.attachedTools.any {
+                        it.name.es.contains(eff.requiresToolNamed!!, true) ||
+                            it.name.en.contains(eff.requiresToolNamed!!, true)
+                    }) &&
+                    (eff.requiresOppPrizesRemainingAtMost == 0 ||
+                        state.sideState(me.side.other()).prizes.size <= eff.requiresOppPrizesRemainingAtMost) &&
+                    (eff.requiresBasicEnergyInHandOfType == null ||
+                        me.hand.any { it is BasicEnergy && it.type == eff.requiresBasicEnergyInHandOfType }) &&
                     (!eff.oncePerTurn || p.card.id !in state.abilitiesUsedThisTurn)
                 ) {
                     intents += GameIntent.UseAbility(p.card.id, ability.name.es)
