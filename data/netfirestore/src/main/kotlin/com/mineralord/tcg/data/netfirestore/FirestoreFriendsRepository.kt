@@ -36,6 +36,20 @@ data class FriendRequest(val uid: String, val username: String, val friendCode: 
 data class MatchInvite(val fromUid: String, val fromName: String, val roomCode: String, val ts: Long)
 
 /**
+ * Un regalo en la bandeja del jugador (concedido server-side con el Admin SDK). [cristales]/[monedas]/
+ * [fichas] son las recompensas de cada moneda (0 si no aplica). [title]/[message] son textos para la UI.
+ */
+data class Gift(
+    val id: String,
+    val cristales: Int = 0,
+    val monedas: Int = 0,
+    val fichas: Int = 0,
+    val title: String = "",
+    val message: String = "",
+    val ts: Long = 0L,
+)
+
+/**
  * Backend REAL de amigos sobre Firestore (multidispositivo), reutilizando el mismo patrón que
  * [FirestoreMatchTransport]: login anónimo + `Firebase.firestore` + `await()` + listeners en vivo.
  *
@@ -66,18 +80,37 @@ class FirestoreFriendsRepository private constructor(
      * Cada llamada refresca `lastSeen` (última conexión, visible para tus amigos) y `collectionCount`
      * (total de cartas en tu colección, visible en tu perfil para tus amigos).
      */
-    suspend fun publishSelf(friendCode: String, username: String, collectionCount: Int) {
+    suspend fun publishSelf(friendCode: String, username: String, collectionCount: Int, email: String = "") {
         val me = uid()
-        users().document(me).set(
-            mapOf(
-                "friendCode" to friendCode,
-                "username" to username,
-                "collectionCount" to collectionCount,
-                "lastSeen" to FieldValue.serverTimestamp(),
-                "updatedAt" to FieldValue.serverTimestamp(),
-            ),
-            SetOptions.merge(),
-        ).await()
+        val data = hashMapOf<String, Any>(
+            "friendCode" to friendCode,
+            "username" to username,
+            "collectionCount" to collectionCount,
+            "lastSeen" to FieldValue.serverTimestamp(),
+            "updatedAt" to FieldValue.serverTimestamp(),
+        )
+        // El email (de la cuenta Google) permite conceder regalos por correo además de por ID de
+        // amigo. Solo se publica si hay sesión Google (invitado = sin email); no se borra el previo.
+        if (email.isNotBlank()) data["email"] = email.lowercase()
+        users().document(me).set(data, SetOptions.merge()).await()
+    }
+
+    /** Escucha en vivo tu bandeja de regalos (`users/{me}/gifts`). */
+    fun gifts(): Flow<List<Gift>> = subFlow(GIFTS) {
+        Gift(
+            id = it.id,
+            cristales = it.getLong("cristales")?.toInt() ?: 0,
+            monedas = it.getLong("monedas")?.toInt() ?: 0,
+            fichas = it.getLong("fichas")?.toInt() ?: 0,
+            title = it.getString("title").orEmpty(),
+            message = it.getString("message").orEmpty(),
+            ts = it.getTimestamp("ts")?.toDate()?.time ?: 0L,
+        )
+    }
+
+    /** Reclama (borra) un regalo de tu bandeja tras acreditar sus recompensas en el perfil. */
+    suspend fun claimGift(giftId: String) {
+        users().document(uid()).collection(GIFTS).document(giftId).delete().await()
     }
 
     /**
@@ -294,6 +327,7 @@ class FirestoreFriendsRepository private constructor(
         const val INCOMING = "incomingRequests"
         const val OUTGOING = "outgoingRequests"
         const val MATCH_INVITES = "matchInvites"
+        const val GIFTS = "gifts"
     }
 }
 

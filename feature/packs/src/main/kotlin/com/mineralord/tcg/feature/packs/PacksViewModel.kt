@@ -87,7 +87,6 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private val clock = com.mineralord.tcg.data.profile.TrustedClock(app)
     private val opener = PackOpener()
     private val profileRepo = ProfileRepository(app)
-    private val buyLimiter = com.mineralord.tcg.data.gacha.DailyPackLimiter(EconomyRules.MAX_PACKS_BOUGHT_PER_DAY)
 
     private lateinit var repo: CardRepository
     private lateinit var pool: PackPool
@@ -105,7 +104,6 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     private var fichasBalance: Int = 0
     private var favCards: Set<String> = emptySet()
     private var wishCards: Set<String> = emptySet()
-    private var buyState: com.mineralord.tcg.data.gacha.DailyPackState = com.mineralord.tcg.data.gacha.DailyPackState()
 
     private val _state = MutableStateFlow(PacksUiState())
     val state: StateFlow<PacksUiState> = _state.asStateFlow()
@@ -146,7 +144,6 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
                     fichasBalance = it.balanceOf(CurrencyKind.FICHAS)
                     favCards = it.favoriteCards
                     wishCards = it.wishlistCards
-                    buyState = it.daily
                     refreshUi()
                 }
             }
@@ -160,8 +157,6 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
         val now = clock.nowMs()
         val credited = regen.credited(w, now)
         val nextAt = regen.nextPackAt(credited, now)
-        val today = now / 86_400_000L
-        val buyRemaining = buyLimiter.remaining(buyState, today)
         // Progreso por set (owned distintos / total) para el selector de expansiones.
         val perSet = totalBySet.mapValues { (code, total) ->
             owned.keys.count { it.startsWith("$code-") } to total
@@ -179,8 +174,8 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
             perSet = perSet,
             cristales = cristales,
             packPrice = EconomyRules.PACK_PRICE_CRISTALES,
-            buyRemaining = buyRemaining,
-            canBuy = cristales >= EconomyRules.PACK_PRICE_CRISTALES && buyRemaining > 0,
+            buyRemaining = Int.MAX_VALUE,
+            canBuy = cristales >= EconomyRules.PACK_PRICE_CRISTALES,
             previewHits = hits,
             favoriteCards = favCards,
             wishlistCards = wishCards,
@@ -304,29 +299,19 @@ class PacksViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Compra un sobre con Cristales (Fase 2 §7.4 / Fase 3 §4.6). Gasto atómico + tope diario de
-     * compras. Independiente del monedero de sobres gratuitos.
+     * Compra un sobre con Cristales (Fase 2 §7.4 / Fase 3 §4.6). Gasto atómico, SIN tope diario de
+     * compras (ilimitado mientras haya Cristales). Independiente del monedero de sobres gratuitos.
      */
     fun buyPack() {
         if (_state.value.loading) return
         viewModelScope.launch {
-            val today = clock.nowMs() / 86_400_000L
-            val attempt = buyLimiter.tryOpen(buyState, today)
-            if (attempt is com.mineralord.tcg.data.gacha.OpenAttempt.Denied) {
-                _state.value = _state.value.copy(
-                    deniedMessage = "Has alcanzado el máximo de ${buyLimiter.maxPerDay} sobres comprados hoy.",
-                )
-                return@launch
-            }
-            attempt as com.mineralord.tcg.data.gacha.OpenAttempt.Allowed
-            // Gasto ATÓMICO de Cristales: si no hay saldo, no se consume la compra diaria.
+            // Gasto ATÓMICO de Cristales: si no hay saldo, no se abre el sobre.
             if (!profileRepo.spend(CurrencyKind.CRISTALES, EconomyRules.PACK_PRICE_CRISTALES)) {
                 _state.value = _state.value.copy(
                     deniedMessage = "Cristales insuficientes (necesitas ${EconomyRules.PACK_PRICE_CRISTALES}).",
                 )
                 return@launch
             }
-            profileRepo.setDaily(attempt.newState)
             val opened = opener.open(
                 RarityWeights.templateFor(setCode), pool, Random(System.nanoTime()), energyIds,
             )

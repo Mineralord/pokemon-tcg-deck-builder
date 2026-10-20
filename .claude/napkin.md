@@ -3,6 +3,7 @@
 Runbook curado. Solo guía recurrente de alto valor.
 
 ## 🚀 PUBLICAR NUEVA VERSIÓN (REGLA PERMANENTE del dueño, 20 Oct 2026)
+**SECUENCIA DE versionName (REGLA ESTRICTA del dueño, 20 Oct 2026):** la numeración sigue 0.2.8 → 0.2.9 → **0.2.10 → 0.2.11 → 0.2.12 …** (el tercer número crece sin límite: 0.2.10 NO es menor que 0.2.9). **JAMÁS saltar a 0.3.x** (ni 0.3.0) hasta que el dueño lo pida EXPLÍCITAMENTE. `versionCode` sigue +1 cada vez.
 **Cuando el dueño pida "publicar/sacar nueva versión", Claude SIEMPRE hace los pasos 1 y 3; el dueño sube la APK a Drive.**
 1. **(SIEMPRE Claude) Subir versión** en `app/build.gradle.kts` (líneas ~16-17): incrementar `versionCode` (+1) y
    actualizar `versionName` al que indique el dueño. El `versionCode` es el que de verdad dispara el aviso.

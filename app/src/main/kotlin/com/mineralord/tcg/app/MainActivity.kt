@@ -193,16 +193,21 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     // donde estés en la app, al cambiar tu nombre tus amigos lo ven en vivo (no solo en el Hub).
     val friendsRepo = remember { com.mineralord.tcg.data.netfirestore.FirestoreFriendsRepository() }
     androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { profileRepo.ensureFriendCode() } }
+    // Email de la sesión Google (vacío si invitado): se publica en el directorio para poder conceder
+    // regalos por correo además de por ID de amigo.
+    val cloudSync = remember { (ctx.applicationContext as TcgApplication).cloudSync }
+    val authState by cloudSync.authState.collectAsState()
+    val sessionEmail = (authState as? com.mineralord.tcg.data.cloud.AuthState.SignedIn)?.email.orEmpty()
     // Publica identidad + última conexión + total de cartas. Se refresca al cambiar nombre/código o
     // la colección, y en cada vuelta a primer plano (heartbeat de "última conexión").
     suspend fun publishPresence() {
         if (profile.friendCode.isNotBlank()) {
             runCatching {
-                friendsRepo.publishSelf(profile.friendCode, profile.username, profile.owned.values.sum())
+                friendsRepo.publishSelf(profile.friendCode, profile.username, profile.owned.values.sum(), sessionEmail)
             }
         }
     }
-    androidx.compose.runtime.LaunchedEffect(profile.friendCode, profile.username, profile.owned) {
+    androidx.compose.runtime.LaunchedEffect(profile.friendCode, profile.username, profile.owned, sessionEmail) {
         publishPresence()
     }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -249,6 +254,18 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     // ---- Invitaciones a combate (banner global + notificación) ----
     val friendsVm = androidx.lifecycle.viewmodel.compose.viewModel<FriendsViewModel>()
     val matchInvites by friendsVm.matchInvites.collectAsState()
+
+    // ---- Bandeja de regalos (botón 🎁) ----
+    val giftsVm = androidx.lifecycle.viewmodel.compose.viewModel<GiftsViewModel>()
+    val gifts by giftsVm.gifts.collectAsState()
+    var giftsOpen by remember { mutableStateOf(false) }
+    val giftMessage by giftsVm.message.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(giftMessage) {
+        giftMessage?.let {
+            android.widget.Toast.makeText(ctx, it, android.widget.Toast.LENGTH_LONG).show()
+            giftsVm.clearMessage()
+        }
+    }
     val topScreenNow = overlay.lastOrNull()
     val inCombatNow = topScreenNow == Screen.GAME || topScreenNow == Screen.ONLINE
     val topInvite = matchInvites.maxByOrNull { it.ts }
@@ -334,8 +351,9 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     fun goToPage(i: Int) { scope.launch { pager.animateScrollToPage(i) } }
 
     // Retroceso: cierra popup → cierra overlay → vuelve a Inicio si estás en otra página.
-    BackHandler(enabled = menuOpen || overlay.isNotEmpty() || pager.currentPage != 0) {
+    BackHandler(enabled = giftsOpen || menuOpen || overlay.isNotEmpty() || pager.currentPage != 0) {
         when {
+            giftsOpen -> giftsOpen = false
             menuOpen -> menuOpen = false
             overlay.isNotEmpty() -> back()
             else -> goToPage(0)
@@ -344,7 +362,7 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
 
     // Desenfoque del fondo mientras el menú lateral está abierto (se anima suavemente).
     val menuBlur by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (menuOpen) 18.dp else 0.dp,
+        targetValue = if (menuOpen || giftsOpen) 18.dp else 0.dp,
         animationSpec = androidx.compose.animation.core.tween(260),
         label = "menuBlur",
     )
@@ -381,6 +399,8 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                         onAmigos = { goToPage(2) },
                         // Tocar un sobre lleva DIRECTO a "Rasga el sobre" de ESA expansión (sin selector).
                         onOpenPack = { code -> packsDirectCode = code; push(Screen.PACKS) },
+                        onGift = { giftsOpen = true },
+                        giftCount = gifts.size,
                         freePacks = freePacks,
                     )
                     1 -> CollectionScreen(
@@ -713,6 +733,13 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                 modifier = Modifier.fillMaxSize(),
             )
         }
+
+        GiftInbox(
+            visible = giftsOpen,
+            gifts = gifts,
+            onClaim = { giftsVm.claim(it) },
+            onDismiss = { giftsOpen = false },
+        )
 
         MenuOverlay(
             visible = menuOpen,

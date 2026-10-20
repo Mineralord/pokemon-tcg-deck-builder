@@ -24,8 +24,8 @@ android {
         applicationId = "com.mineralord.tcg"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.2.6"
+        versionCode = 11
+        versionName = "0.2.9"
     }
 
     signingConfigs {

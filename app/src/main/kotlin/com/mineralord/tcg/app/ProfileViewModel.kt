@@ -40,6 +40,7 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     val authState = cloud.authState
     val syncStatus = cloud.syncStatus
     val lastSynced = cloud.lastSynced
+    val diagnostic = cloud.diagnostic
 
     private val _stats = MutableStateFlow(ProfileStats())
     val stats: StateFlow<ProfileStats> = _stats.asStateFlow()

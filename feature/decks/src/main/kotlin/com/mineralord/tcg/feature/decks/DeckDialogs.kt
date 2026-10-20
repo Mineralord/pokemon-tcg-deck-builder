@@ -119,11 +119,10 @@ internal fun ConfirmDialog(
         ) {
             Text(title, color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 19.sp)
             Spacer(Modifier.height(14.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth(0.5f)
-                    .height(2.dp)
-                    .background(Brush.horizontalGradient(BarajasPalette.DividerGradient)),
+            com.mineralord.tcg.core.designsystem.RainbowBar(
+                colors = BarajasPalette.DividerGradient,
+                modifier = Modifier.fillMaxWidth(0.5f),
+                height = 2.dp,
             )
             Spacer(Modifier.height(18.dp))
             Text(body, color = BarajasPalette.DeckName, fontSize = 14.sp, textAlign = TextAlign.Center)
@@ -185,9 +184,10 @@ internal fun RenameDeckDialog(current: String, onCancel: () -> Unit, onConfirm: 
         ) {
             Text("Nombre de la baraja", color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 19.sp)
             Spacer(Modifier.height(14.dp))
-            Box(
-                Modifier.fillMaxWidth(0.5f).height(2.dp)
-                    .background(Brush.horizontalGradient(BarajasPalette.DividerGradient)),
+            com.mineralord.tcg.core.designsystem.RainbowBar(
+                colors = BarajasPalette.DividerGradient,
+                modifier = Modifier.fillMaxWidth(0.5f),
+                height = 2.dp,
             )
             Spacer(Modifier.height(18.dp))
             // Campo de texto (píldora clara, texto centrado).

@@ -24,6 +24,20 @@ sealed interface SyncStatus {
 }
 
 /**
+ * Instantánea de diagnóstico de la última sincronización (para confirmar en
+ * pantalla, sin adb, qué encontró la app en la nube). [cloudFileFound] indica si
+ * existía un `profile.json` en el appDataFolder del proyecto actual; los conteos
+ * son cartas distintas en cada lado.
+ */
+data class SyncDiagnostic(
+    val cloudFileFound: Boolean,
+    val cloudOwnedCount: Int,
+    val localOwnedCount: Int,
+    val mergedOwnedCount: Int,
+    val atMillis: Long,
+)
+
+/**
  * Coordina autenticación + Drive + estrategia de fusión. Singleton de proceso
  * (lo crea [TcgApplication]). Observa el perfil y sube cambios con debounce;
  * baja/restaura al iniciar sesión o al reabrir la app.
@@ -50,6 +64,10 @@ class CloudSyncRepository(
 
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
+
+    /** Diagnóstico de la última sincronización (null hasta la primera). */
+    private val _diagnostic = MutableStateFlow<SyncDiagnostic?>(null)
+    val diagnostic: StateFlow<SyncDiagnostic?> = _diagnostic.asStateFlow()
 
     @Volatile private var applyingRemote = false
     @Volatile private var currentToken: String? = null
@@ -115,7 +133,26 @@ class CloudSyncRepository(
             val local = profileRepo.profile.first()
             val fileId = metadata.getFileId() ?: drive.findProfileFileId(token)?.also { metadata.setFileId(it) }
             val cloud = if (fileId != null) drive.download(token, fileId) else null
-            when (val r = MergeStrategy.resolve(local, cloud, preferCloud)) {
+            val resolution = MergeStrategy.resolve(local, cloud, preferCloud)
+            // Diagnóstico visible: ¿había archivo en la nube? ¿cuántas cartas en cada lado?
+            val mergedOwned = when (resolution) {
+                is Resolution.Merge -> resolution.profile.owned.size
+                is Resolution.PushLocal -> local.owned.size
+                Resolution.Noop -> local.owned.size
+            }
+            _diagnostic.value = SyncDiagnostic(
+                cloudFileFound = fileId != null,
+                cloudOwnedCount = cloud?.owned?.size ?: 0,
+                localOwnedCount = local.owned.size,
+                mergedOwnedCount = mergedOwned,
+                atMillis = System.currentTimeMillis(),
+            )
+            Log.i(
+                TAG,
+                "syncNow diag: cloudFile=${fileId != null} cloudOwned=${cloud?.owned?.size ?: 0} " +
+                    "localOwned=${local.owned.size} merged=$mergedOwned preferCloud=$preferCloud",
+            )
+            when (val r = resolution) {
                 is Resolution.Merge -> {
                     // Fusión aditiva: aplica la unión en local y resube para que la nube converja.
                     applyingRemote = true

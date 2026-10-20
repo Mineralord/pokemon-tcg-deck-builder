@@ -74,6 +74,10 @@ fun HomeScreen(
     onJugarOnline: () -> Unit,
     onAmigos: () -> Unit = {},
     onOpenPack: (String) -> Unit = {},
+    /** Abre la bandeja de regalos (botón 🎁). */
+    onGift: () -> Unit = {},
+    /** Nº de regalos sin reclamar (muestra el punto rojo en el botón 🎁). */
+    giftCount: Int = 0,
     /** Sobres gratis disponibles (0..6). A 6 el contador muestra "Al máximo". */
     freePacks: Int = 6,
 ) {
@@ -100,7 +104,7 @@ fun HomeScreen(
             Spacer(Modifier.height(18.dp))
             CurrencyBar(balances = balances, onCurrency = { info = it })
             Spacer(Modifier.height(16.dp))
-            AccessRow(onPerfil = onPerfil)
+            AccessRow(onPerfil = onPerfil, onGift = onGift, giftCount = giftCount)
             Spacer(Modifier.height(20.dp))
             PackShowcase(
                 showcase = showcase,
@@ -348,7 +352,7 @@ private fun DrawScope.drawCreditCard() {
 // ===========================================================================
 
 @Composable
-private fun AccessRow(onPerfil: () -> Unit) {
+private fun AccessRow(onPerfil: () -> Unit, onGift: () -> Unit = {}, giftCount: Int = 0) {
     // Avatar CENTRADO en la pantalla; a su derecha, correo y regalos (outline).
     // El costado izquierdo queda libre a propósito (uso futuro).
     Box(
@@ -365,7 +369,7 @@ private fun AccessRow(onPerfil: () -> Unit) {
         ) {
             CircleButton(dot = true) { MailIcon() }
             Spacer(Modifier.width(8.dp))
-            CircleButton(dot = true) { GiftIcon() }
+            CircleButton(dot = giftCount > 0, onClick = onGift) { GiftIcon() }
         }
     }
 }
@@ -402,14 +406,15 @@ private fun AvatarBadge(avatarColors: List<Color>?, level: Int, onClick: () -> U
 }
 
 @Composable
-private fun CircleButton(dot: Boolean, content: @Composable () -> Unit) {
+private fun CircleButton(dot: Boolean, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Box(contentAlignment = Alignment.TopEnd) {
         Box(
             Modifier
                 .size(42.dp)
                 .clip(CircleShape)
                 .background(HomePalette.Surface)
-                .border(1.dp, HomePalette.Hairline, CircleShape),
+                .border(1.dp, HomePalette.Hairline, CircleShape)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) { content() }
         if (dot) {

@@ -271,9 +271,10 @@ private fun Header(showFavorites: Boolean) {
 
 @Composable
 private fun RainbowDivider() {
-    Box(
-        Modifier.fillMaxWidth().height(3.dp)
-            .background(Brush.horizontalGradient(BarajasPalette.DividerGradient)),
+    com.mineralord.tcg.core.designsystem.RainbowBar(
+        colors = BarajasPalette.DividerGradient,
+        modifier = Modifier.fillMaxWidth(),
+        height = 3.dp,
     )
 }
 

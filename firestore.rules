@@ -49,6 +49,14 @@ service cloud.firestore {
         allow delete: if request.auth != null &&
           (request.auth.uid == uid || request.auth.uid == fid);
       }
+
+      // Bandeja de regalos: el dueño LEE sus regalos y los BORRA al reclamarlos. Ningún cliente
+      // puede CREAR regalos (así nadie se auto-regala recursos): solo se conceden server-side con
+      // el Admin SDK (tools/release/grant-gift.mjs), que ignora estas reglas.
+      match /gifts/{gid} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if false;
+      }
     }
 
     // ───────── Configuración de la app (aviso de nueva versión) ─────────

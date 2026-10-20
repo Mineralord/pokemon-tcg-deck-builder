@@ -418,14 +418,13 @@ private fun GroupHeader(title: String, count: Int, expanded: Boolean, onClick: (
     }
 }
 
-/** Hilo divisor arcoíris (azul→lima) bajo la cabecera. */
+/** Hilo divisor arcoíris ANIMADO (azul→lima) bajo la cabecera. */
 @Composable
 private fun RainbowDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(3.dp)
-            .background(Brush.horizontalGradient(BarajasPalette.DividerGradient)),
+    com.mineralord.tcg.core.designsystem.RainbowBar(
+        colors = BarajasPalette.DividerGradient,
+        modifier = Modifier.fillMaxWidth(),
+        height = 3.dp,
     )
 }
 

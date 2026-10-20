@@ -567,15 +567,16 @@ private fun CollectionHeader(onExit: () -> Unit, onDestroy: () -> Unit) {
     }
 }
 
-/** Línea arcoíris fina bajo la cabecera (firma visual de TCG Live). */
+/** Línea arcoíris fina ANIMADA bajo la cabecera (firma visual de TCG Live). */
 @Composable
 private fun RainbowRule() {
-    Box(
-        Modifier.fillMaxWidth().height(3.dp).background(
-            Brush.horizontalGradient(
-                listOf(Color(0xFFFF5D5D), Color(0xFFFFC53D), Color(0xFF57C06B), Color(0xFF35C4E8), Color(0xFF7E7BFF), Color(0xFFEC5F94)),
-            ),
+    com.mineralord.tcg.core.designsystem.RainbowBar(
+        colors = listOf(
+            Color(0xFFFF5D5D), Color(0xFFFFC53D), Color(0xFF57C06B),
+            Color(0xFF35C4E8), Color(0xFF7E7BFF), Color(0xFFEC5F94),
         ),
+        modifier = Modifier.fillMaxWidth(),
+        height = 3.dp,
     )
 }
 
