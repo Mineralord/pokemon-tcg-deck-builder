@@ -8,11 +8,13 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -49,15 +51,32 @@ class GoogleAuthManager(context: Context) {
     @Volatile private var cachedToken: String? = null
     private var pendingAuth: CompletableDeferred<Intent>? = null
 
-    /** Muestra el selector de cuentas de Google y devuelve la identidad. */
+    /**
+     * Muestra el selector de cuentas de Google y devuelve la identidad. Intenta primero el flujo
+     * normal (`GetGoogleIdOption`); si no hay credencial disponible (p. ej. ninguna cuenta
+     * previamente autorizada, caso típico en la 1ª vez), reintenta con el flujo EXPLÍCITO
+     * "Sign in with Google" (`GetSignInWithGoogleOption`), que siempre abre el selector / añadir cuenta.
+     */
     suspend fun signIn(activity: Activity): AuthState.SignedIn {
-        val option = GetGoogleIdOption.Builder()
-            .setServerClientId(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
+        val serverId = BuildConfig.GOOGLE_SERVER_CLIENT_ID
+        val idOption = GetGoogleIdOption.Builder()
+            .setServerClientId(serverId)
             .setFilterByAuthorizedAccounts(false)
             .setAutoSelectEnabled(false)
             .build()
-        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
-        val response = credentialManager.getCredential(activity, request)
+        val response = try {
+            credentialManager.getCredential(
+                activity,
+                GetCredentialRequest.Builder().addCredentialOption(idOption).build(),
+            )
+        } catch (e: NoCredentialException) {
+            // Respaldo: botón explícito de Google (fuerza el selector / añadir cuenta).
+            val signInOption = GetSignInWithGoogleOption.Builder(serverId).build()
+            credentialManager.getCredential(
+                activity,
+                GetCredentialRequest.Builder().addCredentialOption(signInOption).build(),
+            )
+        }
         val cred = response.credential
         if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             val google = GoogleIdTokenCredential.createFrom(cred.data)

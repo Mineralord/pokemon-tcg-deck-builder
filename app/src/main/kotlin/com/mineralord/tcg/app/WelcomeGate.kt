@@ -82,12 +82,13 @@ fun WelcomeGate() {
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result -> vm.onAuthorizationResult(result.data) }
 
-    // Decide si mostrar la bienvenida: oculta si ya hay sesión, cuenta recordada o invitado elegido.
+    // Decide si mostrar la bienvenida: aparece SIEMPRE que no haya una cuenta de Google vinculada
+    // (ni sesión activa ni cuenta recordada). Así se insiste en vincular Google en cada arranque
+    // mientras se juegue como invitado; al elegir invitado solo se oculta hasta el próximo inicio.
     LaunchedEffect(Unit) {
         if (authState is AuthState.SignedIn) { visible = false; return@LaunchedEffect }
         val remembered = runCatching { cloud.hasRememberedSession() }.getOrDefault(false)
-        val guest = runCatching { cloud.isGuestChosen() }.getOrDefault(false)
-        visible = !remembered && !guest
+        visible = !remembered
     }
     // Si en cualquier momento se confirma la sesión, desaparece.
     LaunchedEffect(authState) { if (authState is AuthState.SignedIn) visible = false }
