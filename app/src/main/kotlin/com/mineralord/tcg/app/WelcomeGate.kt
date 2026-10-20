@@ -91,11 +91,18 @@ fun WelcomeGate() {
     }
     // Si en cualquier momento se confirma la sesión, desaparece.
     LaunchedEffect(authState) { if (authState is AuthState.SignedIn) visible = false }
-    // Feedback de error mientras se intenta entrar (p. ej. el usuario cancela el selector).
+    // Feedback de error mientras se intenta entrar. Si el usuario simplemente cerró el selector de
+    // cuentas (cancelación), no es un error: se resetea sin mensaje. En otros casos mostramos el
+    // motivo REAL para poder diagnosticar (p. ej. huella SHA no registrada en Firebase).
     LaunchedEffect(syncStatus) {
-        if (signingIn && syncStatus is com.mineralord.tcg.data.cloud.SyncStatus.Error) {
+        val st = syncStatus
+        if (signingIn && st is com.mineralord.tcg.data.cloud.SyncStatus.Error) {
             signingIn = false
-            errorMsg = "No se pudo iniciar sesión. Inténtalo de nuevo."
+            val cause = st.cause
+            val cancelled = cause is androidx.credentials.exceptions.GetCredentialCancellationException ||
+                (cause.message?.contains("cancel", ignoreCase = true) == true)
+            errorMsg = if (cancelled) null
+            else "No se pudo iniciar sesión.\n${cause::class.simpleName}: ${cause.message ?: "sin detalle"}"
         }
     }
 
