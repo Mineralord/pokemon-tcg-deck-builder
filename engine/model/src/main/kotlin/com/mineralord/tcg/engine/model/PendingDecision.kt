@@ -182,6 +182,17 @@ sealed interface PendingDecision {
             if (id.raw.startsWith("attackidx:")) id.raw.removePrefix("attackidx:").toIntOrNull() else null
     }
 
+    /**
+     * Mira la carta superior del mazo ([topCard], revelada SOLO a [side]) y decide: quedártela en la
+     * mano, o descartarla y robar una carta (Mountain Scrounging sv4-82). Resolución por el canal
+     * `chosen`: lista NO vacía (con [topCard]) = a la mano; lista vacía = descartar y robar.
+     */
+    data class LookTopDecide(
+        override val side: Side,
+        override val prompt: LocalizedText,
+        val topCard: CardId,
+    ) : PendingDecision
+
     data class AttachFromRevealed(
         override val side: Side,
         override val prompt: LocalizedText,

@@ -82,16 +82,15 @@ class ParadoxAttackCoverageTest {
         //  · coin-until-tails que mueve Energía al mazo (Daunting Eyes)
         //  · reveal + snipe condicional (Whirltide)
         //  · prevención/control muy específicos (Arm Thrust Needle, Echoing Madness, Data Displacement)
-        //  · descarte-hasta-N opcional + robo (Drawareness), mirar/robar top (Mountain Scrounging)
+        //  · mirar/robar top (Mountain Scrounging)
         //  · coste alternativo por Herramienta, no es un efecto de daño (Baryon Beam)
         // Documentados aquí: si aparece un rider NUEVO sin implementar (o se implementa uno de estos),
-        // el test falla para obligar a revisar la cobertura.
+        // el test falla para obligar a revisar la cobertura. Drawareness pasó a estar cubierto
+        // (descarte mano→descarte + DrawUntil 5).
         val unsupported = setOf(
             "sv4-5 · Arm Thrust Needle",
             "sv4-32 · Whirltide",
-            "sv4-82 · Mountain Scrounging",
             "sv4-112 · Echoing Madness",
-            "sv4-113 · Drawareness",
         )
         assertEquals(
             unsupported, gaps,

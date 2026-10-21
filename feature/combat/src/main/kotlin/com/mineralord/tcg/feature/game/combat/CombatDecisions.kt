@@ -69,16 +69,19 @@ fun DecisionPanel(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-            .background(Color(0xF21A2030))
-            .border(1.dp, CombatTheme.Gold.copy(alpha = 0.5f), RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+            .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom)))
+            .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             decision.prompt.es,
-            color = CombatTheme.Gold,
+            color = BarajasPalette.Ink,
             fontWeight = FontWeight.Black,
             fontSize = 14.sp,
+        )
+        com.mineralord.tcg.core.designsystem.RainbowBar(
+            colors = BarajasPalette.DividerGradient, modifier = Modifier.fillMaxWidth(), height = 3.dp,
         )
         when (decision) {
             is PendingDecision.CoinFlip -> {
@@ -93,6 +96,8 @@ fun DecisionPanel(
                 SelectGrid(decision.candidates, decision.count, cardOf, allowNone = true, onResolve = onResolve)
             is PendingDecision.AttachFromRevealed ->
                 AttachPairing(decision, cardOf, onResolve)
+            is PendingDecision.LookTopDecide ->
+                LookTopDecidePanel(decision, cardOf, onResolve)
             is PendingDecision.PlaceCounters ->
                 CounterSpread(decision, cardOf, onResolve)
             is PendingDecision.MoveEnergy -> {
@@ -132,6 +137,8 @@ private fun SelectGrid(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(CombatTheme.CardAspect)
+                            // Carta SELECCIONADA se eleva (como en TCG Live al elegir de la mano).
+                            .graphicsLayer { translationY = if (selected) -10.dp.toPx() else 0f }
                             .clickable {
                                 if (selected) sel.remove(id)
                                 else if (sel.size < count) sel.add(id)
@@ -434,6 +441,60 @@ private fun AttachPairing(
                     .aspectRatio(CombatTheme.CardAspect),
             ) {
                 CombatCard(imageUrl = cardOf(id)?.artwork?.small(true), card = cardOf(id), modifier = Modifier.fillMaxSize())
+            }
+        }
+    }
+}
+
+/**
+ * Mountain Scrounging: revela la carta superior del mazo (con una entrada AAA: escala + fundido) y
+ * ofrece dos acciones claras del design system — "A tu mano" o "Descartar y robar". Diseño en
+ * [BarajasPalette], coherente con el resto de menús interactivos.
+ */
+@Composable
+private fun LookTopDecidePanel(
+    decision: PendingDecision.LookTopDecide,
+    cardOf: (CardId) -> Card?,
+    onResolve: (List<CardId>) -> Unit,
+) {
+    val appear = remember(decision) { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(decision) {
+        appear.animateTo(1f, androidx.compose.animation.core.spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessLow,
+        ))
+    }
+    val card = cardOf(decision.topCard)
+    Column(
+        Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        CombatCard(
+            imageUrl = card?.artwork?.large(true),
+            card = card,
+            contentDescription = card?.name?.es,
+            modifier = Modifier
+                .fillMaxWidth(0.42f)
+                .aspectRatio(CombatTheme.CardAspect)
+                .graphicsLayer {
+                    val a = appear.value
+                    val s = 0.82f + 0.18f * a
+                    scaleX = s; scaleY = s
+                    alpha = a
+                    rotationZ = (1f - a) * -6f
+                },
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.weight(1f)) {
+                LightButton("A tu mano", enabled = true, accent = BarajasPalette.SaveGradient) {
+                    onResolve(listOf(decision.topCard))
+                }
+            }
+            Box(Modifier.weight(1f)) {
+                LightButton("Descartar y robar", enabled = true, accent = listOf(BarajasPalette.Hollow, BarajasPalette.Hollow)) {
+                    onResolve(emptyList())
+                }
             }
         }
     }

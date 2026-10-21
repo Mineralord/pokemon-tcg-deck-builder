@@ -1100,6 +1100,8 @@ class GameEngine(
         // AttachFromRevealed: `chosen` son PARES (energía, destino); el intérprete valida
         // candidatos y tope. Validación ligera aquí.
         is PendingDecision.AttachFromRevealed -> null
+        // LookTopDecide: vacío = descartar+robar, no vacío = a la mano; ambos válidos.
+        is PendingDecision.LookTopDecide -> null
         // ChooseEnergyType: exactamente 1 tipo, y debe estar entre los candidatos.
         is PendingDecision.ChooseEnergyType ->
             when {

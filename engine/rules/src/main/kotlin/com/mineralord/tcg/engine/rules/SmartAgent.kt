@@ -230,6 +230,8 @@ class SmartAgent(
             val pairs = energies.flatMapIndexed { i, e -> listOf(e, bench[i % bench.size]) }
             GameIntent.ResolveDecision(pairs)
         }
+        // Mountain Scrounging: la IA se queda la carta superior (lista no vacía = a la mano).
+        is PendingDecision.LookTopDecide -> GameIntent.ResolveDecision(listOf(decision.topCard))
     }
 
     /**

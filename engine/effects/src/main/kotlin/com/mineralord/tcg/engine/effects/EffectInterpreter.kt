@@ -126,6 +126,7 @@ class EffectInterpreter {
             is PendingDecision.MoveEnergy -> applyMoveEnergy(d, chosen, cleared)
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
             is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle, flip)
+            is PendingDecision.LookTopDecide -> applyLookTopDecide(d, chosen, cleared)
             is PendingDecision.ChooseTargets -> EffectResult(cleared, emptyList())
             // Hackeo Genómico: la resuelve GameEngine (re-ejecuta el ataque); nunca llega aquí.
             is PendingDecision.ChooseAttack -> EffectResult(cleared, emptyList())
@@ -473,6 +474,40 @@ class EffectInterpreter {
                     )
                 }
             }
+            is EffectOp.SearchEnergyAttachBench -> {
+                // Turbo Energize: busca Energía Básica en el MAZO y únela a la Banca (arrastre).
+                val ps = state.sideState(src.actingSide)
+                val energies = ps.deck
+                    .filter { it is BasicEnergy && (op.energyType == null || it.type == op.energyType) }
+                    .map { it.id }
+                val targets = ps.bench.map { it.card.id }
+                if (energies.isEmpty() || targets.isEmpty() || op.count == 0) null
+                else PendingDecision.AttachFromRevealed(
+                    src.actingSide,
+                    LocalizedText(
+                        "Une hasta ${op.count} Energía Básica del mazo a tu Banca",
+                        "Attach up to ${op.count} Basic Energy from your deck to your Bench",
+                    ),
+                    revealed = energies,
+                    energyCandidates = energies,
+                    benchCandidates = targets,
+                    maxAttach = op.count,
+                    fromDiscard = false, // salen del MAZO; el resto se baraja al resolver.
+                )
+            }
+            is EffectOp.LookTopKeepOrDiscardDraw -> {
+                // Mountain Scrounging: revela la carta superior y deja elegir (a la mano / descartar+robar).
+                val top = state.sideState(src.actingSide).deck.firstOrNull()
+                if (top == null) null
+                else PendingDecision.LookTopDecide(
+                    src.actingSide,
+                    LocalizedText(
+                        "Carta superior: ¿a tu mano, o descartarla y robar?",
+                        "Top card: put it into your hand, or discard it and draw?",
+                    ),
+                    topCard = top.id,
+                )
+            }
             else -> null
         }
 
@@ -688,6 +723,16 @@ class EffectInterpreter {
                     listOf(GameEvent.DeckShuffled(src.actingSide)),
                 )
             }
+            is EffectOp.SearchEnergyAttachBench -> {
+                // Solo llega aquí si pendingFor devolvió null (sin Banca o sin Energía elegible):
+                // se buscó en el mazo sin unir nada y se baraja de vuelta (Turbo Energize).
+                val ps = state.sideState(src.actingSide)
+                EffectResult(
+                    withPlayer(state, ps.copy(deck = shuffle(ps.deck)), src.actingSide),
+                    listOf(GameEvent.DeckShuffled(src.actingSide)),
+                )
+            }
+            is EffectOp.LookTopKeepOrDiscardDraw -> EffectResult(state, emptyList()) // mazo vacío: no hace nada
             is EffectOp.CoinsPerEnergyDamage -> {
                 // Lanza una moneda por cada Energía [energyType] del origen; el daño al
                 // Activo rival es damagePerHeads × caras. Emite un CoinFlipped por tirada.
@@ -1829,6 +1874,25 @@ class EffectInterpreter {
             events += GameEvent.DeckShuffled(side)
         }
         return EffectResult(working, events)
+    }
+
+    /** Mountain Scrounging: `chosen` NO vacío = la carta superior a la mano; vacío = descartarla y robar. */
+    private fun applyLookTopDecide(
+        d: PendingDecision.LookTopDecide,
+        chosen: List<CardId>,
+        state: GameState,
+    ): EffectResult {
+        val side = d.side
+        val ps = state.sideState(side)
+        val top = ps.deck.firstOrNull() ?: return EffectResult(state, emptyList())
+        return if (chosen.isNotEmpty()) {
+            // La carta superior pasa a tu mano.
+            EffectResult(withPlayer(state, ps.copy(deck = ps.deck.drop(1), hand = ps.hand + top), side), emptyList())
+        } else {
+            // Descarta la carta superior y roba 1 (la nueva superior).
+            val working = withPlayer(state, ps.copy(deck = ps.deck.drop(1), discard = ps.discard + top), side)
+            draw(side, 1, working)
+        }
     }
 
     // ---------------------------------------------------------------- helpers

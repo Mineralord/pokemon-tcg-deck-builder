@@ -257,6 +257,11 @@ private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisi
     is PendingDecision.ChooseAttack -> PendingDecisionDto(
         DecisionKindDto.CHOOSE_TARGETS, frame(side).name, prompt.es, prompt.en, candidateIds.map { it.raw }, 1,
     )
+    // Render-only: el invitado ve la carta superior como búsqueda (elegirla = a la mano; "Ninguna" =
+    // descartar+robar), misma semántica que el host resuelve con LookTopDecide.
+    is PendingDecision.LookTopDecide -> PendingDecisionDto(
+        DecisionKindDto.SEARCH_CARDS, frame(side).name, prompt.es, prompt.en, listOf(topCard.raw), 1,
+    )
 }
 
 // ----------------------------------------------------------------- de DTO

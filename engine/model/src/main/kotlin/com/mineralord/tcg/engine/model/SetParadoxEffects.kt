@@ -1026,4 +1026,22 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
         ops = listOf(EffectOp.MoveEnergy(Target.SELF, Target.OWN_BENCH, 2, EnergyType.WATER)))
     put(abiKey("sv4-54", "Fillet Memento"), filletMemento)
     put(abiKey("sv4-192", "Fillet Memento"), filletMemento)
+
+    // =========================== Fase 24: buscar Energía en el mazo y unir a la Banca (arrastre) ===========================
+
+    // Turbo Energize: busca hasta 2 Energía Básica en tu mazo y únelas a tus Pokémon de Banca "de la
+    // forma que quieras"; luego baraja. El jugador las arrastra a los Pokémon (menú drag-and-drop).
+    put(atkKey("sv4-179", "Turbo Energize"), Effect(ops = listOf(EffectOp.SearchEnergyAttachBench(2))))
+
+    // Drawareness (sv4-113): puedes descartar cualquier nº de cartas de tu mano (hasta quedarte con
+    // 4 o menos) y luego robas hasta tener 5. Se reutiliza la selección mano→descarte (perCard = 0,
+    // sin daño) encadenada con DrawUntil(5): el jugador toca las cartas a descartar y confirma.
+    put(atkKey("sv4-113", "Drawareness"), Effect(ops = listOf(
+        EffectOp.DiscardFromHandForDamage(CardFilter(), maxCount = 60, perCard = 0),
+        EffectOp.DrawUntil(5),
+    )))
+
+    // Mountain Scrounging (sv4-82): mira la carta superior; puedes ponerla en tu mano, o descartarla
+    // y robar una carta. El jugador decide en un panel (carta revelada + dos botones del design system).
+    put(atkKey("sv4-82", "Mountain Scrounging"), Effect(ops = listOf(EffectOp.LookTopKeepOrDiscardDraw)))
 }

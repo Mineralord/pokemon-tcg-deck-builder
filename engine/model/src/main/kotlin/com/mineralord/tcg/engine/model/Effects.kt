@@ -577,6 +577,24 @@ sealed interface EffectOp {
     ) : EffectOp
 
     /**
+     * Busca en TU mazo hasta [count] Energía Básica (de [energyType] si no es null; cualquier
+     * Básica si lo es) y únelas a tus Pokémon de la BANCA "de la forma que quieras"; luego baraja
+     * el mazo (Turbo Energize sv4-179). Pausa con una decisión de arrastre
+     * ([PendingDecision.AttachFromRevealed] con `fromDiscard = false`): el jugador arrastra cada
+     * Energía a un Pokémon de Banca; el resto del mazo se baraja de vuelta al resolver. Si no hay
+     * Banca o no hay Energía elegible, no pausa (solo baraja). */
+    data class SearchEnergyAttachBench(
+        val count: Int,
+        val energyType: EnergyType? = null,
+    ) : EffectOp
+
+    /**
+     * Mira la carta superior de TU mazo y decide: ponerla en tu mano, o descartarla y robar una carta
+     * (Mountain Scrounging sv4-82). Pausa con [PendingDecision.LookTopDecide]. Si el mazo está vacío,
+     * no hace nada (no pausa). */
+    data object LookTopKeepOrDiscardDraw : EffectOp
+
+    /**
      * El rival enseña su mano y TÚ pones 1 Pokémon que encuentres allí en la parte INFERIOR
      * de su baraja (Agarrador Mecánico sv3pt5-162). Pausa con una decisión sobre la mano RIVAL
      * (reusa [PendingDecision.SearchCards] con `fromOpponentHand = true`): candidatos = Pokémon
