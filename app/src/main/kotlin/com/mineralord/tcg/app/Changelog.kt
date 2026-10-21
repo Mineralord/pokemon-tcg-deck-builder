@@ -47,6 +47,14 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.13", "21 oct 2026",
+        listOf(
+            "Más cartas de Brecha Paradójica con efecto real (Turbo Energize, Drawareness, Mountain Scrounging).",
+            "Arrastra energías a tus Pokémon y menús de combate con el diseño oficial de la app.",
+            "Los sobres se agrandan y son interactivos (se inclinan) con brillo plateado realista.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.12", "20 oct 2026",
         listOf(
             "Comunes e infrecuentes: brillo reverse-holo plateado realista (sin arcoíris).",
