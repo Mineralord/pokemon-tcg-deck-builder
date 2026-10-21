@@ -52,7 +52,8 @@ fun InteractiveHoloCard(
     val holo by produceState<HoloBitmaps?>(null, cardNumber, rarity, setCode) {
         value = HoloAssets.resolve(context, setCode ?: "sv3pt5", cardNumber, rarity)
     }
-    val finish = remember(rarity, holo) { holo?.finish ?: resolveFinish(rarity) }
+    // Zonas FIELES: holo solo con máscara real; sin ella, plana (no procedimental, que ignora zonas).
+    val finish = remember(rarity, holo) { holo?.finish ?: com.mineralord.tcg.core.designsystem.tilt.Finish.NONE }
 
     val scope = rememberCoroutineScope()
     val tiltX = remember { Animatable(0f) }

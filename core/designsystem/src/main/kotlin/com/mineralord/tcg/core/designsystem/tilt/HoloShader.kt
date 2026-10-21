@@ -75,9 +75,10 @@ private const val HOLO_AGSL = """
 
         float freq = 6.0; float sat = 1.0; float sparkleAmt = 0.0;
         float goldMix = 0.0; float metal = 0.0; float baseCover = 0.3; float amp = 1.0;
+        float flatHolo = 0.0;  // 1 = flat holo (ex): sheen lineal liso, sin rejilla ni glitter.
         if (uProfile < 0.5)      { freq = 10.0; sat = 0.7; sparkleAmt = 0.10; baseCover = 0.10; amp = 0.45; }
         else if (uProfile < 1.5) { freq = 7.0;  sat = 1.0; sparkleAmt = 0.12; baseCover = 0.14; amp = 0.55; }
-        else if (uProfile < 2.5) { freq = 5.0;  sat = 0.9; sparkleAmt = 0.16; baseCover = 0.28; amp = 0.55; metal = 1.0; }
+        else if (uProfile < 2.5) { freq = 5.0;  sat = 0.9; sparkleAmt = 0.04; baseCover = 0.30; amp = 0.58; metal = 1.0; flatHolo = 1.0; }
         else if (uProfile < 3.5) { freq = 5.0;  sat = 1.0; sparkleAmt = 0.20; baseCover = 0.30; amp = 0.60; metal = 1.0; }
         else if (uProfile < 4.5) { freq = 9.0;  sat = 1.1; sparkleAmt = 0.26; baseCover = 0.34; amp = 0.55; }
         else if (uProfile < 5.5) { freq = 10.0; sat = 1.05; sparkleAmt = 0.20; baseCover = 0.22; amp = 0.42; }  // SIR: holo contenido como las cartas oficiales
@@ -88,6 +89,10 @@ private const val HOLO_AGSL = """
         float m1 = 0.5 + 0.5 * sin((uv.x - uv.y) * 55.0 + uTilt.x * 8.0);
         float m2 = 0.5 + 0.5 * sin((uv.x + uv.y) * 55.0 - uTilt.y * 8.0);
         float metalMod = 0.6 + 0.4 * (m1 * m2);
+        // Flat holo (ex real): bandas de arcoíris ANCHAS y lisas que barren en diagonal con el tilt,
+        // en vez de la rejilla metálica fina. Da el aspecto de foil liso espejado, no granulado.
+        float band = 0.5 + 0.5 * sin((uv.x + uv.y) * 6.5 + (uTilt.x - uTilt.y) * 6.0);
+        metalMod = mix(metalMod, 0.55 + 0.45 * band, flatHolo);
         half3 base = mix(rb, rb * half3(metalMod), metal);
         half3 gold = half3(1.0, 0.82, 0.28);
         base = mix(base, gold * (0.5 + 0.5 * base.r), goldMix);

@@ -76,6 +76,10 @@ fun HomeScreen(
     onOpenPack: (String) -> Unit = {},
     /** Abre la bandeja de regalos (botón 🎁). */
     onGift: () -> Unit = {},
+    /** Abre el popup de novedades/changelog (botón ✉). */
+    onMessages: () -> Unit = {},
+    /** Hay novedades sin leer → punto rojo en el botón ✉ (se apaga al abrirlo). */
+    newsUnread: Boolean = true,
     /** Nº de regalos sin reclamar (muestra el punto rojo en el botón 🎁). */
     giftCount: Int = 0,
     /** Sobres gratis disponibles (0..6). A 6 el contador muestra "Al máximo". */
@@ -104,7 +108,7 @@ fun HomeScreen(
             Spacer(Modifier.height(18.dp))
             CurrencyBar(balances = balances, onCurrency = { info = it })
             Spacer(Modifier.height(16.dp))
-            AccessRow(onPerfil = onPerfil, onGift = onGift, giftCount = giftCount)
+            AccessRow(onPerfil = onPerfil, onGift = onGift, giftCount = giftCount, onMessages = onMessages, newsUnread = newsUnread)
             Spacer(Modifier.height(20.dp))
             PackShowcase(
                 showcase = showcase,
@@ -352,7 +356,7 @@ private fun DrawScope.drawCreditCard() {
 // ===========================================================================
 
 @Composable
-private fun AccessRow(onPerfil: () -> Unit, onGift: () -> Unit = {}, giftCount: Int = 0) {
+private fun AccessRow(onPerfil: () -> Unit, onGift: () -> Unit = {}, giftCount: Int = 0, onMessages: () -> Unit = {}, newsUnread: Boolean = true) {
     // Avatar CENTRADO en la pantalla; a su derecha, correo y regalos (outline).
     // El costado izquierdo queda libre a propósito (uso futuro).
     Box(
@@ -367,7 +371,7 @@ private fun AccessRow(onPerfil: () -> Unit, onGift: () -> Unit = {}, giftCount: 
             modifier = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CircleButton(dot = true) { MailIcon() }
+            CircleButton(dot = newsUnread, onClick = onMessages) { MailIcon() }
             Spacer(Modifier.width(8.dp))
             CircleButton(dot = giftCount > 0, onClick = onGift) { GiftIcon() }
         }
@@ -543,7 +547,8 @@ private fun PackShowcase(
             Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                // Bajados para quedar centrados verticalmente con el recuadro bicolor de atrás.
+                .padding(top = 24.dp, start = 24.dp, end = 24.dp)
                 .height(152.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top,
@@ -558,7 +563,7 @@ private fun PackShowcase(
             freePacks = freePacks,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 14.dp),
+                .padding(bottom = 4.dp),
         )
 
         // Píldora ">" con icono de sobre (arriba-derecha).

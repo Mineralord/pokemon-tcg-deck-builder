@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -72,7 +73,10 @@ fun ComunidadScreen(
     onIntercambio: () -> Unit = {},
     onAmigos: () -> Unit = {},
 ) {
-    Column(modifier.fillMaxSize().background(ComunidadPalette.Surface)) {
+    // clipToBounds: la rejilla en perspectiva dibuja líneas que se extienden más allá del borde
+    // izquierdo; sin recorte, Compose las pinta fuera y se colaban en la página vecina (Colección)
+    // del HorizontalPager. Recortar al propio recuadro evita ese sangrado.
+    Column(modifier.fillMaxSize().clipToBounds().background(ComunidadPalette.Surface)) {
         // ---- Hero: banda inclinada + suelo cuadriculado en perspectiva ----
         Box(
             Modifier

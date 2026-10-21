@@ -112,9 +112,10 @@ fun CardDetailDialog(
     val bundled by produceState<HoloBitmaps?>(null, cardNumber, rarity, setCode) {
         value = HoloAssets.resolve(context, setCode ?: "sv3pt5", cardNumber, rarity)
     }
-    // Con assets reales, el finish sale de los metadatos de foil; si no, de la rareza.
-    val rarityFinish = remember(rarity) { resolveFinish(rarity) }
-    val finish = bundled?.finish ?: rarityFinish
+    // Zonas FIELES: el finish (y por tanto el holo) solo existe con MÁSCARA REAL de foil, que
+    // confina el brillo a sus regiones exactas. Sin assets reales → plana (no máscara procedimental,
+    // que desparramaría el holo por toda la carta ignorando las zonas marco/ilustración).
+    val finish = bundled?.finish ?: com.mineralord.tcg.core.designsystem.tilt.Finish.NONE
 
     // Popup animado "de arriba a abajo": entra deslizando desde el borde superior y sale RÁPIDO
     // hacia arriba. El cierre real (onDismiss) se difiere hasta que termina la animación de salida,

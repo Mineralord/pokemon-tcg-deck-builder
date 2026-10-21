@@ -44,7 +44,10 @@ fun HoloCardImage(
     val holo by produceState<HoloBitmaps?>(null, setCode, cardNumber, rarity, enabled) {
         value = if (enabled) HoloAssets.resolve(context, setCode ?: "sv3pt5", cardNumber, rarity) else null
     }
-    val finish = remember(rarity, holo) { holo?.finish ?: resolveFinish(rarity) }
+    // Zonas FIELES: el holo solo se aplica si hay MÁSCARA REAL de foil (confina el brillo a sus
+    // regiones exactas). Sin máscara → plana (NUNCA máscara procedimental, que desparrama por toda
+    // la carta e ignora las zonas marco/ilustración).
+    val finish = remember(rarity, holo) { holo?.finish ?: com.mineralord.tcg.core.designsystem.tilt.Finish.NONE }
     val holoMod = if (enabled) {
         modifier.holoAmbient(finish, holo?.mask, holo?.etch, holo?.foilCode ?: -1f, intensity)
     } else modifier

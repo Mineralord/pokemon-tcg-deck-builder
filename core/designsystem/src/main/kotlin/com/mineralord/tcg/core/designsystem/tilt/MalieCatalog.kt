@@ -41,12 +41,17 @@ object MalieCatalog {
     /**
      * Traduce el código de set INTERNO de la app al código de malie. Regla general: `pt` → `-`
      * (p. ej. `sv3pt5` → `sv3-5`); el resto es identidad (`sv1`, `sv2`, …). Casos especiales
-     * (promos, etc.) se añaden aquí explícitamente.
+     * (promos, renombres) se añaden aquí explícitamente.
+     *
+     * IMPORTANTE para EXPANSIONES FUTURAS: si el código interno de la app NO coincide con la clave de
+     * malie (ver índice: me1, me2, sv1..sv10, svbsp, …), añade aquí su mapeo para que sus comunes/
+     * infrecuentes obtengan el foil reverse (plateado) y el resto de rarezas su holo.
      */
     fun malieKey(appSetCode: String): String {
         val c = appSetCode.lowercase().trim()
         return when (c) {
             "svp" -> "svbsp"          // SV Black Star Promos
+            "pfl-la", "pfl" -> "me2"  // Llamaradas Fantasmales (código interno renombrado desde me2)
             else -> c.replace("pt", "-")
         }
     }

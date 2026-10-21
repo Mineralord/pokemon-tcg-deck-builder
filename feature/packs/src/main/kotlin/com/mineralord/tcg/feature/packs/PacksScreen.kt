@@ -3,6 +3,8 @@ package com.mineralord.tcg.feature.packs
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -15,6 +17,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -57,6 +61,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +71,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mineralord.tcg.core.designsystem.motion.AnimationCurves
+import com.mineralord.tcg.core.designsystem.tilt.Finish
+import com.mineralord.tcg.core.designsystem.tilt.Tilt
+import com.mineralord.tcg.core.designsystem.tilt.holoOverlay
+import com.mineralord.tcg.core.designsystem.tilt.tiltParallax
 import com.mineralord.tcg.engine.model.Rarity
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -275,7 +284,7 @@ private fun PackStage(
     val widthFrac by animateFloatAsState(
         targetValue = when (phase) {
             PackPhase.PREVIEW -> 0.58f
-            PackPhase.READY -> 0.68f
+            PackPhase.READY -> 0.84f
             PackPhase.TEARING -> 0.86f
         },
         animationSpec = tween(460, easing = AnimationCurves.EmphasizedDecelerate),
@@ -378,12 +387,11 @@ private fun PackStage(
                 Modifier.align(androidx.compose.ui.BiasAlignment(0f, -0.05f)).fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                PackArtBody(
-                    packArt = expansion.packArt, tear = tear.value, showFingerHint = false, hint = hint,
-                    modifier = Modifier
-                        .fillMaxWidth(widthFrac)
-                        .aspectRatio(0.62f)
-                        .graphicsLayer { cameraDistance = 20f * this.density },
+                // Sobre INTERACTIVO (como las cartas): se inclina al arrastrar con el dedo y luce el
+                // holo plateado realista (foil del envoltorio). Vuelve a su sitio al soltar.
+                InteractivePackArt(
+                    packArt = expansion.packArt, tear = tear.value, hint = hint,
+                    modifier = Modifier.fillMaxWidth(widthFrac).aspectRatio(0.62f),
                 )
                 Spacer(Modifier.height(28.dp))
                 // Botón AZUL FIJO (independiente del acento del sobre). Con sobres gratis disponibles
@@ -527,6 +535,54 @@ private enum class PackPhase { PREVIEW, READY, TEARING }
  * luz del rasgado, con un dedo-guía opcional. El [modifier] (tamaño, gesto/click, transformaciones)
  * lo aporta cada fase.
  */
+/**
+ * Sobre INTERACTIVO (fase READY): se inclina en 3D siguiendo el dedo (igual que las cartas) y lleva
+ * el holo PLATEADO realista del envoltorio foil. Al soltar, vuelve a su posición con un muelle suave.
+ * El holo es procedimental (FLAT_SILVER) porque el sobre no es una carta con máscara de TCGL.
+ */
+@Composable
+private fun InteractivePackArt(
+    packArt: Any,
+    tear: Float,
+    hint: Float,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val tiltX = remember { Animatable(0f) }
+    val tiltY = remember { Animatable(0f) }
+    val tilt = Tilt(tiltX.value, tiltY.value)
+    PackArtBody(
+        packArt = packArt, tear = tear, showFingerHint = false, hint = hint,
+        modifier = modifier
+            .tiltParallax(tilt)
+            .holoOverlay(tilt, Finish.REVERSE_HOLO, foilType = 0f, intensity = 0.85f)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.isNotEmpty()) {
+                            val p = pressed.first().position
+                            val w = size.width.toFloat().coerceAtLeast(1f)
+                            val h = size.height.toFloat().coerceAtLeast(1f)
+                            val tx = ((p.x / w) * 2f - 1f).coerceIn(-1f, 1f)
+                            val ty = ((p.y / h) * 2f - 1f).coerceIn(-1f, 1f)
+                            scope.launch { tiltX.snapTo(tx) }
+                            scope.launch { tiltY.snapTo(ty) }
+                        }
+                        if (event.changes.any { it.positionChanged() }) {
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                    val restSpring = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                    scope.launch { tiltX.animateTo(0f, restSpring) }
+                    scope.launch { tiltY.animateTo(0f, restSpring) }
+                }
+            },
+    )
+}
+
 @Composable
 private fun PackArtBody(
     packArt: Any,

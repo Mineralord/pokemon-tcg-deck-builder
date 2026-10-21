@@ -24,14 +24,29 @@ class HoloBitmaps(
     val foilCode: Float,
 )
 
-/** Mapea el `foil.type` de TCGL a un código para el shader (uFoilType). -1 = desconocido. */
-fun foilTypeCode(type: String?): Float = when (type?.uppercase()) {
-    "FLAT_SILVER" -> 0f
-    "SUN_PILLAR" -> 1f
-    "SV_HOLO" -> 2f
-    "SV_ULTRA" -> 3f
+/**
+ * Mapea el `foil.type` de TCGL a un código para el shader (uFoilType). -1 = desconocido.
+ * Acepta AMBOS formatos: el del manifiesto empaquetado (`FLAT_SILVER`, con guion) y el del export
+ * dinámico de malie (`FlatSilver`, CamelCase sin guion) — por eso se normaliza quitando los `_`.
+ * Sin esta normalización, las comunes/infrecuentes vía malie quedaban como -1 y el shader les pintaba
+ * arcoíris en lugar del plateado realista (FLAT_SILVER).
+ */
+fun foilTypeCode(type: String?): Float = when (type?.uppercase()?.replace("_", "")) {
+    "FLATSILVER" -> 0f
+    "SUNPILLAR" -> 1f
+    "SVHOLO" -> 2f
+    "SVULTRA" -> 3f
     else -> -1f
 }
+
+/**
+ * Código de foil para el shader forzando PLATEADO (FLAT_SILVER) en COMUNES e INFRECUENTES de
+ * CUALQUIER expansión (presente o futura): su reverse holo real es plateado, así que ignoramos el
+ * `foil.type` que reporte el catálogo (que a veces vendría como un tipo que saldría arcoíris) y
+ * garantizamos el plateado realista. Para el resto de rarezas, respeta el tipo real.
+ */
+private fun silverIfBasic(rarity: Rarity?, foilType: String?): Float =
+    if (rarity == Rarity.COMMON || rarity == Rarity.UNCOMMON) 0f else foilTypeCode(foilType)
 
 /**
  * Provee front + máscara de foil **bajo demanda**: lee un manifiesto de URLs empaquetado
@@ -81,16 +96,18 @@ object HoloAssets {
             val mask = cachedOrDownload(context, "$appSetCode/${number}_mask.png", foilUrl) ?: return@withContext null
             val etch = p.etch?.let { cachedOrDownload(context, "$appSetCode/${number}_etch.png", it) }
             val finish = resolveFinish(rarity, p.foilType, p.foilMask)
-            HoloBitmaps(front.asImageBitmap(), mask, etch, finish, foilTypeCode(p.foilType))
+            HoloBitmaps(front.asImageBitmap(), mask, etch, finish, silverIfBasic(rarity, p.foilType))
         }
 
-    /** Elige la impresión que corresponde a la rareza: comunes/infrecuentes = plana (NonFoil),
-     *  raras = holo/etched (no reverse). El orden de preferencia es por máscara de foil. */
+    /** Elige la impresión que corresponde a la rareza. Comunes/infrecuentes: preferimos la
+     *  REVERSE HOLO (brillo físico realista, como en el set 151) y solo caemos a la plana si no
+     *  existe; raras = holo/etched. El orden de preferencia es por máscara de foil. */
     private fun pickPrinting(prints: List<MalieCatalog.Printing>, rarity: Rarity?): MalieCatalog.Printing? {
         fun byMask(vararg masks: String) =
             masks.firstNotNullOfOrNull { m -> prints.firstOrNull { it.foilMask.equals(m, true) } }
         return when (resolveFinish(rarity)) {
-            Finish.NONE -> byMask("None") ?: prints.first()   // común: preferimos la plana
+            // Común/infrecuente: reverse holo (tiene capa foil) → brillo; plana solo como último recurso.
+            Finish.NONE -> byMask("Reverse", "Holo", "None") ?: prints.first()
             Finish.REVERSE_HOLO -> byMask("Reverse", "Holo", "None")
             else -> byMask("Etched", "Holo", "Reverse", "None")
         }
@@ -114,7 +131,7 @@ object HoloAssets {
             // Finish desde los metadatos de foil REALES (verdad de origen).
             val type = entry.optString("t", null)
             val finish = resolveFinish(rarity, type, entry.optString("k", null))
-            HoloBitmaps(front.asImageBitmap(), mask, etch, finish, foilTypeCode(type))
+            HoloBitmaps(front.asImageBitmap(), mask, etch, finish, silverIfBasic(rarity, type))
         }
     }
 

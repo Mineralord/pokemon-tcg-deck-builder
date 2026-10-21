@@ -259,6 +259,18 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     val giftsVm = androidx.lifecycle.viewmodel.compose.viewModel<GiftsViewModel>()
     val gifts by giftsVm.gifts.collectAsState()
     var giftsOpen by remember { mutableStateOf(false) }
+    // ---- Popup de novedades / changelog (botón ✉ mensajes) ----
+    var messagesOpen by remember { mutableStateOf(false) }
+    // Punto rojo del botón ✉: encendido hasta que el jugador abra las novedades de la versión actual.
+    // Se recuerda la última versión vista (local, por dispositivo).
+    val newsPrefs = remember { ctx.getSharedPreferences("news", android.content.Context.MODE_PRIVATE) }
+    val latestNews = remember { CHANGELOG.firstOrNull()?.version ?: "" }
+    var newsUnread by remember { mutableStateOf(newsPrefs.getString("seen", "") != latestNews) }
+    val openNews = {
+        messagesOpen = true
+        newsPrefs.edit().putString("seen", latestNews).apply()
+        newsUnread = false
+    }
     val giftMessage by giftsVm.message.collectAsState()
     androidx.compose.runtime.LaunchedEffect(giftMessage) {
         giftMessage?.let {
@@ -351,9 +363,10 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     fun goToPage(i: Int) { scope.launch { pager.animateScrollToPage(i) } }
 
     // Retroceso: cierra popup → cierra overlay → vuelve a Inicio si estás en otra página.
-    BackHandler(enabled = giftsOpen || menuOpen || overlay.isNotEmpty() || pager.currentPage != 0) {
+    BackHandler(enabled = giftsOpen || messagesOpen || menuOpen || overlay.isNotEmpty() || pager.currentPage != 0) {
         when {
             giftsOpen -> giftsOpen = false
+            messagesOpen -> messagesOpen = false
             menuOpen -> menuOpen = false
             overlay.isNotEmpty() -> back()
             else -> goToPage(0)
@@ -362,7 +375,7 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
 
     // Desenfoque del fondo mientras el menú lateral está abierto (se anima suavemente).
     val menuBlur by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (menuOpen || giftsOpen) 18.dp else 0.dp,
+        targetValue = if (menuOpen || giftsOpen || messagesOpen) 18.dp else 0.dp,
         animationSpec = androidx.compose.animation.core.tween(260),
         label = "menuBlur",
     )
@@ -401,6 +414,8 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
                         onOpenPack = { code -> packsDirectCode = code; push(Screen.PACKS) },
                         onGift = { giftsOpen = true },
                         giftCount = gifts.size,
+                        onMessages = openNews,
+                        newsUnread = newsUnread,
                         freePacks = freePacks,
                     )
                     1 -> CollectionScreen(
@@ -740,6 +755,8 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
             onClaim = { giftsVm.claim(it) },
             onDismiss = { giftsOpen = false },
         )
+
+        ChangelogSheet(visible = messagesOpen, onDismiss = { messagesOpen = false })
 
         MenuOverlay(
             visible = menuOpen,
