@@ -270,7 +270,16 @@ sealed interface EffectOp {
         val prompt: LocalizedText,
         val onlyDamaged: Boolean = false,
         val optional: Boolean = false,
+        /** Si es true, solo son elegibles los Pokémon que tengan una evolución disponible en TU mazo
+         *  (MT Evolución sv4-178, seguido de [EvolveChosenFromDeck]). */
+        val onlyEvolvableFromDeck: Boolean = false,
     ) : EffectOp
+
+    /**
+     * Para cada Pokémon CHOSEN (elegido por el [ChooseTarget] previo), busca en tu mazo una carta que
+     * evolucione de él y lo evoluciona (de la forma que ya hace el motor: conserva daño/Energía/
+     * Herramientas, limpia Condiciones Especiales); luego baraja el mazo (MT Evolución sv4-178). */
+    data object EvolveChosenFromDeck : EffectOp
     data class MoveEnergy(
         val from: Target,
         val to: Target,

@@ -218,8 +218,13 @@ class EffectInterpreter {
     private fun pendingFor(op: EffectOp, src: EffectSource, state: GameState): PendingDecision? =
         when (op) {
             is EffectOp.ChooseTarget -> {
+                val deck = state.sideState(src.actingSide).deck
+                fun hasEvolutionInDeck(p: PokemonInPlay) = deck.any {
+                    it is PokemonCard && (it.evolvesFrom == p.card.name.en || it.evolvesFrom == p.card.name.es)
+                }
                 val cands = targets(op.from, src, state, emptyList())
                     .filter { !op.onlyDamaged || it.damage > 0 }
+                    .filter { !op.onlyEvolvableFromDeck || hasEvolutionInDeck(it) }
                     .map { it.card.id }
                 // Elección ADITIVA de un ataque (optional) sin candidatos → saltar la op:
                 // el ataque ya hizo su daño base, solo se omite la parte dirigida.
@@ -767,6 +772,28 @@ class EffectInterpreter {
                 )
                 working = working.copy(lastRevealEnergyCount = energies.size)
                 EffectResult(working, listOf(GameEvent.DeckShuffled(src.actingSide)))
+            }
+            is EffectOp.EvolveChosenFromDeck -> {
+                // MT Evolución: para cada Pokémon elegido, busca su evolución en el mazo y lo evoluciona
+                // (conserva daño/Energía/Herramientas, limpia Condiciones); al terminar, baraja.
+                val side = src.actingSide
+                var deck = state.sideState(side).deck
+                var working = state
+                val events = mutableListOf<GameEvent>()
+                for (id in chosenIds) {
+                    val targetPip = working.sideState(side).allInPlay.firstOrNull { it.card.id == id } ?: continue
+                    val evo = deck.firstOrNull {
+                        it is PokemonCard && (it.evolvesFrom == targetPip.card.name.en || it.evolvesFrom == targetPip.card.name.es)
+                    } as? PokemonCard ?: continue
+                    deck = deck - evo
+                    working = updatePokemon(working, id) {
+                        it.copy(card = evo, evolutionStack = it.evolutionStack + it.card, statuses = emptySet(), turnsInPlay = 0)
+                    }
+                    events += GameEvent.Evolved(side, id, evo.id)
+                }
+                working = withPlayer(working, working.sideState(side).copy(deck = shuffle(deck)), side)
+                events += GameEvent.DeckShuffled(side)
+                EffectResult(working, events)
             }
             is EffectOp.CoinsPerEnergyDamage -> {
                 // Lanza una moneda por cada Energía [energyType] del origen; el daño al

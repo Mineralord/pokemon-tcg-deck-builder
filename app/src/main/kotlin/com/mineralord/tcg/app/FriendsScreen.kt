@@ -160,6 +160,8 @@ fun FriendsScreen(
     var tab by remember { mutableStateOf(FriendsTab.AMIGOS) }
     // Perfil abierto (al tocar una tarjeta de amigo). Null = hub con sus pestañas.
     var profile by remember { mutableStateOf<FriendUi?>(null) }
+    // Confirmación para acciones destructivas (eliminar amigo / rechazar solicitud): mensaje + acción.
+    var confirm by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     // Panel "Añadir amigo" (solo por ID de amigo; sin QR).
     var addOpen by remember { mutableStateOf(false) }
 
@@ -216,9 +218,9 @@ fun FriendsScreen(
                                 user, tab,
                                 onOpen = { profile = user },
                                 onAccept = { vm.accept(user.uid) },
-                                onReject = { vm.reject(user.uid) },
+                                onReject = { confirm = "¿Rechazar la solicitud de ${user.name}?" to { vm.reject(user.uid) } },
                                 onCancel = { vm.cancel(user.uid) },
-                                onRemove = { vm.remove(user.uid) },
+                                onRemove = { confirm = "¿Eliminar a ${user.name} de tus amigos?" to { vm.remove(user.uid) } },
                             )
                         }
                     }
@@ -241,6 +243,46 @@ fun FriendsScreen(
                 onSend = { vm.send(it) },
                 onClose = { vm.clearMessage(); addOpen = false },
             )
+        }
+
+        confirm?.let { (msg, action) ->
+            ConfirmDialog(
+                message = msg,
+                onConfirm = { action(); confirm = null },
+                onCancel = { confirm = null },
+            )
+        }
+    }
+}
+
+/** Diálogo de confirmación para acciones destructivas (eliminar amigo / rechazar solicitud). */
+@Composable
+private fun ConfirmDialog(message: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onCancel) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.86f)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Brush.verticalGradient(listOf(BarajasPalette.BgTop, BarajasPalette.BgBottom)))
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(message, color = BarajasPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                        .background(BarajasPalette.Hollow).border(1.dp, BarajasPalette.HollowBorder, RoundedCornerShape(14.dp))
+                        .clickable(onClick = onCancel).padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Cancelar", color = BarajasPalette.NavIcon, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                        .background(RejectRed).clickable(onClick = onConfirm).padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text("Confirmar", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp) }
+            }
         }
     }
 }

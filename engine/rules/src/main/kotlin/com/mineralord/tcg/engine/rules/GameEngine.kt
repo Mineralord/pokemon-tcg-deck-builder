@@ -264,6 +264,17 @@ class GameEngine(
         ).copy(hand = me.hand - (energy as Card))
         var working = withPlayer(state, updated).copy(energyAttachedThisTurn = true)
         val events = mutableListOf<GameEvent>(GameEvent.EnergyAttached(state.activeSide, energyId, toId))
+        // GANCHO: efecto PROPIO de la energía al unirla DESDE LA MANO (Energía Medicinal sv4-182 cura 30
+        // al Pokémon destino). Solo las energías unidas desde la mano pasan por aquí; las aceleradas por
+        // efectos (desde mazo/descarte) NO lo disparan, fiel al "cuando la unas de tu mano". SELF = destino.
+        (energy as? SpecialEnergy)?.effect?.let { effects[it] }?.let { onAttach ->
+            val res = interpreter.execute(
+                onAttach, EffectSource(state.activeSide, toId), working,
+                shuffle = { rng.shuffle(it) }, flip = { gatedFlip(state) },
+            )
+            working = res.state
+            events += res.events
+        }
         // Buddy Pulse (Minun): si el RIVAL del que une tiene en juego un Pokémon con esta habilidad (no
         // bloqueada) y además el aliado requerido (Plusle), pon N contadores de daño en el Pokémon recién
         // cargado. No acumula: se aplica una sola vez aunque haya varios portadores.

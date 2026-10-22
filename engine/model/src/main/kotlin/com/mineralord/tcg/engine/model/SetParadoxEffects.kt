@@ -1054,6 +1054,23 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     put(atkKey("sv4-5", "Arm Thrust Needle"), Effect(ops = listOf(
         EffectOp.PreventDamageNextTurn(Target.SELF, onlyFromAbility = true))))
 
+    // MT Evolución (Technical Machine: Evolution sv4-178): elige hasta 2 Pokémon de tu Banca y, por
+    // cada uno, busca su evolución en el mazo y evoluciónalo; luego baraja. (Es el ataque que concede
+    // esta Máquina Técnica al Pokémon equipado.)
+    put(atkKey("sv4-178", "Evolution"), Effect(ops = listOf(
+        EffectOp.ChooseTarget(
+            Target.OWN_BENCH, 2,
+            prompt("Elige hasta 2 Pokémon de tu Banca para evolucionar", "Choose up to 2 of your Benched Pokémon to evolve"),
+            optional = true, onlyEvolvableFromDeck = true,
+        ),
+        EffectOp.EvolveChosenFromDeck,
+    )))
+
+    // Energía Medicinal (sv4-182): GANCHO "efecto al unir energía DESDE LA MANO" (GameEngine.attachEnergy
+    // ejecuta el Effect de SpecialEnergy.effect con SELF = Pokémon destino). Cura 30 a ese Pokémon. La
+    // provisión de 1 Energía Incolora CONTINUA la da el mapeo (tipos vacío → Incolora), no este efecto.
+    put(EffectId("sv4-182"), Effect(ops = listOf(EffectOp.Heal(Target.SELF, Amount.Fixed(30)))))
+
     // Whirltide (Kingdra sv4-32): enseña las 6 primeras cartas; 60 de daño a 1 Pokémon rival por cada
     // Energía encontrada; descarta esas Energías y baraja el resto. Revelado + snipe por conteo.
     put(atkKey("sv4-32", "Whirltide"), Effect(ops = listOf(

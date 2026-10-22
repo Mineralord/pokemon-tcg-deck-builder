@@ -47,6 +47,14 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.17", "22 oct 2026",
+        listOf(
+            "Energía Medicinal: cura 30 de daño al unirla desde tu mano a un Pokémon.",
+            "La Máquina Técnica Evolución ya funciona (evoluciona hasta 2 Pokémon de tu Banca desde el mazo).",
+            "Confirmación al eliminar un amigo o rechazar una solicitud.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.16", "22 oct 2026",
         listOf(
             "Corregido un bloqueo al usar un ataque que exige un objetivo y no había ninguno válido (p. ej. Lado Ciego sin Pokémon rival dañado).",
