@@ -193,6 +193,21 @@ sealed interface PendingDecision {
         val topCard: CardId,
     ) : PendingDecision
 
+    /**
+     * Elige bloquear al rival jugar OBJETOS o PARTIDARIOS su próximo turno (Echoing Madness sv4-112).
+     * Se resuelve por el canal `chosen` con UN [CardId] centinela: [SUPPORTER_ID] (Partidarios) o
+     * [ITEM_ID] (Objetos).
+     */
+    data class ChooseTrainerBlock(
+        override val side: Side,
+        override val prompt: LocalizedText,
+    ) : PendingDecision {
+        companion object {
+            val SUPPORTER_ID = CardId("trainerblock:SUPPORTER")
+            val ITEM_ID = CardId("trainerblock:ITEM")
+        }
+    }
+
     data class AttachFromRevealed(
         override val side: Side,
         override val prompt: LocalizedText,

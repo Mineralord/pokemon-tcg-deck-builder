@@ -503,6 +503,9 @@ sealed interface EffectOp {
         val target: Target,
         val coinFlip: Boolean = false,
         val onlyFromBasic: Boolean = false,
+        /** Si es true, solo evita el daño de ataques de Pokémon que tengan una Habilidad, excepto los
+         * de su misma especie (Simisage — Púa Empujón): fija [PokemonInPlay.preventDamageFromAbilityOnTurn]. */
+        val onlyFromAbility: Boolean = false,
     ) : EffectOp
 
     /**
@@ -593,6 +596,13 @@ sealed interface EffectOp {
      * (Mountain Scrounging sv4-82). Pausa con [PendingDecision.LookTopDecide]. Si el mazo está vacío,
      * no hace nada (no pausa). */
     data object LookTopKeepOrDiscardDraw : EffectOp
+
+    /**
+     * Elige OBJETOS o PARTIDARIOS; durante el próximo turno del rival no podrá jugar esa categoría
+     * desde su mano (Echoing Madness sv4-112). Pausa con [PendingDecision.ChooseTrainerBlock]; al
+     * resolver fija los flags [GameState.blockedTrainerSide]/[blockedTrainerIsSupporter]/
+     * [blockedTrainerOnTurn] en el rival para `turn + 1`. */
+    data object BlockOpponentTrainerCategoryNextTurn : EffectOp
 
     /**
      * El rival enseña su mano y TÚ pones 1 Pokémon que encuentres allí en la parte INFERIOR

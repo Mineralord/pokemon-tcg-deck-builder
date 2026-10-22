@@ -88,9 +88,7 @@ class ParadoxAttackCoverageTest {
         // el test falla para obligar a revisar la cobertura. Drawareness pasó a estar cubierto
         // (descarte mano→descarte + DrawUntil 5).
         val unsupported = setOf(
-            "sv4-5 · Arm Thrust Needle",
             "sv4-32 · Whirltide",
-            "sv4-112 · Echoing Madness",
         )
         assertEquals(
             unsupported, gaps,

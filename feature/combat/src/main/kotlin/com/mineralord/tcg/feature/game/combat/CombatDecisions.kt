@@ -98,6 +98,8 @@ fun DecisionPanel(
                 AttachPairing(decision, cardOf, onResolve)
             is PendingDecision.LookTopDecide ->
                 LookTopDecidePanel(decision, cardOf, onResolve)
+            is PendingDecision.ChooseTrainerBlock ->
+                ChooseTrainerBlockPanel(onResolve)
             is PendingDecision.PlaceCounters ->
                 CounterSpread(decision, cardOf, onResolve)
             is PendingDecision.MoveEnergy -> {
@@ -497,6 +499,41 @@ private fun LookTopDecidePanel(
                 }
             }
         }
+    }
+}
+
+/**
+ * Echoing Madness: elige qué categoría de Entrenador no podrá jugar el rival su próximo turno —
+ * Objetos o Partidarios. Dos tarjetas de acción grandes con glifo e icono, en [BarajasPalette].
+ */
+@Composable
+private fun ChooseTrainerBlockPanel(onResolve: (List<CardId>) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        TrainerBlockOption(
+            glyph = "🧪", label = "Objetos", modifier = Modifier.weight(1f),
+        ) { onResolve(listOf(PendingDecision.ChooseTrainerBlock.ITEM_ID)) }
+        TrainerBlockOption(
+            glyph = "👤", label = "Partidarios", modifier = Modifier.weight(1f),
+        ) { onResolve(listOf(PendingDecision.ChooseTrainerBlock.SUPPORTER_ID)) }
+    }
+}
+
+@Composable
+private fun TrainerBlockOption(glyph: String, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(BarajasPalette.Surface)
+            .border(1.dp, BarajasPalette.HairlineBorder, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(glyph, fontSize = 26.sp)
+        Spacer(Modifier.height(8.dp))
+        Text(label, color = BarajasPalette.Ink, fontWeight = FontWeight.Black, fontSize = 14.sp)
+        Spacer(Modifier.height(2.dp))
+        Text("Bloquear al rival", color = BarajasPalette.Muted, fontSize = 11.sp)
     }
 }
 

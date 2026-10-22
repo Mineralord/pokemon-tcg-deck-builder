@@ -2,6 +2,14 @@
 
 Runbook curado. Solo guía recurrente de alto valor.
 
+## 🈯 NOMBRES EN ESPAÑOL (REGLA PERMANENTE del dueño, 21 Oct 2026)
+**JAMÁS usar el nombre en inglés de ataques/habilidades/cartas** — ni en la conversación ni en el
+changelog in-app (Novedades). Usar siempre el nombre oficial en ESPAÑOL (campo `es.ataques[].name` /
+`es.habilidades[].name` / `es.nombre` del dataset `cards/.../paradox-rift.json` etc.). Ej.: Turbo
+Energize → **Turboenergía**, Drawareness → **Robo a Conciencia**, Mountain Scrounging → **Búsqueda de
+Montaña**, Echoing Madness → **Locura Resonante**. El `atkKey`/registro interno sigue en inglés (es el
+id del motor), pero lo que VE o LEE el dueño va en español.
+
 ## 🚀 PUBLICAR NUEVA VERSIÓN (REGLA PERMANENTE del dueño, 20 Oct 2026)
 **SECUENCIA DE versionName (REGLA ESTRICTA del dueño, 20 Oct 2026):** la numeración sigue 0.2.8 → 0.2.9 → **0.2.10 → 0.2.11 → 0.2.12 …** (el tercer número crece sin límite: 0.2.10 NO es menor que 0.2.9). **JAMÁS saltar a 0.3.x** (ni 0.3.0) hasta que el dueño lo pida EXPLÍCITAMENTE. `versionCode` sigue +1 cada vez.
 **Cuando el dueño pida "publicar/sacar nueva versión", Claude SIEMPRE hace los pasos 1 y 3; el dueño sube la APK a Drive.**

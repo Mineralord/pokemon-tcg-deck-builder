@@ -127,6 +127,18 @@ class EffectInterpreter {
             is PendingDecision.PlaceCounters -> applyPlaceCounters(d, chosen, cleared)
             is PendingDecision.AttachFromRevealed -> applyAttachFromRevealed(d, chosen, cleared, shuffle, flip)
             is PendingDecision.LookTopDecide -> applyLookTopDecide(d, chosen, cleared)
+            is PendingDecision.ChooseTrainerBlock -> {
+                // Echoing Madness: bloquea al RIVAL jugar la categoría elegida su próximo turno (turn+1).
+                val isSupporter = chosen.firstOrNull() != PendingDecision.ChooseTrainerBlock.ITEM_ID
+                EffectResult(
+                    cleared.copy(
+                        blockedTrainerSide = src.actingSide.other(),
+                        blockedTrainerIsSupporter = isSupporter,
+                        blockedTrainerOnTurn = cleared.turn + 1,
+                    ),
+                    emptyList(),
+                )
+            }
             is PendingDecision.ChooseTargets -> EffectResult(cleared, emptyList())
             // Hackeo Genómico: la resuelve GameEngine (re-ejecuta el ataque); nunca llega aquí.
             is PendingDecision.ChooseAttack -> EffectResult(cleared, emptyList())
@@ -508,6 +520,13 @@ class EffectInterpreter {
                     topCard = top.id,
                 )
             }
+            is EffectOp.BlockOpponentTrainerCategoryNextTurn -> PendingDecision.ChooseTrainerBlock(
+                src.actingSide,
+                LocalizedText(
+                    "Elige qué no podrá jugar el rival su próximo turno",
+                    "Choose what your opponent can't play next turn",
+                ),
+            )
             else -> null
         }
 
@@ -733,6 +752,7 @@ class EffectInterpreter {
                 )
             }
             is EffectOp.LookTopKeepOrDiscardDraw -> EffectResult(state, emptyList()) // mazo vacío: no hace nada
+            is EffectOp.BlockOpponentTrainerCategoryNextTurn -> EffectResult(state, emptyList()) // siempre pausa; no llega aquí
             is EffectOp.CoinsPerEnergyDamage -> {
                 // Lanza una moneda por cada Energía [energyType] del origen; el daño al
                 // Activo rival es damagePerHeads × caras. Emite un CoinFlipped por tirada.
@@ -853,8 +873,11 @@ class EffectInterpreter {
                     var working = state
                     for (r in targets(op.target, src, state, chosenIds)) {
                         working = updatePokemon(working, r.card.id) {
-                            if (op.onlyFromBasic) it.copy(preventBasicDamageOnTurn = state.turn + 1)
-                            else it.copy(preventDamageOnTurn = state.turn + 1)
+                            when {
+                                op.onlyFromAbility -> it.copy(preventDamageFromAbilityOnTurn = state.turn + 1)
+                                op.onlyFromBasic -> it.copy(preventBasicDamageOnTurn = state.turn + 1)
+                                else -> it.copy(preventDamageOnTurn = state.turn + 1)
+                            }
                         }
                     }
                     EffectResult(working, events)

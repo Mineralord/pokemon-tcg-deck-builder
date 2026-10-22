@@ -1044,4 +1044,13 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     // Mountain Scrounging (sv4-82): mira la carta superior; puedes ponerla en tu mano, o descartarla
     // y robar una carta. El jugador decide en un panel (carta revelada + dos botones del design system).
     put(atkKey("sv4-82", "Mountain Scrounging"), Effect(ops = listOf(EffectOp.LookTopKeepOrDiscardDraw)))
+
+    // Echoing Madness (sv4-112): elige Objetos o Partidarios; el rival no podrá jugar esa categoría
+    // su próximo turno. Panel de dos acciones en el design system oficial.
+    put(atkKey("sv4-112", "Echoing Madness"), Effect(ops = listOf(EffectOp.BlockOpponentTrainerCategoryNextTurn)))
+
+    // Arm Thrust Needle (Simisage sv4-5): durante el próximo turno del rival, evita todo el daño a este
+    // Pokémon de ataques de Pokémon que tengan una Habilidad, excepto los de su misma especie.
+    put(atkKey("sv4-5", "Arm Thrust Needle"), Effect(ops = listOf(
+        EffectOp.PreventDamageNextTurn(Target.SELF, onlyFromAbility = true))))
 }

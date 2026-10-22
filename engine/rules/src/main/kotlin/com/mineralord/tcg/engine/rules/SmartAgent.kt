@@ -232,6 +232,9 @@ class SmartAgent(
         }
         // Mountain Scrounging: la IA se queda la carta superior (lista no vacía = a la mano).
         is PendingDecision.LookTopDecide -> GameIntent.ResolveDecision(listOf(decision.topCard))
+        // Echoing Madness: la IA bloquea Partidarios (suelen ser más impactantes que los Objetos).
+        is PendingDecision.ChooseTrainerBlock ->
+            GameIntent.ResolveDecision(listOf(PendingDecision.ChooseTrainerBlock.SUPPORTER_ID))
     }
 
     /**

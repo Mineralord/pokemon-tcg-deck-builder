@@ -262,6 +262,11 @@ private fun PendingDecision.toDto(frame: (Side) -> Side = { it }): PendingDecisi
     is PendingDecision.LookTopDecide -> PendingDecisionDto(
         DecisionKindDto.SEARCH_CARDS, frame(side).name, prompt.es, prompt.en, listOf(topCard.raw), 1,
     )
+    // Render-only: elección Objeto/Partidario (centinelas). El host resuelve con ChooseTrainerBlock.
+    is PendingDecision.ChooseTrainerBlock -> PendingDecisionDto(
+        DecisionKindDto.CHOOSE_TARGETS, frame(side).name, prompt.es, prompt.en,
+        listOf(PendingDecision.ChooseTrainerBlock.SUPPORTER_ID.raw, PendingDecision.ChooseTrainerBlock.ITEM_ID.raw), 1,
+    )
 }
 
 // ----------------------------------------------------------------- de DTO

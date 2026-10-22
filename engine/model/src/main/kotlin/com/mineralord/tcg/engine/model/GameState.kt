@@ -57,6 +57,12 @@ data class PokemonInPlay(
      */
     val preventBasicDamageOnTurn: Int? = null,
     /**
+     * Si no es null, número de turno durante el cual se EVITA el daño a este Pokémon SOLO de ataques
+     * de Pokémon que tengan una Habilidad, EXCEPTO los de su misma especie (Simisage — Púa Empujón
+     * sv4-5: "…por ataques de Pokémon que tengan una habilidad, excepto cualquier Simisage"). Se fija
+     * a [GameState.turn] + 1; se comprueba en [GameEngine.attack]. Auto-expira. */
+    val preventDamageFromAbilityOnTurn: Int? = null,
+    /**
      * Si no es null, número de turno durante el cual este Pokémon "refleja" el daño: si
      * resulta dañado por un ataque rival (incluso si queda Fuera de Combate), el Atacante
      * recibe daño crudo igual al infligido a este Pokémon (Mewtwo — Barrera Reflectante).
@@ -265,6 +271,14 @@ data class GameState(
      */
     val coinsAsTailsSide: Side? = null,
     val coinsAsTailsOnTurn: Int? = null,
+    /**
+     * Echoing Madness (sv4-112): durante el próximo turno del rival, el lado [blockedTrainerSide] no
+     * puede jugar cartas de la categoría elegida desde su mano ([blockedTrainerIsSupporter] = true →
+     * Partidarios; false → Objetos) mientras sea SU turno ([blockedTrainerOnTurn]). Lo comprueba
+     * GameEngine.playTrainer; expira por el guard de turno (no persiste más allá). */
+    val blockedTrainerSide: Side? = null,
+    val blockedTrainerIsSupporter: Boolean? = null,
+    val blockedTrainerOnTurn: Int? = null,
     /**
      * Incendiary Song (Skeledirge ex sv4-137): durante el turno [attackBonusThisTurnOnTurn] del lado
      * [attackBonusThisTurnSide], los ataques de ese jugador hacen [attackBonusThisTurnAmount] de daño

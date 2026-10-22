@@ -639,7 +639,12 @@ class GameEngine(
                 events += GameEvent.CoinFlipped(foeSide, heads)
                 heads
             }
-        val damagePrevented = energyParityShield || exVShield || confusedCoinShield ||
+        // Púa Empujón (Simisage): evita el daño de atacantes que tengan una Habilidad, salvo los de su
+        // misma especie ("excepto cualquier Simisage").
+        val abilityShield = defender.preventDamageFromAbilityOnTurn == state.turn &&
+            attacker.card.abilities.isNotEmpty() &&
+            attacker.card.name.en != defender.card.name.en
+        val damagePrevented = energyParityShield || exVShield || confusedCoinShield || abilityShield ||
             defender.preventDamageOnTurn == state.turn ||
             (defender.preventBasicDamageOnTurn == state.turn && attacker.card.isBasic)
         val finalAmount = if (dmg.finalAmount > 0 && (ignoresDefEffects || !damagePrevented)) {
@@ -778,6 +783,16 @@ class GameEngine(
         }
         if (kind is TrainerKind.Supporter && state.supporterPlayedThisTurn) {
             return EngineResult.reject(state, "Ya jugaste un Apoyo este turno")
+        }
+        // Echoing Madness: el rival bloqueó esta categoría para tu turno actual.
+        if (state.blockedTrainerSide == state.activeSide && state.blockedTrainerOnTurn == state.turn) {
+            val blockSupporter = state.blockedTrainerIsSupporter
+            if (blockSupporter == true && kind is TrainerKind.Supporter) {
+                return EngineResult.reject(state, "No puedes jugar Partidarios este turno (efecto del rival)")
+            }
+            if (blockSupporter == false && kind is TrainerKind.Item) {
+                return EngineResult.reject(state, "No puedes jugar Objetos este turno (efecto del rival)")
+            }
         }
         val effect = effects[card.effect]
             ?: return EngineResult.reject(state, "Esta carta aún no tiene efecto implementado")
@@ -1102,6 +1117,9 @@ class GameEngine(
         is PendingDecision.AttachFromRevealed -> null
         // LookTopDecide: vacío = descartar+robar, no vacío = a la mano; ambos válidos.
         is PendingDecision.LookTopDecide -> null
+        // ChooseTrainerBlock: exactamente 1 categoría (centinela Objeto/Partidario).
+        is PendingDecision.ChooseTrainerBlock ->
+            if (chosen.size == 1) null else "Debes elegir Objetos o Partidarios"
         // ChooseEnergyType: exactamente 1 tipo, y debe estar entre los candidatos.
         is PendingDecision.ChooseEnergyType ->
             when {

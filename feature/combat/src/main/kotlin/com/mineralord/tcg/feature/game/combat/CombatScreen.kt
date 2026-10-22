@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -510,16 +511,31 @@ fun CombatScreen(
         // Decisión pendiente del jugador: entra/sale deslizando desde abajo (retiene su
         // contenido durante la salida para no cortar la animación).
         val decisionInter = state.interaction?.takeIf { it.side == Side.PLAYER }
+        // "Une energías a tus Pokémon": se resuelve ARRASTRANDO sobre el tablero real (no con popup).
+        val attachDec = decisionInter?.decision as? com.mineralord.tcg.engine.model.PendingDecision.AttachFromRevealed
         var lastDecision by remember { mutableStateOf(decisionInter?.decision) }
         if (decisionInter != null) lastDecision = decisionInter.decision
         MotionPanel(
-            visible = decisionInter != null,
+            // Oculta el popup cuando la decisión se resuelve por arrastre al tablero.
+            visible = decisionInter != null && attachDec == null,
             edge = MotionEdge.Bottom,
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             lastDecision?.let { dec ->
-                DecisionPanel(decision = dec, cardOf = { id -> vm.card(id) }, onResolve = { vm.onResolve(it) })
+                if (dec !is com.mineralord.tcg.engine.model.PendingDecision.AttachFromRevealed) {
+                    DecisionPanel(decision = dec, cardOf = { id -> vm.card(id) }, onResolve = { vm.onResolve(it) })
+                }
             }
+        }
+        // Capa de arrastre energías→Pokémon del tablero (Hidroaterrizaje y familia).
+        if (attachDec != null) {
+            AttachEnergyOnBoard(
+                decision = attachDec,
+                bi = bi,
+                cardOf = { id -> vm.card(id) },
+                onResolve = { vm.onResolve(it) },
+                modifier = Modifier.matchParentSize(),
+            )
         }
 
         // Inspector de zona (descartes): diálogo Motion (scrim fundido + contenido con pop).
@@ -873,6 +889,12 @@ private class CombatBoardInteraction {
     var benchDragCard by mutableStateOf<Card?>(null)
     var benchDragPos by mutableStateOf(Offset.Zero)
     var pendingPlay by mutableStateOf<Card?>(null)
+    // Decisión "une energías a tus Pokémon" (Hidroaterrizaje y familia): se ARRASTRAN las energías
+    // reveladas directamente sobre los Pokémon reales del tablero (sin popup). Pares ya colocados +
+    // energía que se arrastra ahora + su posición (coords de raíz).
+    val attachPairs = mutableStateListOf<Pair<CardId, CardId>>()
+    var attachEnergyDrag by mutableStateOf<Card?>(null)
+    var attachDragPos by mutableStateOf(Offset.Zero)
     var handFocus by mutableStateOf<HandCat?>(null)
     var handFocusNonce by mutableStateOf(0)
     val anchorBounds = mutableStateMapOf<CardZone, Rect>()
@@ -961,6 +983,11 @@ private fun MatchLayer(
         bi.centerBounds?.contains(bi.dragPos) == true
     val activeSetupHot = inSetup && dragging is PokemonCard && dragging.isBasic &&
         bi.activeSlotBounds?.contains(bi.dragPos) == true
+    // Pokémon válidos para soltar una Energía de la decisión "une energías a tus Pokémon": se
+    // resaltan mientras arrastras una energía revelada (Hidroaterrizaje y familia).
+    val attachBench = (state.interaction?.takeIf { it.side == Side.PLAYER }?.decision
+        as? com.mineralord.tcg.engine.model.PendingDecision.AttachFromRevealed)?.benchCandidates ?: emptyList()
+    fun attachHot(id: CardId?) = bi.attachEnergyDrag != null && id != null && id in attachBench
 
     // Panel central (soltar Entrenadores): captura límites + glow al sobrevolar.
     Box(
@@ -1040,7 +1067,7 @@ private fun MatchLayer(
             me.active,
             selected = false,
             glow = me.active?.card?.id?.let { vm.abilityGlow(it) },
-            highlighted = activeSetupHot ||
+            highlighted = activeSetupHot || attachHot(me.active?.card?.id) ||
                 (hoverTargetId != null && hoverTargetId == me.active?.card?.id) ||
                 (bi.retreatMode && bi.benchDragCard != null && bi.activeSlotBounds?.contains(bi.benchDragPos) == true),
             onTap = {
@@ -1064,7 +1091,7 @@ private fun MatchLayer(
                 FieldCard(
                     pip,
                     glow = vm.abilityGlow(pip.card.id),
-                    highlighted = mustPromote || (hoverTargetId == pip.card.id),
+                    highlighted = mustPromote || attachHot(pip.card.id) || (hoverTargetId == pip.card.id),
                     onTap = {
                         when {
                             inSetup -> vm.toggleBench(pip.card.id)
@@ -1397,6 +1424,102 @@ private fun startPlay(card: Card, state: GameState, vm: CombatSceneController): 
 // -------------------------------------------------------------- Zonas colocadas
 
 /** Un Pokémon en su caja: la carta LLENA la caja + HP/energía/estados superpuestos. */
+/**
+ * Resuelve "une energías a tus Pokémon" (Hidroaterrizaje y familia) ARRASTRANDO cada Energía revelada
+ * directamente sobre los Pokémon del tablero real — sin popup, fiel a Pokémon TCG Live. Reutiliza
+ * [CombatBoardInteraction.targetBounds] (bounds en coords de raíz de cada Pokémon en juego) para el
+ * hit-test del soltar; los Pokémon válidos se resaltan durante el arrastre (en [FieldCard]). Diseño en
+ * el design system oficial ([com.mineralord.tcg.core.designsystem.BarajasPalette]).
+ */
+@Composable
+private fun AttachEnergyOnBoard(
+    decision: com.mineralord.tcg.engine.model.PendingDecision.AttachFromRevealed,
+    bi: CombatBoardInteraction,
+    cardOf: (CardId) -> Card?,
+    onResolve: (List<CardId>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val palette = com.mineralord.tcg.core.designsystem.BarajasPalette
+    LaunchedEffect(decision) { bi.attachPairs.clear(); bi.attachEnergyDrag = null }
+    val placed = bi.attachPairs.map { it.first }.toSet()
+    val remaining = decision.energyCandidates.filter { it !in placed }
+    val full = bi.attachPairs.size >= decision.maxAttach
+
+    fun targetUnder(pos: Offset): CardId? =
+        decision.benchCandidates.firstOrNull { id -> bi.targetBounds[id]?.contains(pos) == true }
+
+    Box(modifier) {
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                "Arrastra las energías a tus Pokémon · ${bi.attachPairs.size}/${decision.maxAttach}",
+                color = palette.Ink, fontWeight = FontWeight.Black, fontSize = 12.sp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(palette.Surface)
+                    .padding(horizontal = 12.dp, vertical = 5.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                remaining.take(8).forEach { id ->
+                    val card = cardOf(id)
+                    var coords by remember(id) { mutableStateOf<LayoutCoordinates?>(null) }
+                    Box(
+                        Modifier.width(42.dp).aspectRatio(CombatTheme.CardAspect)
+                            .onGloballyPositioned { coords = it }
+                            .graphicsLayer { alpha = if (bi.attachEnergyDrag?.id == id) 0.3f else 1f }
+                            .pointerInput(id, full) {
+                                if (full) return@pointerInput
+                                detectDragGestures(
+                                    onDragStart = { local -> coords?.let { bi.attachEnergyDrag = card; bi.attachDragPos = it.localToRoot(local) } },
+                                    onDrag = { change, _ -> change.consume(); coords?.let { bi.attachDragPos = it.localToRoot(change.position) } },
+                                    onDragEnd = {
+                                        val t = targetUnder(bi.attachDragPos)
+                                        if (t != null && bi.attachPairs.size < decision.maxAttach) bi.attachPairs.add(id to t)
+                                        bi.attachEnergyDrag = null
+                                    },
+                                    onDragCancel = { bi.attachEnergyDrag = null },
+                                )
+                            },
+                    ) { CombatCard(imageUrl = card?.artwork?.small(true), card = card, modifier = Modifier.fillMaxSize()) }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AttachTrayButton("Listo", listOf(palette.SaveGradient[0], palette.SaveGradient[1])) {
+                    onResolve(bi.attachPairs.flatMap { listOf(it.first, it.second) })
+                }
+                if (bi.attachPairs.isNotEmpty()) {
+                    AttachTrayButton("Deshacer", listOf(palette.Hollow, palette.Hollow)) {
+                        bi.attachPairs.removeAt(bi.attachPairs.size - 1)
+                    }
+                }
+            }
+        }
+        // Fantasma del arrastre: la energía sigue al dedo por encima de todo.
+        bi.attachEnergyDrag?.let { card ->
+            Box(
+                Modifier.graphicsLayer {
+                    translationX = bi.attachDragPos.x - 21.dp.toPx()
+                    translationY = bi.attachDragPos.y - 29.dp.toPx()
+                    alpha = 0.92f
+                }.width(42.dp).aspectRatio(CombatTheme.CardAspect),
+            ) { CombatCard(imageUrl = card.artwork.small(true), card = card, modifier = Modifier.fillMaxSize()) }
+        }
+    }
+}
+
+@Composable
+private fun AttachTrayButton(label: String, gradient: List<androidx.compose.ui.graphics.Color>, onClick: () -> Unit) {
+    val palette = com.mineralord.tcg.core.designsystem.BarajasPalette
+    Box(
+        Modifier.clip(RoundedCornerShape(12.dp))
+            .background(androidx.compose.ui.graphics.Brush.horizontalGradient(gradient))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 9.dp),
+    ) { Text(label, color = palette.Ink, fontWeight = FontWeight.Black, fontSize = 12.sp) }
+}
+
 @Composable
 private fun FieldCard(
     pip: PokemonInPlay?,
