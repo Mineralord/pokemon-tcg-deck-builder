@@ -47,6 +47,12 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.16", "22 oct 2026",
+        listOf(
+            "Corregido un bloqueo al usar un ataque que exige un objetivo y no había ninguno válido (p. ej. Lado Ciego sin Pokémon rival dañado).",
+        ),
+    ),
+    ChangeEntry(
         "0.2.15", "22 oct 2026",
         listOf(
             "Las Máquinas Técnicas funcionan: desbloquean su ataque en el Pokémon equipado (arriba de sus ataques) y se descartan al final del turno.",

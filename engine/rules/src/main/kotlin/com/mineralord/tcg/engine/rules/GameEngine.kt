@@ -757,6 +757,14 @@ class GameEngine(
         working = handleKnockouts(working, foeSide, events, byAttack = true, extraPrizes = extraPrizes)
         working = handleKnockouts(working, state.activeSide, events, byAttack = true)
 
+        // Si el efecto del ataque dejó una elección de objetivo SIN candidatos (p. ej. Lado Ciego sin
+        // ningún Pokémon rival dañado), el ataque "no hace nada" más: se descarta esa decisión para no
+        // bloquear el turno (a diferencia de los Entrenadores, el ataque SÍ se realizó y el turno acaba).
+        if (working.interaction?.decision.let { it is PendingDecision.ChooseTargets && it.candidates.isEmpty() }) {
+            working = working.copy(interaction = null)
+            pending = emptyList()
+        }
+
         if (working.isOver) return EngineResult(working.copy(interaction = null), events, pending = pending)
 
         // Si el efecto dejó una decisión pendiente (o un Regalo Fortuito de Chansey por resolver),
