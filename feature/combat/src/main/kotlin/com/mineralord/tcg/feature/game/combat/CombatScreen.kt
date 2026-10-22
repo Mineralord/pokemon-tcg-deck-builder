@@ -80,6 +80,7 @@ import com.mineralord.tcg.engine.model.EnergyCard
 import com.mineralord.tcg.engine.model.GameState
 import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonInPlay
+import com.mineralord.tcg.engine.model.usableAttacks
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.TrainerCard
 import androidx.compose.animation.core.LinearEasing
@@ -679,7 +680,7 @@ fun CombatScreen(
                                     .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                                     .background(Color(0xFFE3EEF4))
                                     .verticalScroll(rememberScrollState()),
-                            ) { PokemonDetailSheet(inspectedPip) }
+                            ) { PokemonDetailSheet(inspectedPip, onToolTap = { inspect = it }) }
                         }
                     } else if (stadiumUsable) {
                         // Estadio con acción usable (Camino de Bicis): elegir Energía Básica a descartar.
@@ -1005,7 +1006,7 @@ private fun MatchLayer(
     opp.bench.forEachIndexed { i, pip ->
         BoardGeometry.OppBenchSlots.getOrNull(i)?.let { slot ->
             Box(Modifier.place(slot, boardW, boardH)) {
-                FieldCard(pip, faceDown = faceDownOpp, glow = vm.abilityGlow(pip.card.id), onTap = { onInspect(pip.card) })
+                FieldCard(pip, faceDown = faceDownOpp, glow = vm.abilityGlow(pip.card.id), onTap = { onInspect(pip.card) }, onToolTap = { onInspect(it) })
             }
         }
     }
@@ -1014,7 +1015,7 @@ private fun MatchLayer(
         Modifier.place(BoardGeometry.OppActive, boardW, boardH)
             .graphicsLayer { translationY = lungeOpp.dp.toPx(); translationX = shakeOpp.dp.toPx() },
     ) {
-        FieldCard(opp.active, faceDown = faceDownOpp, glow = opp.active?.card?.id?.let { vm.abilityGlow(it) }, onTap = { opp.active?.let { onInspect(it.card) } })
+        FieldCard(opp.active, faceDown = faceDownOpp, glow = opp.active?.card?.id?.let { vm.abilityGlow(it) }, onTap = { opp.active?.let { onInspect(it.card) } }, onToolTap = { onInspect(it) })
     }
     // Premios / mazo / descarte rival.
     Box(Modifier.place(BoardGeometry.OppPrizes, boardW, boardH)) {
@@ -1078,6 +1079,7 @@ private fun MatchLayer(
                     else -> me.active?.let { onInspect(it.card) }
                 }
             },
+            onToolTap = { onInspect(it) },
         )
         // Glow azul "listo para atacar": el Activo tiene energía suficiente para algún ataque legal.
         if (activeCanAttack) PersistentGlow(AbilityGlowVisuals.Playable, Modifier.matchParentSize(), edgeOnly = true)
@@ -1110,6 +1112,7 @@ private fun MatchLayer(
                         }
                         bi.benchDragCard = null; bi.retreatMode = false
                     },
+                    onToolTap = { onInspect(it) },
                 )
             }
         }
@@ -1533,6 +1536,7 @@ private fun FieldCard(
     onDragStart: (Offset) -> Unit = {},
     onDrag: (Offset) -> Unit = {},
     onDragEnd: () -> Unit = {},
+    onToolTap: (Card) -> Unit = {},
 ) {
     var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Box(
@@ -1579,7 +1583,7 @@ private fun FieldCard(
             if (glow != null) AbilityGlowAura(glow, Modifier.matchParentSize())
             // Herramienta Pokémon anexada: como en TCG Live, una mini-carta apoyada ENCIMA del Pokémon,
             // en el lado izquierdo y a ~1/3 de altura, solapando el arte (con sombra). Máx. 1 (regla).
-            pip.attachedTools.forEach { ToolPeek(it) }
+            pip.attachedTools.forEach { ToolPeek(it, onClick = { onToolTap(it) }) }
             HpPill(pip.remainingHp, pip.card.hp, Modifier.align(Alignment.TopEnd).padding(2.dp))
             if (pip.attachedEnergy.isNotEmpty()) {
                 AttachedEnergyRow(pip, Modifier.align(Alignment.BottomEnd).padding(3.dp))
@@ -1623,7 +1627,7 @@ private fun BoxScope.AttachedEnergyRow(pip: PokemonInPlay, modifier: Modifier = 
  * "VISTA DE ESTADIO Y HERRAMIENTA" (la Tool cubre el borde izquierdo-superior del Pokémon).
  */
 @Composable
-private fun BoxScope.ToolPeek(tool: Card) {
+private fun BoxScope.ToolPeek(tool: Card, onClick: () -> Unit = {}) {
     CombatCard(
         imageUrl = tool.artwork.small(true),
         contentDescription = tool.name.es,
@@ -1632,6 +1636,8 @@ private fun BoxScope.ToolPeek(tool: Card) {
             .align(Alignment.CenterStart)
             .fillMaxWidth(0.42f)
             .aspectRatio(CombatTheme.CardAspect)
+            // Tocar la herramienta la abre en el visor de carta.
+            .clickable(onClick = onClick)
             .graphicsLayer {
                 // Izquierda y algo por encima del centro; asoma ~10% por el borde izquierdo.
                 translationX = -size.width * 0.10f
@@ -1909,7 +1915,7 @@ private fun ActiveActions(
                 PassiveAbilityPanel(ability, type, finish)
             }
         }
-        pip.card.attacks.forEach { atk ->
+        pip.usableAttacks.forEach { atk ->
             AttackPanel(
                 attack = atk,
                 type = type,
@@ -1988,10 +1994,10 @@ private fun AttackSheet(
             Spacer(Modifier.weight(1f))
             Text("✕", color = CombatTheme.Muted, fontSize = 18.sp, modifier = Modifier.clickable(onClick = onDismiss))
         }
-        if (active.card.attacks.isEmpty()) {
+        if (active.usableAttacks.isEmpty()) {
             Text("Sin ataques.", color = CombatTheme.Muted, fontSize = 12.sp)
         }
-        active.card.attacks.forEach { atk ->
+        active.usableAttacks.forEach { atk ->
             Row(
                 Modifier
                     .fillMaxWidth()

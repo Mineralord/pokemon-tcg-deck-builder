@@ -20,6 +20,7 @@ import com.mineralord.tcg.engine.model.Phase
 import com.mineralord.tcg.engine.model.PlayerState
 import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.PokemonInPlay
+import com.mineralord.tcg.engine.model.usableAttacks
 import com.mineralord.tcg.engine.model.Side
 import com.mineralord.tcg.engine.model.SpecialEnergy
 import com.mineralord.tcg.engine.model.Status
@@ -418,7 +419,7 @@ class GameEngine(
         // [overrideAttack] = ataque COPIADO (Hackeo Genómico): se ejecuta como propio, sin buscarlo en
         // los ataques de este Pokémon ni cobrar coste (ya se pagó el de Genome Hacking).
         val atk = overrideAttack
-            ?: attacker.card.attacks.firstOrNull { it.name.es == attackName || it.name.en == attackName }
+            ?: attacker.usableAttacks.firstOrNull { it.name.es == attackName || it.name.en == attackName }
             ?: return EngineResult.reject(state, "Ataque desconocido: $attackName")
         // Atacar desde la Banca solo si el ataque lo permite (Alakazam ex — Mano Dimensional).
         val fromBench = me.active?.card?.id != attacker.card.id
@@ -1715,6 +1716,24 @@ class GameEngine(
 
     // ------------------------------------------------------------- fin de turno
 
+    /** Descarta las Máquinas Técnicas (Herramientas que conceden un ataque) unidas a cualquier Pokémon
+     *  de [side] al final de su turno; van al descarte de su dueño, se usara el ataque o no. */
+    private fun discardTechnicalMachines(state: GameState, side: Side): GameState {
+        val ps = state.sideState(side)
+        val removed = mutableListOf<TrainerCard>()
+        fun strip(p: PokemonInPlay?): PokemonInPlay? {
+            p ?: return null
+            val tms = p.attachedTools.filter { it.attacks.isNotEmpty() }
+            if (tms.isEmpty()) return p
+            removed += tms
+            return p.copy(attachedTools = p.attachedTools - tms.toSet())
+        }
+        val newActive = strip(ps.active)
+        val newBench = ps.bench.mapNotNull { strip(it) }
+        if (removed.isEmpty()) return state
+        return withPlayer(state, ps.copy(active = newActive, bench = newBench, discard = ps.discard + removed), side)
+    }
+
     private fun endTurn(state: GameState): EngineResult {
         val events = mutableListOf<GameEvent>()
         events += GameEvent.TurnEnded(state.activeSide)
@@ -1724,6 +1743,9 @@ class GameEngine(
         // Efectos "al final de tu turno": daño diferido (Victreebel) y curación de
         // Herramientas (Restos) sobre el Activo del jugador que termina su turno.
         working = applyEndOfTurnEffects(working, state.activeSide, events)
+        // Máquinas Técnicas: se descartan al final del turno del jugador que las tiene unidas, se haya
+        // usado o no su ataque (regla de la carta: "descártala al final de tu turno").
+        working = discardTechnicalMachines(working, state.activeSide)
         working = handleKnockouts(working, state.activeSide, events)
         if (working.isOver) return EngineResult(working, events)
 
@@ -1945,7 +1967,7 @@ class GameEngine(
         // o si el Activo está restringido este turno por Jet Wing y similares).
         if (state.turn > 1 && active?.cannotAttackOnTurn != state.turn &&
             !(active != null && lowHpAttackLock(state, state.activeSide, active))) {
-            active?.card?.attacks
+            active?.usableAttacks
                 ?.filter { it.name.es != active.lockedAttackName || active.lockedAttackOnTurn != state.turn }
                 ?.filter { canPayAttack(it, active, state, state.activeSide) }
                 ?.forEach { intents += GameIntent.Attack(it.name.es) }

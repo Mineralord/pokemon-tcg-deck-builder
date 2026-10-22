@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mineralord.tcg.core.designsystem.EnergySphere
 import com.mineralord.tcg.engine.model.BasicEnergy
+import com.mineralord.tcg.engine.model.Card
 import com.mineralord.tcg.engine.model.EnergyType
 import com.mineralord.tcg.engine.model.PokemonInPlay
 
@@ -62,7 +63,7 @@ fun HpTypeBadge(remaining: Int, type: EnergyType?, modifier: Modifier = Modifier
  * Se muestra bajo la carta en el visor de detalle, para CUALQUIER Pokémon en juego (propio o rival).
  */
 @Composable
-fun PokemonDetailSheet(pip: PokemonInPlay, modifier: Modifier = Modifier) {
+fun PokemonDetailSheet(pip: PokemonInPlay, modifier: Modifier = Modifier, onToolTap: (Card) -> Unit = {}) {
     val card = pip.card
     val type = card.types.firstOrNull()
     Column(
@@ -126,7 +127,9 @@ fun PokemonDetailSheet(pip: PokemonInPlay, modifier: Modifier = Modifier) {
                         .height(26.dp)
                         .aspectRatio(1.4f)
                         .clip(RoundedCornerShape(4.dp))
-                        .border(1.dp, Color(0x33000000), RoundedCornerShape(4.dp)),
+                        .border(1.dp, Color(0x33000000), RoundedCornerShape(4.dp))
+                        // Tocar la herramienta la abre en el visor de carta.
+                        .clickable { onToolTap(tool) },
                 )
                 Spacer(Modifier.width(6.dp))
             }

@@ -216,6 +216,11 @@ data class TrainerCard(
      * un [PokemonInPlay] con `sourceCard` = este Entrenador; los rasgos comunes de fósil (inmune a
      * Condiciones Especiales, no se retira) los fija el motor al colocarlo. null = Objeto normal. */
     val playsAs: PokemonCard? = null,
+    /**
+     * Ataques que esta Herramienta CONCEDE al Pokémon equipado (Máquinas Técnicas de Brecha Paradójica:
+     * "el Pokémon al que esté unida esta carta puede usar el ataque de esta carta"). Vacío en Herramientas
+     * normales. El motor los surte como ataques usables del portador y descarta la MT al final del turno. */
+    val attacks: List<Attack> = emptyList(),
 ) : Card {
     override val supertype get() = Supertype.TRAINER
 }

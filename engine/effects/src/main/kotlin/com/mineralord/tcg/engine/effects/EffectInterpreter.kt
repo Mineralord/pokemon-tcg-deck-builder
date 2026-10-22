@@ -753,6 +753,21 @@ class EffectInterpreter {
             }
             is EffectOp.LookTopKeepOrDiscardDraw -> EffectResult(state, emptyList()) // mazo vacío: no hace nada
             is EffectOp.BlockOpponentTrainerCategoryNextTurn -> EffectResult(state, emptyList()) // siempre pausa; no llega aquí
+            is EffectOp.RevealTopDiscardEnergyCount -> {
+                // Marea Remolino: enseña las N primeras; descarta las Energías; cuenta; devuelve el resto
+                // al mazo y baraja. El snipe 60× lo hacen los ops siguientes (ChooseTarget + Damage).
+                val ps = state.sideState(src.actingSide)
+                val revealed = ps.deck.take(op.reveal)
+                val energies = revealed.filter { it.supertype == Supertype.ENERGY }
+                val rest = (revealed - energies.toSet()) + ps.deck.drop(revealed.size)
+                var working = withPlayer(
+                    state,
+                    ps.copy(deck = shuffle(rest), discard = ps.discard + energies),
+                    src.actingSide,
+                )
+                working = working.copy(lastRevealEnergyCount = energies.size)
+                EffectResult(working, listOf(GameEvent.DeckShuffled(src.actingSide)))
+            }
             is EffectOp.CoinsPerEnergyDamage -> {
                 // Lanza una moneda por cada Energía [energyType] del origen; el daño al
                 // Activo rival es damagePerHeads × caras. Emite un CoinFlipped por tirada.
@@ -1962,6 +1977,8 @@ class EffectInterpreter {
                     state.sideState(src.actingSide.other()).discard.count { it.supertype == Supertype.ENERGY }
                 Counter.OWN_PRIZES_TAKEN ->
                     (6 - state.sideState(src.actingSide).prizes.size).coerceAtLeast(0)
+                // Escalar: Energías del último revelado (Marea Remolino). Ignora el objetivo.
+                Counter.LAST_REVEAL_ENERGY -> state.lastRevealEnergyCount
             }
             count * amount.mult
         }

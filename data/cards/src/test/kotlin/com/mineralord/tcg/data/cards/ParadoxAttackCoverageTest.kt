@@ -87,9 +87,7 @@ class ParadoxAttackCoverageTest {
         // Documentados aquí: si aparece un rider NUEVO sin implementar (o se implementa uno de estos),
         // el test falla para obligar a revisar la cobertura. Drawareness pasó a estar cubierto
         // (descarte mano→descarte + DrawUntil 5).
-        val unsupported = setOf(
-            "sv4-32 · Whirltide",
-        )
+        val unsupported = emptySet<String>()
         assertEquals(
             unsupported, gaps,
             "Cambió el conjunto de riders sin implementar.\nNuevos sin cubrir: ${gaps - unsupported}\n" +

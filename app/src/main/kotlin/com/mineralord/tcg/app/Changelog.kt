@@ -47,6 +47,14 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.15", "22 oct 2026",
+        listOf(
+            "Las Máquinas Técnicas funcionan: desbloquean su ataque en el Pokémon equipado (arriba de sus ataques) y se descartan al final del turno.",
+            "Toca la herramienta unida a un Pokémon para verla (en el visor y en el tablero).",
+            "Brecha Paradójica completa: todas las cartas con efecto real.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.14", "21 oct 2026",
         listOf(
             "Ahora arrastras las energías directamente sobre tus Pokémon del tablero (sin menú).",

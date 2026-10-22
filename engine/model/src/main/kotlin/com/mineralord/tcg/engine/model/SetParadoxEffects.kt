@@ -1053,4 +1053,14 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     // Pokémon de ataques de Pokémon que tengan una Habilidad, excepto los de su misma especie.
     put(atkKey("sv4-5", "Arm Thrust Needle"), Effect(ops = listOf(
         EffectOp.PreventDamageNextTurn(Target.SELF, onlyFromAbility = true))))
+
+    // Whirltide (Kingdra sv4-32): enseña las 6 primeras cartas; 60 de daño a 1 Pokémon rival por cada
+    // Energía encontrada; descarta esas Energías y baraja el resto. Revelado + snipe por conteo.
+    put(atkKey("sv4-32", "Whirltide"), Effect(ops = listOf(
+        EffectOp.RevealTopDiscardEnergyCount(6),
+        EffectOp.ChooseTarget(Target.OPP_ALL, 1, prompt(
+            "Elige 1 Pokémon del rival (60 por cada Energía revelada)",
+            "Choose 1 of your opponent's Pokémon (60 per revealed Energy)")),
+        EffectOp.Damage(Target.CHOSEN, Amount.PerCount(Counter.LAST_REVEAL_ENERGY, Target.SELF, 60)),
+    )))
 }

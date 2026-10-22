@@ -132,31 +132,30 @@ object CardMapper {
                     text = LocalizedText(it.textoEs ?: it.text ?: "", it.text ?: ""),
                 )
             },
-            attacks = dto.ataques.mapIndexed { i, a ->
-                // Nombre ES del dataset (si existe y no está en blanco); si falta, se usa
-                // el mapa de traducción [AttackNames]; como último recurso, el inglés.
-                val rawEs = dto.es?.ataques?.getOrNull(i)?.name?.takeIf { it.isNotBlank() }
-                val esName = rawEs ?: AttackNames.es(a.name)
-                // Texto de regla IMPRESO (ES del dataset si existe; si no, el inglés). Los ataques
-                // sin texto quedan en blanco → la UI no les pinta descripción.
-                val enText = a.text ?: ""
-                val esText = dto.es?.ataques?.getOrNull(i)?.text?.takeIf { it.isNotBlank() } ?: enText
-                Attack(
-                    name = LocalizedText(esName, a.name),
-                    cost = a.cost.map { energyType(it) },
-                    convertedCost = a.convertedEnergyCost,
-                    baseDamage = damage(a.damage),
-                    // Puntero al efecto autorado (clave por id+nombre); null si no hay comportamiento.
-                    effect = EffectsDb.atkKey(dto.id, a.name).takeIf { id -> EffectsDb.registry.has(id) },
-                    text = LocalizedText(esText, enText),
-                )
-            },
+            attacks = mapAttacks(dto),
             weaknesses = dto.debilidades.map { TypeModifier(energyType(it.type), it.value) },
             resistances = dto.resistencias.map { TypeModifier(energyType(it.type), it.value) },
             retreatCost = dto.costoRetirada.map { energyType(it) },
             rulesText = dto.reglas.map { LocalizedText(it, it) },
             nationalDex = dto.numeroPokedex.firstOrNull(),
             subtypes = dto.subtipos,
+        )
+    }
+
+    /** Mapea los ataques de un DTO (nombre/texto ES con fallback, coste, daño y efecto autorado).
+     *  Compartido por Pokémon y por las Máquinas Técnicas (Herramientas que conceden un ataque). */
+    private fun mapAttacks(dto: CardDto): List<Attack> = dto.ataques.mapIndexed { i, a ->
+        val rawEs = dto.es?.ataques?.getOrNull(i)?.name?.takeIf { it.isNotBlank() }
+        val esName = rawEs ?: AttackNames.es(a.name)
+        val enText = a.text ?: ""
+        val esText = dto.es?.ataques?.getOrNull(i)?.text?.takeIf { it.isNotBlank() } ?: enText
+        Attack(
+            name = LocalizedText(esName, a.name),
+            cost = a.cost.map { energyType(it) },
+            convertedCost = a.convertedEnergyCost,
+            baseDamage = damage(a.damage),
+            effect = EffectsDb.atkKey(dto.id, a.name).takeIf { id -> EffectsDb.registry.has(id) },
+            text = LocalizedText(esText, enText),
         )
     }
 
@@ -223,6 +222,8 @@ object CardMapper {
             text = LocalizedText(text, text),
             effect = EffectId(dto.id),       // el comportamiento se autora por id
             playsAs = playsAs,
+            // Máquinas Técnicas: ataques que la Herramienta concede al Pokémon equipado.
+            attacks = mapAttacks(dto),
         )
     }
 

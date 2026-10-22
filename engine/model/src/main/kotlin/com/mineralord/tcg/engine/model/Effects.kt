@@ -34,6 +34,9 @@ enum class Counter {
     /** Nº de TUS Pokémon en juego (opcionalmente filtrados por nombre vía [Amount.PerCount.namesAnyOf]):
      *  Solidarity sv4-155 = 3 contadores por cada Tandemaus/Maushold en juego. */
     OWN_INPLAY_COUNT,
+    /** Nº de Energías del último "enseña las N primeras cartas" ([GameState.lastRevealEnergyCount]):
+     *  Marea Remolino sv4-32 = 60× por Energía encontrada. Escalar, independiente del objetivo. */
+    LAST_REVEAL_ENERGY,
 }
 
 /** Cantidad fija o derivada de un conteo del estado de juego. */
@@ -603,6 +606,13 @@ sealed interface EffectOp {
      * resolver fija los flags [GameState.blockedTrainerSide]/[blockedTrainerIsSupporter]/
      * [blockedTrainerOnTurn] en el rival para `turn + 1`. */
     data object BlockOpponentTrainerCategoryNextTurn : EffectOp
+
+    /**
+     * "Enseña las [reveal] primeras cartas de tu baraja": descarta las Energías encontradas, fija
+     * [GameState.lastRevealEnergyCount] con cuántas eran, y devuelve el resto a la baraja barajándola
+     * (Marea Remolino sv4-32). Determinista (no pausa); el snipe por 60× lo hacen los ops siguientes
+     * (ChooseTarget + Damage con [Counter.LAST_REVEAL_ENERGY]). */
+    data class RevealTopDiscardEnergyCount(val reveal: Int) : EffectOp
 
     /**
      * El rival enseña su mano y TÚ pones 1 Pokémon que encuentres allí en la parte INFERIOR

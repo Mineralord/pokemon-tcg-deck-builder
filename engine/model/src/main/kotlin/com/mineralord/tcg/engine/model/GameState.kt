@@ -12,6 +12,14 @@ package com.mineralord.tcg.engine.model
 enum class Side { PLAYER, OPPONENT }
 
 /** Una carta de Pokémon puesta en juego, con su estado dinámico. */
+/**
+ * Ataques USABLES por un Pokémon en juego: primero los concedidos por Máquinas Técnicas unidas
+ * (van ARRIBA en el panel de combate), luego los impresos del propio Pokémon. Las MT normales no
+ * conceden ataques ([TrainerCard.attacks] vacío), así que no cambian nada.
+ */
+val PokemonInPlay.usableAttacks: List<Attack>
+    get() = attachedTools.flatMap { it.attacks } + card.attacks
+
 data class PokemonInPlay(
     val card: PokemonCard,
     val damage: Int = 0,                      // daño acumulado (no HP restante)
@@ -279,6 +287,11 @@ data class GameState(
     val blockedTrainerSide: Side? = null,
     val blockedTrainerIsSupporter: Boolean? = null,
     val blockedTrainerOnTurn: Int? = null,
+    /**
+     * Nº de cartas de Energía encontradas en el último "enseña las N primeras cartas" (Marea Remolino
+     * sv4-32): lo fija [EffectOp.RevealTopDiscardEnergyCount] y lo lee [Counter.LAST_REVEAL_ENERGY]
+     * para el daño por snipe (60× por Energía). Transitorio: se sobrescribe en cada uso. */
+    val lastRevealEnergyCount: Int = 0,
     /**
      * Incendiary Song (Skeledirge ex sv4-137): durante el turno [attackBonusThisTurnOnTurn] del lado
      * [attackBonusThisTurnSide], los ataques de ese jugador hacen [attackBonusThisTurnAmount] de daño
