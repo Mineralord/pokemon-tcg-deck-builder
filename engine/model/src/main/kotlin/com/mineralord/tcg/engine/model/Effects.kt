@@ -376,6 +376,12 @@ sealed interface EffectOp {
          * solo cura si se unió al menos 1 Energía. 0 = no cura. Solo aplica a la ruta determinista
          * (target CHOSEN/SELF/OWN_ACTIVE). */
         val thenHeal: Int = 0,
+        /** Si no es null, solo son destino válido los Pokémon con este subtipo (Vitalidad de Sada → "Ancient"). */
+        val targetSubtype: String? = null,
+        /** Si es true, como máximo 1 Energía por Pokémon destino (Vitalidad de Sada: "a cada uno de ellos"). */
+        val onePerTarget: Boolean = false,
+        /** "Si uniste alguna Energía, roba [thenDraw] cartas" (Vitalidad de Sada). 0 = no roba. */
+        val thenDraw: Int = 0,
     ) : EffectOp
 
     /**
@@ -793,6 +799,17 @@ sealed interface EffectOp {
      * Pokémon y todas las cartas unidas a él". Si era el Activo y queda Banca, marca la promoción pendiente
      * (en Hyper Blower siempre está en Banca). No-op si el origen ya no está en juego. */
     data object DiscardSelf : EffectOp
+
+    /**
+     * Lanza 1 moneda y ejecuta [heads] o [tails] en su lugar (luego sigue el resto del efecto). Las ramas
+     * pueden pausar (búsquedas, elecciones) — Larry sv4-165, Shauntal sv4-174. */
+    data class CoinFlipBranch(val heads: List<EffectOp>, val tails: List<EffectOp>) : EffectOp
+
+    /** Roba [base] cartas y [bonus] más si el Activo rival es un Pokémon ex (Norman sv4-168). */
+    data class DrawCardsOppExBonus(val base: Int, val bonus: Int) : EffectOp
+
+    /** Roba [base] cartas, u [firstTurnSecond] si vas segundo y es tu primer turno (Parasol Lady sv4-169). */
+    data class DrawCardsFirstTurnSecond(val base: Int, val firstTurnSecond: Int) : EffectOp
 }
 
 /** Condición para un término de daño de ataque, evaluada contra el estado. */

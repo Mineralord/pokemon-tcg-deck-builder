@@ -231,6 +231,10 @@ sealed interface PendingDecision {
          * sv3pt5-159). La elección (energía + Pokémon) se hace antes de la tirada; el
          * resultado es idéntico. */
         val coinFlip: Boolean = false,
+        /** Como máximo 1 Energía por destino (Vitalidad de Sada). */
+        val onePerTarget: Boolean = false,
+        /** Si se unió alguna Energía, roba estas cartas (Vitalidad de Sada). 0 = no roba. */
+        val thenDraw: Int = 0,
     ) : PendingDecision
 }
 

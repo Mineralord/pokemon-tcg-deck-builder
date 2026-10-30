@@ -1036,4 +1036,76 @@ class SetParadoxEffectsTest {
         assertTrue(eff != null)
         assertTrue(eff!!.passives.any { it.mod == ModKind.BLOCK_OPPONENT_TRAINER_RECYCLE })
     }
+
+    // ---------------------------------------------------------------- Partidarios (0.2.19)
+
+    private fun supporter(id: String) = TrainerCard(
+        id = CardId(id), name = LocalizedText(id, id), set = set(), rarity = Rarity.COMMON,
+        regulationMark = "H", artwork = art(), kind = TrainerKind.Supporter(),
+        text = LocalizedText("t", "t"), effect = EffectId(id),
+    )
+
+    private fun withHand(st: GameState, vararg cards: com.mineralord.tcg.engine.model.Card) =
+        st.copy(player = st.player.copy(hand = cards.toList()))
+
+    @Test
+    fun `Norman roba 4 contra un Pokemon ex y 2 si no`() {
+        val dummy = attackFixed("Golpe", 10, EffectId("none"))
+        val me = PokemonInPlay(mon("me", 100, EnergyType.FIRE, dummy))
+        val plain = PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy))
+        val ex = PokemonInPlay(mon("foeEx", 200, EnergyType.WATER, dummy).copy(mechanic = PokemonMechanic.ExLower))
+        val n = supporter("sv4-168")
+        val vsPlain = GameEngine(FixedRng(true)).apply(withHand(duel(me, plain), n), GameIntent.PlayTrainer(n.id))
+        assertEquals(2, vsPlain.state.player.hand.size)
+        val vsEx = GameEngine(FixedRng(true)).apply(withHand(duel(me, ex), n), GameIntent.PlayTrainer(n.id))
+        assertEquals(4, vsEx.state.player.hand.size)
+    }
+
+    @Test
+    fun `Shauntal con cara sube un Pokemon de la Banca rival y con cruz cambia el tuyo`() {
+        val dummy = attackFixed("Golpe", 10, EffectId("none"))
+        val me = PokemonInPlay(mon("me", 100, EnergyType.FIRE, dummy))
+        val myBench = PokemonInPlay(mon("myBench", 100, EnergyType.FIRE, dummy))
+        val foe = PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy))
+        val foeBench = PokemonInPlay(mon("foeBench", 100, EnergyType.WATER, dummy))
+        val sh = supporter("sv4-174")
+        val base = duel(me, foe).let { it.copy(
+            player = it.player.copy(bench = listOf(myBench), hand = listOf(sh)),
+            opponent = it.opponent.copy(bench = listOf(foeBench)),
+        ) }
+
+        val heads = GameEngine(FixedRng(true)).let { e ->
+            val r = e.apply(base, GameIntent.PlayTrainer(sh.id))
+            e.apply(r.state, GameIntent.ResolveDecision(listOf(foeBench.card.id)))
+        }
+        assertEquals(CardId("foeBench"), heads.state.opponent.active?.card?.id)
+
+        val tails = GameEngine(FixedRng(false)).let { e ->
+            val r = e.apply(base, GameIntent.PlayTrainer(sh.id))
+            e.apply(r.state, GameIntent.ResolveDecision(listOf(myBench.card.id)))
+        }
+        assertEquals(CardId("myBench"), tails.state.player.active?.card?.id)
+    }
+
+    @Test
+    fun `Vitalidad de Sada une 1 Energia a cada Pokemon Pasado y roba 3`() {
+        val dummy = attackFixed("Golpe", 10, EffectId("none"))
+        val past = PokemonInPlay(mon("past", 100, EnergyType.FIGHTING, dummy).copy(subtypes = listOf("Pasado")))
+        val past2 = PokemonInPlay(mon("past2", 100, EnergyType.FIGHTING, dummy).copy(subtypes = listOf("Pasado")))
+        val foe = PokemonInPlay(mon("foe", 100, EnergyType.WATER, dummy))
+        val sada = supporter("sv4-170")
+        val e1 = energy("e1", EnergyType.FIGHTING)
+        val e2 = energy("e2", EnergyType.FIGHTING)
+        val e3 = energy("e3", EnergyType.FIGHTING)
+        val base = duel(past, foe).let { it.copy(player = it.player.copy(
+            bench = listOf(past2), hand = listOf(sada), discard = listOf(e1, e2, e3),
+        )) }
+        val e = GameEngine(FixedRng(true))
+        val r = e.apply(base, GameIntent.PlayTrainer(sada.id))
+        // Intenta 2 Energías al mismo Pokémon + 1 al otro: solo cuenta 1 por destino.
+        val done = e.apply(r.state, GameIntent.ResolveDecision(listOf(e1.id, past.card.id, e2.id, past.card.id, e3.id, past2.card.id)))
+        assertEquals(1, done.state.player.active!!.attachedEnergy.size)
+        assertEquals(1, done.state.player.bench.single().attachedEnergy.size)
+        assertEquals(3, done.state.player.hand.size)
+    }
 }

@@ -19,6 +19,7 @@ import com.mineralord.tcg.engine.model.PlayerState
 import com.mineralord.tcg.engine.model.PokemonCard
 import com.mineralord.tcg.engine.model.Supertype
 import com.mineralord.tcg.engine.model.PokemonInPlay
+import com.mineralord.tcg.engine.model.PokemonMechanic
 import com.mineralord.tcg.engine.model.TrainerCard
 import com.mineralord.tcg.engine.model.TrainerKind
 import com.mineralord.tcg.engine.model.TrainerCategory
@@ -193,6 +194,14 @@ class EffectInterpreter {
         val events = mutableListOf<GameEvent>()
 
         for ((i, op) in ops.withIndex()) {
+            if (op is EffectOp.CoinFlipBranch) {
+                // Larry/Shauntal: la moneda decide qué ops siguen; la rama elegida puede pausar.
+                val heads = flip()
+                events += GameEvent.CoinFlipped(src.actingSide, heads)
+                val branch = if (heads) op.heads else op.tails
+                val rest = runFrom(branch + ops.drop(i + 1), src, working, endsTurnOnResolve, chosenIds, shuffle, flip)
+                return EffectResult(rest.state, events + rest.events, rest.pending)
+            }
             val decision = pendingFor(op, src, working)
             if (decision != null) {
                 val remaining = ops.drop(i + 1)
@@ -468,8 +477,9 @@ class EffectInterpreter {
                     val energies = ps.discard
                         .filter { it is BasicEnergy && (op.energyType == null || it.type == op.energyType) }
                         .map { it.id }
-                    val targets =
-                        (if (op.target == Target.OWN_BENCH) ps.bench else ps.allInPlay).map { it.card.id }
+                    val targets = (if (op.target == Target.OWN_BENCH) ps.bench else ps.allInPlay)
+                        .filter { op.targetSubtype == null || op.targetSubtype in it.card.subtypes }
+                        .map { it.card.id }
                     // Conteo dinámico: Burst of Braying une hasta los Premios que el RIVAL ha tomado.
                     val maxN = if (op.countFromOppPrizesTaken)
                         (6 - state.sideState(src.actingSide.other()).prizes.size).coerceAtLeast(0)
@@ -488,6 +498,8 @@ class EffectInterpreter {
                         fromDiscard = true,
                         thenDrawUpTo = op.thenDrawUpTo,
                         coinFlip = op.coinFlip,
+                        onePerTarget = op.onePerTarget,
+                        thenDraw = op.thenDraw,
                     )
                 }
             }
@@ -1174,6 +1186,16 @@ class EffectInterpreter {
                 val opp = if (op.includeOpponent) state.sideState(src.actingSide.other()).bench.size else 0
                 draw(src.actingSide, own + opp, state)
             }
+            is EffectOp.DrawCardsOppExBonus -> {
+                val mech = state.sideState(src.actingSide.other()).active?.card?.mechanic
+                val isEx = mech == PokemonMechanic.ExLower || mech == PokemonMechanic.ExUpper
+                draw(src.actingSide, op.base + (if (isEx) op.bonus else 0), state)
+            }
+            // turn 2 = primer turno del jugador que va segundo.
+            is EffectOp.DrawCardsFirstTurnSecond ->
+                draw(src.actingSide, if (state.turn == 2) op.firstTurnSecond else op.base, state)
+            // La resuelve runFrom (necesita reanudar la rama); nunca llega aquí.
+            is EffectOp.CoinFlipBranch -> EffectResult(state, emptyList())
             is EffectOp.DrawCardsActiveBonus -> {
                 // Roba [base] y, si el origen está en el Puesto Activo, [bonus] más (Coin Bonus).
                 val isActive = state.sideState(src.actingSide).active?.card?.id == src.sourceId
@@ -1913,6 +1935,7 @@ class EffectInterpreter {
             i += 2
             if (energyId !in d.energyCandidates || benchId !in d.benchCandidates) continue
             if (attached.any { it.id == energyId }) continue
+            if (d.onePerTarget && events.any { it is GameEvent.EnergyAttached && it.to == benchId }) continue
             val energy = source.firstOrNull { it.id == energyId } as? EnergyCard ?: continue
             working = updatePokemon(working, benchId) {
                 it.copy(attachedEnergy = it.attachedEnergy + energy)
@@ -1929,6 +1952,11 @@ class EffectInterpreter {
             if (drawUpTo != null && attached.isNotEmpty()) {
                 val have = working.sideState(side).hand.size
                 val drawn = draw(side, (drawUpTo - have).coerceAtLeast(0), working)
+                working = drawn.state
+                events += drawn.events
+            }
+            if (d.thenDraw > 0 && attached.isNotEmpty()) {
+                val drawn = draw(side, d.thenDraw, working)
                 working = drawn.state
                 events += drawn.events
             }

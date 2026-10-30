@@ -751,6 +751,62 @@ internal fun MutableMap<EffectId, Effect>.registerParadoxRift() {
     put(EffectId("sv4-240"), turoScenario)
     put(EffectId("sv4-257"), turoScenario)
 
+    // Larry (Partidario): moneda. Cara: hasta 2 Pokémon del mazo a la mano. Cruz: 1 Pokémon Básico.
+    val larry = Effect(ops = listOf(EffectOp.CoinFlipBranch(
+        heads = listOf(EffectOp.SearchDeck(CardFilter(supertype = Supertype.POKEMON), Zone.HAND, 2)),
+        tails = listOf(EffectOp.SearchDeck(CardFilter(supertype = Supertype.POKEMON, isBasic = true), Zone.HAND, 1)),
+    )))
+    put(EffectId("sv4-165"), larry)
+    put(EffectId("sv4-235"), larry)
+
+    // Norman (Partidario): roba 2; si el Activo rival es Pokémon ex, roba 2 más.
+    val norman = Effect(ops = listOf(EffectOp.DrawCardsOppExBonus(2, 2)))
+    put(EffectId("sv4-168"), norman)
+    put(EffectId("sv4-237"), norman)
+
+    // Parasol Lady (Partidario): baraja tu mano en el mazo y roba 4 (8 si vas segundo en tu primer turno).
+    val parasolLady = Effect(ops = listOf(EffectOp.ShuffleHandIntoDeck, EffectOp.DrawCardsFirstTurnSecond(4, 8)))
+    put(EffectId("sv4-169"), parasolLady)
+    put(EffectId("sv4-238"), parasolLady)
+    put(EffectId("sv4-255"), parasolLady)
+
+    // Vitalidad del Profesor Sada (Partidario): hasta 2 Pokémon Pasado, 1 Energía Básica del descarte a
+    // cada uno; si uniste alguna, roba 3.
+    val sadaVitality = Effect(ops = listOf(EffectOp.AttachEnergyFromDiscard(
+        count = 2, energyType = null, target = Target.OWN_ALL,
+        targetSubtype = "Pasado", onePerTarget = true, thenDraw = 3,
+    )))
+    put(EffectId("sv4-170"), sadaVitality)
+    put(EffectId("sv4-239"), sadaVitality)
+    put(EffectId("sv4-256"), sadaVitality)
+
+    // Rika (Partidario): mira las 4 primeras cartas y pon 2 en tu mano (el resto vuelve al mazo).
+    val rika = Effect(ops = listOf(EffectOp.SearchDeck(CardFilter(), Zone.HAND, 2, fromTop = 4)))
+    put(EffectId("sv4-172"), rika)
+    put(EffectId("sv4-241"), rika)
+    put(EffectId("sv4-258"), rika)
+
+    // Shauntal (Partidario): moneda. Cara: sube 1 Pokémon de la Banca rival al Activo. Cruz: cambia tu
+    // Activo por 1 de tu Banca.
+    val shauntal = Effect(ops = listOf(EffectOp.CoinFlipBranch(
+        heads = listOf(
+            EffectOp.ChooseTarget(Target.OPP_BENCH, 1, prompt("Elige 1 Pokémon de la Banca rival para subirlo al Activo", "Choose 1 of your opponent's Benched Pokémon to switch to the Active Spot"), optional = true),
+            EffectOp.SwapOppActiveWithChosen,
+        ),
+        tails = listOf(
+            EffectOp.ChooseTarget(Target.OWN_BENCH, 1, prompt("Elige 1 Pokémon de tu Banca para cambiarlo por tu Activo", "Choose 1 of your Benched Pokémon to switch with your Active Pokémon"), optional = true),
+            EffectOp.SwapActiveWithChosen,
+        ),
+    )))
+    put(EffectId("sv4-174"), shauntal)
+    put(EffectId("sv4-243"), shauntal)
+
+    // Tulip (Partidario): hasta 4 Pokémon {P} y/o Energías {P} Básicas del descarte a tu mano.
+    val tulip = Effect(ops = listOf(EffectOp.RecoverFromDiscard(CardFilter(type = EnergyType.PSYCHIC), 4)))
+    put(EffectId("sv4-181"), tulip)
+    put(EffectId("sv4-244"), tulip)
+    put(EffectId("sv4-259"), tulip)
+
     // =========================== Fase 15: Habilidades de Pokémon (flags/pasivos existentes) ===========================
     // Solo las Habilidades que encajan en el DSL actual (pasivos y disparadores ya soportados). Las que
     // requieren mecánicas aún inexistentes (triggers reactivos, condiciones de PS completo, conteo de
