@@ -13,6 +13,7 @@
 //   node tools/release/grant-gift.mjs --friend 075438786726 --cristales 50000
 //   node tools/release/grant-gift.mjs --email pmmt99@gmail.com --cristales 50000 --title "Regalo" --message "¡Disfruta!"
 //   (monedas/fichas opcionales: --monedas 1000 --fichas 50)
+//   Retirar (ajuste admin, v0.2.18+; el saldo no baja de 0): --cristales -500  ·  --cristales todo
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -29,9 +30,10 @@ function arg(name) {
 function intArg(name) {
   const v = arg(name);
   if (v === undefined) return 0;
+  if (v === "todo") return -2_000_000_000; // "retirar todo": el cliente lo recorta a 0
   const n = Number(v);
-  if (!Number.isInteger(n) || n < 0) {
-    console.error(`--${name} debe ser un entero ≥ 0.`);
+  if (!Number.isInteger(n) || Math.abs(n) > 2_000_000_000) {
+    console.error(`--${name} debe ser un entero (negativo = retirar) o "todo".`);
     process.exit(1);
   }
   return n;
@@ -49,7 +51,7 @@ if (!friend && !email) {
   console.error("Falta destinatario: usa --friend <12 dígitos> o --email <correo>.");
   process.exit(1);
 }
-if (cristales + monedas + fichas === 0) {
+if (!cristales && !monedas && !fichas) {
   console.error("Falta recompensa: usa --cristales / --monedas / --fichas (al menos una > 0).");
   process.exit(1);
 }
@@ -92,11 +94,10 @@ try {
     ts: FieldValue.serverTimestamp(),
   });
 
-  const rewards = [
-    cristales && `${cristales.toLocaleString("es")} cristales`,
-    monedas && `${monedas.toLocaleString("es")} monedas`,
-    fichas && `${fichas.toLocaleString("es")} fichas`,
-  ].filter(Boolean).join(" · ");
+  const fmt = (n, label) =>
+    n <= -2_000_000_000 ? `−todos los ${label}` : n && `${n > 0 ? "+" : "−"}${Math.abs(n).toLocaleString("es")} ${label}`;
+  const rewards = [fmt(cristales, "cristales"), fmt(monedas, "monedas"), fmt(fichas, "fichas")]
+    .filter(Boolean).join(" · ");
   console.log(`✔ Regalo enviado a ${uname} (${field}=${value}, uid=${uid}): ${rewards}.`);
   console.log("  Lo verá en el botón 🎁 la próxima vez que abra la app en línea.");
   process.exit(0);

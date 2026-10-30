@@ -137,11 +137,7 @@ private fun GiftRow(gift: Gift, onClaim: () -> Unit) {
                 gift.title.ifBlank { "Regalo" },
                 color = BarajasPalette.Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp,
             )
-            val rewards = buildList {
-                if (gift.cristales > 0) add("${"%,d".format(gift.cristales)} 💎 cristales")
-                if (gift.monedas > 0) add("${"%,d".format(gift.monedas)} 🪙 monedas")
-                if (gift.fichas > 0) add("${"%,d".format(gift.fichas)} 🎟️ fichas")
-            }.joinToString(" · ")
+            val rewards = giftRewardParts(gift).joinToString(" · ")
             if (rewards.isNotEmpty()) {
                 Spacer(Modifier.height(2.dp))
                 Text(rewards, color = BarajasPalette.NavIcon, fontSize = 13.sp, fontWeight = FontWeight.Bold)

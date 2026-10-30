@@ -47,6 +47,12 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.18", "30 oct 2026",
+        listOf(
+            "Los regalos ahora también pueden aplicar ajustes de saldo de la administración.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.17", "22 oct 2026",
         listOf(
             "Energía Medicinal: cura 30 de daño al unirla desde tu mano a un Pokémon.",

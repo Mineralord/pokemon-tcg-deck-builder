@@ -297,6 +297,21 @@ class ProfileRepository(context: Context) {
     }
 
     /**
+     * Retira hasta [amount] unidades de [kind] (ajuste administrativo vía regalo negativo). A diferencia
+     * de [spend], nunca falla: si no hay saldo suficiente lo deja en 0.
+     */
+    suspend fun debitClamped(kind: CurrencyKind, amount: Int) {
+        if (amount <= 0) return
+        store.edit { prefs ->
+            val balances = HashMap(decodeBalances(prefs[BALANCES]).mapKeys { it.key.name })
+            val current = balances[kind.name] ?: 0
+            balances[kind.name] = (current - amount).coerceAtLeast(0)
+            prefs[BALANCES] = json.encodeToString(mapSerializer, balances)
+            prefs.touch()
+        }
+    }
+
+    /**
      * Intenta gastar [amount] unidades del recurso [kind]. Operación atómica: si no hay saldo
      * suficiente NO modifica nada y devuelve `false`. El saldo nunca queda negativo.
      */

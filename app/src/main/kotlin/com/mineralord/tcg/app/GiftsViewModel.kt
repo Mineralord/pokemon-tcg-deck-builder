@@ -36,19 +36,37 @@ class GiftsViewModel(app: Application) : AndroidViewModel(app) {
     /** Reclama [gift]: acredita cada moneda y luego lo borra de la bandeja. */
     fun claim(gift: Gift) = viewModelScope.launch {
         runCatching {
-            if (gift.cristales > 0) profileRepo.credit(CurrencyKind.CRISTALES, gift.cristales)
-            if (gift.monedas > 0) profileRepo.credit(CurrencyKind.MONEDAS, gift.monedas)
-            if (gift.fichas > 0) profileRepo.credit(CurrencyKind.FICHAS, gift.fichas)
+            apply(CurrencyKind.CRISTALES, gift.cristales)
+            apply(CurrencyKind.MONEDAS, gift.monedas)
+            apply(CurrencyKind.FICHAS, gift.fichas)
             repo.claimGift(gift.id)
         }.onSuccess {
             _message.value = buildString {
                 append("¡Reclamado!")
-                if (gift.cristales > 0) append(" +${"%,d".format(gift.cristales)} cristales")
-                if (gift.monedas > 0) append(" +${"%,d".format(gift.monedas)} monedas")
-                if (gift.fichas > 0) append(" +${"%,d".format(gift.fichas)} fichas")
+                giftRewardParts(gift).forEach { append(" ").append(it) }
             }
         }.onFailure { _message.value = "No se pudo reclamar el regalo" }
     }
 
+    /** Importe positivo = abono; negativo = retirada administrativa (el saldo no baja de 0). */
+    private suspend fun apply(kind: CurrencyKind, amount: Int) {
+        if (amount > 0) profileRepo.credit(kind, amount)
+        else if (amount < 0) profileRepo.debitClamped(kind, (-amount.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+    }
+
     fun clearMessage() { _message.value = null }
+}
+
+/** Texto de cada importe del regalo ("+50.000 cristales", "−todos los cristales"). */
+internal fun giftRewardParts(gift: Gift): List<String> = buildList {
+    fun part(n: Int, name: String) {
+        when {
+            n > 0 -> add("+${"%,d".format(n)} $name")
+            n == Int.MIN_VALUE || n <= -1_000_000_000 -> add("−todos los $name")
+            n < 0 -> add("−${"%,d".format(-n.toLong())} $name")
+        }
+    }
+    part(gift.cristales, "cristales")
+    part(gift.monedas, "monedas")
+    part(gift.fichas, "fichas")
 }
