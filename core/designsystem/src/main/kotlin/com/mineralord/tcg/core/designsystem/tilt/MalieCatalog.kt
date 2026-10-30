@@ -114,9 +114,9 @@ object MalieCatalog {
         return out
     }
 
-    /** Descarga (con User-Agent) o lee de disco un JSON del export; lo cachea en cacheDir/holo. */
+    /** Descarga (con User-Agent) o lee de disco un JSON del export; lo cachea en filesDir/holo (persistente). */
     private fun cachedJson(context: Context, relPath: String, url: String): String? {
-        val file = File(context.cacheDir, "holo/$relPath").apply { parentFile?.mkdirs() }
+        val file = File(context.filesDir, "holo/$relPath").apply { parentFile?.mkdirs() }
         if (file.exists() && file.length() > 0) {
             file.setLastModified(System.currentTimeMillis())
             return runCatching { file.readText() }.getOrNull()

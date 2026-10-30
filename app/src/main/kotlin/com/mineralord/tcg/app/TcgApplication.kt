@@ -71,6 +71,9 @@ class TcgApplication : Application(), MatchFactoryProvider, ImageLoaderFactory {
         // Notificaciones de sobres: canal + reprogramación del aviso del PRÓXIMO sobre según el
         // monedero y el TIEMPO CONFIABLE (no el reloj del teléfono). Cada vez que cambia el monedero
         // (abrir/regenerar), se recalcula el aviso del siguiente sobre.
+        // Precarga de TODAS las cartas a disco (solo Wi-Fi): carga instantánea y sin datos móviles.
+        appScope.launch { runCatching { CardPrefetcher.run(this@TcgApplication) } }
+
         PackNotifications.ensureChannel(this)
         val packRepo = ProfileRepository(this)
         val clock = TrustedClock(this)

@@ -154,7 +154,7 @@ object HoloAssets {
 
     /** Devuelve el bitmap desde caché o lo descarga (con User-Agent) y lo cachea. */
     private fun cachedOrDownload(context: Context, relPath: String, url: String): Bitmap? {
-        val file = File(context.cacheDir, "holo/$relPath").apply { parentFile?.mkdirs() }
+        val file = File(context.filesDir, "holo/$relPath").apply { parentFile?.mkdirs() }
         if (file.exists() && file.length() > 0) {
             BitmapFactory.decodeFile(file.path)?.let {
                 file.setLastModified(System.currentTimeMillis()) // marca uso (LRU)
@@ -168,15 +168,15 @@ object HoloAssets {
                 readTimeout = 15000
             }
             conn.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
-            trimCache(File(context.cacheDir, "holo"))
+            trimCache(File(context.filesDir, "holo"))
             BitmapFactory.decodeFile(file.path)
         }.getOrNull()
     }
 
     // Límite de caché en disco: al superar [MAX_CACHE_BYTES], borra los ficheros MENOS
     // usados recientemente (por lastModified) hasta bajar de [TRIM_TARGET_BYTES].
-    private const val MAX_CACHE_BYTES = 150L * 1024 * 1024   // 150 MB
-    private const val TRIM_TARGET_BYTES = 120L * 1024 * 1024 // objetivo tras purga
+    private const val MAX_CACHE_BYTES = 600L * 1024 * 1024   // 600 MB
+    private const val TRIM_TARGET_BYTES = 500L * 1024 * 1024 // objetivo tras purga
 
     private fun trimCache(root: File) {
         val files = root.walkTopDown().filter { it.isFile }.toMutableList()

@@ -377,13 +377,17 @@ private fun isDaytime(): Boolean = java.time.LocalTime.now().hour in 6..19
  * Compartida por todos los reproductores (menú y combate escriben en la misma carpeta).
  */
 private object MusicCache {
-    /** Tope del caché de música: ~100 MB (buena parte de la banda sonora en local). */
-    private const val MAX_BYTES = 100L * 1024 * 1024
+    /** Tope del caché de música: ~500 MB (casi toda la banda sonora en local → apenas re-descargas). */
+    private const val MAX_BYTES = 500L * 1024 * 1024
     private var dir: File? = null
     private val locks = HashMap<String, Any>()
 
     private fun dir(ctx: Context): File =
-        dir ?: File(ctx.cacheDir, "music").apply { mkdirs() }.also { dir = it }
+        dir ?: File(ctx.filesDir, "music").apply {
+            // filesDir (persistente; cacheDir lo purga el sistema). Conserva lo ya bajado en cacheDir.
+            if (!exists()) File(ctx.cacheDir, "music").takeIf { it.isDirectory }?.renameTo(this)
+            mkdirs()
+        }.also { dir = it }
 
     private fun key(track: Track): String =
         Integer.toHexString(("${track.album}|${track.path}").hashCode()) + ".mp3"
@@ -393,13 +397,17 @@ private object MusicCache {
     fun isCached(ctx: Context, track: Track): Boolean =
         fileFor(ctx, track).let { it.exists() && it.length() > 0 }
 
-    /** Devuelve el fichero local del tema, descargándolo (bloqueante) si aún no está en caché. */
+    /**
+     * Devuelve el fichero local del tema, descargándolo (bloqueante) si aún no está en caché. Con
+     * datos móviles NO descarga (devuelve null): la música nueva solo se baja con Wi-Fi.
+     */
     fun ensure(ctx: Context, track: Track): File? {
         val file = fileFor(ctx, track)
         if (file.exists() && file.length() > 0) {
             file.setLastModified(System.currentTimeMillis()) // "tocar" → LRU
             return file
         }
+        if (isMeteredOrOffline(ctx)) return null
         val lock = synchronized(locks) { locks.getOrPut(file.path) { Any() } }
         synchronized(lock) {
             if (file.exists() && file.length() > 0) return file
@@ -519,6 +527,15 @@ class MenuMusicController internal constructor(
         return bag.removeFirst()
     }
 
+    /** Como [nextIndex] pero solo entre temas ya en caché (null si no hay ninguno: silencio sin Wi-Fi). */
+    private fun nextCachedIndex(): Int? {
+        repeat(tracks.size) {
+            val i = nextIndex()
+            if (MusicCache.isCached(appContext, tracks[i])) return i
+        }
+        return null
+    }
+
     /** ¿El tema casa con la franja horaria actual? (sin variante día/noche → siempre sí). */
     private fun dayNightOk(t: Track): Boolean {
         if (!filterDayNight) return true
@@ -533,7 +550,8 @@ class MenuMusicController internal constructor(
         runCatching { player?.release() }
         player = null
         _title.value = null
-        val index = nextIndex()
+        // Con datos móviles solo suenan temas ya guardados: saca de la bolsa el primero en caché.
+        val index = if (isMeteredOrOffline(appContext)) nextCachedIndex() ?: return else nextIndex()
         lastIndex = index
         val track = tracks[index]
         val gen = ++generation
