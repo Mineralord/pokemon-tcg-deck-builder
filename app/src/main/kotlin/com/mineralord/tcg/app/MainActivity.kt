@@ -210,6 +210,17 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
     androidx.compose.runtime.LaunchedEffect(profile.friendCode, profile.username, profile.owned, sessionEmail) {
         publishPresence()
     }
+    // Con sesión Google, liga Firebase Auth a esa cuenta (uid estable entre reinstalaciones y
+    // dispositivos → un solo documento por jugador). Si cambia de uid, se re-publica la presencia.
+    val identity = remember { com.mineralord.tcg.data.netfirestore.FirebaseIdentity() }
+    androidx.compose.runtime.LaunchedEffect(sessionEmail) {
+        val activity = ctx as? android.app.Activity ?: return@LaunchedEffect
+        if (sessionEmail.isBlank() || identity.isGoogleLinked()) return@LaunchedEffect
+        val token = cloudSync.googleIdToken(activity) ?: return@LaunchedEffect
+        runCatching { identity.linkGoogle(token) }
+            .onSuccess { publishPresence() }
+            .onFailure { android.util.Log.w("FirebaseIdentity", "No se pudo vincular con Google", it) }
+    }
     val presenceLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(presenceLifecycle) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->

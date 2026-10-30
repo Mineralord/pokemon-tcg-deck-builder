@@ -49,6 +49,10 @@ class GoogleAuthManager(context: Context) {
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     @Volatile private var cachedToken: String? = null
+
+    /** ID token de Google del último inicio de sesión interactivo (para vincular Firebase Auth). */
+    @Volatile var lastIdToken: String? = null
+        private set
     private var pendingAuth: CompletableDeferred<Intent>? = null
 
     /**
@@ -80,6 +84,7 @@ class GoogleAuthManager(context: Context) {
         val cred = response.credential
         if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             val google = GoogleIdTokenCredential.createFrom(cred.data)
+            lastIdToken = google.idToken
             val signedIn = AuthState.SignedIn(
                 name = google.displayName,
                 email = google.id,
@@ -90,6 +95,24 @@ class GoogleAuthManager(context: Context) {
         }
         throw IOException("Credencial de Google inesperada: ${cred.type}")
     }
+
+    /**
+     * ID token de Google SIN selector (solo cuentas ya autorizadas, auto-selección): para vincular
+     * Firebase Auth en usuarios que iniciaron sesión antes de existir ese vínculo. null si no se puede.
+     */
+    suspend fun silentIdToken(activity: Activity): String? = runCatching {
+        val option = GetGoogleIdOption.Builder()
+            .setServerClientId(BuildConfig.GOOGLE_SERVER_CLIENT_ID)
+            .setFilterByAuthorizedAccounts(true)
+            .setAutoSelectEnabled(true)
+            .build()
+        val cred = credentialManager.getCredential(
+            activity, GetCredentialRequest.Builder().addCredentialOption(option).build(),
+        ).credential
+        if (cred is CustomCredential && cred.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)
+            GoogleIdTokenCredential.createFrom(cred.data).idToken.also { lastIdToken = it }
+        else null
+    }.getOrNull()
 
     /** Restaura el estado de sesión (sin UI) tras reabrir la app. */
     fun restoreSession(state: AuthState.SignedIn) {

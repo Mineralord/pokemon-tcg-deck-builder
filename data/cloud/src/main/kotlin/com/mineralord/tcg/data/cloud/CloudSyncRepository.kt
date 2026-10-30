@@ -113,6 +113,12 @@ class CloudSyncRepository(
         }.onFailure { Log.w(TAG, "signIn/sync falló", it); _syncStatus.value = SyncStatus.Error(it) }
     }
 
+    /**
+     * ID token de Google para vincular Firebase Auth: el del último inicio de sesión o, si no hay
+     * (sesión restaurada), uno silencioso. null si no se puede obtener sin interacción.
+     */
+    suspend fun googleIdToken(activity: Activity): String? = auth.lastIdToken ?: auth.silentIdToken(activity)
+
     /** Reenvía el resultado del consentimiento de Drive al gestor de auth. */
     fun onAuthorizationResult(data: android.content.Intent?) = auth.onAuthorizationResult(data)
 

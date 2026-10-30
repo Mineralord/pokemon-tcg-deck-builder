@@ -215,8 +215,11 @@ class FirestoreFriendsRepository private constructor(
         val myCode = meDoc.getString("friendCode").orEmpty()
         val myName = meDoc.getString("username").orEmpty()
         if (code == myCode) return Result.failure(FriendError("No puedes agregarte a ti mismo"))
-        val target = users().whereEqualTo("friendCode", code).limit(1).get().await()
-            .documents.firstOrNull() ?: return Result.failure(FriendError("No se encontró ese ID de amigo"))
+        // Puede haber varios documentos con el mismo ID (uids antiguos de antes de vincular con
+        // Google): el activo es el visto más recientemente.
+        val target = users().whereEqualTo("friendCode", code).get().await()
+            .documents.maxByOrNull { it.getTimestamp("lastSeen")?.seconds ?: 0L }
+            ?: return Result.failure(FriendError("No se encontró ese ID de amigo"))
         val targetUid = target.id
         if (users().document(me).collection(FRIENDS).document(targetUid).get().await().exists()) {
             return Result.failure(FriendError("Ya es tu amigo"))
@@ -321,7 +324,7 @@ class FirestoreFriendsRepository private constructor(
         batch.commit().await()
     }
 
-    private companion object {
+    internal companion object {
         const val USERS = "users"
         const val FRIENDS = "friends"
         const val INCOMING = "incomingRequests"
