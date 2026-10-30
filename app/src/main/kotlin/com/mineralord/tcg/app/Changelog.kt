@@ -47,6 +47,14 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.23", "30 oct 2026",
+        listOf(
+            "Partidas con amigos: cada jugador juega siempre con SU baraja (antes podía tocarte la del rival).",
+            "Nuevo ajuste de Calidad gráfica en tu Perfil (Auto, Baja, Media, Alta) para que la app vaya fluida en cualquier móvil.",
+            "Ahorro de datos: con Wi-Fi se guardan todas las cartas para que carguen al instante; con datos móviles la música y los brillos holo solo usan lo ya guardado.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.22", "30 oct 2026",
         listOf(
             "Tu cuenta online queda ligada a tu cuenta de Google: conservas amigos y regalos aunque reinstales la app o cambies de móvil.",
