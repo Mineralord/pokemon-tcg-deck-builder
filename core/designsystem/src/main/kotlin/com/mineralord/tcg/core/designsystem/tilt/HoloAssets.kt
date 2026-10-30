@@ -85,19 +85,36 @@ object HoloAssets {
     }
 
     /** Descarga front+foil(+etch) reales del export de malie, eligiendo la impresión acorde a
-     *  la rareza (holo/etched para raras+, ninguna para comunes). */
+     *  la rareza (holo/etched para raras+, ninguna para comunes). Prueba primero la versión
+     *  Latina (LA) y solo cae a España si su PNG no existe: el front de esta capa se pinta ENCIMA
+     *  de la imagen base, así que debe ser del mismo idioma que ella. */
     private suspend fun loadDynamic(context: Context, appSetCode: String, number: Int, rarity: Rarity?): HoloBitmaps? =
         withContext(Dispatchers.IO) {
-            val prints = MalieCatalog.printings(context, appSetCode, number)
-            if (prints.isEmpty()) return@withContext null
-            val p = pickPrinting(prints, rarity) ?: return@withContext null
-            val foilUrl = p.foil ?: return@withContext null  // sin capa foil = carta plana (NonFoil)
-            val front = cachedOrDownload(context, "$appSetCode/${number}_front.png", p.front) ?: return@withContext null
-            val mask = cachedOrDownload(context, "$appSetCode/${number}_mask.png", foilUrl) ?: return@withContext null
-            val etch = p.etch?.let { cachedOrDownload(context, "$appSetCode/${number}_etch.png", it) }
-            val finish = resolveFinish(rarity, p.foilType, p.foilMask)
-            HoloBitmaps(front.asImageBitmap(), mask, etch, finish, silverIfBasic(rarity, p.foilType))
+            for (locale in MalieCatalog.LOCALES) {
+                // Set sin PNG LA en el CDN (ya comprobado en este proceso): directo a España.
+                // Promos SV: solo algunas tienen LA y su imagen base (tcgdex) es de España → mantener ES.
+                if (locale == MalieCatalog.LOCALE_LA &&
+                    (appSetCode in setsWithoutLa || MalieCatalog.malieKey(appSetCode) == "svbsp")) continue
+                val prints = MalieCatalog.printings(context, appSetCode, number, locale)
+                if (prints.isEmpty()) continue
+                val p = pickPrinting(prints, rarity) ?: continue
+                val foilUrl = p.foil ?: return@withContext null  // sin capa foil = carta plana (NonFoil)
+                val dir = "$appSetCode/$locale"
+                val front = cachedOrDownload(context, "$dir/${number}_front.png", p.front)
+                if (front == null) {
+                    if (locale == MalieCatalog.LOCALE_LA) setsWithoutLa += appSetCode
+                    continue
+                }
+                val mask = cachedOrDownload(context, "$dir/${number}_mask.png", foilUrl) ?: continue
+                val etch = p.etch?.let { cachedOrDownload(context, "$dir/${number}_etch.png", it) }
+                val finish = resolveFinish(rarity, p.foilType, p.foilMask)
+                return@withContext HoloBitmaps(front.asImageBitmap(), mask, etch, finish, silverIfBasic(rarity, p.foilType))
+            }
+            null
         }
+
+    /** Sets cuya versión LA figura en el índice pero no tiene PNG en el CDN (404). */
+    private val setsWithoutLa: MutableSet<String> = java.util.Collections.synchronizedSet(HashSet())
 
     /** Elige la impresión que corresponde a la rareza. Comunes/infrecuentes: preferimos la
      *  REVERSE HOLO (brillo físico realista, como en el set 151) y solo caemos a la plana si no

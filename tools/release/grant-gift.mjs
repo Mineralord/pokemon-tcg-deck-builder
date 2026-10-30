@@ -74,7 +74,9 @@ try {
   // Resuelve el uid del destinatario en el directorio `users`.
   const field = friend ? "friendCode" : "email";
   const value = friend || email;
-  const snap = await db.collection("users").where(field, "==", value).limit(1).get();
+  // Un mismo jugador puede tener VARIOS documentos (uno por cada uid de Firebase que ha usado, p. ej.
+  // tras reinstalar o cambiar de sesión): el regalo va al visto más recientemente, que es el activo.
+  const snap = await db.collection("users").where(field, "==", value).get();
   if (snap.empty) {
     console.error(
       `No se encontró ningún jugador con ${field}="${value}". ` +
@@ -82,8 +84,11 @@ try {
     );
     process.exit(1);
   }
-  const uid = snap.docs[0].id;
-  const uname = snap.docs[0].get("username") || "(sin nombre)";
+  const seen = (d) => d.get("lastSeen")?.toMillis?.() ?? 0;
+  const doc = [...snap.docs].sort((a, b) => seen(b) - seen(a))[0];
+  const uid = doc.id;
+  const uname = doc.get("username") || "(sin nombre)";
+  if (snap.size > 1) console.log(`  (${snap.size} documentos con ${field}=${value}; uso el visto más recientemente)`);
 
   await db.collection("users").doc(uid).collection("gifts").add({
     cristales,

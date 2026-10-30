@@ -22,7 +22,11 @@ object MalieCatalog {
 
     private const val INDEX_URL = "https://cdn.malie.io/file/malie-io/tcgl/export/index.json"
     private const val EXPORT_BASE = "https://cdn.malie.io/file/malie-io/tcgl/export/"
-    private const val LOCALE = "es-ES"
+    /** Latino (LA) primero; España solo si la impresión LA no existe en el CDN (las SV antiguas
+     *  figuran en el índice es-419 pero sus PNG dan 404). Ver [HoloAssets.loadDynamic]. */
+    const val LOCALE_LA = "es-419"
+    const val LOCALE_ES = "es-ES"
+    val LOCALES = listOf(LOCALE_LA, LOCALE_ES)
 
     /** Una impresión concreta de una carta (una misma carta puede tener holo Y reverse). */
     data class Printing(
@@ -33,10 +37,10 @@ object MalieCatalog {
         val foilMask: String,  // None / Reverse / Holo / Etched
     )
 
-    // setKey malie -> (número -> impresiones). Cache en memoria (proceso).
+    // "locale/setKey" -> (número -> impresiones). Cache en memoria (proceso).
     private val setCache = HashMap<String, Map<Int, List<Printing>>>()
-    // setKey malie -> ruta del export ("v0.1.9.12/sv3-5.es-ES.json").
-    @Volatile private var indexCache: Map<String, String>? = null
+    // locale -> (setKey malie -> ruta del export, p. ej. "v0.1.9.12/sv3-5.es-419.json").
+    private val indexCache = HashMap<String, Map<String, String>>()
 
     /**
      * Traduce el código de set INTERNO de la app al código de malie. Regla general: `pt` → `-`
@@ -57,24 +61,25 @@ object MalieCatalog {
     }
 
     /** Devuelve las impresiones de foil de [number] en [appSetCode], o vacío si no hay datos. */
-    suspend fun printings(context: Context, appSetCode: String, number: Int): List<Printing> =
+    suspend fun printings(context: Context, appSetCode: String, number: Int, locale: String): List<Printing> =
         withContext(Dispatchers.IO) {
             val key = malieKey(appSetCode)
-            val set = setCache[key] ?: loadSet(context, key)?.also { setCache[key] = it }
+            val cacheKey = "$locale/$key"
+            val set = setCache[cacheKey] ?: loadSet(context, key, locale)?.also { setCache[cacheKey] = it }
             set?.get(number) ?: emptyList()
         }
 
-    private fun loadSet(context: Context, setKey: String): Map<Int, List<Printing>>? {
-        val path = index(context)[setKey] ?: return null
-        val json = cachedJson(context, "catalog/$setKey.json", EXPORT_BASE + path) ?: return null
+    private fun loadSet(context: Context, setKey: String, locale: String): Map<Int, List<Printing>>? {
+        val path = index(context, locale)[setKey] ?: return null
+        val json = cachedJson(context, "catalog/$locale/$setKey.json", EXPORT_BASE + path) ?: return null
         return runCatching { parseSet(json) }.getOrNull()
     }
 
-    private fun index(context: Context): Map<String, String> {
-        indexCache?.let { return it }
+    private fun index(context: Context, locale: String): Map<String, String> {
+        indexCache[locale]?.let { return it }
         val json = cachedJson(context, "catalog/index.json", INDEX_URL) ?: return emptyMap()
         val parsed = runCatching {
-            val loc = JSONObject(json).optJSONObject(LOCALE) ?: return@runCatching emptyMap<String, String>()
+            val loc = JSONObject(json).optJSONObject(locale) ?: return@runCatching emptyMap<String, String>()
             buildMap {
                 loc.keys().forEach { setKey ->
                     loc.optJSONObject(setKey)?.optString("path")?.takeIf { it.isNotEmpty() }
@@ -82,7 +87,7 @@ object MalieCatalog {
                 }
             }
         }.getOrDefault(emptyMap())
-        indexCache = parsed
+        indexCache[locale] = parsed
         return parsed
     }
 

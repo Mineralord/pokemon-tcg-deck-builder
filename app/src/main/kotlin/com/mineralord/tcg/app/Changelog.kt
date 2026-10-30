@@ -47,6 +47,12 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.21", "30 oct 2026",
+        listOf(
+            "Las cartas holo de Llamaradas Fantasmales, Megaevolución y Rivales Predestinados ya no muestran la versión de España encima de la Latina.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.20", "30 oct 2026",
         listOf(
             "Ya no aparece el aviso de sincronización de la nube cada vez que entras al Perfil.",
