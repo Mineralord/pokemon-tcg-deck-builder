@@ -102,7 +102,8 @@ object HoloAssets {
                 val dir = "$appSetCode/$locale"
                 val front = cachedOrDownload(context, "$dir/${number}_front.png", p.front)
                 if (front == null) {
-                    if (locale == MalieCatalog.LOCALE_LA) setsWithoutLa += appSetCode
+                    // Solo es "sin LA" si falló CON Wi-Fi (con datos móviles no se intenta descargar).
+                    if (locale == MalieCatalog.LOCALE_LA && !isMeteredOrOffline(context)) setsWithoutLa += appSetCode
                     continue
                 }
                 val mask = cachedOrDownload(context, "$dir/${number}_mask.png", foilUrl) ?: continue
@@ -112,6 +113,12 @@ object HoloAssets {
             }
             null
         }
+
+    private fun isMeteredOrOffline(context: Context): Boolean {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java) ?: return true
+        if (cm.activeNetwork == null) return true
+        return cm.isActiveNetworkMetered
+    }
 
     /** Sets cuya versión LA figura en el índice pero no tiene PNG en el CDN (404). */
     private val setsWithoutLa: MutableSet<String> = java.util.Collections.synchronizedSet(HashSet())
@@ -161,6 +168,9 @@ object HoloAssets {
                 return it
             }
         }
+        // Capas holo (~1 MB por carta) solo con Wi-Fi: con datos móviles el llamador usa el brillo
+        // procedimental hasta que la capa real se baje en una sesión con Wi-Fi.
+        if (isMeteredOrOffline(context)) return null
         return runCatching {
             val conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 setRequestProperty("User-Agent", "Mozilla/5.0")
