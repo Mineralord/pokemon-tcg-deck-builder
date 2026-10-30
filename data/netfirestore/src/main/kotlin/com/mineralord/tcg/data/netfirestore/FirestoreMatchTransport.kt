@@ -28,13 +28,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Transporte host-autoritativo sobre Firestore. Un "match" es un documento
- * `matches/{code}` con dos subcolecciones-cola de mensajes:
+ * `matches/{code}`; cada PARTIDA abre una sesión nueva `matches/{code}/sessions/{session}` (el id va
+ * en el campo `session` del match) con dos subcolecciones-cola de mensajes:
  *   - `h2g` (host → guest) y `g2h` (guest → host).
+ * La sesión por partida es imprescindible en las salas de amigos, que REUTILIZAN el código: sin ella,
+ * los mensajes de la partida anterior (p. ej. el `Hello` con la baraja de quien fue invitado entonces)
+ * se leían en la nueva y el rival jugaba con la baraja equivocada.
  * Cada lado ESCRIBE en su cola saliente y ESCUCHA su cola entrante (ordenada por
  * `seq`), emitiendo en orden los documentos nuevos ([DocumentChange.Type.ADDED]).
  * Solo hay un escritor por cola, así que un contador local basta para el orden.
@@ -121,20 +126,16 @@ class FirestoreMatchTransportFactory private constructor(
         ensureSignedIn()
         val code = randomCode()
         val matchDoc = db.collection(MATCHES).document(code)
+        val session = newSession()
         matchDoc.set(
             mapOf(
                 "status" to "waiting",
+                "session" to session,
                 "hostName" to playerName,
                 "createdAt" to FieldValue.serverTimestamp(),
             ),
         ).await()
-        val transport = FirestoreMatchTransport(
-            role = MatchRole.HOST,
-            matchDoc = matchDoc,
-            outgoingCol = matchDoc.collection(H2G),
-            incomingCol = matchDoc.collection(G2H),
-        )
-        return code to transport
+        return code to hostTransport(matchDoc, session)
     }
 
     override suspend fun host(code: String, playerName: String): MatchTransport {
@@ -142,36 +143,69 @@ class FirestoreMatchTransportFactory private constructor(
         val normalized = code.trim().uppercase()
         val matchDoc = db.collection(MATCHES).document(normalized)
         // MERGE: conserva el estado del lobby (miembros/lobbyStatus) creado antes en la sala de amigos.
+        // Sesión NUEVA en cada partida: la sala reutiliza el código y no debe ver mensajes viejos.
+        val session = newSession()
         matchDoc.set(
             mapOf(
                 "status" to "waiting",
+                "session" to session,
                 "hostName" to playerName,
                 "createdAt" to FieldValue.serverTimestamp(),
             ),
             SetOptions.merge(),
         ).await()
-        return FirestoreMatchTransport(
-            role = MatchRole.HOST,
-            matchDoc = matchDoc,
-            outgoingCol = matchDoc.collection(H2G),
-            incomingCol = matchDoc.collection(G2H),
-        )
+        return hostTransport(matchDoc, session)
     }
 
     override suspend fun join(code: String, playerName: String): MatchTransport {
         ensureSignedIn()
         val normalized = code.trim().uppercase()
         val matchDoc = db.collection(MATCHES).document(normalized)
-        val snap = matchDoc.get().await()
-        if (!snap.exists()) throw IOException("No existe una partida con el código $normalized")
+        // Espera a que el anfitrión abra la sesión de ESTA partida (status "waiting"). En la sala de
+        // amigos ambos arrancan a la vez, y el documento puede conservar la sesión de la partida
+        // anterior (ya "connected"): unirse a esa dejaría a cada uno hablando en una cola distinta.
+        val session = withTimeoutOrNull(JOIN_TIMEOUT_MS) { awaitOpenSession(matchDoc) }
+            ?: throw IOException("No existe una partida con el código $normalized")
         matchDoc.update(mapOf("status" to "connected", "guestName" to playerName)).await()
+        val sessionDoc = matchDoc.collection(SESSIONS).document(session)
         return FirestoreMatchTransport(
             role = MatchRole.GUEST,
             matchDoc = matchDoc,
-            outgoingCol = matchDoc.collection(G2H),
-            incomingCol = matchDoc.collection(H2G),
+            outgoingCol = sessionDoc.collection(G2H),
+            incomingCol = sessionDoc.collection(H2G),
         )
     }
+
+    private fun hostTransport(matchDoc: DocumentReference, session: String): FirestoreMatchTransport {
+        val sessionDoc = matchDoc.collection(SESSIONS).document(session)
+        return FirestoreMatchTransport(
+            role = MatchRole.HOST,
+            matchDoc = matchDoc,
+            outgoingCol = sessionDoc.collection(H2G),
+            incomingCol = sessionDoc.collection(G2H),
+        )
+    }
+
+    private fun newSession(): String = java.util.UUID.randomUUID().toString()
+
+    /** Suspende hasta que el match tenga una sesión abierta (status "waiting") y devuelve su id. */
+    private suspend fun awaitOpenSession(matchDoc: DocumentReference): String =
+        kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            var registration: com.google.firebase.firestore.ListenerRegistration? = null
+            registration = matchDoc.addSnapshotListener { snap, error ->
+                if (error != null) {
+                    registration?.remove()
+                    if (cont.isActive) cont.resumeWith(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                val session = snap?.getString("session")
+                if (snap?.getString("status") == "waiting" && session != null && cont.isActive) {
+                    registration?.remove()
+                    cont.resumeWith(Result.success(session))
+                }
+            }
+            cont.invokeOnCancellation { registration?.remove() }
+        }
 
     /** Código corto legible (5 chars, sin caracteres ambiguos: sin O/0/I/1). */
     private fun randomCode(): String = (1..CODE_LEN)
@@ -182,6 +216,9 @@ class FirestoreMatchTransportFactory private constructor(
         const val MATCHES = "matches"
         const val H2G = "h2g"
         const val G2H = "g2h"
+        const val SESSIONS = "sessions"
+        /** Cuánto espera el invitado a que el anfitrión abra la partida. */
+        const val JOIN_TIMEOUT_MS = 30_000L
         const val CODE_LEN = 5
         const val CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     }
