@@ -47,6 +47,12 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.22", "30 oct 2026",
+        listOf(
+            "Tu cuenta online queda ligada a tu cuenta de Google: conservas amigos y regalos aunque reinstales la app o cambies de móvil.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.21", "30 oct 2026",
         listOf(
             "Las cartas holo de Llamaradas Fantasmales, Megaevolución y Rivales Predestinados ya no muestran la versión de España encima de la Latina.",
