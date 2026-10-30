@@ -651,7 +651,7 @@ private fun CosmeticPreview(cosmetic: Cosmetic, modifier: Modifier = Modifier) {
  */
 private fun Modifier.rarityFrame(rarity: CosmeticRarity, shape: Shape): Modifier = composed {
     val base = this.border(1.5.dp, rarity.color.copy(alpha = 0.9f), shape)
-    if (!rarity.shimmers) return@composed base
+    if (!rarity.shimmers || com.mineralord.tcg.core.designsystem.graphicsQuality() == com.mineralord.tcg.core.designsystem.GraphicsQuality.LOW) return@composed base
     val transition = rememberInfiniteTransition(label = "shimmer")
     val phase by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,

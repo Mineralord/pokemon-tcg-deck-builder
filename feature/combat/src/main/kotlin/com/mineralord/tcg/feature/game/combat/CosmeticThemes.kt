@@ -324,6 +324,8 @@ fun CosmeticCelebrationFx(theme: CelebrationTheme, modifier: Modifier = Modifier
             )
         }
     }
+    // Calidad gráfica baja: sin partículas de celebración (bucle de dibujo a 60 fps).
+    if (com.mineralord.tcg.core.designsystem.graphicsQuality() == com.mineralord.tcg.core.designsystem.GraphicsQuality.LOW) return
     val clock by rememberInfiniteTransition(label = "fx").animateFloat(
         initialValue = 0f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(4200, easing = LinearEasing)),

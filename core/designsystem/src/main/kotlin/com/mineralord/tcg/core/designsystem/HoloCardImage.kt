@@ -41,6 +41,10 @@ fun HoloCardImage(
     intensity: Float = 1f,
 ) {
     val context = LocalContext.current
+    // Calidad gráfica: baja = carta plana (ni descarga ni shader); media = holo estático; alta = animado.
+    val quality = graphicsQuality()
+    @Suppress("NAME_SHADOWING")
+    val enabled = enabled && quality != GraphicsQuality.LOW
     val holo by produceState<HoloBitmaps?>(null, setCode, cardNumber, rarity, enabled) {
         value = if (enabled) HoloAssets.resolve(context, setCode ?: "sv3pt5", cardNumber, rarity) else null
     }
@@ -49,7 +53,10 @@ fun HoloCardImage(
     // la carta e ignora las zonas marco/ilustración).
     val finish = remember(rarity, holo) { holo?.finish ?: com.mineralord.tcg.core.designsystem.tilt.Finish.NONE }
     val holoMod = if (enabled) {
-        modifier.holoAmbient(finish, holo?.mask, holo?.etch, holo?.foilCode ?: -1f, intensity)
+        modifier.holoAmbient(
+            finish, holo?.mask, holo?.etch, holo?.foilCode ?: -1f, intensity,
+            animate = quality == GraphicsQuality.HIGH,
+        )
     } else modifier
 
     val front = holo?.front

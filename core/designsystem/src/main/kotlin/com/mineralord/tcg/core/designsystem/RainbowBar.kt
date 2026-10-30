@@ -43,18 +43,22 @@ fun RainbowBar(
 ) {
     // Cierra el ciclo: repetir el primer color al final hace que el patrón sea perfectamente periódico.
     val looped = remember(colors) { colors + colors.first() }
-    val transition = rememberInfiniteTransition(label = "rainbow")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(periodMillis, easing = LinearEasing), RepeatMode.Restart),
-        label = "rainbowPhase",
-    )
+    // Calidad baja: barra quieta y sin desenfoque (ahorra un redibujado por frame en cada pantalla).
+    val low = graphicsQuality() == GraphicsQuality.LOW
+    val phase = if (low) 0f else {
+        val transition = rememberInfiniteTransition(label = "rainbow")
+        transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(periodMillis, easing = LinearEasing), RepeatMode.Restart),
+            label = "rainbowPhase",
+        ).value
+    }
     androidx.compose.foundation.layout.Spacer(
         modifier
             .height(height)
             // Leve desenfoque para el look "RGB difuminado" sin perder el hilo fino.
-            .blur(1.5.dp)
+            .then(if (low) Modifier else Modifier.blur(1.5.dp))
             .drawBehind {
                 val periodPx = periodWidth.toPx()
                 val shift = phase * periodPx // desplazamiento hacia la derecha (un periodo completo).

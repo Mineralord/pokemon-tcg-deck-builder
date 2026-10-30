@@ -160,10 +160,13 @@ fun Modifier.holoAmbient(
     foilType: Float = -1f,
     intensity: Float = 1f,
     speed: Float = 1f,
+    /** false = holo ESTÁTICO (sin redibujar cada frame): calidad gráfica media en listas/mano. */
+    animate: Boolean = true,
 ): Modifier =
     if (finish == Finish.NONE || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) this
     else composed {
-        val phase by produceState(0f) {
+        val phase by produceState(0.9f, animate) {
+            if (!animate) return@produceState
             val start = withFrameNanos { it }
             while (true) {
                 withFrameNanos { now -> value = (now - start) / 1_000_000_000f * speed }
@@ -174,7 +177,7 @@ fun Modifier.holoAmbient(
             x = 0.6f * kotlin.math.sin(phase * 1.6f),
             y = 0.45f * kotlin.math.cos(phase * 1.2f),
         )
-        holoOverlay33(sweep, finish.shaderProfile, mask, etch, foilType, intensity)
+        holoOverlay33(sweep, finish.shaderProfile, mask, etch, foilType, intensity, animate)
     }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -185,6 +188,7 @@ private fun Modifier.holoOverlay33(
     etch: Bitmap?,
     foilType: Float,
     intensity: Float,
+    animate: Boolean = true,
 ): Modifier = composed {
     val shader = remember { RuntimeShader(HOLO_AGSL) }
     val dummy = remember { Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888).apply { setPixel(0, 0, -1) } }
@@ -194,7 +198,8 @@ private fun Modifier.holoOverlay33(
     val etchShader = remember(etch) {
         BitmapShader(etch ?: dummy, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
     }
-    val time by produceState(0f) {
+    val time by produceState(0f, animate) {
+        if (!animate) return@produceState
         val start = withFrameNanos { it }
         while (true) { withFrameNanos { now -> value = (now - start) / 1_000_000_000f } }
     }

@@ -62,7 +62,8 @@ fun CombatMat(
     val scope = rememberCoroutineScope()
 
     // ---- Ambiente reactivo de la lente (procedural, por capas, según el tipo Activo) ----
-    val motionOn = AnimationManager.enabled()
+    // Calidad gráfica baja: lente con iluminación estática (sin reloj continuo a 60 fps).
+    val motionOn = AnimationManager.enabled() && !(com.mineralord.tcg.core.designsystem.graphicsQuality() == com.mineralord.tcg.core.designsystem.GraphicsQuality.LOW)
     // Reloj continuo 0→1 (bucle lineal): única fuente de movimiento del ambiente.
     val clock = if (motionOn) {
         rememberInfiniteTransition(label = "ambientClock").animateFloat(

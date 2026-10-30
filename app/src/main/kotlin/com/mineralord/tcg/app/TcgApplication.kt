@@ -59,6 +59,7 @@ class TcgApplication : Application(), MatchFactoryProvider, ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        com.mineralord.tcg.core.designsystem.GraphicsSettings.init(this)
         cloudSync = CloudSyncRepository(
             profileRepo = ProfileRepository(this),
             auth = GoogleAuthManager(this),

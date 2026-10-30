@@ -386,7 +386,8 @@ private fun AppShell(inviteFromIntent: androidx.compose.runtime.MutableState<Inv
 
     // Desenfoque del fondo mientras el menú lateral está abierto (se anima suavemente).
     val menuBlur by androidx.compose.animation.core.animateDpAsState(
-        targetValue = if (menuOpen || giftsOpen || messagesOpen) 18.dp else 0.dp,
+        // Calidad baja: sin desenfoque (re-renderiza toda la pantalla de fondo en cada frame).
+        targetValue = if ((menuOpen || giftsOpen || messagesOpen) && !(com.mineralord.tcg.core.designsystem.graphicsQuality() == com.mineralord.tcg.core.designsystem.GraphicsQuality.LOW)) 18.dp else 0.dp,
         animationSpec = androidx.compose.animation.core.tween(260),
         label = "menuBlur",
     )

@@ -242,6 +242,11 @@ fun ProfileScreen(
                 QuickSummary(stats)
 
                 Spacer(Modifier.height(22.dp))
+                CenterLabel("Calidad gráfica")
+                Spacer(Modifier.height(12.dp))
+                GraphicsQualityCard()
+
+                Spacer(Modifier.height(22.dp))
                 CenterLabel("Logros")
                 Spacer(Modifier.height(14.dp))
                 TrophyGrid(onClick = { soon = true })
@@ -471,6 +476,61 @@ private fun ProgressRing(fraction: Float, modifier: Modifier = Modifier) {
             topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke))
         drawArc(Accent, -90f, 360f * fraction.coerceIn(0f, 1f), false,
             topLeft = Offset(inset, inset), size = arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calidad gráfica (fluidez en gama baja / media / alta).
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun GraphicsQualityCard() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pref by com.mineralord.tcg.core.designsystem.GraphicsSettings.preference.collectAsStateWithLifecycle()
+    val detected = com.mineralord.tcg.core.designsystem.GraphicsSettings.detected
+    fun levelName(q: com.mineralord.tcg.core.designsystem.GraphicsQuality) = when (q) {
+        com.mineralord.tcg.core.designsystem.GraphicsQuality.LOW -> "Baja"
+        com.mineralord.tcg.core.designsystem.GraphicsQuality.MEDIUM -> "Media"
+        com.mineralord.tcg.core.designsystem.GraphicsQuality.HIGH -> "Alta"
+    }
+    Card {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.mineralord.tcg.core.designsystem.GraphicsPreference.entries.forEach { p ->
+                    val selected = p == pref
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) Accent else BarajasPalette.BgBottom)
+                            .pressable { com.mineralord.tcg.core.designsystem.GraphicsSettings.set(context, p) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (p == com.mineralord.tcg.core.designsystem.GraphicsPreference.AUTO) "Auto" else p.label,
+                            color = if (selected) Color.White else BarajasPalette.Ink,
+                            fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1,
+                        )
+                    }
+                }
+            }
+            val effective = if (pref == com.mineralord.tcg.core.designsystem.GraphicsPreference.AUTO) detected
+                else com.mineralord.tcg.core.designsystem.GraphicsQuality.valueOf(pref.name)
+            Text(
+                buildString {
+                    if (pref == com.mineralord.tcg.core.designsystem.GraphicsPreference.AUTO)
+                        append("Tu dispositivo: ${levelName(detected)}. ")
+                    append(when (effective) {
+                        com.mineralord.tcg.core.designsystem.GraphicsQuality.LOW ->
+                            "Máxima fluidez: cartas sin brillo holo en listas y combate, sin animaciones de fondo."
+                        com.mineralord.tcg.core.designsystem.GraphicsQuality.MEDIUM ->
+                            "Equilibrada: brillo holo fijo en listas y combate; animado al ver la carta en grande."
+                        com.mineralord.tcg.core.designsystem.GraphicsQuality.HIGH ->
+                            "Máxima calidad: brillo holo y efectos animados en todas partes."
+                    })
+                },
+                color = BarajasPalette.Muted, fontSize = 12.sp,
+            )
+        }
     }
 }
 
