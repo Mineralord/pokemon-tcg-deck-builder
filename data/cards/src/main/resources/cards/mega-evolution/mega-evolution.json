@@ -50,8 +50,8 @@
     "habilidades": [],
     "ataques": [],
     "efecto": "Cambia 1 de los Pokémon en Banca de tu rival por el Pokémon que esté en el Puesto Activo.",
-    "imagenChica": "https://assets.tcgdex.net/es/me/me01/114/low.webp",
-    "imagenGrande": "https://assets.tcgdex.net/es/me/me01/114/high.webp",
+    "imagenChica": "https://assets.tcgdex.net/es-mx/me/me01/114/low.webp",
+    "imagenGrande": "https://assets.tcgdex.net/es-mx/me/me01/114/high.webp",
     "setNombre": "Megaevolución"
    }
   }
