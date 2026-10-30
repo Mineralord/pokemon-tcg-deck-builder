@@ -110,19 +110,6 @@ fun ProfileScreen(
     val syncStatus by vm.syncStatus.collectAsStateWithLifecycle()
     val stats by vm.stats.collectAsStateWithLifecycle()
 
-    // Diagnóstico de nube: Toast con lo que encontró la última sincronización.
-    val diagnostic by vm.diagnostic.collectAsStateWithLifecycle()
-    val diagContext = androidx.compose.ui.platform.LocalContext.current
-    androidx.compose.runtime.LaunchedEffect(diagnostic) {
-        diagnostic?.let { d ->
-            val msg = if (d.cloudFileFound)
-                "Nube: archivo encontrado · ${d.cloudOwnedCount} cartas en nube, ${d.localOwnedCount} local → ${d.mergedOwnedCount} tras fusión"
-            else
-                "Nube: NO hay archivo guardado (appDataFolder vacío) · ${d.localOwnedCount} cartas en local"
-            android.widget.Toast.makeText(diagContext, msg, android.widget.Toast.LENGTH_LONG).show()
-        }
-    }
-
     val authLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result -> vm.onAuthorizationResult(result.data) }

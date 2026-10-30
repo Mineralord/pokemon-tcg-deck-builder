@@ -47,6 +47,13 @@ data class ChangeEntry(val version: String, val date: String, val changes: List<
  */
 val CHANGELOG: List<ChangeEntry> = listOf(
     ChangeEntry(
+        "0.2.20", "30 oct 2026",
+        listOf(
+            "Ya no aparece el aviso de sincronización de la nube cada vez que entras al Perfil.",
+            "Órdenes de Jefes (Megaevolución) y Rotom (Rivales Predestinados) se muestran en su versión Latina.",
+        ),
+    ),
+    ChangeEntry(
         "0.2.19", "30 oct 2026",
         listOf(
             "Brecha Paradójica: ya puedes jugar los Partidarios Larry, Norman, Parasol Lady, Vitalidad del Profesor Sada, Rika, Shauntal y Tulip.",
